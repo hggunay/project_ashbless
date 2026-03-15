@@ -210,6 +210,29 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .badge-book-item{padding:.35rem .4rem;border-radius:2px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(201,162,39,.08);line-height:1.4;}
 .badge-book-item:hover{background:rgba(201,162,39,.1);}
 .badge-book-item:last-child{border-bottom:none;}
+.book-item-reading{background:linear-gradient(90deg,rgba(74,103,65,.08),transparent);border-left:3px solid var(--moss);}
+.reading-progress-wrap{height:3px;background:rgba(74,103,65,.15);border-radius:20px;margin-top:.4rem;overflow:hidden;}
+.reading-progress-fill{height:100%;background:linear-gradient(90deg,var(--moss),#7ab870);border-radius:20px;transition:width .4s;}
+.reading-progress-text{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--moss);margin-top:.2rem;}
+.book-item-reading{background:linear-gradient(90deg,rgba(74,103,65,.08),transparent);border-left:3px solid var(--moss);}
+.reading-progress-wrap{height:3px;background:rgba(74,103,65,.15);border-radius:20px;margin-top:.4rem;overflow:hidden;}
+.reading-progress-fill{height:100%;background:linear-gradient(90deg,var(--moss),#7ab870);border-radius:20px;transition:width .4s;}
+.reading-progress-text{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--moss);margin-top:.2rem;}
+.book-item-wishlist{opacity:.75;border-left:3px solid rgba(201,162,39,.35);}
+.stats-section{margin-bottom:1.5rem;}
+.stats-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid rgba(201,162,39,.2);}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1rem;}
+.stats-big-card{background:linear-gradient(135deg,var(--parchment-dark),var(--parchment));border:1px solid rgba(201,162,39,.3);border-radius:4px;padding:1rem;text-align:center;}
+.stats-big-num{font-family:'Playfair Display',serif;font-size:2rem;font-weight:900;color:var(--leather);line-height:1;}
+.stats-big-label{font-size:.65rem;font-family:'Space Mono',monospace;color:var(--rust);margin-top:.3rem;text-transform:uppercase;letter-spacing:.05em;}
+.stats-bar-row{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
+.stats-bar-label{font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);min-width:100px;flex-shrink:0;}
+.stats-bar-wrap{flex:1;background:rgba(138,69,19,.1);border-radius:20px;height:8px;overflow:hidden;}
+.stats-bar-fill{height:100%;border-radius:20px;background:linear-gradient(90deg,var(--leather),var(--gold));transition:width .6s cubic-bezier(.34,1.56,.64,1);}
+.stats-bar-val{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);min-width:24px;text-align:right;}
+.stats-month-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:.3rem;align-items:end;height:80px;}
+.stats-month-bar{background:linear-gradient(180deg,var(--gold),var(--leather));border-radius:2px 2px 0 0;min-height:2px;transition:height .4s;}
+.stats-month-label{font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);text-align:center;margin-top:.2rem;opacity:.6;}
 .badge-book-past{display:inline-block;font-size:.55rem;font-family:'Space Mono',monospace;background:rgba(138,69,19,.12);color:var(--rust);border:1px solid rgba(138,69,19,.2);border-radius:10px;padding:.05rem .35rem;margin-left:.3rem;vertical-align:middle;}
 @media(max-width:600px){
   .input-grid,.detail-grid{grid-template-columns:1fr;}
@@ -271,6 +294,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
+      <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
       <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
     </div>
@@ -311,7 +335,9 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
         <div class="chip-group-label" style="margin-top:.5rem">📖 Ne zaman okudun?</div>
         <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
           <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
+          <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
           <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
+          <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okuma listeme ekle</span>
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.25rem">
           <button class="btn btn-primary" onclick="addBook()">+ Kitap Ekle</button>
@@ -321,9 +347,17 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           💡 Yazar adı girilirse eşleştirme çok daha doğru olur. Kitap adı veya yazar hatalı geldiyse tıklayıp düzenleyebilirsin.
         </div>
       </div>
+      <div class="card" id="currentlyReadingCard" style="display:none">
+        <div class="card-header">📖 Şu An Okunanlar</div>
+        <div id="currentlyReadingList" style="padding:.5rem"></div>
+      </div>
       <div class="card">
         <div class="card-header">📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></div>
         <div id="bookList" style="padding:.5rem"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
+      </div>
+      <div class="card" id="wishlistCard" style="display:none">
+        <div class="card-header">🔖 Okuma Listesi <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></div>
+        <div id="wishlistList" style="padding:.5rem"></div>
       </div>
     </div>
 
@@ -344,6 +378,15 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
         </div>
         <div class="badge-categories" id="badgeContainer"></div>
       </div>
+    </div>
+
+    <!-- STATS PANEL -->
+    <div id="stats" class="panel">
+      <div id="statsViewingBanner" class="viewing-banner" style="display:none">
+        <span id="statsViewingText"></span>
+        <button class="btn btn-danger btn-sm" onclick="stopViewing()">← Kendi profilime dön</button>
+      </div>
+      <div id="statsContainer"></div>
     </div>
 
     <!-- MEMBERS PANEL -->
@@ -399,6 +442,23 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
                 </div>
               </div>
               <button class="btn btn-primary btn-sm" style="margin-bottom:.1rem" onclick="changePassword()">🔒 Şifreyi Güncelle</button>
+            </div>
+          </div>
+
+          <!-- Gizlilik -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:1rem;margin-top:.25rem">
+            <div class="detail-section-title">🔒 Gizlilik</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+              <div>
+                <div style="font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)">Profilim herkese açık</div>
+                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-top:.2rem">Kapalıysa diğer üyeler sadece kitap ve rozet sayını görür, detayları göremez.</div>
+              </div>
+              <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+                <input type="checkbox" id="settingPublic" onchange="togglePublicProfile(this.checked)" style="opacity:0;width:0;height:0">
+                <span id="publicToggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(138,69,19,.3);border-radius:24px;transition:.3s">
+                  <span id="publicToggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--parchment);border-radius:50%;transition:.3s"></span>
+                </span>
+              </label>
             </div>
           </div>
 
@@ -641,8 +701,11 @@ async function saveDb(){
 function myBooks(){return db.books[me]||[];}
 function targetBooks(){return db.books[viewing||me]||[];}
 function validBooks(){
-  // Only count books with a real title (not empty, not ISBN: prefix)
-  return targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.title.trim()!=='');
+  // Rozet hesabı: wishlist ve şu an okunanlar sayılmaz
+  return targetBooks().filter(b=>
+    b.title&&!b.title.startsWith('ISBN:')&&b.title.trim()!==''
+    &&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'
+  );
 }
 
 // ── AUTH ──────────────────────────────────────────────────────
@@ -718,6 +781,26 @@ function renderSettings(){
   if(nameEl) nameEl.value=user.displayName||'';
   if(avatarEl) avatarEl.value=user.avatar||'📚';
   document.getElementById('settingPw').value='';
+  // Public toggle
+  const isPublic=user.publicProfile!==false; // varsayılan: açık
+  const cb=document.getElementById('settingPublic');
+  const track=document.getElementById('publicToggleTrack');
+  const thumb=document.getElementById('publicToggleThumb');
+  if(cb){
+    cb.checked=isPublic;
+    track.style.background=isPublic?'var(--moss)':'rgba(138,69,19,.3)';
+    thumb.style.transform=isPublic?'translateX(20px)':'translateX(0)';
+  }
+}
+
+function togglePublicProfile(val){
+  db.users[me].publicProfile=val;
+  saveDb();
+  const track=document.getElementById('publicToggleTrack');
+  const thumb=document.getElementById('publicToggleThumb');
+  track.style.background=val?'var(--moss)':'rgba(138,69,19,.3)';
+  thumb.style.transform=val?'translateX(20px)':'translateX(0)';
+  notify(val?'🔓 Profil Açık':'🔒 Profil Gizli', val?'Diğer üyeler profilini görebilir.':'Diğer üyeler sadece sayılarını görebilir.');
 }
 
 function saveProfile(){
@@ -749,9 +832,20 @@ function showPanel(id,el){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(id).classList.add('active');if(el)el.classList.add('active');
   if(id==='settings') renderSettings();
+  else if(id==='stats') renderStatsPanel();
   else render();
 }
-function viewMember(u){if(u===me){stopViewing();return;}viewing=u;render();showPanel('myBooks',document.querySelector('.nav-tab'));}
+function viewMember(u){
+  if(u===me){stopViewing();return;}
+  viewing=u;
+  // Gizlilik kontrolü
+  const user=db.users[u];
+  if(user&&user.publicProfile===false){
+    notify('🔒 Gizli Profil',`${user.displayName} profilini gizli tutmayı tercih ediyor.`);
+    return;
+  }
+  render();showPanel('myBooks',document.querySelector('.nav-tab'));
+}
 function stopViewing(){viewing=null;render();}
 function toggleChip(el){el.classList.toggle('active');}
 function getFormats(){return[...document.querySelectorAll('#formatChips .chip.active')].map(c=>c.dataset.val);}
@@ -1116,8 +1210,11 @@ async function addBook(){
     seriesTotal:info.series_total||null,
     comicSeries:info.comic_series||null,
     seriesComplete,miniSeriesComplete,bigSeriesComplete,
-    pre1900,pre1980comic,halloween,retroactive:getReadingTime()==='past',
+    pre1900,pre1980comic,halloween,
+    readingStatus:getReadingTime(), // 'new','past','reading','wishlist'
+    retroactive:getReadingTime()==='past',
     month:endDate?endDate.substring(0,7):month,addedAt:now.toISOString(),startDate,endDate,
+    currentPage:null, // şu an okunan sayfa
     // manual flags
     nightReading:false,reread:false,challenging:false,
     funniest:false,saddest:false,indie:false,
@@ -1261,11 +1358,25 @@ function openBook(bookId){
         ?`<input class="detail-input" style="width:100%;max-width:100%" value="${book.comment||''}" placeholder="Bu kitap hakkında bir şeyler yaz..." onchange="saveField(${book.id},'comment',this.value||null)"/>`
         :`<span style="font-style:italic;font-size:.9rem;color:var(--rust)">${book.comment||'—'}</span>`}
     </div>
+
+    ${book.readingStatus==='reading'&&isMe?`
+    <div class="detail-section" style="border:1px solid rgba(74,103,65,.3);border-radius:4px;padding:.75rem;background:rgba(74,103,65,.05)">
+      <div class="detail-section-title" style="color:var(--moss)">📖 Okuma İlerlemesi</div>
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <div class="detail-field" style="flex:0 0 auto">
+          <label class="detail-field-label">Mevcut Sayfa</label>
+          <input class="detail-input" type="number" style="width:90px" value="${book.currentPage||''}" placeholder="—"
+            onchange="saveFieldTyped(${book.id},'currentPage','number',this.value)"/>
+        </div>
+        ${book.pages?`<div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--moss);padding-top:1.2rem">/ ${book.pages} sayfa</div>`:''}
+      </div>
+    </div>`:''}
   `;
 
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        ${book.readingStatus==='reading'?`<button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
       </div>`
@@ -1405,6 +1516,35 @@ function applyToWholeSeries(bookId){
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
 
+function startReadingFromWishlist(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus='reading';
+  book.startDate=book.startDate||new Date().toISOString().split('T')[0];
+  saveDb();render();
+  notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
+}
+
+function finishReading(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus='new';
+  book.endDate=book.endDate||new Date().toISOString().split('T')[0];
+  book.currentPage=null;
+  const month=book.endDate.substring(0,7);
+  book.month=month;
+  saveDb();
+  // Rozet kontrolü
+  const prev=myBooks().map(b=>({...b}));
+  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
+    if(!bstat(b,prev.filter(x=>x.readingStatus!=='wishlist'&&x.readingStatus!=='reading')).earned
+      &&bstat(b,validBooks()).earned)
+      notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
+  }));
+  render();
+  notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
+}
+
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
 function closeModalIfBg(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
 
@@ -1421,18 +1561,162 @@ function filterBadges(f,el){
 }
 
 // ── RENDER ────────────────────────────────────────────────────
-function render(){renderBanners();renderStats();renderBookList();renderBadges();renderMembers();renderSettings();}
+// ── İSTATİSTİKLER ────────────────────────────────────────────
+function renderStatsPanel(){
+  const target=viewing||me;
+  const user=db.users[target];
+  const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
+  const books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading');
 
-function renderSettings(){
-  if(!me)return;
-  const user=db.users[me];
-  const av=document.getElementById('settingsAvatar');
-  const dn=document.getElementById('settingsDisplayName');
-  const un=document.getElementById('settingsUsername');
-  if(av)av.textContent=user.avatar||'📚';
-  if(dn)dn.textContent=user.displayName||me;
-  if(un)un.textContent='@'+me;
+  // Viewing banner
+  const isV=!!viewing;
+  const banner=document.getElementById('statsViewingBanner');
+  banner.style.display=isV?'':'none';
+  if(isV) document.getElementById('statsViewingText').textContent=`${user?.avatar||'📚'} ${user?.displayName||target} adlı üyenin istatistikleri`;
+
+  // Özet sayılar
+  let badgeCount=0;
+  BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badgeCount++;}));
+  const totalPages=books.reduce((s,b)=>s+(b.pages||0),0);
+  const countries=new Set(books.filter(b=>b.country).map(b=>b.country.trim().toLowerCase()));
+  const series=new Set(books.filter(b=>b.series).map(b=>b.series));
+  const reading=allBooks.filter(b=>b.readingStatus==='reading');
+
+  // Tür dağılımı
+  const genreCount={};
+  books.forEach(b=>(b.genres||[]).forEach(g=>{genreCount[g]=(genreCount[g]||0)+1;}));
+  const topGenres=Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // Yazar dağılımı
+  const authorCount={};
+  books.forEach(b=>{if(b.author)authorCount[b.author]=(authorCount[b.author]||0)+1;});
+  const topAuthors=Object.entries(authorCount).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>1).slice(0,6);
+
+  // Ülke dağılımı
+  const countryCount={};
+  books.forEach(b=>{if(b.country){const c=b.country.trim();countryCount[c]=(countryCount[c]||0)+1;}});
+  const topCountries=Object.entries(countryCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  // Format dağılımı
+  const fmtCount={'kitap':0,'ekitap':0,'sesli':0,'cizgi':0};
+  books.forEach(b=>(b.formats||['kitap']).forEach(f=>{if(fmtCount[f]!==undefined)fmtCount[f]++;}));
+
+  // Aylık okuma (son 12 ay)
+  const now=new Date();
+  const months=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
+  }
+  const monthCounts={};
+  books.forEach(b=>{if(b.month)monthCounts[b.month]=(monthCounts[b.month]||0)+1;});
+  const monthData=months.map(m=>({m,n:monthCounts[m]||0}));
+  const maxMonth=Math.max(1,...monthData.map(d=>d.n));
+
+  // Yıllık okuma
+  const yearCount={};
+  books.forEach(b=>{if(b.month){const y=b.month.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
+  const years=Object.entries(yearCount).sort((a,b)=>a[0].localeCompare(b[0]));
+
+  // Kadın/erkek yazar
+  const femaleBooks=books.filter(b=>b.femaleAuthor).length;
+  const femPct=books.length?Math.round(femaleBooks/books.length*100):0;
+
+  // Seri tamamlama
+  const seriesMap={};
+  books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:b.seriesComplete};seriesMap[b.series].count++;}});
+  const seriesStarted=Object.keys(seriesMap).length;
+  const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
+
+  function barRows(data,maxVal){
+    return data.map(([label,val])=>`
+      <div class="stats-bar-row">
+        <span class="stats-bar-label">${label}</span>
+        <div class="stats-bar-wrap"><div class="stats-bar-fill" style="width:${Math.round(val/maxVal*100)}%"></div></div>
+        <span class="stats-bar-val">${val}</span>
+      </div>`).join('');
+  }
+
+  const monthLabels=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
+
+  document.getElementById('statsContainer').innerHTML=`
+    <div class="card" style="margin-bottom:1rem">
+      <div class="card-header">📊 ${isV?(user?.displayName||target)+' — ':''}Okuma İstatistikleri</div>
+      <div class="card-body">
+
+        <!-- Özet -->
+        <div class="stats-section">
+          <div class="stats-section-title">📈 Genel Bakış</div>
+          <div class="stats-grid">
+            <div class="stats-big-card"><div class="stats-big-num">${books.length}</div><div class="stats-big-label">Kitap Okundu</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${badgeCount}</div><div class="stats-big-label">Rozet</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${countries.size}</div><div class="stats-big-label">Ülke</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${series.size}</div><div class="stats-big-label">Seri</div></div>
+            ${totalPages?`<div class="stats-big-card"><div class="stats-big-num">${totalPages.toLocaleString('tr')}</div><div class="stats-big-label">Toplam Sayfa</div></div>`:''}
+            ${reading.length?`<div class="stats-big-card" style="border-color:var(--moss)"><div class="stats-big-num" style="color:var(--moss)">${reading.length}</div><div class="stats-big-label">Şu An Okunan</div></div>`:''}
+          </div>
+        </div>
+
+        <!-- Aylık grafik -->
+        <div class="stats-section">
+          <div class="stats-section-title">📅 Son 12 Ay</div>
+          <div style="display:flex;gap:.3rem;align-items:flex-end;height:90px;padding-bottom:1.4rem;position:relative">
+            ${monthData.map((d,i)=>`
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
+                ${d.n>0?`<div style="font-size:.55rem;font-family:'Space Mono',monospace;color:var(--rust);margin-bottom:2px">${d.n}</div>`:''}
+                <div style="width:100%;background:${d.n?'linear-gradient(180deg,var(--gold),var(--leather))':'rgba(138,69,19,.1)'};border-radius:2px 2px 0 0;height:${d.n?Math.max(8,Math.round(d.n/maxMonth*60)):4}px"></div>
+                <div style="font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:18px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
+              </div>`).join('')}
+          </div>
+          ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}
+        </div>
+
+        <!-- Tür dağılımı -->
+        ${topGenres.length?`<div class="stats-section">
+          <div class="stats-section-title">📚 En Çok Okunan Türler</div>
+          ${barRows(topGenres,topGenres[0][1])}
+        </div>`:''}
+
+        <!-- Yazar dağılımı -->
+        ${topAuthors.length?`<div class="stats-section">
+          <div class="stats-section-title">✍️ En Çok Okunan Yazarlar</div>
+          ${barRows(topAuthors,topAuthors[0][1])}
+        </div>`:''}
+
+        <!-- Ülke dağılımı -->
+        ${topCountries.length?`<div class="stats-section">
+          <div class="stats-section-title">🌍 En Çok Okunan Ülkeler</div>
+          ${barRows(topCountries,topCountries[0][1])}
+        </div>`:''}
+
+        <!-- Format & Çeşitlilik -->
+        <div class="stats-section">
+          <div class="stats-section-title">📖 Format & Çeşitlilik</div>
+          <div class="stats-grid">
+            ${fmtCount.kitap?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.kitap}</div><div class="stats-big-label">📖 Fiziksel</div></div>`:''}
+            ${fmtCount.ekitap?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.ekitap}</div><div class="stats-big-label">📱 E-Kitap</div></div>`:''}
+            ${fmtCount.sesli?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.sesli}</div><div class="stats-big-label">🎧 Sesli</div></div>`:''}
+            ${fmtCount.cizgi?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.cizgi}</div><div class="stats-big-label">🎨 Çizgi Roman</div></div>`:''}
+            ${books.length?`<div class="stats-big-card"><div class="stats-big-num">%${femPct}</div><div class="stats-big-label">👩 Kadın Yazar</div></div>`:''}
+          </div>
+        </div>
+
+        <!-- Seri takibi -->
+        ${seriesStarted?`<div class="stats-section">
+          <div class="stats-section-title">📚 Seri Durumu</div>
+          <div class="stats-grid">
+            <div class="stats-big-card"><div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${seriesFinished}</div><div class="stats-big-label">Bitirilen Seri</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${seriesStarted-seriesFinished}</div><div class="stats-big-label">Devam Eden</div></div>
+          </div>
+        </div>`:''}
+
+        ${books.length===0?'<div class="empty-state">Henüz yeterli veri yok. Kitap ekledikçe istatistikler burada görünür.</div>':''}
+      </div>
+    </div>`;
 }
+
+function render(){renderBanners();renderStats();renderBookList();renderBadges();renderMembers();}
 
 function confirmDeleteBooks(){
   const btn=document.querySelector('[onclick="confirmDeleteBooks()"]');
@@ -1489,25 +1773,87 @@ function renderStats(){
 }
 
 function renderBookList(){
-  const books=targetBooks(),list=document.getElementById('bookList');
-  if(!books.length){list.innerHTML='<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';return;}
+  const allBooks=targetBooks();
+  const isMe=!viewing;
   const fmtMap={'kitap':'📖','ekitap':'📱','sesli':'🎧','cizgi':'🎨'};
-  list.innerHTML=[...books].reverse().map(b=>{
-    const noTitle=!b.title||b.title.startsWith('ISBN:');
-    return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
-      <div class="book-info">
-        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
-        ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
-        ${b.startDate||b.endDate?`<span class="book-meta">📅 ${b.startDate||'?'} ${b.endDate?'→ ✅ '+b.endDate:''}</span>`:''}
-        ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
-      </div>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
-        ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
-        ${(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')}
-      </div>
-      ${b.pages?`<span class="book-pages">${b.pages}s</span>`:''}
-    </div>`;
-  }).join('');
+
+  // Şu an okunanlar (bitiş tarihi yok, wishlist değil)
+  const reading=allBooks.filter(b=>!b.endDate&&b.readingStatus==='reading');
+  const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
+  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading');
+
+  // — Şu an okunanlar —
+  const crCard=document.getElementById('currentlyReadingCard');
+  const crList=document.getElementById('currentlyReadingList');
+  if(reading.length){
+    crCard.style.display='';
+    crList.innerHTML=reading.map(b=>{
+      const noTitle=!b.title||b.title.startsWith('ISBN:');
+      const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+      return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
+        <div class="book-info" style="flex:1">
+          <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':b.title}</span>
+          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+          ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
+          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+          ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
+        </div>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
+          ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
+        </div>
+      </div>`;
+    }).join('');
+  } else {
+    crCard.style.display='none';
+  }
+
+  // — Okunan kitaplar —
+  const list=document.getElementById('bookList');
+  if(!readBooks.length){
+    list.innerHTML='<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
+  } else {
+    list.innerHTML=[...readBooks].reverse().map(b=>{
+      const noTitle=!b.title||b.title.startsWith('ISBN:');
+      return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
+        <div class="book-info">
+          <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
+          ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
+          ${b.startDate||b.endDate?`<span class="book-meta">📅 ${b.startDate||'?'} ${b.endDate?'→ ✅ '+b.endDate:''}</span>`:''}
+          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
+        </div>
+        <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
+          ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
+          ${(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')}
+        </div>
+        ${b.pages?`<span class="book-pages">${b.pages}s</span>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // — Okuma listesi —
+  const wlCard=document.getElementById('wishlistCard');
+  const wlList=document.getElementById('wishlistList');
+  const wlCount=document.getElementById('wishlistCount');
+  if(wishlist.length){
+    wlCard.style.display='';
+    wlCount.textContent=`${wishlist.length} kitap`;
+    wlList.innerHTML=wishlist.map(b=>`
+      <div class="book-item book-item-wishlist">
+        <div class="book-info" style="flex:1">
+          <span class="book-title-text">${b.title||'İsimsiz'}</span>
+          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+          ${b.series?`<span class="book-series-text">📚 ${b.series}</span>`:''}
+        </div>
+        ${isMe?`<div class="wishlist-actions" onclick="event.stopPropagation()">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="startReadingFromWishlist(${b.id})">📖 Okumaya başla</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="removeBook(${b.id})">✕</button>
+        </div>`:''}
+      </div>`).join('');
+  } else {
+    wlCard.style.display='none';
+  }
+
+  document.getElementById('bookCount').textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
 }
 
 let openBadgeId=null;
