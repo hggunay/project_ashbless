@@ -258,6 +258,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="nav-tab active" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
+      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
     </div>
 
     <!-- BOOKS PANEL -->
@@ -329,6 +330,45 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <div class="card">
         <div class="card-header">👥 Tüm Üyeler</div>
         <div class="card-body"><div class="members-grid" id="membersGrid"></div></div>
+      </div>
+    </div>
+
+    <!-- SETTINGS PANEL -->
+    <div id="settings" class="panel">
+      <div class="card">
+        <div class="card-header">⚙️ Profil & Ayarlar</div>
+        <div class="card-body" style="padding:1rem">
+
+          <!-- Profil Bilgileri -->
+          <div class="detail-section">
+            <div class="detail-section-title">👤 Profil Bilgileri</div>
+            <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1rem">
+              <span style="font-size:3rem" id="settingsAvatar"></span>
+              <div>
+                <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold)" id="settingsDisplayName"></div>
+                <div style="font-size:.8rem;opacity:.5;font-family:'Space Mono',monospace" id="settingsUsername"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tehlikeli Alan -->
+          <div class="detail-section" style="border:1px solid rgba(160,82,45,.3);border-radius:4px;padding:1rem;margin-top:1rem">
+            <div class="detail-section-title" style="color:var(--rust)">⚠️ Tehlikeli Alan</div>
+            
+            <div style="margin-bottom:1.2rem">
+              <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Tüm kitaplarımı sil</div>
+              <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın kalır ama tüm kitap kayıtların ve rozet ilerlemen silinir.</div>
+              <button class="btn btn-danger" onclick="confirmDeleteBooks()">🗑️ Tüm Kitapları Sil</button>
+            </div>
+
+            <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
+              <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
+              <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.</div>
+              <button class="btn btn-danger" onclick="confirmDeleteProfile()">❌ Profilimi Kalıcı Olarak Sil</button>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
@@ -503,6 +543,49 @@ function register(){
   db.users[u]={displayName:dn,avatar:av,password:p};db.books[u]=[];
   saveDb();err.style.display='none';me=u;viewing=null;enterApp();
 }
+function updateProfile(field, value){
+  if(!value.trim()) return;
+  db.users[me][field] = value.trim();
+  if(field==='displayName') document.getElementById('headerUsername').textContent=value.trim();
+  if(field==='avatar') document.getElementById('headerAvatar').textContent=value.trim();
+  saveDb();
+}
+
+function changePassword(){
+  const pw=document.getElementById('settingPw').value;
+  if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
+  db.users[me].password=pw;
+  document.getElementById('settingPw').value='';
+  saveDb();
+  alert('Şifre güncellendi! ✅');
+}
+
+function deleteAllBooks(){
+  if(!confirm('Tüm kitap kayıtların silinecek. Emin misin?')) return;
+  db.books[me]=[];
+  saveDb();render();
+  showPanel('myBooks',document.querySelector('.nav-tab'));
+  alert('Tüm kitaplar silindi.');
+}
+
+function deleteProfile(){
+  if(!confirm('Profilin ve tüm verilerin kalıcı olarak silinecek. Emin misin?')) return;
+  if(!confirm('Bu işlem geri alınamaz! Devam etmek istiyor musun?')) return;
+  delete db.users[me];
+  delete db.books[me];
+  saveDb();
+  logout();
+}
+
+function renderSettings(){
+  const user=db.users[me];
+  if(!user) return;
+  const nameEl=document.getElementById('settingName');
+  const avatarEl=document.getElementById('settingAvatar');
+  if(nameEl) nameEl.value=user.displayName||'';
+  if(avatarEl) avatarEl.value=user.avatar||'📚';
+}
+
 function logout(){me=null;viewing=null;document.getElementById('appScreen').style.display='none';document.getElementById('authScreen').style.display='flex';renderPills();}
 function setTodayDate(){
   const today=new Date().toISOString().split('T')[0];
@@ -519,7 +602,9 @@ function enterApp(){
 function showPanel(id,el){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(id).classList.add('active');if(el)el.classList.add('active');render();
+  document.getElementById(id).classList.add('active');if(el)el.classList.add('active');
+  if(id==='settings') renderSettings();
+  else render();
 }
 function viewMember(u){if(u===me){stopViewing();return;}viewing=u;render();showPanel('myBooks',document.querySelector('.nav-tab'));}
 function stopViewing(){viewing=null;render();}
@@ -1070,7 +1155,38 @@ function filterBadges(f,el){
 }
 
 // ── RENDER ────────────────────────────────────────────────────
-function render(){renderBanners();renderStats();renderBookList();renderBadges();renderMembers();}
+function render(){renderBanners();renderStats();renderBookList();renderBadges();renderMembers();renderSettings();}
+
+function renderSettings(){
+  if(!me)return;
+  const user=db.users[me];
+  const av=document.getElementById('settingsAvatar');
+  const dn=document.getElementById('settingsDisplayName');
+  const un=document.getElementById('settingsUsername');
+  if(av)av.textContent=user.avatar||'📚';
+  if(dn)dn.textContent=user.displayName||me;
+  if(un)un.textContent='@'+me;
+}
+
+function confirmDeleteBooks(){
+  if(confirm('Tüm kitap kayıtların ve rozet ilerlemen silinecek. Hesabın kalacak. Emin misin?')){
+    db.books[me]=[];
+    saveDb();render();
+    alert('Tüm kitaplar silindi.');
+  }
+}
+
+function confirmDeleteProfile(){
+  if(confirm('Hesabın ve tüm verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz! Emin misin?')){
+    if(confirm('Son kez onaylıyor musun? Tüm veriler silinecek.')){
+      delete db.users[me];
+      delete db.books[me];
+      saveDb();
+      logout();
+      alert('Profilin silindi.');
+    }
+  }
+}
 
 function renderBanners(){
   const isV=!!viewing,name=viewing?(db.users[viewing]?.displayName||viewing):'',av=viewing?(db.users[viewing]?.avatar||'📚'):'';
