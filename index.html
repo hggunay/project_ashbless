@@ -258,14 +258,18 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Kayıt Ol</button>
     </div>
     <div id="loginForm">
-      <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi"/></div>
+      <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
-      <div class="auth-error" id="loginError">Kullanıcı adı veya şifre hatalı.</div>
-      <div style="display:flex;align-items:center;gap:.5rem;margin:.5rem 0;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--parchment);opacity:.7">
-        <input type="checkbox" id="rememberMe" style="cursor:pointer"/>
-        <label for="rememberMe" style="cursor:pointer">Oturumu açık tut</label>
+      <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:.3rem 0;flex-wrap:wrap;gap:.3rem">
+        <div style="display:flex;align-items:center;gap:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--parchment);opacity:.7">
+          <input type="checkbox" id="rememberMe" style="cursor:pointer"/>
+          <label for="rememberMe" style="cursor:pointer">Oturumu açık tut</label>
+        </div>
+        <button id="hintBtn" type="button" onclick="showHint()" style="display:none;background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold);cursor:pointer;opacity:.7;text-decoration:underline">💡 İpucumu göster</button>
       </div>
       <button class="auth-btn" onclick="login()">GİRİŞ YAP →</button>
+      <div class="auth-error" id="loginError">Kullanıcı adı veya şifre hatalı.</div>
       <div class="members-list"><div class="members-label">Kayıtlı üyeler</div><div id="memberPills"></div></div>
     </div>
     <div id="registerForm" style="display:none">
@@ -273,6 +277,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <div class="auth-field"><label class="auth-label">Görünen İsim</label><input class="auth-input" id="regDisplayName" type="text" placeholder="ornek: Ahmet"/></div>
       <div class="auth-field"><label class="auth-label">Avatar Emoji</label><input class="auth-input" id="regAvatar" type="text" placeholder="🧙‍♂️" maxlength="4"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="regPassword" type="password" placeholder="şifre belirle..." onkeydown="if(event.key==='Enter')register()"/><button class="pw-toggle" type="button" onclick="togglePw('regPassword',this)">👁</button></div></div>
+      <div class="auth-field"><label class="auth-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı — şifreni unutursan hatırlatır)</span></label><input class="auth-input" id="regHint" type="text" placeholder="örn: evcil hayvanımın adı"/></div>
       <div class="auth-error" id="registerError"></div>
       <button class="auth-btn" onclick="register()">KAYIT OL →</button>
     </div>
@@ -432,8 +437,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 
           <!-- Şifre Değiştir -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:1rem;margin-top:.25rem">
-            <div class="detail-section-title">🔑 Şifre Değiştir</div>
-            <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap">
+            <div class="detail-section-title">🔑 Şifre & İpucu</div>
+            <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
               <div class="detail-field" style="flex:1;min-width:180px">
                 <label class="detail-field-label">Yeni Şifre</label>
                 <div class="pw-wrap">
@@ -442,6 +447,13 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
                 </div>
               </div>
               <button class="btn btn-primary btn-sm" style="margin-bottom:.1rem" onclick="changePassword()">🔒 Şifreyi Güncelle</button>
+            </div>
+            <div class="detail-field">
+              <label class="detail-field-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(giriş ekranında gösterilir)</span></label>
+              <div style="display:flex;gap:.5rem;align-items:center">
+                <input class="detail-input" id="settingHint" type="text" placeholder="örn: evcil hayvanımın adı" style="flex:1"/>
+                <button class="btn btn-primary btn-sm" onclick="saveHint()">💾</button>
+              </div>
             </div>
           </div>
 
@@ -460,6 +472,13 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
                 </span>
               </label>
             </div>
+          </div>
+
+          <!-- Üye Yönetimi -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:1rem;margin-top:.25rem">
+            <div class="detail-section-title">👥 Üye Yönetimi</div>
+            <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Şifresini unutan bir üyenin şifresini sıfırlayabilirsin.</div>
+            <div id="adminMemberList"></div>
           </div>
 
           <!-- Tehlikeli Alan -->
@@ -730,11 +749,29 @@ function login(){
   enterApp();
 }
 function register(){
-  const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,err=document.getElementById('registerError');
+  const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:p};db.books[u]=[];
+  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null};db.books[u]=[];
   saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+}
+
+function checkHintAvailable(){
+  const u=document.getElementById('loginUsername').value.trim();
+  const btn=document.getElementById('hintBtn');
+  const box=document.getElementById('hintBox');
+  box.style.display='none';
+  if(u&&db.users[u]&&db.users[u].hint){btn.style.display='block';}
+  else{btn.style.display='none';}
+}
+
+function showHint(){
+  const u=document.getElementById('loginUsername').value.trim();
+  const box=document.getElementById('hintBox');
+  if(u&&db.users[u]&&db.users[u].hint){
+    box.style.display='block';
+    box.textContent='💡 İpucu: '+db.users[u].hint;
+  }
 }
 function updateProfile(field, value){
   if(!value.trim()) return;
@@ -781,8 +818,10 @@ function renderSettings(){
   if(nameEl) nameEl.value=user.displayName||'';
   if(avatarEl) avatarEl.value=user.avatar||'📚';
   document.getElementById('settingPw').value='';
+  const hintEl=document.getElementById('settingHint');
+  if(hintEl) hintEl.value=user.hint||'';
   // Public toggle
-  const isPublic=user.publicProfile!==false; // varsayılan: açık
+  const isPublic=user.publicProfile!==false;
   const cb=document.getElementById('settingPublic');
   const track=document.getElementById('publicToggleTrack');
   const thumb=document.getElementById('publicToggleThumb');
@@ -791,9 +830,39 @@ function renderSettings(){
     track.style.background=isPublic?'var(--moss)':'rgba(138,69,19,.3)';
     thumb.style.transform=isPublic?'translateX(20px)':'translateX(0)';
   }
+  // Admin üye listesi
+  const adminList=document.getElementById('adminMemberList');
+  if(adminList){
+    const others=Object.keys(db.users).filter(u=>u!==me);
+    if(!others.length){adminList.innerHTML='<div style="font-size:.85rem;opacity:.5;font-style:italic">Başka üye yok.</div>';return;}
+    adminList.innerHTML=others.map(u=>`
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;flex-wrap:wrap">
+        <span style="font-size:1.2rem">${db.users[u].avatar||'📚'}</span>
+        <span style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--ink);flex:1">${db.users[u].displayName} <span style="opacity:.5;font-size:.75rem">@${u}</span></span>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <input class="detail-input" type="text" id="newpw_${u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
+          <button class="btn btn-sm btn-danger" onclick="adminResetPassword('${u}')">🔑 Sıfırla</button>
+        </div>
+      </div>`).join('');
+  }
 }
 
-function togglePublicProfile(val){
+function saveHint(){
+  const hint=document.getElementById('settingHint').value.trim();
+  db.users[me].hint=hint||null;
+  saveDb();
+  notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
+}
+
+function adminResetPassword(u){
+  const input=document.getElementById('newpw_'+u);
+  const pw=input.value.trim();
+  if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
+  db.users[u].password=pw;
+  saveDb();
+  input.value='';
+  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+}
   db.users[me].publicProfile=val;
   saveDb();
   const track=document.getElementById('publicToggleTrack');
@@ -837,13 +906,16 @@ function showPanel(id,el){
 }
 function viewMember(u){
   if(u===me){stopViewing();return;}
-  viewing=u;
-  // Gizlilik kontrolü
   const user=db.users[u];
+  // Gizli profil — sadece özet bilgi göster
   if(user&&user.publicProfile===false){
-    notify('🔒 Gizli Profil',`${user.displayName} profilini gizli tutmayı tercih ediyor.`);
+    const books=(db.books[u]||[]).filter(b=>b.readingStatus!=='wishlist'&&b.title&&!b.title.startsWith('ISBN:'));
+    let badgeCount=0;
+    BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badgeCount++;}));
+    notify('🔒 Gizli Profil',`${user.displayName} · ${books.length} kitap · ${badgeCount} rozet`);
     return;
   }
+  viewing=u;
   render();showPanel('myBooks',document.querySelector('.nav-tab'));
 }
 function stopViewing(){viewing=null;render();}
