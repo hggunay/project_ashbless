@@ -295,7 +295,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <div class="field-group series-wrap" style="grid-column:1/-1">
             <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(bir serinin parçasıysa — yazar/ülke otomatik gelir)</span></span>
             <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune — isteğe bağlı" autocomplete="off"
-              oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>seriesDropHide(),200)"/>
+              oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>{seriesDropHide();applySeriesMemory(document.getElementById('bookSeries').value.trim());},250)"/>
             <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
           </div>
           <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
@@ -815,15 +815,13 @@ function propagateSeriesInfo(newBook){
   if(!newBook.series) return;
   const seriesBooks=db.books[me].filter(b=>b.series===newBook.series&&b.id!==newBook.id);
   if(!seriesBooks.length) return;
-  let changed=false;
   seriesBooks.forEach(b=>{
-    if(!b.author&&newBook.author){b.author=newBook.author;changed=true;}
-    if(!b.country&&newBook.country){b.country=newBook.country;changed=true;}
-    if(!b.femaleAuthor&&newBook.femaleAuthor){b.femaleAuthor=newBook.femaleAuthor;changed=true;}
-    if((!b.genres||!b.genres.length)&&newBook.genres?.length){b.genres=newBook.genres;changed=true;}
-    if(!b.seriesTotal&&newBook.seriesTotal){b.seriesTotal=newBook.seriesTotal;changed=true;}
+    if(!b.author&&newBook.author) b.author=newBook.author;
+    if(!b.country&&newBook.country) b.country=newBook.country;
+    if(!b.femaleAuthor&&newBook.femaleAuthor) b.femaleAuthor=newBook.femaleAuthor;
+    if((!b.genres||!b.genres.length)&&newBook.genres?.length) b.genres=[...newBook.genres];
+    if(!b.seriesTotal&&newBook.seriesTotal) b.seriesTotal=newBook.seriesTotal;
   });
-  if(changed) saveDb();
 }
 
 // ── API — FULL AUTO FILL ──────────────────────────────────────
@@ -1344,9 +1342,11 @@ function toggleFlag(bookId,field,el){
 
 function saveField(bookId,field,value){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
-  // normalize empty strings to null for certain fields
   if(['country','series','author','comicSeries'].includes(field)&&value==='') value=null;
-  book[field]=value;saveDb();render();
+  book[field]=value;
+  // Seri bilgisi değişince diğer kitaplara yay
+  if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
+  saveDb();render();
 }
 
 function saveFieldTyped(bookId,field,type,rawVal){
