@@ -1062,12 +1062,11 @@ async function addBook(){
   // Manuel girilen seri adı API'den gelenden öncelikli
   if(manualSeries && !info.series) info.series=manualSeries;
 
-  // Seri hafızası — aynı seriden önceki kitaplardan bilgi al
+  // Seri hafızası — en dolu bilgiye sahip kitaptan al
   const seriesName=info.series||manualSeries;
   if(seriesName){
-    const prevSameS=myBooks().filter(b=>b.series===seriesName);
-    if(prevSameS.length){
-      const ref=prevSameS[0];
+    const ref=bestSeriesRef(seriesName);
+    if(ref){
       if(!info.author_clean&&ref.author) info.author_clean=ref.author;
       if(!info.female_author&&ref.femaleAuthor) info.female_author=ref.femaleAuthor;
       if(!info.country&&ref.country) info.country=ref.country;
@@ -1265,7 +1264,10 @@ function openBook(bookId){
 
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
-      <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>`
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
+        <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
+      </div>`
     :'';
 
   document.getElementById('modalOverlay').classList.add('open');
@@ -1381,6 +1383,24 @@ function recalcSeriesCompletion(bookId){
       if(tot>=7)b.bigSeriesComplete=true;
     });
   }
+}
+
+function applyToWholeSeries(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book||!book.series) return;
+  const seriesBooks=db.books[me].filter(b=>b.series===book.series&&b.id!==bookId);
+  if(!seriesBooks.length){notify('📚 Seri','Bu seride başka kitap yok.');return;}
+  let count=0;
+  seriesBooks.forEach(b=>{
+    if(!b.author&&book.author){b.author=book.author;count++;}
+    if(!b.country&&book.country){b.country=book.country;count++;}
+    if(!b.femaleAuthor&&book.femaleAuthor){b.femaleAuthor=book.femaleAuthor;count++;}
+    if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
+    if(!b.seriesTotal&&book.seriesTotal){b.seriesTotal=book.seriesTotal;count++;}
+  });
+  saveDb();render();
+  if(count>0) notify('✅ Seri güncellendi',`${seriesBooks.length} kitaba bilgi aktarıldı`);
+  else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
