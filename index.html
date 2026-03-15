@@ -817,6 +817,7 @@ function propagateSeriesInfo(newBook){
   if(!seriesBooks.length) return;
   seriesBooks.forEach(b=>{
     if(!b.author&&newBook.author) b.author=newBook.author;
+    if(!b.authorBirthYear&&newBook.authorBirthYear) b.authorBirthYear=newBook.authorBirthYear;
     if(!b.country&&newBook.country) b.country=newBook.country;
     if(!b.femaleAuthor&&newBook.femaleAuthor) b.femaleAuthor=newBook.femaleAuthor;
     if((!b.genres||!b.genres.length)&&newBook.genres?.length) b.genres=[...newBook.genres];
@@ -1393,6 +1394,7 @@ function applyToWholeSeries(bookId){
   let count=0;
   seriesBooks.forEach(b=>{
     if(!b.author&&book.author){b.author=book.author;count++;}
+    if(!b.authorBirthYear&&book.authorBirthYear){b.authorBirthYear=book.authorBirthYear;count++;}
     if(!b.country&&book.country){b.country=book.country;count++;}
     if(!b.femaleAuthor&&book.femaleAuthor){b.femaleAuthor=book.femaleAuthor;count++;}
     if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
