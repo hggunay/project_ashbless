@@ -201,6 +201,16 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .notif-title{font-family:'Playfair Display',serif;color:var(--gold);font-size:.95rem;margin-bottom:.2rem;}
 .notif-body{font-size:.85rem;font-style:italic;}
 
+.badge-card{cursor:pointer;}
+.badge-card-open{border-color:var(--gold);box-shadow:0 0 18px rgba(201,162,39,.2);grid-column:span 2;}
+.badge-card-hint{font-size:.58rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.35;margin-top:.4rem;letter-spacing:.05em;}
+.badge-card:hover .badge-card-hint{opacity:.65;}
+.badge-book-list{margin-top:.75rem;border-top:1px solid rgba(201,162,39,.2);padding-top:.6rem;text-align:left;}
+.badge-book-list-title{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.6;margin-bottom:.4rem;}
+.badge-book-item{padding:.35rem .4rem;border-radius:2px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(201,162,39,.08);line-height:1.4;}
+.badge-book-item:hover{background:rgba(201,162,39,.1);}
+.badge-book-item:last-child{border-bottom:none;}
+.badge-book-past{display:inline-block;font-size:.55rem;font-family:'Space Mono',monospace;background:rgba(138,69,19,.12);color:var(--rust);border:1px solid rgba(138,69,19,.2);border-radius:10px;padding:.05rem .35rem;margin-left:.3rem;vertical-align:middle;}
 @media(max-width:600px){
   .input-grid,.detail-grid{grid-template-columns:1fr;}
   .badge-grid{grid-template-columns:repeat(2,1fr);}
@@ -282,6 +292,12 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           </div>
           <div class="field-group"><span class="field-label">Yazar</span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı (daha doğru sonuç için)"/></div>
           <div class="field-group" style="grid-column:1/-1"><span class="field-label">ISBN <span style="opacity:.5;font-weight:400">(arka kapıdaki barkod numarası — varsa en doğru sonucu verir)</span></span><input class="book-input" id="bookIsbn" type="text" placeholder="örn: 9786050963434 — isteğe bağlı"/></div>
+          <div class="field-group series-wrap" style="grid-column:1/-1">
+            <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(bir serinin parçasıysa — yazar/ülke otomatik gelir)</span></span>
+            <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune — isteğe bağlı" autocomplete="off"
+              oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>seriesDropHide(),200)"/>
+            <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
+          </div>
           <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
           <div class="field-group"><span class="field-label">✅ Bitiş Tarihi <span style="opacity:.5;font-weight:400">(okuyunca doldur)</span></span><input class="book-input" id="bookEndDate" type="date"/></div>
         </div>
@@ -291,6 +307,11 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <span class="chip" data-val="ekitap" onclick="toggleChip(this)">📱 E-Kitap</span>
           <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli Kitap</span>
           <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi Roman / Manga</span>
+        </div>
+        <div class="chip-group-label" style="margin-top:.5rem">📖 Ne zaman okudun?</div>
+        <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
+          <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
+          <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.25rem">
           <button class="btn btn-primary" onclick="addBook()">+ Kitap Ekle</button>
@@ -525,7 +546,82 @@ function monthCount(books){return new Set(books.map(b=>b.month).filter(Boolean))
 function maxMonth(books){const c={};books.forEach(b=>{if(b.month)c[b.month]=(c[b.month]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxSeries(books){const c={};books.filter(b=>b.series).forEach(b=>{c[b.series]=(c[b.series]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxComicSeries(books){const c={};books.filter(b=>b.comicSeries).forEach(b=>{c[b.comicSeries]=(c[b.comicSeries]||0)+1;});return Math.max(0,...Object.values(c));}
-function bstat(badge,books){const{cur,max}=badge.check(books);const pct=max>0?Math.round(cur/max*100):0;return{cur,max,pct,earned:pct>=100};}
+// Rozetler retroactive (geçmiş) kitapları sayar mı?
+// progressOnly: sadece yeni okunan kitaplar sayılır (zaman/istikrar rozetleri)
+// collection: geçmiş kitaplar da sayılır
+const PROGRESS_BADGE_IDS = new Set(['yearly','speed','100pg','nightowl']);
+
+function bstat(badge,books){
+  // İlerleme rozetlerinde retroactive kitaplar sayılmaz
+  const filteredBooks = PROGRESS_BADGE_IDS.has(badge.id)
+    ? books.filter(b=>!b.retroactive)
+    : books;
+  const{cur,max}=badge.check(filteredBooks);
+  const pct=max>0?Math.round(cur/max*100):0;
+  return{cur,max,pct,earned:pct>=100};
+}
+
+// Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
+function booksForBadge(badge,books){
+  const filtered=PROGRESS_BADGE_IDS.has(badge.id)?books.filter(b=>!b.retroactive):books;
+  // Her rozetin hangi kitapları saydığını anlamak için en iyi çaba yaklaşımı:
+  // badge check'e göre mantıksal filtreleme
+  const id=badge.id;
+  if(['b5','b10','b30'].includes(id)) return filtered;
+  if(id==='multi') return filtered.filter(b=>(b.genres||[]).length>0);
+  if(id==='reread') return filtered.filter(b=>b.reread);
+  if(id==='fiction') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('kurgu')));
+  if(id==='fantasy') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('fantastik')));
+  if(id==='scifi') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('bilimkurgu')));
+  if(id==='romance') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('romantik')));
+  if(id==='hist') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('tarihi')));
+  if(id==='horror') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('korku')));
+  if(id==='mystery') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('polisiye')));
+  if(id==='dystop') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('distopya')));
+  if(id==='selfhlp') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('kisisel')));
+  if(id==='psych') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('psikoloji')));
+  if(id==='travel') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('gezi')));
+  if(id==='classic') return filtered.filter(b=>b.pre1900);
+  if(id==='essay') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('deneme')));
+  if(id==='philo') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('felsefe')));
+  if(id==='youngbk') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('genclik')));
+  if(id==='myth') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('mitoloji')));
+  if(id==='nature') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('doga')));
+  if(id==='science') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('bilim')));
+  if(id==='art') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('sanat')));
+  if(id==='journal') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('gazetecilik')));
+  if(id==='bio') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('biyografi')));
+  if(id==='poetry') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('siir')));
+  if(id==='stories') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('oyku')));
+  if(id==='short') return filtered.filter(b=>b.pages&&b.pages<=120);
+  if(id==='medium') return filtered.filter(b=>b.pages&&b.pages>120&&b.pages<=400);
+  if(id==='long') return filtered.filter(b=>b.pages&&b.pages>400);
+  if(id==='hard') return filtered.filter(b=>b.challenging);
+  if(id==='nightowl') return filtered.filter(b=>b.nightReading);
+  if(id==='yearly') return filtered.filter(b=>b.month);
+  if(id==='speed') return filtered.filter(b=>b.month);
+  if(id==='100pg') return filtered.filter(b=>b.hundredPages);
+  if(id==='audio') return filtered.filter(b=>(b.formats||[]).includes('sesli'));
+  if(id==='yngauth') return filtered.filter(b=>b.youngAuthor);
+  if(id==='femauth') return filtered.filter(b=>b.femaleAuthor);
+  if(id==='world10'||id==='world20') return filtered.filter(b=>b.country&&b.country.trim());
+  if(id==='serst') return filtered.filter(b=>b.seriesNum===1);
+  if(id==='sermt'||id==='serlv'||id==='multser'||id==='sermrt'||id==='fullcol'||id==='miniser'||id==='bigser') return filtered.filter(b=>b.series);
+  if(id==='univ') return filtered.filter(b=>b.sameUniverse);
+  if(id==='comic') return filtered.filter(b=>(b.formats||[]).includes('cizgi'));
+  if(id==='super') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('superkahram')));
+  if(id==='fantpnl') return filtered.filter(b=>(b.formats||[]).includes('cizgi')&&(b.genres||[]).some(g=>g.includes('fantastik')));
+  if(id==='indie') return filtered.filter(b=>b.indie);
+  if(id==='manga') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('manga')));
+  if(id==='clscmic') return filtered.filter(b=>b.pre1980comic);
+  if(id==='comicser') return filtered.filter(b=>b.comicSeries);
+  if(id==='graphic') return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('grafik')));
+  if(['semavi','kutsal1','kutsal2','kutsal3'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('kutsal')));
+  if(id==='share') return filtered.filter(b=>b.comment);
+  if(id==='funny') return filtered.filter(b=>b.funniest);
+  if(id==='tears') return filtered.filter(b=>b.saddest);
+  return filtered;
+}
 
 // ── STATE ─────────────────────────────────────────────────────
 let db={users:{},books:{}};
@@ -659,6 +755,76 @@ function viewMember(u){if(u===me){stopViewing();return;}viewing=u;render();showP
 function stopViewing(){viewing=null;render();}
 function toggleChip(el){el.classList.toggle('active');}
 function getFormats(){return[...document.querySelectorAll('#formatChips .chip.active')].map(c=>c.dataset.val);}
+function selectReadingTime(el){document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+function getReadingTime(){const a=document.querySelector('#readingTimeChips .chip.active');return a?a.dataset.val:'new';}
+
+// ── SERİ HAFIZASI ─────────────────────────────────────────────
+function getKnownSeries(){
+  const all=myBooks().map(b=>b.series).filter(Boolean);
+  return [...new Set(all)];
+}
+function seriesInputChange(val){
+  const known=getKnownSeries();
+  const matches=val.trim()
+    ? known.filter(s=>s.toLowerCase().includes(val.toLowerCase()))
+    : known;
+  const drop=document.getElementById('seriesDropList');
+  if(!matches.length){drop.style.display='none';return;}
+  drop.innerHTML=matches.map(s=>`<div class="series-option" onmousedown="selectSeries('${s.replace(/'/g,"\\'")}')">📚 ${s}</div>`).join('');
+  drop.style.display='block';
+}
+function seriesDropHide(){document.getElementById('seriesDropList').style.display='none';}
+function selectSeries(name){
+  document.getElementById('bookSeries').value=name;
+  seriesDropHide();
+  applySeriesMemory(name);
+}
+
+// En dolu bilgiye sahip kitabı referans olarak seç
+function bestSeriesRef(seriesName){
+  const books=myBooks().filter(b=>b.series===seriesName);
+  if(!books.length) return null;
+  // En fazla dolu alana sahip kitabı bul
+  return books.reduce((best,b)=>{
+    const score=(b.author?2:0)+(b.country?2:0)+(b.genres?.length||0)+(b.femaleAuthor?1:0)+(b.seriesTotal?1:0);
+    const bestScore=(best.author?2:0)+(best.country?2:0)+(best.genres?.length||0)+(best.femaleAuthor?1:0)+(best.seriesTotal?1:0);
+    return score>bestScore?b:best;
+  });
+}
+
+function applySeriesMemory(seriesName){
+  if(!seriesName.trim()) return;
+  const ref=bestSeriesRef(seriesName);
+  if(!ref) return;
+  const authorEl=document.getElementById('bookAuthor');
+  if(ref.author&&!authorEl.value.trim()){
+    authorEl.value=ref.author;
+    authorEl.style.background='rgba(74,103,65,.12)';
+    setTimeout(()=>authorEl.style.background='',1500);
+  }
+  const st=document.getElementById('addStatus');
+  const parts=[];
+  if(ref.author) parts.push(`Yazar: ${ref.author}`);
+  if(ref.country) parts.push(`Ülke: ${ref.country}`);
+  if(parts.length) st.textContent=`📚 Seri hafızasından: ${parts.join(' · ')}`;
+  setTimeout(()=>{if(st.textContent.startsWith('📚'))st.textContent='';},3000);
+}
+
+// Yeni kitap eklenince aynı serideki tüm kitaplardaki eksik bilgileri tamamla
+function propagateSeriesInfo(newBook){
+  if(!newBook.series) return;
+  const seriesBooks=db.books[me].filter(b=>b.series===newBook.series&&b.id!==newBook.id);
+  if(!seriesBooks.length) return;
+  let changed=false;
+  seriesBooks.forEach(b=>{
+    if(!b.author&&newBook.author){b.author=newBook.author;changed=true;}
+    if(!b.country&&newBook.country){b.country=newBook.country;changed=true;}
+    if(!b.femaleAuthor&&newBook.femaleAuthor){b.femaleAuthor=newBook.femaleAuthor;changed=true;}
+    if((!b.genres||!b.genres.length)&&newBook.genres?.length){b.genres=newBook.genres;changed=true;}
+    if(!b.seriesTotal&&newBook.seriesTotal){b.seriesTotal=newBook.seriesTotal;changed=true;}
+  });
+  if(changed) saveDb();
+}
 
 // ── API — FULL AUTO FILL ──────────────────────────────────────
 // Google Books genre → Turkish keyword mapping
@@ -782,76 +948,71 @@ function mapOLSubjects(subjects){
 async function fetchBookInfo(title, author, isbn=''){
   const empty = {title_clean:title, author_clean:author, genres:[], pages:null, pub_year:null, author_birth_year:null, country:null, female_author:false, series:null, series_num:null, series_total:null, comic_series:null};
   try {
-    // If ISBN given, use it directly — most accurate
-    let query;
+    // Open Library search — no API key needed, completely free
+    let url;
     if(isbn){
-      query = 'isbn:'+isbn;
-    } else if(author){
-      query = 'intitle:'+encodeURIComponent(title)+'+inauthor:'+encodeURIComponent(author);
+      url = 'https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data';
     } else {
-      query = encodeURIComponent(title);
+      const q = author
+        ? encodeURIComponent(title)+'+'+encodeURIComponent(author)
+        : encodeURIComponent(title);
+      url = 'https://openlibrary.org/search.json?q='+q+'&fields=title,author_name,first_publish_year,number_of_pages_median,series,series_number,subject,isbn&limit=8';
     }
 
-    // Google Books — if ISBN, single request; otherwise try Turkish then all
-    let bestVol = null;
-    const urls = isbn
-      ? ['https://www.googleapis.com/books/v1/volumes?q='+query+'&maxResults=1']
-      : [
-          'https://www.googleapis.com/books/v1/volumes?q='+query+'&langRestrict=tr&maxResults=5',
-          'https://www.googleapis.com/books/v1/volumes?q='+query+'&maxResults=5',
-        ];
-    for(const url of urls){
-      if(bestVol) break;
-      try {
-        const r = await fetch(url);
-        const d = await r.json();
-        if(d.items && d.items.length){
-          // Score and pick best
-          let best = d.items[0], bestScore = -1;
-          for(const item of d.items){
-            const s = scoreMatch(item.volumeInfo, title, author);
-            if(s > bestScore){ bestScore = s; best = item; }
-          }
-          if(bestScore > 0 || d.items.length===1) bestVol = best.volumeInfo;
+    let title_clean=title, author_clean=author||'', pages=null, pub_year=null, genres=[], series=null, series_num=null;
+
+    if(isbn){
+      // ISBN lookup via Books API
+      const r = await fetch(url);
+      const d = await r.json();
+      const key = 'ISBN:'+isbn;
+      if(d[key]){
+        const bk = d[key];
+        title_clean = bk.title || title;
+        author_clean = (bk.authors && bk.authors[0] && bk.authors[0].name) || author || '';
+        pages = bk.number_of_pages || null;
+        pub_year = bk.publish_date ? parseInt(bk.publish_date.match(/\d{4}/)?.[0]) : null;
+        const subjects = [...(bk.subjects||[]).map(s=>s.name||s), ...(bk.subject_places||[]).map(s=>s.name||s)];
+        genres = mapOLSubjects(subjects);
+      }
+    } else {
+      // Search API
+      const r = await fetch(url);
+      const d = await r.json();
+      if(d.docs && d.docs.length){
+        const tLow = title.toLowerCase();
+        let best = d.docs[0];
+        // Try exact title match first
+        for(const doc of d.docs){
+          if((doc.title||'').toLowerCase() === tLow){ best = doc; break; }
         }
-      } catch(e){}
+        title_clean = best.title || title;
+        author_clean = (best.author_name && best.author_name[0]) || author || '';
+        pages = best.number_of_pages_median || null;
+        pub_year = best.first_publish_year || null;
+        series = (best.series && best.series[0]) || null;
+        series_num = best.series_number ? parseInt(best.series_number) : null;
+        genres = mapOLSubjects(best.subject || []);
+      }
     }
 
-    let pages=null, pub_year=null, gbGenres=[], author_clean=author||'', female_author=false;
-
-    if(bestVol){
-      pages = bestVol.pageCount || null;
-      pub_year = bestVol.publishedDate ? parseInt(bestVol.publishedDate.substring(0,4)) : null;
-      gbGenres = mapGenres(bestVol.categories);
-      author_clean = (bestVol.authors && bestVol.authors[0]) || author || '';
-      // Female author detection: check first name endings (Turkish convention)
-      // Exclude initials like J.K., A.C. etc.
-      const nameParts = author_clean.split(' ');
-      const firstName = nameParts[0].replace(/\.$/,'').toLowerCase();
-      const isInitial = firstName.length <= 2;
-      const femaleEndings = ['a','e','i','ü','ö','ş','ye','se'];
-      female_author = !isInitial && femaleEndings.some(e => firstName.endsWith(e));
-    }
-
-    // Open Library — series + extra genres
-    const ol = await fetchFromOpenLibrary(title, author_clean||author);
-    const olGenres = mapOLSubjects(ol.subjects);
-
-    // Merge genres from both sources
-    const genres = [...new Set([...gbGenres, ...olGenres])];
+    // Female author detection from first name
+    const nameParts = author_clean.split(' ');
+    const firstName = nameParts[0].replace(/\.$/,'').toLowerCase();
+    const isInitial = firstName.length <= 2;
+    const femaleEndings = ['a','e','i','ü','ö','ş','ye','se'];
+    const female_author = !isInitial && femaleEndings.some(e => firstName.endsWith(e));
 
     return {
-      title_clean: bestVol ? (bestVol.title || title) : title,
-      author_clean, genres, pages, pub_year,
+      title_clean, author_clean, genres, pages, pub_year,
       author_birth_year:null, country:null, female_author,
-      series: ol.series, series_num: ol.series_num,
-      series_total:null, comic_series:null,
-      _method: isbn ? 'isbn' : (bestVol ? 'arama' : 'bulunamadı'),
+      series, series_num, series_total:null, comic_series:null,
+      _method: isbn ? 'isbn' : (title_clean!==title ? 'arama' : 'bulunamadı'),
     };
   } catch(e) { return empty; }
 }
 
-// ── AUTOCOMPLETE ─────────────────────────────────────────────
+// ── AUTOCOMPLETE (Open Library) ──────────────────────────────
 let acTimer=null;
 async function acSearch(q){
   clearTimeout(acTimer);
@@ -859,22 +1020,23 @@ async function acSearch(q){
   if(!q||q.length<3){list.style.display='none';return;}
   acTimer=setTimeout(async()=>{
     try{
-      const r=await fetch('https://www.googleapis.com/books/v1/volumes?q='+encodeURIComponent(q)+'&maxResults=6&fields=items(volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate)');
+      const r=await fetch('https://openlibrary.org/search.json?q='+encodeURIComponent(q)+'&fields=title,author_name,first_publish_year&limit=6');
       const d=await r.json();
-      if(!d.items||!d.items.length){list.style.display='none';return;}
-      list.innerHTML=d.items.map(item=>{
-        const v=item.volumeInfo;
-        const title=v.title||'';
-        const author=(v.authors&&v.authors[0])||'';
-        const year=v.publishedDate?v.publishedDate.substring(0,4):'';
-        return`<div class="autocomplete-item" onmousedown="acSelect('${title.replace(/'/g,"\'")}','${author.replace(/'/g,"\'")}')">
+      if(!d.docs||!d.docs.length){list.style.display='none';return;}
+      list.innerHTML=d.docs.map(doc=>{
+        const title=doc.title||'';
+        const author=(doc.author_name&&doc.author_name[0])||'';
+        const year=doc.first_publish_year||'';
+        const ts=title.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        const as=author.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        return`<div class="autocomplete-item" onmousedown="acSelect('${ts}','${as}')">
           <div class="ac-title">${title}</div>
           <div class="ac-author">${author}${year?' · '+year:''}</div>
         </div>`;
       }).join('');
       list.style.display='block';
     }catch(e){list.style.display='none';}
-  },350);
+  },400);
 }
 function acSelect(title,author){
   document.getElementById('bookTitle').value=title;
@@ -888,6 +1050,7 @@ async function addBook(){
   const title=document.getElementById('bookTitle').value.trim();
   const author=document.getElementById('bookAuthor').value.trim();
   const isbn=document.getElementById('bookIsbn').value.trim().replace(/[^0-9X]/gi,'');
+  const manualSeries=document.getElementById('bookSeries').value.trim();
   const startDate=document.getElementById('bookStartDate').value||new Date().toISOString().split('T')[0];
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
@@ -898,9 +1061,13 @@ async function addBook(){
 
   const info=await fetchBookInfo(title,author,isbn);
 
+  // Manuel girilen seri adı API'den gelenden öncelikli
+  if(manualSeries && !info.series) info.series=manualSeries;
+
   // Seri hafızası — aynı seriden önceki kitaplardan bilgi al
-  if(info.series){
-    const prevSameS=myBooks().filter(b=>b.series===info.series);
+  const seriesName=info.series||manualSeries;
+  if(seriesName){
+    const prevSameS=myBooks().filter(b=>b.series===seriesName);
     if(prevSameS.length){
       const ref=prevSameS[0];
       if(!info.author_clean&&ref.author) info.author_clean=ref.author;
@@ -927,7 +1094,7 @@ async function addBook(){
   const halloween = now.getMonth()===9&&(info.genres||[]).some(g=>['korku','gotik'].some(k=>g.includes(k)));
 
   // series completion
-  const prevBooks=myBooks(),sn=info.series;
+  const prevBooks=myBooks(),sn=info.series||manualSeries||null;
   let seriesComplete=false,miniSeriesComplete=false,bigSeriesComplete=false;
   if(sn){
     const cnt=prevBooks.filter(b=>b.series===sn).length+1,tot=info.series_total;
@@ -951,7 +1118,7 @@ async function addBook(){
     seriesTotal:info.series_total||null,
     comicSeries:info.comic_series||null,
     seriesComplete,miniSeriesComplete,bigSeriesComplete,
-    pre1900,pre1980comic,halloween,
+    pre1900,pre1980comic,halloween,retroactive:getReadingTime()==='past',
     month:endDate?endDate.substring(0,7):month,addedAt:now.toISOString(),startDate,endDate,
     // manual flags
     nightReading:false,reread:false,challenging:false,
@@ -961,6 +1128,7 @@ async function addBook(){
 
   if(!db.books[me])db.books[me]=[];
   db.books[me].push(book);
+  propagateSeriesInfo(book); // eksik seri bilgilerini diğer kitaplara yay
   await saveDb();
 
   let msg=`✓ "${book.title}" eklendi`;
@@ -972,9 +1140,11 @@ async function addBook(){
   document.getElementById('bookTitle').value='';
   document.getElementById('bookAuthor').value='';
   document.getElementById('bookIsbn').value='';
+  document.getElementById('bookSeries').value='';
   setTodayDate();
   document.getElementById('bookEndDate').value='';
   document.querySelectorAll('#formatChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
+  document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='new'));
 
   const newBooks=validBooks();
   BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
@@ -984,7 +1154,15 @@ async function addBook(){
 }
 
 function removeBook(id){
-  if(!confirm('Bu kitabı silmek istiyor musun?'))return;
+  const footer=document.getElementById('modalFooter');
+  footer.innerHTML=`
+    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu kitabı silmek istediğine emin misin?</span>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-danger btn-sm" onclick="confirmRemoveBook(${id})">🗑 Evet, Sil</button>
+      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openBook(${id})">İptal</button>
+    </div>`;
+}
+function confirmRemoveBook(id){
   db.books[me]=myBooks().filter(b=>b.id!==id);
   saveDb();closeModal();render();
 }
@@ -1058,6 +1236,7 @@ function openBook(bookId){
     <div class="detail-section">
       <div class="detail-section-title">✨ Okuma Deneyimi${isMe?' — sen doldur':''}</div>
       <div class="check-chips">
+        ${flagChipRetroactive(book,isMe)}
         ${flagChip(book,'funniest','😂 Çok güldüm',isMe)}
         ${flagChip(book,'saddest','😢 Çok ağladım',isMe)}
         ${flagChip(book,'challenging','🧩 Zorlandım',isMe)}
@@ -1125,6 +1304,22 @@ function flagChip(book,field,label,editable){
   const cls=editable?'check-chip':'check-chip readonly';
   const onclick=editable?`onclick="toggleFlag(${book.id},'${field}',this)"`:'';
   return`<span class="${cls} ${active}" ${onclick}>${label}</span>`;
+}
+
+function flagChipRetroactive(book,editable){
+  const isPast=book.retroactive===true;
+  const cls=editable?'check-chip':'check-chip readonly';
+  const active=isPast?'active':'';
+  const onclick=editable?`onclick="toggleRetroactive(${book.id},this)"`:'';
+  const label=isPast?'📦 Geçmişte okundu <span style="font-size:.7rem;opacity:.65">(ilerleme rozetlerine sayılmaz)</span>':'📦 Geçmişte okundu';
+  return`<span class="${cls} ${active}" ${onclick}>${label}</span>`;
+}
+
+function toggleRetroactive(bookId,el){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  el.classList.toggle('active');
+  book.retroactive=el.classList.contains('active');
+  saveDb();render();
 }
 
 function toggleFmt(bookId,fmt,el){
@@ -1200,7 +1395,7 @@ function notify(title,body){
 
 // ── FILTER ────────────────────────────────────────────────────
 function filterBadges(f,el){
-  badgeFilter=f;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderBadges();
+  badgeFilter=f;openBadgeId=null;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderBadges();
 }
 
 // ── RENDER ────────────────────────────────────────────────────
@@ -1218,23 +1413,38 @@ function renderSettings(){
 }
 
 function confirmDeleteBooks(){
-  if(confirm('Tüm kitap kayıtların ve rozet ilerlemen silinecek. Hesabın kalacak. Emin misin?')){
+  const btn=document.querySelector('[onclick="confirmDeleteBooks()"]');
+  if(btn.dataset.confirming==='1'){
     db.books[me]=[];
     saveDb();render();
+    btn.textContent='🗑️ Tüm Kitapları Sil';
+    btn.dataset.confirming='';
     alert('Tüm kitaplar silindi.');
+    return;
   }
+  btn.dataset.confirming='1';
+  btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
+  btn.style.background='rgba(160,82,45,.5)';
+  setTimeout(()=>{btn.textContent='🗑️ Tüm Kitapları Sil';btn.dataset.confirming='';btn.style.background='';},4000);
 }
 
 function confirmDeleteProfile(){
-  if(confirm('Hesabın ve tüm verilerin kalıcı olarak silinecek. Bu işlem geri alınamaz! Emin misin?')){
-    if(confirm('Son kez onaylıyor musun? Tüm veriler silinecek.')){
-      delete db.users[me];
-      delete db.books[me];
-      saveDb();
-      logout();
-      alert('Profilin silindi.');
-    }
+  const btn=document.querySelector('[onclick="confirmDeleteProfile()"]');
+  if(btn.dataset.confirming==='2'){
+    delete db.users[me];delete db.books[me];
+    saveDb();logout();
+    return;
   }
+  if(btn.dataset.confirming==='1'){
+    btn.dataset.confirming='2';
+    btn.textContent='💀 Son kez: Tekrar tıkla!';
+    setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';},4000);
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
+  btn.style.background='rgba(160,82,45,.4)';
+  setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';},4000);
 }
 
 function renderBanners(){
@@ -1278,6 +1488,8 @@ function renderBookList(){
   }).join('');
 }
 
+let openBadgeId=null;
+
 function renderBadges(){
   const books=validBooks();
   document.getElementById('badgeContainer').innerHTML=BADGE_CATS.map(cat=>{
@@ -1292,16 +1504,34 @@ function renderBadges(){
     return`<div class="badge-category"><div class="category-label">${cat.label}</div>
       <div class="badge-grid">${filtered.map(b=>{
         const s=bstat(b,books),cls=s.earned?'earned':s.cur===0?'locked':'';
-        return`<div class="badge-card ${cls}">
+        const isOpen=openBadgeId===b.id;
+        const relBooks=booksForBadge(b,books);
+        const bookListHtml=relBooks.length===0
+          ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
+          :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
+              +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
+              +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
+              +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
+            +'</div>').join('');
+        return`<div class="badge-card ${cls} ${isOpen?'badge-card-open':''}" onclick="toggleBadgeDetail('${b.id}')">
           ${s.earned?'<span class="earned-stamp">✓ KAZANILDI</span>':''}
           <span class="badge-icon">${b.icon}</span>
           <div class="badge-name">${b.name}</div>
           <div class="badge-desc">${b.desc}</div>
           <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
           <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+          ${isOpen?`<div class="badge-book-list" onclick="event.stopPropagation()">
+            <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
+            ${bookListHtml}
+          </div>`:'<div class="badge-card-hint">&#128070; detay</div>'}
         </div>`;
       }).join('')}</div></div>`;
   }).join('');
+}
+
+function toggleBadgeDetail(badgeId){
+  openBadgeId=(openBadgeId===badgeId)?null:badgeId;
+  renderBadges();
 }
 
 function renderMembers(){
