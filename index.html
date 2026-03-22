@@ -481,6 +481,20 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
             <div id="adminMemberList"></div>
           </div>
 
+          <!-- Veri Yedekleme -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:1rem;margin-top:.25rem">
+            <div class="detail-section-title">💾 Veri Yedekleme</div>
+            <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Verilerini yedekle veya yeni cihaza taşı. Tüm üyelerin verileri dışa aktarılır.</div>
+            <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="exportData()">📥 Veriyi Dışa Aktar</button>
+              <label class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink);cursor:pointer;border:1px solid rgba(201,162,39,.3)">
+                📤 Veriyi İçe Aktar
+                <input type="file" accept=".json" onchange="importData(this)" style="display:none"/>
+              </label>
+            </div>
+            <div id="importStatus" style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.85rem;color:var(--moss);margin-top:.5rem;min-height:1.2rem"></div>
+          </div>
+
           <!-- Tehlikeli Alan -->
           <div class="detail-section" style="border:1px solid rgba(160,82,45,.3);border-radius:4px;padding:1rem;margin-top:.75rem">
             <div class="detail-section-title" style="color:var(--rust)">⚠️ Tehlikeli Alan</div>
@@ -869,6 +883,50 @@ function adminResetPassword(u){
   saveDb();
   input.value='';
   notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+}
+
+function exportData(){
+  const data={
+    version:'aa-v4',
+    exportDate:new Date().toISOString(),
+    users:db.users,
+    books:db.books,
+  };
+  const json=JSON.stringify(data,null,2);
+  const blob=new Blob([json],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`armchair-yedek-${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  notify('📥 Yedek Alındı','Veriler başarıyla indirildi.');
+}
+
+function importData(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async(e)=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.users||!data.books){
+        document.getElementById('importStatus').textContent='⚠️ Geçersiz dosya formatı.';
+        return;
+      }
+      // Mevcut veriyle birleştir — üzerine yaz
+      db.users={...db.users,...data.users};
+      db.books={...db.books,...data.books};
+      await saveDb();
+      render();
+      document.getElementById('importStatus').textContent=`✅ İçe aktarıldı! ${Object.keys(data.users).length} üye, ${Object.values(data.books).flat().length} kitap yüklendi.`;
+      notify('📤 İçe Aktarıldı','Veriler başarıyla yüklendi.');
+    }catch(err){
+      document.getElementById('importStatus').textContent='⚠️ Dosya okunamadı: '+err.message;
+    }
+  };
+  reader.readAsText(file);
+  input.value=''; // aynı dosyayı tekrar seçebilmek için
 }
 
 function togglePublicProfile(val){
