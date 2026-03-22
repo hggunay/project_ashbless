@@ -1348,7 +1348,7 @@ function removeBook(id){
 }
 function confirmRemoveBook(id){
   db.books[me]=myBooks().filter(b=>b.id!==id);
-  saveDb();closeModal();render();
+  saveDb();closeModal();renderSafe();
 }
 
 // ── MODAL ─────────────────────────────────────────────────────
@@ -1926,27 +1926,38 @@ function renderBookList(){
     crCard.style.display='none';
   }
 
-  // — Okunan kitaplar —
+  // — Okunan kitaplar — yeni ve geçmiş ayrı
+  const newBooks=readBooks.filter(b=>!b.retroactive).reverse();
+  const pastBooks=readBooks.filter(b=>b.retroactive).reverse();
   const list=document.getElementById('bookList');
+
+  function bookItemHtml(b){
+    const noTitle=!b.title||b.title.startsWith('ISBN:');
+    return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
+      <div class="book-info">
+        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
+        ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
+        ${b.startDate||b.endDate?`<span class="book-meta">📅 ${b.startDate||'?'} ${b.endDate?'→ ✅ '+b.endDate:''}</span>`:''}
+        ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
+      </div>
+      <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
+        ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
+        ${(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')}
+      </div>
+      ${b.pages?`<span class="book-pages">${b.pages}s</span>`:''}
+    </div>`;
+  }
+
   if(!readBooks.length){
     list.innerHTML='<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
   } else {
-    list.innerHTML=[...readBooks].reverse().map(b=>{
-      const noTitle=!b.title||b.title.startsWith('ISBN:');
-      return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
-        <div class="book-info">
-          <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
-          ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
-          ${b.startDate||b.endDate?`<span class="book-meta">📅 ${b.startDate||'?'} ${b.endDate?'→ ✅ '+b.endDate:''}</span>`:''}
-          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
-        </div>
-        <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
-          ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
-          ${(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')}
-        </div>
-        ${b.pages?`<span class="book-pages">${b.pages}s</span>`:''}
-      </div>`;
-    }).join('');
+    let html='';
+    if(newBooks.length) html+=newBooks.map(bookItemHtml).join('');
+    if(pastBooks.length){
+      html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.5;padding:.6rem .75rem .3rem;border-top:${newBooks.length?'1px solid rgba(201,162,39,.1)':'none'}">📦 Geçmiş Okumalar (${pastBooks.length})</div>`;
+      html+=pastBooks.map(bookItemHtml).join('');
+    }
+    list.innerHTML=html;
   }
 
   // — Okuma listesi —
