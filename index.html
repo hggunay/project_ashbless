@@ -720,15 +720,41 @@ function booksForBadge(badge,books){
 let db={users:{},books:{}};
 let me=null,viewing=null,badgeFilter='all',modalBookId=null;
 
-async function loadDb(){
-  // Try window.storage first (Netlify/Claude), fall back to localStorage
+// ── FİREBASE ──────────────────────────────────────────────────
+const FB_URL='https://armchair-adventurers-default-rtdb.europe-west1.firebasedatabase.app';
+
+async function fbGet(path){
   try{
-    if(window.storage){const r=await window.storage.get('aa-v4',true);if(r&&r.value){db=JSON.parse(r.value);return;}}
+    const r=await fetch(`${FB_URL}/${path}.json`);
+    if(!r.ok) return null;
+    return await r.json();
+  }catch(e){return null;}
+}
+async function fbSet(path,data){
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)
+    });
+    return r.ok;
+  }catch(e){return false;}
+}
+
+async function loadDb(){
+  // Firebase'den yükle
+  try{
+    const data=await fbGet('aa-v4');
+    if(data&&data.users){db=data;return;}
   }catch(e){}
+  // localStorage'a düş
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
 }
+
 async function saveDb(){
-  try{if(window.storage)await window.storage.set('aa-v4',JSON.stringify(db),true);}catch(e){}
+  // Firebase'e kaydet
+  try{await fbSet('aa-v4',db);}catch(e){}
+  // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
 }
 function myBooks(){return db.books[me]||[];}
