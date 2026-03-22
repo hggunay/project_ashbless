@@ -761,6 +761,8 @@ function checkHintAvailable(){
   const btn=document.getElementById('hintBtn');
   const box=document.getElementById('hintBox');
   box.style.display='none';
+  // db henüz yüklenmemişse bekle
+  if(!db||!db.users){btn.style.display='none';return;}
   if(u&&db.users[u]&&db.users[u].hint){btn.style.display='block';}
   else{btn.style.display='none';}
 }
@@ -849,8 +851,13 @@ function renderSettings(){
 
 function saveHint(){
   const hint=document.getElementById('settingHint').value.trim();
+  if(!db.users[me]){notify('⚠️ Hata','Kullanıcı bulunamadı.');return;}
   db.users[me].hint=hint||null;
   saveDb();
+  // Alanı güncelle — kaydedildiğini göster
+  const hintEl=document.getElementById('settingHint');
+  if(hintEl) hintEl.style.borderColor='var(--moss)';
+  setTimeout(()=>{if(hintEl)hintEl.style.borderColor='';},2000);
   notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
 }
 
@@ -1324,13 +1331,20 @@ async function addBook(){
 }
 
 function removeBook(id){
-  const footer=document.getElementById('modalFooter');
-  footer.innerHTML=`
-    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu kitabı silmek istediğine emin misin?</span>
-    <div style="display:flex;gap:.5rem">
-      <button class="btn btn-danger btn-sm" onclick="confirmRemoveBook(${id})">🗑 Evet, Sil</button>
-      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openBook(${id})">İptal</button>
-    </div>`;
+  // Modal açıksa footer'da onay iste
+  const overlay=document.getElementById('modalOverlay');
+  if(overlay.classList.contains('open')){
+    const footer=document.getElementById('modalFooter');
+    footer.innerHTML=`
+      <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu kitabı silmek istediğine emin misin?</span>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-danger btn-sm" onclick="confirmRemoveBook(${id})">🗑 Evet, Sil</button>
+        <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openBook(${id})">İptal</button>
+      </div>`;
+  } else {
+    // Modal dışından (wishlist gibi) — direkt sil
+    confirmRemoveBook(id);
+  }
 }
 function confirmRemoveBook(id){
   db.books[me]=myBooks().filter(b=>b.id!==id);
