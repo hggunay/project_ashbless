@@ -863,6 +863,8 @@ function adminResetPassword(u){
   input.value='';
   notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
+
+function togglePublicProfile(val){
   db.users[me].publicProfile=val;
   saveDb();
   const track=document.getElementById('publicToggleTrack');
