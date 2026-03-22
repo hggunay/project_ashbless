@@ -793,7 +793,7 @@ function changePassword(){
 function deleteAllBooks(){
   if(!confirm('Tüm kitap kayıtların silinecek. Emin misin?')) return;
   db.books[me]=[];
-  saveDb();render();
+  saveDb();renderSafe();
   showPanel('myBooks',document.querySelector('.nav-tab'));
   alert('Tüm kitaplar silindi.');
 }
@@ -1269,8 +1269,9 @@ async function addBook(){
 
   const book={
     id:Date.now(),
-    title:info.title_clean||(title||'ISBN: '+isbn),
-    author:info.author_clean||author,
+    // Kullanıcının yazdığı isim her zaman öncelikli — API sadece boşsa doldurur
+    title:title||(isbn?info.title_clean||('ISBN: '+isbn):info.title_clean||''),
+    author:author||info.author_clean||'',
     pages:info.pages,
     pubYear:info.pub_year,
     authorBirthYear:info.author_birth_year,
@@ -1505,7 +1506,7 @@ function toggleRetroactive(bookId,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   el.classList.toggle('active');
   book.retroactive=el.classList.contains('active');
-  saveDb();render();
+  saveDb();renderSafe();
 }
 
 function toggleFmt(bookId,fmt,el){
@@ -1513,7 +1514,7 @@ function toggleFmt(bookId,fmt,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   const fmts=[...document.querySelectorAll(`[data-fmt].active`)].map(c=>c.dataset.fmt);
   book.formats=fmts;
-  saveDb();render();
+  saveDb();renderSafe();
 }
 
 function toggleFlag(bookId,field,el){
@@ -1534,7 +1535,7 @@ function saveField(bookId,field,value){
   book[field]=value;
   // Seri bilgisi değişince diğer kitaplara yay
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
-  saveDb();render();
+  saveDb();renderSafe();
 }
 
 function saveFieldTyped(bookId,field,type,rawVal){
@@ -1553,7 +1554,7 @@ function saveFieldTyped(bookId,field,type,rawVal){
   if(field==='series'||field==='seriesNum'||field==='seriesTotal'){
     recalcSeriesCompletion(bookId);
   }
-  saveDb();render();
+  saveDb();renderSafe();
 }
 
 function recalcSeriesCompletion(bookId){
@@ -1585,7 +1586,7 @@ function applyToWholeSeries(bookId){
     if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
     if(!b.seriesTotal&&book.seriesTotal){b.seriesTotal=book.seriesTotal;count++;}
   });
-  saveDb();render();
+  saveDb();renderSafe();
   if(count>0) notify('✅ Seri güncellendi',`${seriesBooks.length} kitaba bilgi aktarıldı`);
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
@@ -1595,7 +1596,7 @@ function startReadingFromWishlist(bookId){
   if(!book) return;
   book.readingStatus='reading';
   book.startDate=book.startDate||new Date().toISOString().split('T')[0];
-  saveDb();render();
+  saveDb();renderSafe();
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
 
@@ -1790,13 +1791,26 @@ function renderStatsPanel(){
     </div>`;
 }
 
-function render(){renderBanners();renderStats();renderBookList();renderBadges();renderMembers();}
+function render(){
+  renderBanners();renderStats();renderBookList();renderBadges();renderMembers();
+}
+
+// Modal açıkken çağrılacak güvenli render — modal'a dokunmaz
+function renderSafe(){
+  const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
+  if(modalOpen){
+    // Sadece arka plandaki listeleri güncelle
+    renderStats();renderBookList();renderBadges();renderMembers();
+  } else {
+    render();
+  }
+}
 
 function confirmDeleteBooks(){
   const btn=document.querySelector('[onclick="confirmDeleteBooks()"]');
   if(btn.dataset.confirming==='1'){
     db.books[me]=[];
-    saveDb();render();
+    saveDb();renderSafe();
     btn.textContent='🗑️ Tüm Kitapları Sil';
     btn.dataset.confirming='';
     alert('Tüm kitaplar silindi.');
