@@ -258,7 +258,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Kayıt Ol</button>
     </div>
     <div id="loginForm">
-      <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()"/></div>
+      <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
       <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:.3rem 0;flex-wrap:wrap;gap:.3rem">
@@ -1862,6 +1862,23 @@ function renderBanners(){
     if(isV)document.getElementById(['viewingText','viewingText2'][i]).textContent=`${av} ${name} adlı üyenin profilini görüntülüyorsunuz`;
   });
   document.getElementById('addBookSection').style.display=isV?'none':'';
+  // Header'da kimin profiline bakıldığını göster
+  const headerAvatar=document.getElementById('headerAvatar');
+  const headerUsername=document.getElementById('headerUsername');
+  if(isV){
+    headerAvatar.textContent=av;
+    headerAvatar.style.border='2px solid var(--rust)';
+    headerUsername.textContent=name;
+    headerUsername.style.color='var(--rust)';
+  } else {
+    const user=db.users[me];
+    if(user){
+      headerAvatar.textContent=user.avatar||'📚';
+      headerAvatar.style.border='2px solid var(--gold)';
+      headerUsername.textContent=user.displayName||me;
+      headerUsername.style.color='var(--gold)';
+    }
+  }
 }
 
 function renderStats(){
@@ -2025,6 +2042,8 @@ function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==
 async function init(){
   await loadDb();
   renderPills();
+  // Tarayıcı otomatik doldurma varsa ipucu butonunu kontrol et
+  setTimeout(checkHintAvailable, 500);
   // Auto-login if session saved
   try{
     const saved=localStorage.getItem('aa-session');
