@@ -233,6 +233,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .stats-month-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:.3rem;align-items:end;height:80px;}
 .stats-month-bar{background:linear-gradient(180deg,var(--gold),var(--leather));border-radius:2px 2px 0 0;min-height:2px;transition:height .4s;}
 .stats-month-label{font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);text-align:center;margin-top:.2rem;opacity:.6;}
+.book-item-paused{background:linear-gradient(90deg,rgba(160,82,45,.07),transparent);border-left:3px solid var(--rust);}
 .badge-book-past{display:inline-block;font-size:.55rem;font-family:'Space Mono',monospace;background:rgba(138,69,19,.12);color:var(--rust);border:1px solid rgba(138,69,19,.2);border-radius:10px;padding:.05rem .35rem;margin-left:.3rem;vertical-align:middle;}
 @media(max-width:600px){
   .input-grid,.detail-grid{grid-template-columns:1fr;}
@@ -329,6 +330,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           </div>
           <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
           <div class="field-group"><span class="field-label">✅ Bitiş Tarihi <span style="opacity:.5;font-weight:400">(okuyunca doldur)</span></span><input class="book-input" id="bookEndDate" type="date"/></div>
+          <div class="field-group" style="grid-column:1/-1"><span class="field-label">🏢 Yayınevi <span style="opacity:.5;font-weight:400">(isteğe bağlı)</span></span><input class="book-input" id="bookPublisher" type="text" placeholder="örn: İthaki, Can, Metis..."/></div>
         </div>
         <div class="chip-group-label">📚 Format (birden fazla seçilebilir)</div>
         <div class="chip-group" id="formatChips">
@@ -337,10 +339,11 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli Kitap</span>
           <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi Roman / Manga</span>
         </div>
-        <div class="chip-group-label" style="margin-top:.5rem">📖 Ne zaman okudun?</div>
+        <div class="chip-group-label" style="margin-top:.5rem">📖 Okuma durumu</div>
         <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
           <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
           <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
+          <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
           <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
           <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okuma listeme ekle</span>
         </div>
@@ -355,6 +358,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <div class="card" id="currentlyReadingCard" style="display:none">
         <div class="card-header">📖 Şu An Okunanlar</div>
         <div id="currentlyReadingList" style="padding:.5rem"></div>
+      </div>
+      <div class="card" id="pausedReadingCard" style="display:none">
+        <div class="card-header">🚧 Yarım Bırakılanlar</div>
+        <div id="pausedReadingList" style="padding:.5rem"></div>
       </div>
       <div class="card">
         <div class="card-header">📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></div>
@@ -760,10 +767,9 @@ async function saveDb(){
 function myBooks(){return db.books[me]||[];}
 function targetBooks(){return db.books[viewing||me]||[];}
 function validBooks(){
-  // Rozet hesabı: wishlist ve şu an okunanlar sayılmaz
   return targetBooks().filter(b=>
     b.title&&!b.title.startsWith('ISBN:')&&b.title.trim()!==''
-    &&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'
+    &&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'
   );
 }
 
@@ -1081,6 +1087,7 @@ function propagateSeriesInfo(newBook){
     if(!b.femaleAuthor&&newBook.femaleAuthor) b.femaleAuthor=newBook.femaleAuthor;
     if((!b.genres||!b.genres.length)&&newBook.genres?.length) b.genres=[...newBook.genres];
     if(!b.seriesTotal&&newBook.seriesTotal) b.seriesTotal=newBook.seriesTotal;
+    if(!b.publisher&&newBook.publisher) b.publisher=newBook.publisher;
   });
 }
 
@@ -1309,6 +1316,7 @@ async function addBook(){
   const author=document.getElementById('bookAuthor').value.trim();
   const isbn=document.getElementById('bookIsbn').value.trim().replace(/[^0-9X]/gi,'');
   const manualSeries=document.getElementById('bookSeries').value.trim();
+  const publisher=document.getElementById('bookPublisher').value.trim();
   const startDate=document.getElementById('bookStartDate').value||new Date().toISOString().split('T')[0];
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
@@ -1377,7 +1385,8 @@ async function addBook(){
     comicSeries:info.comic_series||null,
     seriesComplete,miniSeriesComplete,bigSeriesComplete,
     pre1900,pre1980comic,halloween,
-    readingStatus:getReadingTime(), // 'new','past','reading','wishlist'
+    readingStatus:getReadingTime(), // 'new','past','reading','paused','wishlist'
+    publisher:publisher||null,
     retroactive:getReadingTime()==='past',
     month:endDate?endDate.substring(0,7):month,addedAt:now.toISOString(),startDate,endDate,
     currentPage:null, // şu an okunan sayfa
@@ -1402,6 +1411,7 @@ async function addBook(){
   document.getElementById('bookAuthor').value='';
   document.getElementById('bookIsbn').value='';
   document.getElementById('bookSeries').value='';
+  document.getElementById('bookPublisher').value='';
   setTodayDate();
   document.getElementById('bookEndDate').value='';
   document.querySelectorAll('#formatChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
@@ -1455,6 +1465,7 @@ function openBook(bookId){
       <div class="detail-grid">
         ${dField('Kitap Adı','title',book.title,'text',isMe)}
         ${dField('Yazar','author',book.author,'text',isMe)}
+        ${dField('🏢 Yayınevi','publisher',book.publisher,'text',isMe)}
       </div>
     </div>
 
@@ -1549,7 +1560,12 @@ function openBook(bookId){
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${book.readingStatus==='reading'?`<button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>`:''}
+        ${book.readingStatus==='reading'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
+          <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="pauseReading(${book.id})">🚧 Yarım bırak</button>`:''}
+        ${book.readingStatus==='paused'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="resumeReading(${book.id});closeModal()">📖 Devam et</button>
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
       </div>`
@@ -1683,6 +1699,8 @@ function applyToWholeSeries(bookId){
     if(!b.femaleAuthor&&book.femaleAuthor){b.femaleAuthor=book.femaleAuthor;count++;}
     if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
     if(!b.seriesTotal&&book.seriesTotal){b.seriesTotal=book.seriesTotal;count++;}
+    // Yayınevi seri bazında aynı olmayabilir, sadece boşsa doldur
+    if(!b.publisher&&book.publisher){b.publisher=book.publisher;count++;}
   });
   saveDb();renderSafe();
   if(count>0) notify('✅ Seri güncellendi',`${seriesBooks.length} kitaba bilgi aktarıldı`);
@@ -1696,6 +1714,22 @@ function startReadingFromWishlist(bookId){
   book.startDate=book.startDate||new Date().toISOString().split('T')[0];
   saveDb();renderSafe();
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
+}
+
+function resumeReading(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus='reading';
+  saveDb();renderSafe();
+  notify('📖 Devam ediliyor',`"${book.title}" şu an okunanlar listesine taşındı.`);
+}
+
+function pauseReading(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus='paused';
+  saveDb();closeModal();renderSafe();
+  notify('🚧 Yarım bırakıldı',`"${book.title}" yarım bırakılanlar listesine taşındı.`);
 }
 
 function finishReading(bookId){
@@ -1980,10 +2014,10 @@ function renderBookList(){
   const isMe=!viewing;
   const fmtMap={'kitap':'📖','ekitap':'📱','sesli':'🎧','cizgi':'🎨'};
 
-  // Şu an okunanlar (bitiş tarihi yok, wishlist değil)
-  const reading=allBooks.filter(b=>!b.endDate&&b.readingStatus==='reading');
+  const reading=allBooks.filter(b=>b.readingStatus==='reading');
+  const paused=allBooks.filter(b=>b.readingStatus==='paused');
   const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
-  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading');
+  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
 
   // — Şu an okunanlar —
   const crCard=document.getElementById('currentlyReadingCard');
@@ -2008,6 +2042,30 @@ function renderBookList(){
     }).join('');
   } else {
     crCard.style.display='none';
+  }
+
+  // — Yarım bırakılanlar —
+  const prCard=document.getElementById('pausedReadingCard');
+  const prList=document.getElementById('pausedReadingList');
+  if(paused.length){
+    prCard.style.display='';
+    prList.innerHTML=paused.map(b=>{
+      const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+      return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
+        <div class="book-info" style="flex:1">
+          <span class="book-title-text">${b.title||'İsimsiz'}</span>
+          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+          ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
+          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+          ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
+        </div>
+        ${isMe?`<div onclick="event.stopPropagation()">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="resumeReading(${b.id})">📖 Devam et</button>
+        </div>`:''}
+      </div>`;
+    }).join('');
+  } else {
+    prCard.style.display='none';
   }
 
   // — Okunan kitaplar — yeni ve geçmiş ayrı
