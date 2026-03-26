@@ -1499,9 +1499,14 @@ function closeSpecialDayBanner(e,idx){
 function enterApp(){
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
   const user=db.users[me];document.getElementById('headerAvatar').textContent=user.avatar;document.getElementById('headerUsername').textContent=user.displayName;
-  // Feed ilk sekme olarak aç
+  // Feed ilk sekme olarak aç ama mark etme — badge göster
   const feedTab=document.querySelector('.nav-tab');
-  showPanel('feed',feedTab);
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('feed').classList.add('active');
+  if(feedTab) feedTab.classList.add('active');
+  updateFeedBadge();
+  renderFeed();
   render();setTodayDate();
   showSpecialDayBanner();
   updateFeedBadge();
@@ -1518,7 +1523,7 @@ function showPanel(id,el){
   else if(id==='stats') renderStatsPanel();
   else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
-  else if(id==='feed'){renderFeed();updateFeedBadge();}
+  else if(id==='feed'){markFeedVisited();renderFeed();}
   else render();
 }
 function viewMember(u){
@@ -2923,7 +2928,7 @@ function markFeedVisited(){
 function renderFeed(append=false){
   const container=document.getElementById('feedContainer');
   if(!container) return;
-  if(!append){markFeedVisited();feedPage=1;}
+  if(!append){feedPage=1;}
 
   let cards=getFeedCards();
   if(feedFilter==='reviews') cards=cards.filter(c=>c.type==='review');
@@ -3170,9 +3175,12 @@ function renderJournal(){
   );
 
   cards.sort((a,b)=>{
-    const ta=typeof a.ts==='number'?a.ts:new Date(a.ts||0).getTime();
-    const tb=typeof b.ts==='number'?b.ts:new Date(b.ts||0).getTime();
-    return tb-ta;
+    const getTs=c=>{
+      if(typeof c.ts==='number'&&c.ts>0) return c.ts;
+      if(typeof c.ts==='string'&&c.ts) return new Date(c.ts).getTime()||0;
+      return 0;
+    };
+    return getTs(b)-getTs(a);
   });
 
   if(!cards.length){
