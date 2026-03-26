@@ -349,12 +349,18 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
       <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
+      <div id="forgotBox" style="display:none;background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.3);border-radius:2px;padding:.75rem;margin-bottom:.5rem">
+        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">Şifreni hâlâ hatırlamıyor musun?</div>
+        <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="sendForgotRequest()">📨 Admin'e Şifre Sıfırlama İsteği Gönder</button>
+        <div id="forgotSentMsg" style="display:none;font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--moss);font-style:italic;margin-top:.5rem">✅ İsteğin admin'e iletildi. Admin şifreni sıfırlayacak.</div>
+      </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:.3rem 0;flex-wrap:wrap;gap:.3rem">
         <div style="display:flex;align-items:center;gap:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--parchment);opacity:.7">
           <input type="checkbox" id="rememberMe" style="cursor:pointer"/>
           <label for="rememberMe" style="cursor:pointer">Oturumu açık tut</label>
         </div>
         <button id="hintBtn" type="button" onclick="showHint()" style="display:none;background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold);cursor:pointer;opacity:.7;text-decoration:underline">💡 İpucumu göster</button>
+        <button type="button" onclick="showForgotFlow()" style="background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);cursor:pointer;opacity:.6;text-decoration:underline">🔑 Şifremi unuttum</button>
       </div>
       <button class="auth-btn" onclick="login()">GİRİŞ YAP →</button>
       <div class="auth-error" id="loginError">Kullanıcı adı veya şifre hatalı.</div>
@@ -386,13 +392,33 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
   <div class="app">
     <div id="specialDayBannerWrap"></div>
     <div class="nav-tabs">
+      <button class="nav-tab" onclick="showPanel('feed',this)">🏠 Ana Sayfa <span id="feedBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
-      <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
-      <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defter</button>
       <button class="nav-tab" onclick="showPanel('stories',this)">📖 Hikâyelerim</button>
+      <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defterim</button>
+      <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
       <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
+    </div>
+
+    <!-- FEED PANEL -->
+    <div id="feed" class="panel">
+      <div class="card">
+        <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+          <span>🏠 Ana Sayfa</span>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            <span id="feedNewBadge" style="display:none;font-family:'Space Mono',monospace;font-size:.65rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.2rem .6rem"></span>
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterFeed('all',this)">Tümü</button>
+              <button class="filter-tab" onclick="filterFeed('reviews',this)">Değerlendirme</button>
+              <button class="filter-tab" onclick="filterFeed('quotes',this)">Alıntı</button>
+              <button class="filter-tab" onclick="filterFeed('stories',this)">Hikâye</button>
+            </div>
+          </div>
+        </div>
+        <div id="feedContainer" style="padding:.5rem"></div>
+      </div>
     </div>
 
     <!-- BOOKS PANEL -->
@@ -538,7 +564,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
     <!-- JOURNAL PANEL -->
     <div id="journal" class="panel">
       <div class="card">
-        <div class="card-header">📒 Okuma Defteri
+        <div class="card-header">📒 Defterim
           <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
             <div class="filter-tabs">
               <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
@@ -555,9 +581,6 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           </select>
           <select class="book-input" id="journalFilterBook" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
             <option value="">📖 Kitap</option>
-          </select>
-          <select class="book-input" id="journalFilterMember" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderJournal()">
-            <option value="">👤 Üye</option>
           </select>
         </div>
         <div id="journalContainer" style="padding:.5rem"></div>
@@ -744,6 +767,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <!-- Üye Yönetimi -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:1rem;margin-top:.25rem">
             <div class="detail-section-title">👥 Üye Yönetimi</div>
+            <div id="forgotRequestsBox" style="display:none;background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.3);border-radius:4px;padding:.75rem;margin-bottom:.75rem">
+              <div style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.5rem">📨 Şifre Sıfırlama İstekleri</div>
+              <div id="forgotRequestsList"></div>
+            </div>
             <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Şifresini unutan bir üyenin şifresini sıfırlayabilirsin.</div>
             <div id="adminMemberList"></div>
           </div>
@@ -1063,6 +1090,31 @@ function register(){
   saveDb();err.style.display='none';me=u;viewing=null;enterApp();
 }
 
+function showForgotFlow(){
+  const u=document.getElementById('loginUsername').value.trim();
+  const forgotBox=document.getElementById('forgotBox');
+  // Önce ipucunu göster
+  if(u&&db.users[u]&&db.users[u].hint){
+    const box=document.getElementById('hintBox');
+    box.style.display='block';
+    box.textContent='💡 İpucu: '+db.users[u].hint;
+  }
+  forgotBox.style.display='block';
+  document.getElementById('forgotSentMsg').style.display='none';
+}
+
+function sendForgotRequest(){
+  const u=document.getElementById('loginUsername').value.trim();
+  if(!u){alert('Önce kullanıcı adını gir.');return;}
+  // Admin'e şifre sıfırlama isteği kaydet
+  if(!db.forgotRequests) db.forgotRequests=[];
+  // Aynı kullanıcıdan tekrar istek gelmesin
+  db.forgotRequests=db.forgotRequests.filter(r=>r.u!==u);
+  db.forgotRequests.push({u, ts:new Date().toISOString()});
+  saveDb();
+  document.getElementById('forgotSentMsg').style.display='block';
+}
+
 function checkHintAvailable(){
   const u=document.getElementById('loginUsername').value.trim();
   const btn=document.getElementById('hintBtn');
@@ -1139,7 +1191,26 @@ function renderSettings(){
     track.style.background=isPublic?'var(--moss)':'rgba(138,69,19,.3)';
     thumb.style.transform=isPublic?'translateX(20px)':'translateX(0)';
   }
-  // Admin üye listesi
+  // Şifre sıfırlama istekleri
+  const reqBox=document.getElementById('forgotRequestsBox');
+  const reqList=document.getElementById('forgotRequestsList');
+  if(reqBox&&reqList){
+    const reqs=(db.forgotRequests||[]).filter(r=>db.users[r.u]);
+    if(reqs.length){
+      reqBox.style.display='block';
+      reqList.innerHTML=reqs.map(r=>`
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap">
+          <span style="font-size:1.1rem">${db.users[r.u]?.avatar||'📚'}</span>
+          <span style="font-family:'Playfair Display',serif;font-size:.9rem;flex:1">${db.users[r.u]?.displayName} <span style="opacity:.5;font-size:.75rem">@${r.u}</span></span>
+          <div style="display:flex;gap:.4rem;align-items:center">
+            <input class="detail-input" type="text" id="forgotpw_${r.u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
+            <button class="btn btn-sm btn-primary" onclick="adminResetFromForgot('${r.u}')">🔑 Sıfırla</button>
+          </div>
+        </div>`).join('');
+    } else {
+      reqBox.style.display='none';
+    }
+  }
   const adminList=document.getElementById('adminMemberList');
   if(adminList){
     const others=Object.keys(db.users).filter(u=>u!==me);
@@ -1166,6 +1237,17 @@ function saveHint(){
   if(hintEl) hintEl.style.borderColor='var(--moss)';
   setTimeout(()=>{if(hintEl)hintEl.style.borderColor='';},2000);
   notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
+}
+
+function adminResetFromForgot(u){
+  const input=document.getElementById('forgotpw_'+u);
+  const pw=input.value.trim();
+  if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
+  db.users[u].password=pw;
+  db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
+  saveDb();
+  renderSettings();
+  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
 
 function adminResetPassword(u){
@@ -1354,9 +1436,12 @@ function closeSpecialDayBanner(e,idx){
 function enterApp(){
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
   const user=db.users[me];document.getElementById('headerAvatar').textContent=user.avatar;document.getElementById('headerUsername').textContent=user.displayName;
-  showPanel('myBooks',document.querySelector('.nav-tab'));render();setTodayDate();
+  // Feed ilk sekme olarak aç
+  const feedTab=document.querySelector('.nav-tab');
+  showPanel('feed',feedTab);
+  render();setTodayDate();
   showSpecialDayBanner();
-  // Kitap listesi accordion tercihlerini yükle
+  updateFeedBadge();
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist'],true),50);
 }
 
@@ -1369,6 +1454,7 @@ function showPanel(id,el){
   else if(id==='stats') renderStatsPanel();
   else if(id==='journal') renderJournal();
   else if(id==='stories') renderStories();
+  else if(id==='feed'){renderFeed();updateFeedBadge();}
   else render();
 }
 function viewMember(u){
@@ -1404,7 +1490,7 @@ function stopViewing(){
 function updateNavForViewing(isViewing){
   const tabs=document.querySelectorAll('.nav-tab');
   // Başka biri görüntüleniyorken gizlenecek sekmeler
-  const hiddenWhenViewing=['journal','settings'];
+  const hiddenWhenViewing=['feed','journal','settings'];
   tabs.forEach(tab=>{
     const onclick=tab.getAttribute('onclick')||'';
     const panelId=onclick.match(/showPanel\('([^']+)'/)?.[1];
@@ -2698,41 +2784,18 @@ function storyItemHtml(s, ownerId, srcMap){
     </div>
   </div>`;
 }
-let journalFilter='all';
+// ── ANA SAYFA (FEED) ─────────────────────────────────────────
+let feedFilter='all';
+let lastFeedVisit=0;
 
-function filterJournal(f,el){
-  journalFilter=f;
-  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+function filterFeed(f,el){
+  feedFilter=f;
+  document.querySelectorAll('#feed .filter-tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
-  renderJournal();
+  renderFeed();
 }
 
-function buildJournalDropdowns(allCards){
-  const authorSel=document.getElementById('journalFilterAuthor');
-  const bookSel=document.getElementById('journalFilterBook');
-  const memberSel=document.getElementById('journalFilterMember');
-  if(!authorSel) return;
-  const curAuthor=authorSel.value, curBook=bookSel.value, curMember=memberSel.value;
-  const authors=new Set(), books=new Set(), members=new Set();
-  allCards.forEach(c=>{
-    if(c.author) authors.add(c.author);
-    if(c.bookTitle) books.add(c.bookTitle);
-    if(c.userName) members.add(JSON.stringify({u:c.u,name:c.userName}));
-  });
-  authorSel.innerHTML='<option value="">✍️ Yazar</option>'+[...authors].sort().map(a=>`<option value="${a}"${a===curAuthor?' selected':''}>${a}</option>`).join('');
-  bookSel.innerHTML='<option value="">📖 Kitap</option>'+[...books].sort().map(b=>`<option value="${b}"${b===curBook?' selected':''}>${b}</option>`).join('');
-  memberSel.innerHTML='<option value="">👤 Üye</option>'+[...members].map(m=>{const{u,name}=JSON.parse(m);return`<option value="${u}"${u===curMember?' selected':''}>${name}</option>`;}).join('');
-}
-
-function renderJournal(){
-  const container=document.getElementById('journalContainer');
-  if(!container) return;
-
-  const searchText=(document.getElementById('journalSearchText')?.value||'').toLowerCase().trim();
-  const filterAuthor=document.getElementById('journalFilterAuthor')?.value||'';
-  const filterBook=document.getElementById('journalFilterBook')?.value||'';
-  const filterMember=document.getElementById('journalFilterMember')?.value||'';
-
+function getFeedCards(){
   let cards=[];
   Object.keys(db.users).forEach(u=>{
     const user=db.users[u];
@@ -2755,14 +2818,192 @@ function renderJournal(){
         });
       });
     });
-    // Öykü kartları — sadece okunmuş olanlar
     const stories=(db.stories&&db.stories[u])||[];
     stories.filter(s=>s.status==='read').forEach(s=>{
       cards.push({
         type:'story', u, userName:user.displayName, userAvatar:user.avatar||'📚',
         storyId:s.id, bookTitle:s.title, author:s.author,
         rating:s.rating||0, source:s.source, link:s.link, sourceBook:s.sourceBook||null,
-        ts:s.addedAt||0, reactions:{},
+        ts:s.addedAt||0, reactions:s.reactions||{},
+      });
+    });
+  });
+  return cards;
+}
+
+function updateFeedBadge(){
+  try{const saved=localStorage.getItem('aa-feed-visit-'+me);lastFeedVisit=saved?parseInt(saved):0;}catch(e){}
+  const allCards=getFeedCards();
+  const newCount=allCards.filter(c=>{
+    const ts=typeof c.ts==='number'?c.ts:new Date(c.ts||0).getTime();
+    return ts>lastFeedVisit&&c.u!==me;
+  }).length;
+  const badge=document.getElementById('feedBadge');
+  const inlineBadge=document.getElementById('feedNewBadge');
+  if(badge){badge.style.display=newCount>0?'':'none';badge.textContent=newCount>0?String(newCount):'';}
+  if(inlineBadge){inlineBadge.style.display=newCount>0?'':'none';inlineBadge.textContent=newCount>0?`${newCount} yeni paylaşım`:'';}
+}
+
+function markFeedVisited(){
+  const now=Date.now();
+  try{localStorage.setItem('aa-feed-visit-'+me,String(now));}catch(e){}
+  lastFeedVisit=now;
+  const badge=document.getElementById('feedBadge');
+  const inlineBadge=document.getElementById('feedNewBadge');
+  if(badge) badge.style.display='none';
+  if(inlineBadge) inlineBadge.style.display='none';
+}
+
+function renderFeed(){
+  const container=document.getElementById('feedContainer');
+  if(!container) return;
+  markFeedVisited();
+
+  let cards=getFeedCards();
+  if(feedFilter==='reviews') cards=cards.filter(c=>c.type==='review');
+  else if(feedFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
+  else if(feedFilter==='stories') cards=cards.filter(c=>c.type==='story');
+
+  cards.sort((a,b)=>{
+    const ta=typeof a.ts==='number'?a.ts:new Date(a.ts||0).getTime();
+    const tb=typeof b.ts==='number'?b.ts:new Date(b.ts||0).getTime();
+    return tb-ta;
+  });
+
+  if(!cards.length){
+    container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz paylaşım yok. Kitap değerlendirmesi yaz, alıntı veya hikâye ekle!</div>`;
+    return;
+  }
+
+  const reactionList=['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
+
+  function fmtDate(ts){
+    if(!ts) return '';
+    const d=new Date(typeof ts==='number'?ts:ts);
+    if(isNaN(d)) return '';
+    return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
+  }
+
+  function feedReactionHtml(card){
+    return reactionList.map(r=>{
+      const myR=(card.reactions[me])||[];
+      const active=myR.includes(r)?'active':'';
+      const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      if(card.type==='story'){
+        return`<button class="journal-reaction-btn ${active}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${r.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+          ${r}${cnt>0?` · ${cnt}`:''}
+        </button>`;
+      }
+      const qi=card.type==='quote'?card.quoteIdx:-1;
+      return`<button class="journal-reaction-btn ${active}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${r.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this)">
+        ${r}${cnt>0?` · ${cnt}`:''}
+      </button>`;
+    }).join('');
+  }
+
+  container.innerHTML=cards.map(card=>{
+    const isMe=card.u===me;
+    const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
+    return`<div class="journal-entry">
+      <div class="journal-entry-header">
+        <span style="font-size:1.3rem">${card.userAvatar}</span>
+        <div class="journal-entry-meta">
+          <span class="journal-entry-user">${card.userName}</span>
+          <span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>
+          <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
+        </div>
+        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':'💬 alıntı'}</span>
+      </div>
+      ${card.type==='review'?`
+        ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
+        <div class="journal-review">${card.text}</div>
+      `:card.type==='story'?`
+        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
+          <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
+        </div>
+        ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${card.sourceBook}</div>`:''}
+        <div class="book-tags-row" style="margin-top:.3rem">
+          <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
+          ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
+        </div>
+      `:`
+        <div class="journal-quote">
+          <div class="journal-quote-text">${card.text}</div>
+          <div class="journal-quote-footer">
+            ${card.page?`<span class="journal-quote-page">s. ${card.page}</span>`:'<span></span>'}
+            <button class="journal-copy-btn" onclick="copyCardQuote('${card.u}',${card.bookId},${card.quoteIdx})">📋 kopyala</button>
+          </div>
+        </div>
+      `}
+      <div class="journal-reactions">
+        ${feedReactionHtml(card)}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleStoryReaction(storyOwner,storyId,reaction){
+  if(!db.stories||!db.stories[storyOwner]) return;
+  const story=db.stories[storyOwner].find(s=>s.id===storyId);
+  if(!story) return;
+  if(!story.reactions) story.reactions={};
+  if(!story.reactions[me]) story.reactions[me]=[];
+  const idx=story.reactions[me].indexOf(reaction);
+  if(idx>-1) story.reactions[me].splice(idx,1);
+  else story.reactions[me].push(reaction);
+  saveDb();renderFeed();
+}
+
+let journalFilter='all';
+
+function filterJournal(f,el){
+  journalFilter=f;
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  if(el) el.classList.add('active');
+  renderJournal();
+}
+
+function buildJournalDropdowns(allCards){
+  const authorSel=document.getElementById('journalFilterAuthor');
+  const bookSel=document.getElementById('journalFilterBook');
+  if(!authorSel) return;
+  const curAuthor=authorSel.value, curBook=bookSel.value;
+  const authors=new Set(), books=new Set();
+  allCards.forEach(c=>{
+    if(c.author) authors.add(c.author);
+    if(c.bookTitle) books.add(c.bookTitle);
+  });
+  authorSel.innerHTML='<option value="">✍️ Yazar</option>'+[...authors].sort().map(a=>`<option value="${a}"${a===curAuthor?' selected':''}>${a}</option>`).join('');
+  bookSel.innerHTML='<option value="">📖 Kitap</option>'+[...books].sort().map(b=>`<option value="${b}"${b===curBook?' selected':''}>${b}</option>`).join('');
+}
+
+function renderJournal(){
+  const container=document.getElementById('journalContainer');
+  if(!container) return;
+
+  const searchText=(document.getElementById('journalSearchText')?.value||'').toLowerCase().trim();
+  const filterAuthor=document.getElementById('journalFilterAuthor')?.value||'';
+  const filterBook=document.getElementById('journalFilterBook')?.value||'';
+
+  let cards=[];
+  // Defterim = sadece kendi değerlendirme ve alıntılar
+  const myUser=db.users[me];
+  const myBooksList=db.books[me]||[];
+  myBooksList.forEach(b=>{
+    if(b.review&&b.review.trim()){
+      cards.push({
+        type:'review', u:me, userName:myUser.displayName, userAvatar:myUser.avatar||'📚',
+        bookId:b.id, bookTitle:b.title, author:b.author,
+        rating:b.rating||0, text:b.review, ts:b.reviewTs||b.addedAt||0,
+        reactions:b.reviewReactions||{},
+      });
+    }
+    (b.quotes||[]).forEach((q,qi)=>{
+      cards.push({
+        type:'quote', u:me, userName:myUser.displayName, userAvatar:myUser.avatar||'📚',
+        bookId:b.id, bookTitle:b.title, author:b.author,
+        text:q.text, page:q.page, ts:q.ts||b.addedAt||0, quoteIdx:qi,
+        reactions:q.reactions||{},
       });
     });
   });
@@ -2773,7 +3014,6 @@ function renderJournal(){
   if(journalFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
   if(filterAuthor) cards=cards.filter(c=>c.author===filterAuthor);
   if(filterBook) cards=cards.filter(c=>c.bookTitle===filterBook);
-  if(filterMember) cards=cards.filter(c=>c.u===filterMember);
   if(searchText) cards=cards.filter(c=>
     (c.bookTitle||'').toLowerCase().includes(searchText)||
     (c.author||'').toLowerCase().includes(searchText)||
@@ -2788,7 +3028,7 @@ function renderJournal(){
 
   if(!cards.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">
-      ${(journalFilter==='all'&&!searchText&&!filterAuthor&&!filterBook&&!filterMember)
+      ${(journalFilter==='all'&&!searchText&&!filterAuthor&&!filterBook)
         ?'Henüz defter girişi yok. Kitap detayından puan, yorum veya alıntı ekleyebilirsin.'
         :'Bu kriterlere uygun içerik bulunamadı.'}
     </div>`;
