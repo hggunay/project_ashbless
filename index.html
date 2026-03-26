@@ -223,12 +223,13 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
   background:linear-gradient(135deg,#2a1a05,#1a2a05);
   border:1px solid var(--gold);
   border-radius:4px;
-  margin:0 1.5rem .75rem;
+  margin:0 1.5rem .5rem;
   padding:.65rem 1rem;
   display:flex;align-items:center;gap:.75rem;
   animation:bannerSlide .4s cubic-bezier(.34,1.56,.64,1);
   position:relative;overflow:hidden;cursor:pointer;
 }
+.special-day-banner:last-child{margin-bottom:.75rem;}
 .special-day-banner::before{
   content:'';position:absolute;top:0;left:0;right:0;height:2px;
   background:linear-gradient(90deg,transparent,var(--gold),transparent);
@@ -1183,7 +1184,6 @@ function getSpecialDay(){
     if(ev.type==='month-only'){
       if(ev.month===m) matches.push(ev);
     } else if(ev.type==='nth-weekday'){
-      // Ayın N'inci haftanın X günü (weekday: 0=Pazar,6=Cumartesi)
       if(ev.month!==m) return;
       let count=0,found=false;
       for(let i=1;i<=31;i++){
@@ -1193,54 +1193,59 @@ function getSpecialDay(){
       }
       if(found) matches.push(ev);
     } else if(ev.type==='last-week'){
-      // Ayın son haftası (son 7 gün)
       if(ev.month!==m) return;
       const lastDay=new Date(now.getFullYear(),m,0).getDate();
       if(d>=lastDay-6) matches.push(ev);
     } else {
-      // Sabit tarih
       if(ev.month===m&&ev.day===d) matches.push(ev);
     }
   });
 
-  return matches.length?matches[Math.floor(Math.random()*matches.length)]:null;
+  return matches;
 }
 
 function showSpecialDayBanner(){
   const wrap=document.getElementById('specialDayBannerWrap');
   if(!wrap) return;
-  const day=getSpecialDay();
-  if(!day){wrap.innerHTML='';return;}
+  const days=getSpecialDay();
+  if(!days.length){wrap.innerHTML='';return;}
 
-  // Bugün kapatıldıysa gösterme
-  const key='aa-banner-'+new Date().toISOString().split('T')[0];
-  try{if(localStorage.getItem(key)==='closed'){wrap.innerHTML='';return;}}catch(e){}
+  const todayKey='aa-banner-'+new Date().toISOString().split('T')[0];
+  let closedIds=[];
+  try{closedIds=JSON.parse(localStorage.getItem(todayKey)||'[]');}catch(e){}
 
-  const isMonthOnly=day.type==='month-only'||day.type==='last-week';
-  const periodLabel=isMonthOnly?'Bu ay':'Bugün';
+  const visible=days.filter((_,i)=>!closedIds.includes(i));
+  if(!visible.length){wrap.innerHTML='';return;}
 
-  wrap.innerHTML=`
-    <div class="special-day-banner" onclick="specialDayClick('${(day.url||'').replace(/'/g,"\\'")}')">
+  wrap.innerHTML=visible.map((day,vi)=>{
+    // Orijinal index'i bul (kapatma için)
+    const origIdx=days.indexOf(day);
+    const isMonthOnly=day.type==='month-only'||day.type==='last-week';
+    const periodLabel=isMonthOnly?'Bu ay':'Bugün';
+    return`<div class="special-day-banner" onclick="specialDayClick('${(day.url||'').replace(/'/g,"\\'")}')">
       <span class="special-day-icon">${day.icon}</span>
       <div class="special-day-text">
         <div class="special-day-title">${periodLabel} — ${day.title}</div>
         <div class="special-day-sub">${day.sub}</div>
         ${day.url?`<div class="special-day-link">↗ Daha fazla bilgi</div>`:''}
       </div>
-      <button class="special-day-close" onclick="closeSpecialDayBanner(event)" title="Kapat">✕</button>
+      <button class="special-day-close" onclick="closeSpecialDayBanner(event,${origIdx})" title="Kapat">✕</button>
     </div>`;
+  }).join('');
 }
 
 function specialDayClick(url){
   if(url) window.open(url,'_blank','noopener');
 }
 
-function closeSpecialDayBanner(e){
+function closeSpecialDayBanner(e,idx){
   e.stopPropagation();
-  const wrap=document.getElementById('specialDayBannerWrap');
-  if(wrap) wrap.innerHTML='';
-  const key='aa-banner-'+new Date().toISOString().split('T')[0];
-  try{localStorage.setItem(key,'closed');}catch(e){}
+  const todayKey='aa-banner-'+new Date().toISOString().split('T')[0];
+  let closedIds=[];
+  try{closedIds=JSON.parse(localStorage.getItem(todayKey)||'[]');}catch(e){}
+  if(!closedIds.includes(idx)) closedIds.push(idx);
+  try{localStorage.setItem(todayKey,JSON.stringify(closedIds));}catch(e){}
+  showSpecialDayBanner();
 }
 
 function enterApp(){
