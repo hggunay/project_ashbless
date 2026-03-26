@@ -568,30 +568,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 
     <!-- JOURNAL PANEL -->
     <div id="journal" class="panel">
-      <div class="card">
-        <div class="card-header">📒 Defterim
-          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            <div class="filter-tabs">
-              <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
-              <button class="filter-tab" onclick="filterJournal('reviews',this)">Değerlendirmeler</button>
-              <button class="filter-tab" onclick="filterJournal('quotes',this)">Alıntılar</button>
-            </div>
-            <button class="filter-tab" onclick="toggleJournalFilter()" id="journalFilterToggle">🔍 Filtrele</button>
-          </div>
-        </div>
-        <div id="journalSearchBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;align-items:center">
-          <input class="book-input" id="journalSearchText" type="text" placeholder="🔍 Kitap adı, yazar veya metin..." style="flex:1;min-width:150px;font-size:.85rem;padding:.4rem .7rem" oninput="renderJournal()"/>
-          <select class="book-input" id="journalFilterAuthor" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
-            <option value="">✍️ Yazar</option>
-          </select>
-          <select class="book-input" id="journalFilterBook" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
-            <option value="">📖 Kitap</option>
-          </select>
-        </div>
-        <div id="journalContainer" style="padding:.5rem"></div>
-      </div>
-      <!-- Yeni Defter Girişi -->
-      <div class="add-section" style="margin-top:1rem">
+      <!-- Yeni Defter Girişi — EN ÜSTTE -->
+      <div class="add-section" style="margin-bottom:1rem">
         <div class="section-title">✏️ Yeni Giriş Ekle</div>
         <div class="field-group" style="margin-bottom:.75rem">
           <span class="field-label">Kitap Seç *</span>
@@ -640,6 +618,29 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <button class="btn btn-primary" onclick="addJournalEntry()">+ Ekle</button>
           <div class="status-msg" id="journalEntryStatus"></div>
         </div>
+      </div>
+      <!-- Defterim listesi -->
+      <div class="card">
+        <div class="card-header">📒 Defterim
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
+              <button class="filter-tab" onclick="filterJournal('reviews',this)">Değerlendirmeler</button>
+              <button class="filter-tab" onclick="filterJournal('quotes',this)">Alıntılar</button>
+            </div>
+            <button class="filter-tab" onclick="toggleJournalFilter()" id="journalFilterToggle">🔍 Filtrele</button>
+          </div>
+        </div>
+        <div id="journalSearchBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;align-items:center">
+          <input class="book-input" id="journalSearchText" type="text" placeholder="🔍 Kitap adı, yazar veya metin..." style="flex:1;min-width:150px;font-size:.85rem;padding:.4rem .7rem" oninput="renderJournal()"/>
+          <select class="book-input" id="journalFilterAuthor" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
+            <option value="">✍️ Yazar</option>
+          </select>
+          <select class="book-input" id="journalFilterBook" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
+            <option value="">📖 Kitap</option>
+          </select>
+        </div>
+        <div id="journalContainer" style="padding:.5rem"></div>
       </div>
     </div>
 
@@ -2980,11 +2981,13 @@ function renderFeed(append=false){
 
   function cardHtml(card){
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
-    return`<div class="journal-entry">
+    const ts=typeof card.ts==='number'?card.ts:new Date(card.ts||0).getTime();
+    const isNewCard=ts>lastFeedVisit&&card.u!==me;
+    return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem">${card.userAvatar}</span>
         <div class="journal-entry-meta">
-          <span class="journal-entry-user">${card.userName}</span>
+          <span class="journal-entry-user">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
           <span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
