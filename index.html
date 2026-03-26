@@ -1805,7 +1805,13 @@ function toggleFlag(bookId,field,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   el.classList.toggle('active');
   const prev=myBooks().map(b=>({...b}));
-  book[field]=el.classList.contains('active');
+  const newVal=el.classList.contains('active');
+  book[field]=newVal;
+  // seriesComplete ve türevleri tüm seriye yayılsın
+  const seriesFlags=['seriesComplete','miniSeriesComplete','bigSeriesComplete','sameUniverse'];
+  if(seriesFlags.includes(field)&&book.series){
+    db.books[me].filter(b=>b.series===book.series&&b.id!==bookId).forEach(b=>{b[field]=newVal;});
+  }
   saveDb();
   BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
     if(!bstat(b,prev).earned&&bstat(b,myBooks()).earned)notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
@@ -1871,8 +1877,11 @@ function applyToWholeSeries(bookId){
     if(!b.femaleAuthor&&book.femaleAuthor){b.femaleAuthor=book.femaleAuthor;count++;}
     if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
     if(!b.seriesTotal&&book.seriesTotal){b.seriesTotal=book.seriesTotal;count++;}
-    // Yayınevi seri bazında aynı olmayabilir, sadece boşsa doldur
     if(!b.publisher&&book.publisher){b.publisher=book.publisher;count++;}
+    // Seri tamamlama flag'lerini her durumda uygula (değer true ise)
+    if(book.seriesComplete){b.seriesComplete=true;count++;}
+    if(book.miniSeriesComplete){b.miniSeriesComplete=true;count++;}
+    if(book.bigSeriesComplete){b.bigSeriesComplete=true;count++;}
   });
   saveDb();renderSafe();
   if(count>0) notify('✅ Seri güncellendi',`${seriesBooks.length} kitaba bilgi aktarıldı`);
