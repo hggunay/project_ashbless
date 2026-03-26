@@ -100,7 +100,25 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .loading::after{content:'...';animation:dots 1s infinite steps(3);}
 @keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
 
-/* BOOK LIST */
+/* ACCORDION */
+.acc-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;gap:.5rem;}
+.acc-header:hover{opacity:.85;}
+.acc-arrow{font-size:.75rem;transition:transform .25s;display:inline-block;color:var(--rust);opacity:.6;flex-shrink:0;}
+.acc-arrow.open{transform:rotate(90deg);}
+.acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
+.acc-body.open{max-height:9999px;opacity:1;}
+/* card-header içindeki accordion */
+.card-header.acc-header{cursor:pointer;}
+/* stats bölüm accordion */
+.stats-acc-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:.4rem 0;margin-bottom:0;}
+.stats-acc-header:hover{opacity:.85;}
+.stats-acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
+.stats-acc-body.open{max-height:9999px;opacity:1;}
+/* detail-section accordion */
+.detail-acc-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;padding:.3rem 0;}
+.detail-acc-header:hover{opacity:.85;}
+.detail-acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
+.detail-acc-body.open{max-height:9999px;opacity:1;}
 .book-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .book-item:hover{background:rgba(201,162,39,.08);}
 .book-item:last-child{border-bottom:none;}
@@ -371,86 +389,115 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <div class="stats-row" id="statsRow"></div>
       <div class="add-section" id="addBookSection">
         <div class="section-title">📖 Kitap Ekle</div>
-        <div class="input-grid">
-          <div class="field-group autocomplete-wrap">
-            <span class="field-label">Kitap Adı *</span>
-            <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı (ISBN varsa zorunlu değil)" autocomplete="off" oninput="acSearch(this.value)" onblur="setTimeout(()=>acHide(),200)"/>
+        <!-- Her zaman görünür: kitap adı/ISBN + yazar -->
+        <div class="input-grid" style="margin-bottom:.75rem">
+          <div class="field-group autocomplete-wrap" style="grid-column:1/-1">
+            <span class="field-label">Kitap Adı veya ISBN *</span>
+            <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value)" onblur="setTimeout(()=>acHide(),200)"/>
             <div class="autocomplete-list" id="acList" style="display:none"></div>
           </div>
-          <div class="field-group"><span class="field-label">Yazar</span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı (daha doğru sonuç için)"/></div>
-          <div class="field-group" style="grid-column:1/-1"><span class="field-label">ISBN <span style="opacity:.5;font-weight:400">(arka kapıdaki barkod numarası — varsa en doğru sonucu verir)</span></span><input class="book-input" id="bookIsbn" type="text" placeholder="örn: 9786050963434 — isteğe bağlı"/></div>
-          <div class="field-group series-wrap" style="grid-column:1/-1">
-            <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(bir serinin parçasıysa — yazar/ülke otomatik gelir)</span></span>
-            <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune — isteğe bağlı" autocomplete="off"
-              oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>{seriesDropHide();applySeriesMemory(document.getElementById('bookSeries').value.trim());},250)"/>
-            <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
+          <div class="field-group" style="grid-column:1/-1"><span class="field-label">Yazar <span style="opacity:.5;font-weight:400">(girilirse eşleştirme daha doğru olur)</span></span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı — isteğe bağlı"/></div>
+        </div>
+        <!-- Daha fazla accordion -->
+        <div>
+          <div class="acc-header" onclick="toggleAddMore()" id="addMoreHeader" style="margin-bottom:.5rem">
+            <span style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);">⚙️ Daha Fazla Seçenek</span>
+            <span class="acc-arrow" id="addMoreArrow">▶</span>
           </div>
-          <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
-          <div class="field-group"><span class="field-label">✅ Bitiş Tarihi <span style="opacity:.5;font-weight:400">(okuyunca doldur)</span></span><input class="book-input" id="bookEndDate" type="date"/></div>
-          <div class="field-group" style="grid-column:1/-1"><span class="field-label">🏢 Yayınevi <span style="opacity:.5;font-weight:400">(isteğe bağlı)</span></span><input class="book-input" id="bookPublisher" type="text" placeholder="örn: İthaki, Can, Metis..."/></div>
+          <div class="acc-body" id="addMoreBody">
+            <div class="input-grid" style="margin-bottom:.75rem">
+              <div class="field-group series-wrap" style="grid-column:1/-1">
+                <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(bir serinin parçasıysa)</span></span>
+                <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune — isteğe bağlı" autocomplete="off"
+                  oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>{seriesDropHide();applySeriesMemory(document.getElementById('bookSeries').value.trim());},250)"/>
+                <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
+              </div>
+              <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
+              <div class="field-group"><span class="field-label">✅ Bitiş Tarihi</span><input class="book-input" id="bookEndDate" type="date"/></div>
+              <div class="field-group" style="grid-column:1/-1"><span class="field-label">🏢 Yayınevi</span><input class="book-input" id="bookPublisher" type="text" placeholder="örn: İthaki, Can, Metis..."/></div>
+            </div>
+            <div class="chip-group-label">📚 Format (birden fazla seçilebilir)</div>
+            <div class="chip-group" id="formatChips">
+              <span class="chip active" data-val="kitap" onclick="toggleChip(this)">📖 Fiziksel Kitap</span>
+              <span class="chip" data-val="ekitap" onclick="toggleChip(this)">📱 E-Kitap</span>
+              <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli Kitap</span>
+              <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi Roman / Manga</span>
+            </div>
+            <div class="chip-group-label" style="margin-top:.5rem">📖 Okuma durumu</div>
+            <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
+              <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
+              <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
+              <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
+              <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
+              <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okuma listeme ekle</span>
+            </div>
+          </div>
         </div>
-        <div class="chip-group-label">📚 Format (birden fazla seçilebilir)</div>
-        <div class="chip-group" id="formatChips">
-          <span class="chip active" data-val="kitap" onclick="toggleChip(this)">📖 Fiziksel Kitap</span>
-          <span class="chip" data-val="ekitap" onclick="toggleChip(this)">📱 E-Kitap</span>
-          <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli Kitap</span>
-          <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi Roman / Manga</span>
-        </div>
-        <div class="chip-group-label" style="margin-top:.5rem">📖 Okuma durumu</div>
-        <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
-          <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
-          <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
-          <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
-          <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
-          <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okuma listeme ekle</span>
-        </div>
-        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.25rem">
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">
           <button class="btn btn-primary" onclick="addBook()">+ Kitap Ekle</button>
           <div class="status-msg" id="addStatus"></div>
         </div>
-        <div style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.8rem;color:rgba(245,237,214,.4);margin-top:.75rem;">
-          💡 Yazar adı girilirse eşleştirme çok daha doğru olur. Kitap adı veya yazar hatalı geldiyse tıklayıp düzenleyebilirsin.
-        </div>
       </div>
       <div class="card" id="currentlyReadingCard" style="display:none">
-        <div class="card-header">📖 Şu An Okunanlar</div>
-        <div id="currentlyReadingList" style="padding:.5rem"></div>
+        <div class="card-header acc-header" onclick="toggleSection('currentlyReading')">
+          <span>📖 Şu An Okunanlar</span>
+          <span class="acc-arrow open" id="arr-currentlyReading">▶</span>
+        </div>
+        <div class="acc-body open" id="body-currentlyReading">
+          <div id="currentlyReadingList" style="padding:.5rem"></div>
+        </div>
       </div>
       <div class="card" id="pausedReadingCard" style="display:none">
-        <div class="card-header">🚧 Yarım Bırakılanlar</div>
-        <div id="pausedReadingList" style="padding:.5rem"></div>
+        <div class="card-header acc-header" onclick="toggleSection('pausedReading')">
+          <span>🚧 Yarım Bırakılanlar</span>
+          <span class="acc-arrow open" id="arr-pausedReading">▶</span>
+        </div>
+        <div class="acc-body open" id="body-pausedReading">
+          <div id="pausedReadingList" style="padding:.5rem"></div>
+        </div>
       </div>
       <div class="card">
-        <div class="card-header">📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span>
-          <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
+        <div class="card-header acc-header" onclick="toggleSection('readBooks')" style="cursor:pointer">
+          <span>📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
+          <div style="display:flex;align-items:center;gap:.5rem" onclick="event.stopPropagation()">
+            <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
+            <span class="acc-arrow open" id="arr-readBooks" onclick="event.stopPropagation();toggleSection('readBooks')" style="pointer-events:auto">▶</span>
+          </div>
         </div>
-        <div id="bookFilterBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem">
-          <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
-          <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-            <option value="">📚 Tür</option>
-          </select>
-          <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-            <option value="">📖 Format</option>
-            <option value="kitap">📖 Fiziksel</option>
-            <option value="ekitap">📱 E-Kitap</option>
-            <option value="sesli">🎧 Sesli</option>
-            <option value="cizgi">🎨 Çizgi/Manga</option>
-          </select>
-          <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
-            <option value="">⭐ Puan</option>
-            <option value="5">⭐⭐⭐⭐⭐ 5</option>
-            <option value="4">⭐⭐⭐⭐ 4+</option>
-            <option value="3">⭐⭐⭐ 3+</option>
-          </select>
-          <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
-            <option value="">📅 Yıl</option>
-          </select>
+        <div class="acc-body open" id="body-readBooks">
+          <div id="bookFilterBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem">
+            <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
+            <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+              <option value="">📚 Tür</option>
+            </select>
+            <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+              <option value="">📖 Format</option>
+              <option value="kitap">📖 Fiziksel</option>
+              <option value="ekitap">📱 E-Kitap</option>
+              <option value="sesli">🎧 Sesli</option>
+              <option value="cizgi">🎨 Çizgi/Manga</option>
+            </select>
+            <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
+              <option value="">⭐ Puan</option>
+              <option value="5">⭐⭐⭐⭐⭐ 5</option>
+              <option value="4">⭐⭐⭐⭐ 4+</option>
+              <option value="3">⭐⭐⭐ 3+</option>
+            </select>
+            <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
+              <option value="">📅 Yıl</option>
+            </select>
+          </div>
+          <div id="bookList" style="padding:.5rem"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
         </div>
-        <div id="bookList" style="padding:.5rem"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
       </div>
       <div class="card" id="wishlistCard" style="display:none">
-        <div class="card-header">🔖 Okuma Listesi <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></div>
-        <div id="wishlistList" style="padding:.5rem"></div>
+        <div class="card-header acc-header" onclick="toggleSection('wishlist')">
+          <span>🔖 Okuma Listesi <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
+          <span class="acc-arrow open" id="arr-wishlist">▶</span>
+        </div>
+        <div class="acc-body open" id="body-wishlist">
+          <div id="wishlistList" style="padding:.5rem"></div>
+        </div>
       </div>
     </div>
 
@@ -1201,6 +1248,8 @@ function enterApp(){
   const user=db.users[me];document.getElementById('headerAvatar').textContent=user.avatar;document.getElementById('headerUsername').textContent=user.displayName;
   showPanel('myBooks',document.querySelector('.nav-tab'));render();setTodayDate();
   showSpecialDayBanner();
+  // Kitap listesi accordion tercihlerini yükle
+  setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist'],true),50);
 }
 
 // ── NAV ───────────────────────────────────────────────────────
@@ -1271,6 +1320,53 @@ function toggleBookFilter(){
   const isOpen=bar.style.display==='flex';
   bar.style.display=isOpen?'none':'flex';
   btn.classList.toggle('active',!isOpen);
+}
+
+// Modal içi accordion — localStorage'a kaydetmez (modal kapanınca sıfırlanır)
+function toggleModalSec(id){
+  const body=document.getElementById(id);
+  const arrow=document.getElementById('arr-'+id);
+  if(!body) return;
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  if(arrow) arrow.classList.toggle('open',!isOpen);
+}
+
+function toggleAddMore(){
+  const body=document.getElementById('addMoreBody');
+  const arrow=document.getElementById('addMoreArrow');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  arrow.classList.toggle('open',!isOpen);
+}
+
+// Genel accordion toggle — localStorage'a kaydeder
+function toggleSection(key){
+  const body=document.getElementById('body-'+key);
+  const arrow=document.getElementById('arr-'+key);
+  if(!body) return;
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  if(arrow) arrow.classList.toggle('open',!isOpen);
+  // Tercihi kaydet
+  try{
+    const prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');
+    prefs[key]=!isOpen;
+    localStorage.setItem('aa-acc',JSON.stringify(prefs));
+  }catch(e){}
+}
+
+function loadAccordionPrefs(keys,defaultOpen=true){
+  let prefs={};
+  try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
+  keys.forEach(key=>{
+    const body=document.getElementById('body-'+key);
+    const arrow=document.getElementById('arr-'+key);
+    if(!body) return;
+    const shouldOpen=prefs[key]!==undefined?prefs[key]:defaultOpen;
+    body.classList.toggle('open',shouldOpen);
+    if(arrow) arrow.classList.toggle('open',shouldOpen);
+  });
 }
 
 function toggleChip(el){el.classList.toggle('active');}
@@ -1567,15 +1663,19 @@ function acHide(){document.getElementById('acList').style.display='none';}
 
 // ── ADD BOOK ──────────────────────────────────────────────────
 async function addBook(){
-  const title=document.getElementById('bookTitle').value.trim();
+  const rawInput=document.getElementById('bookTitle').value.trim();
   const author=document.getElementById('bookAuthor').value.trim();
-  const isbn=document.getElementById('bookIsbn').value.trim().replace(/[^0-9X]/gi,'');
+  // ISBN mi yoksa kitap adı mı olduğunu otomatik belirle
+  const isbnPattern=/^[0-9]{9,13}[0-9X]?$/i;
+  const looksIsbn=isbnPattern.test(rawInput.replace(/[-\s]/g,''));
+  const isbn=looksIsbn?rawInput.replace(/[^0-9X]/gi,''):'';
+  const title=looksIsbn?'':rawInput;
   const manualSeries=document.getElementById('bookSeries').value.trim();
   const publisher=document.getElementById('bookPublisher').value.trim();
   const startDate=document.getElementById('bookStartDate').value||new Date().toISOString().split('T')[0];
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
-  if(!title && !isbn){ alert('Kitap adı veya ISBN giriniz.'); return; }
+  if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
 
   const st=document.getElementById('addStatus');
   st.textContent='Kitap bilgileri alınıyor';st.className='status-msg loading';
@@ -1664,7 +1764,6 @@ async function addBook(){
 
   document.getElementById('bookTitle').value='';
   document.getElementById('bookAuthor').value='';
-  document.getElementById('bookIsbn').value='';
   document.getElementById('bookSeries').value='';
   document.getElementById('bookPublisher').value='';
   setTodayDate();
@@ -1714,7 +1813,7 @@ function openBook(bookId){
 
   document.getElementById('modalBody').innerHTML=`
 
-    <!-- TEMEL BİLGİLER -->
+    <!-- TEMEL BİLGİLER — her zaman açık -->
     <div class="detail-section">
       <div class="detail-section-title">✏️ Kitap Adı & Yazar</div>
       <div class="detail-grid">
@@ -1724,131 +1823,160 @@ function openBook(bookId){
       </div>
     </div>
 
-    <!-- KİTAP BİLGİLERİ -->
+    <!-- KİTAP BİLGİLERİ accordion -->
     <div class="detail-section">
-      <div class="detail-section-title">📊 Kitap Bilgileri <span class="auto-badge">OTOMATİK</span> — istersen düzenle</div>
-      <div class="detail-grid">
-        ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
-        ${dField('✅ Bitiş Tarihi','endDate',book.endDate,'date',isMe)}
-        ${isMe&&(book.retroactive||!book.endDate)?`
-        <div class="detail-field" style="grid-column:1/-1">
-          <span class="detail-field-label">📅 Sadece Yıl <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(bitiş tarihi hatırlanmıyorsa)</span></span>
-          <input class="detail-input" type="number" min="1900" max="2099" value="${book.yearOnly||''}" placeholder="örn: 2019" onchange="saveFieldTyped(${book.id},'yearOnly','number',this.value)"/>
-        </div>`:''}
-        ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
-        ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
-        ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
-        ${dField('Ülke','country',book.country,'text',isMe)}
-        ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
-        ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
-        ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
-        ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-info-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">📊 Kitap Bilgileri <span class="auto-badge">OTOMATİK</span></div>
+        <span class="acc-arrow open" id="arr-mSec-info-${book.id}">▶</span>
       </div>
-      <div style="margin-top:.6rem">
-        <div class="detail-field-label" style="margin-bottom:.3rem">Türler (virgülle ayır)</div>
-        ${isMe
-          ?`<input class="detail-input" style="max-width:100%;width:100%" value="${(book.genres||[]).join(', ')}" placeholder="kurgu, fantastik..." onchange="saveField(${book.id},'genres',this.value.split(',').map(s=>s.trim()).filter(Boolean))"/>`
-          :`<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${(book.genres||[]).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')||'—'}</div>`}
-      </div>
-    </div>
-
-    <!-- FORMAT -->
-    <div class="detail-section">
-      <div class="detail-section-title">📚 Format${isMe?' — düzenlenebilir':''}</div>
-      <div class="check-chips">
-        ${Object.entries(fmtMap).map(([v,l])=>`<span class="check-chip ${(book.formats||[]).includes(v)?'active':''} ${isMe?'':'readonly'}" data-fmt="${v}" onclick="${isMe?`toggleFmt(${book.id},'${v}',this)`:''}">${l}</span>`).join('')}
-      </div>
-    </div>
-
-    <!-- OTOMATİK BAYRAKLAR -->
-    <div class="detail-section">
-      <div class="detail-section-title">🤖 Otomatik Hesaplanan <span class="auto-badge">OTOMATİK</span> — düzenlenebilir</div>
-      <div class="check-chips">
-        ${flagChip(book,'femaleAuthor','👩‍💻 Kadın yazar',isMe)}
-        ${flagChip(book,'youngAuthor',`🌱 Genç yazar (yazıldığında <30${book.pubYear&&book.authorBirthYear?' · '+(book.pubYear-book.authorBirthYear)+' yaşında':''})`,isMe)}
-        ${flagChip(book,'pre1900',`📜 1900 öncesi eser${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
-        ${flagChip(book,'pre1980comic',`🖋️ 1980 öncesi çizgi roman${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
-      </div>
-    </div>
-
-    <!-- OKUMA DENEYİMİ -->
-    <div class="detail-section">
-      <div class="detail-section-title">✨ Okuma Deneyimi${isMe?' — sen doldur':''}</div>
-      <div class="check-chips">
-        ${flagChipRetroactive(book,isMe)}
-        ${flagChip(book,'funniest','😂 Çok güldüm',isMe)}
-        ${flagChip(book,'saddest','😢 Çok ağladım',isMe)}
-        ${flagChip(book,'challenging','🧩 Zorlandım',isMe)}
-        ${flagChip(book,'reread','🔄 Yeniden okuma',isMe)}
-        ${flagChip(book,'nightReading','🌙 Çoğunlukla gece okudum',isMe)}
-        ${flagChip(book,'hundredPages','📑 Bir günde 100 sayfa',isMe)}
-      </div>
-    </div>
-
-    <!-- YAZAR & YAYIN -->
-    <div class="detail-section">
-      <div class="detail-section-title">✍️ Yayın Özellikleri${isMe?' — düzenlenebilir':''}</div>
-      <div class="check-chips">
-        ${flagChip(book,'indie','🌍 Bağımsız yayınevi',isMe)}
-        ${flagChip(book,'seriesComplete','💫 Bu seriyi tamamladım',isMe)}
-        ${flagChip(book,'sameUniverse','🔮 Aynı evrende yan kitap',isMe)}
-      </div>
-    </div>
-
-    <!-- YORUM / NOT -->
-    <div class="detail-section">
-      <div class="detail-section-title">💬 Kişisel Not</div>
-      ${isMe
-        ?`<input class="detail-input" style="width:100%;max-width:100%" value="${book.comment||''}" placeholder="Sadece sana görünür not..." onchange="saveField(${book.id},'comment',this.value||null)"/>`
-        :`<span style="font-style:italic;font-size:.9rem;color:var(--rust)">${book.comment||'—'}</span>`}
-    </div>
-
-    <!-- OKUMA DEFTERİ -->
-    <div class="detail-section" style="border:1px solid rgba(201,162,39,.2);border-radius:4px;padding:1rem;background:rgba(201,162,39,.03)">
-      <div class="detail-section-title">📒 Okuma Defteri <span style="font-size:.6rem;opacity:.6">(herkese görünür)</span></div>
-
-      <!-- Puan -->
-      <div style="margin-bottom:.75rem">
-        <div class="detail-field-label" style="margin-bottom:.4rem">⭐ Puan</div>
-        <div class="star-input" id="starInput_${book.id}">
-          ${[1,2,3,4,5].map(s=>`
-            <button class="star-btn ${(book.rating||0)>=s?'active':''}" onclick="setRating(${book.id},${s})" data-val="${s}">★</button>
-            <button class="star-btn ${(book.rating||0)>=s-.5&&(book.rating||0)<s?'active':''}" onclick="setRating(${book.id},${s-.5})" data-val="${s-.5}" style="margin-left:-.8rem;font-size:.8rem">½</button>
-          `).join('')}
-          ${book.rating?`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);margin-left:.3rem">${book.rating}/5</span>`:''}
+      <div class="detail-acc-body open" id="mSec-info-${book.id}">
+        <div class="detail-grid" style="margin-top:.5rem">
+          ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
+          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'YYYY-AA-GG veya sadece YYYY')}
+          ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
+          ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
+          ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
+          ${dField('Ülke','country',book.country,'text',isMe)}
+          ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
+          ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
+          ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
+          ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
+        </div>
+        <div style="margin-top:.6rem">
+          <div class="detail-field-label" style="margin-bottom:.3rem">Türler (virgülle ayır)</div>
+          ${isMe
+            ?`<input class="detail-input" style="max-width:100%;width:100%" value="${(book.genres||[]).join(', ')}" placeholder="kurgu, fantastik..." onchange="saveField(${book.id},'genres',this.value.split(',').map(s=>s.trim()).filter(Boolean))"/>`
+            :`<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${(book.genres||[]).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')||'—'}</div>`}
         </div>
       </div>
+    </div>
 
-      <!-- Değerlendirme -->
-      <div style="margin-bottom:.75rem">
-        <div class="detail-field-label" style="margin-bottom:.4rem">📖 Değerlendirme</div>
-        ${isMe
-          ?`<textarea class="detail-input" style="width:100%;min-height:80px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem" placeholder="Kitap hakkında düşüncelerini yaz..." onchange="saveField(${book.id},'review',this.value||null)">${book.review||''}</textarea>`
-          :`<div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.7;white-space:pre-wrap">${book.review||'<span style="opacity:.4;font-style:italic">Henüz değerlendirme yok.</span>'}</div>`}
+    <!-- FORMAT accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-fmt-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">📚 Format${isMe?' — düzenlenebilir':''}</div>
+        <span class="acc-arrow" id="arr-mSec-fmt-${book.id}">▶</span>
       </div>
-
-      <!-- Alıntılar -->
-      <div>
-        <div class="detail-field-label" style="margin-bottom:.4rem">📝 Alıntılar</div>
-        <div id="quoteList_${book.id}">
-          ${(book.quotes||[]).map((q,i)=>`
-            <div class="journal-quote" style="margin-bottom:.4rem">
-              <div style="white-space:pre-wrap;word-break:break-word;font-style:italic">${q.text}</div>
-              ${q.page?`<div class="journal-quote-page">s. ${q.page}</div>`:''}
-              <div style="display:flex;gap:.4rem;margin-top:.4rem">
-                <button class="journal-copy-btn" style="position:static;opacity:.6" onclick="copyCardQuote('${me}',${book.id},${i})">📋 Kopyala</button>
-                ${isMe?`<button class="journal-copy-btn" style="position:static;opacity:.6;color:var(--rust)" onclick="confirmDeleteQuote(${book.id},${i},this)">🗑 Sil</button>`:''}
-              </div>
-            </div>`).join('')}
+      <div class="detail-acc-body" id="mSec-fmt-${book.id}">
+        <div class="check-chips" style="margin-top:.5rem">
+          ${Object.entries(fmtMap).map(([v,l])=>`<span class="check-chip ${(book.formats||[]).includes(v)?'active':''} ${isMe?'':'readonly'}" data-fmt="${v}" onclick="${isMe?`toggleFmt(${book.id},'${v}',this)`:''}">${l}</span>`).join('')}
         </div>
-        ${isMe?`
+      </div>
+    </div>
+
+    <!-- OTOMATİK BAYRAKLAR accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-auto-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">🤖 Otomatik Hesaplanan <span class="auto-badge">OTOMATİK</span></div>
+        <span class="acc-arrow" id="arr-mSec-auto-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body" id="mSec-auto-${book.id}">
+        <div class="check-chips" style="margin-top:.5rem">
+          ${flagChip(book,'femaleAuthor','👩‍💻 Kadın yazar',isMe)}
+          ${flagChip(book,'youngAuthor',`🌱 Genç yazar (yazıldığında <30${book.pubYear&&book.authorBirthYear?' · '+(book.pubYear-book.authorBirthYear)+' yaşında':''})`,isMe)}
+          ${flagChip(book,'pre1900',`📜 1900 öncesi eser${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
+          ${flagChip(book,'pre1980comic',`🖋️ 1980 öncesi çizgi roman${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
+        </div>
+      </div>
+    </div>
+
+    <!-- OKUMA DENEYİMİ accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-exp-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">✨ Okuma Deneyimi${isMe?' — sen doldur':''}</div>
+        <span class="acc-arrow" id="arr-mSec-exp-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body" id="mSec-exp-${book.id}">
+        <div class="check-chips" style="margin-top:.5rem">
+          ${flagChipRetroactive(book,isMe)}
+          ${flagChip(book,'funniest','😂 Çok güldüm',isMe)}
+          ${flagChip(book,'saddest','😢 Çok ağladım',isMe)}
+          ${flagChip(book,'challenging','🧩 Zorlandım',isMe)}
+          ${flagChip(book,'reread','🔄 Yeniden okuma',isMe)}
+          ${flagChip(book,'nightReading','🌙 Çoğunlukla gece okudum',isMe)}
+          ${flagChip(book,'hundredPages','📑 Bir günde 100 sayfa',isMe)}
+        </div>
+      </div>
+    </div>
+
+    <!-- YAYIN ÖZELLİKLERİ accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-pub-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">✍️ Yayın Özellikleri${isMe?' — düzenlenebilir':''}</div>
+        <span class="acc-arrow" id="arr-mSec-pub-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body" id="mSec-pub-${book.id}">
+        <div class="check-chips" style="margin-top:.5rem">
+          ${flagChip(book,'indie','🌍 Bağımsız yayınevi',isMe)}
+          ${flagChip(book,'seriesComplete','💫 Bu seriyi tamamladım',isMe)}
+          ${flagChip(book,'sameUniverse','🔮 Aynı evrende yan kitap',isMe)}
+        </div>
+      </div>
+    </div>
+
+    <!-- KİŞİSEL NOT accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-note-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">💬 Kişisel Not</div>
+        <span class="acc-arrow" id="arr-mSec-note-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body" id="mSec-note-${book.id}">
         <div style="margin-top:.5rem">
-          <textarea class="detail-input" id="newQuoteText_${book.id}" placeholder="Alıntı metni... (Şiir için her mısrayı ayrı satıra yazabilirsin)" style="width:100%;min-height:70px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.88rem;font-style:italic"></textarea>
-          <div style="display:flex;gap:.4rem;margin-top:.35rem">
-            <input class="detail-input" id="newQuotePage_${book.id}" placeholder="Sayfa no" style="width:90px;font-size:.88rem" type="number"/>
-            <button class="btn btn-sm btn-primary" onclick="addQuote(${book.id})">+ Ekle</button>
+          ${isMe
+            ?`<input class="detail-input" style="width:100%;max-width:100%" value="${book.comment||''}" placeholder="Sadece sana görünür not..." onchange="saveField(${book.id},'comment',this.value||null)"/>`
+            :`<span style="font-style:italic;font-size:.9rem;color:var(--rust)">${book.comment||'—'}</span>`}
+        </div>
+      </div>
+    </div>
+
+    <!-- OKUMA DEFTERİ accordion -->
+    <div class="detail-section" style="border:1px solid rgba(201,162,39,.2);border-radius:4px;padding:1rem;background:rgba(201,162,39,.03)">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-journal-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">📒 Okuma Defteri <span style="font-size:.6rem;opacity:.6">(herkese görünür)</span></div>
+        <span class="acc-arrow open" id="arr-mSec-journal-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body open" id="mSec-journal-${book.id}">
+        <!-- Puan -->
+        <div style="margin-bottom:.75rem;margin-top:.5rem">
+          <div class="detail-field-label" style="margin-bottom:.4rem">⭐ Puan</div>
+          <div class="star-input" id="starInput_${book.id}">
+            ${[1,2,3,4,5].map(s=>`
+              <button class="star-btn ${(book.rating||0)>=s?'active':''}" onclick="setRating(${book.id},${s})" data-val="${s}">★</button>
+              <button class="star-btn ${(book.rating||0)>=s-.5&&(book.rating||0)<s?'active':''}" onclick="setRating(${book.id},${s-.5})" data-val="${s-.5}" style="margin-left:-.8rem;font-size:.8rem">½</button>
+            `).join('')}
+            ${book.rating?`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);margin-left:.3rem">${book.rating}/5</span>`:''}
           </div>
-        </div>`:''}
+        </div>
+        <!-- Değerlendirme -->
+        <div style="margin-bottom:.75rem">
+          <div class="detail-field-label" style="margin-bottom:.4rem">📖 Değerlendirme</div>
+          ${isMe
+            ?`<textarea class="detail-input" style="width:100%;min-height:80px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem" placeholder="Kitap hakkında düşüncelerini yaz..." onchange="saveField(${book.id},'review',this.value||null)">${book.review||''}</textarea>`
+            :`<div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.7;white-space:pre-wrap">${book.review||'<span style="opacity:.4;font-style:italic">Henüz değerlendirme yok.</span>'}</div>`}
+        </div>
+        <!-- Alıntılar -->
+        <div>
+          <div class="detail-field-label" style="margin-bottom:.4rem">📝 Alıntılar</div>
+          <div id="quoteList_${book.id}">
+            ${(book.quotes||[]).map((q,i)=>`
+              <div class="journal-quote" style="margin-bottom:.4rem">
+                <div style="white-space:pre-wrap;word-break:break-word;font-style:italic">${q.text}</div>
+                ${q.page?`<div class="journal-quote-page">s. ${q.page}</div>`:''}
+                <div style="display:flex;gap:.4rem;margin-top:.4rem">
+                  <button class="journal-copy-btn" style="position:static;opacity:.6" onclick="copyCardQuote('${me}',${book.id},${i})">📋 Kopyala</button>
+                  ${isMe?`<button class="journal-copy-btn" style="position:static;opacity:.6;color:var(--rust)" onclick="confirmDeleteQuote(${book.id},${i},this)">🗑 Sil</button>`:''}
+                </div>
+              </div>`).join('')}
+          </div>
+          ${isMe?`
+          <div style="margin-top:.5rem">
+            <textarea class="detail-input" id="newQuoteText_${book.id}" placeholder="Alıntı metni... (Şiir için her mısrayı ayrı satıra yazabilirsin)" style="width:100%;min-height:70px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.88rem;font-style:italic"></textarea>
+            <div style="display:flex;gap:.4rem;margin-top:.35rem">
+              <input class="detail-input" id="newQuotePage_${book.id}" placeholder="Sayfa no" style="width:90px;font-size:.88rem" type="number"/>
+              <button class="btn btn-sm btn-primary" onclick="addQuote(${book.id})">+ Ekle</button>
+            </div>
+          </div>`:''}
+        </div>
       </div>
     </div>
 
@@ -1898,13 +2026,13 @@ function dFieldSeries(label,field,val,editable,bookId){
   return html;
 }
 
-function dField(label,field,val,type,editable){
+function dField(label,field,val,type,editable,placeholder){
   const display=val!==null&&val!==undefined&&val!==''?val:'—';
-  const inputType=type==='date'?'date':type==='number'?'number':'text';
+  const ph=placeholder||(type==='date'?'YYYY-AA-GG':type==='number'?'—':'—');
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
     ${editable
-      ?`<input class="detail-input" type="${type}" value="${val??''}" placeholder="—" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
+      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${val??''}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
       :`<span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">${display}</span>`}
   </div>`;
 }
@@ -1970,8 +2098,20 @@ function saveField(bookId,field,value){
 }
 
 function saveFieldTyped(bookId,field,type,rawVal){
-  let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
+  if(field==='endDate'&&type==='date'&&rawVal){
+    const onlyYear=/^\d{4}$/.test(rawVal.trim());
+    if(onlyYear){
+      book.yearOnly=parseInt(rawVal.trim());
+      book.endDate=null;
+      book.month=rawVal.trim()+'-01';
+      saveDb();renderSafe();return;
+    } else {
+      book.yearOnly=null;
+    }
+  }
+  let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
   book[field]=value;
   // re-derive auto flags when years change
   if(field==='pubYear'||field==='authorBirthYear'){
@@ -1981,7 +2121,6 @@ function saveFieldTyped(bookId,field,type,rawVal){
     if(py)book.pre1900=py<1900;
     if(py)(book.formats||[]).includes('cizgi')&&(book.pre1980comic=py<1980);
   }
-  // re-check series completion when series fields change
   if(field==='series'||field==='seriesNum'||field==='seriesTotal'){
     recalcSeriesCompletion(bookId);
   }
@@ -2411,14 +2550,27 @@ function renderStatsPanel(){
 
   const monthLabels=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 
+  function statsSection(key,title,content,defaultOpen=false){
+    let prefs={};
+    try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
+    const isOpen=prefs[key]!==undefined?prefs[key]:defaultOpen;
+    return`<div class="stats-section">
+      <div class="stats-acc-header" onclick="toggleSection('${key}')">
+        <div class="stats-section-title" style="margin-bottom:0">${title}</div>
+        <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+      </div>
+      <div class="stats-acc-body ${isOpen?'open':''}" id="body-${key}" style="padding-top:.5rem">
+        ${content}
+      </div>
+    </div>`;
+  }
+
   document.getElementById('statsContainer').innerHTML=`
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">📊 ${isV?(user?.displayName||target)+' — ':''}Okuma İstatistikleri</div>
       <div class="card-body">
 
-        <!-- Özet -->
-        <div class="stats-section">
-          <div class="stats-section-title">📈 Genel Bakış</div>
+        ${statsSection('stats-overview','📈 Genel Bakış',`
           <div class="stats-grid">
             <div class="stats-big-card"><div class="stats-big-num">${books.length}</div><div class="stats-big-label">Kitap Okundu</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${badgeCount}</div><div class="stats-big-label">Rozet</div></div>
@@ -2426,12 +2578,9 @@ function renderStatsPanel(){
             <div class="stats-big-card"><div class="stats-big-num">${series.size}</div><div class="stats-big-label">Seri</div></div>
             ${totalPages?`<div class="stats-big-card"><div class="stats-big-num">${totalPages.toLocaleString('tr')}</div><div class="stats-big-label">Toplam Sayfa</div></div>`:''}
             ${reading.length?`<div class="stats-big-card" style="border-color:var(--moss)"><div class="stats-big-num" style="color:var(--moss)">${reading.length}</div><div class="stats-big-label">Şu An Okunan</div></div>`:''}
-          </div>
-        </div>
+          </div>`,true)}
 
-        <!-- Aylık grafik -->
-        <div class="stats-section">
-          <div class="stats-section-title">📅 Son 12 Ay</div>
+        ${statsSection('stats-monthly','📅 Son 12 Ay',`
           <div style="display:flex;gap:.3rem;align-items:flex-end;height:90px;padding-bottom:1.4rem;position:relative">
             ${monthData.map((d,i)=>`
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
@@ -2440,48 +2589,27 @@ function renderStatsPanel(){
                 <div style="font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:18px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
               </div>`).join('')}
           </div>
-          ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}
-        </div>
+          ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}`)}
 
-        <!-- Tür dağılımı -->
-        ${topGenres.length?`<div class="stats-section">
-          <div class="stats-section-title">📚 En Çok Okunan Türler</div>
-          ${barRows(topGenres,topGenres[0][1])}
-        </div>`:''}
+        ${topGenres.length?statsSection('stats-genres','📚 En Çok Okunan Türler',barRows(topGenres,topGenres[0][1])):''}
+        ${topAuthors.length?statsSection('stats-authors','✍️ En Çok Okunan Yazarlar',barRows(topAuthors,topAuthors[0][1])):''}
+        ${topCountries.length?statsSection('stats-countries','🌍 En Çok Okunan Ülkeler',barRows(topCountries,topCountries[0][1])):''}
 
-        <!-- Yazar dağılımı -->
-        ${topAuthors.length?`<div class="stats-section">
-          <div class="stats-section-title">✍️ En Çok Okunan Yazarlar</div>
-          ${barRows(topAuthors,topAuthors[0][1])}
-        </div>`:''}
-
-        <!-- Ülke dağılımı -->
-        ${topCountries.length?`<div class="stats-section">
-          <div class="stats-section-title">🌍 En Çok Okunan Ülkeler</div>
-          ${barRows(topCountries,topCountries[0][1])}
-        </div>`:''}
-
-        <!-- Format & Çeşitlilik -->
-        <div class="stats-section">
-          <div class="stats-section-title">📖 Format & Çeşitlilik</div>
+        ${statsSection('stats-format','📖 Format & Çeşitlilik',`
           <div class="stats-grid">
             ${fmtCount.kitap?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.kitap}</div><div class="stats-big-label">📖 Fiziksel</div></div>`:''}
             ${fmtCount.ekitap?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.ekitap}</div><div class="stats-big-label">📱 E-Kitap</div></div>`:''}
             ${fmtCount.sesli?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.sesli}</div><div class="stats-big-label">🎧 Sesli</div></div>`:''}
             ${fmtCount.cizgi?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.cizgi}</div><div class="stats-big-label">🎨 Çizgi Roman</div></div>`:''}
             ${books.length?`<div class="stats-big-card"><div class="stats-big-num">%${femPct}</div><div class="stats-big-label">👩 Kadın Yazar</div></div>`:''}
-          </div>
-        </div>
+          </div>`)}
 
-        <!-- Seri takibi -->
-        ${seriesStarted?`<div class="stats-section">
-          <div class="stats-section-title">📚 Seri Durumu</div>
+        ${seriesStarted?statsSection('stats-series','📚 Seri Durumu',`
           <div class="stats-grid">
             <div class="stats-big-card"><div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${seriesFinished}</div><div class="stats-big-label">Bitirilen Seri</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${seriesStarted-seriesFinished}</div><div class="stats-big-label">Devam Eden</div></div>
-          </div>
-        </div>`:''}
+          </div>`):''}
 
         ${books.length===0?'<div class="empty-state">Henüz yeterli veri yok. Kitap ekledikçe istatistikler burada görünür.</div>':''}
       </div>
@@ -2589,6 +2717,7 @@ function renderBookList(){
   const crList=document.getElementById('currentlyReadingList');
   if(reading.length){
     crCard.style.display='';
+    loadAccordionPrefs(['currentlyReading'],true);
     crList.innerHTML=reading.map(b=>{
       const noTitle=!b.title||b.title.startsWith('ISBN:');
       const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
@@ -2611,6 +2740,7 @@ function renderBookList(){
   const prList=document.getElementById('pausedReadingList');
   if(paused.length){
     prCard.style.display='';
+    loadAccordionPrefs(['pausedReading'],true);
     prList.innerHTML=paused.map(b=>{
       const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
       return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
@@ -2723,6 +2853,7 @@ function renderBookList(){
   const wlCount=document.getElementById('wishlistCount');
   if(wishlist.length){
     wlCard.style.display='';
+    loadAccordionPrefs(['wishlist'],true);
     wlCount.textContent=`${wishlist.length} kitap`;
     wlList.innerHTML=wishlist.map(b=>`
       <div class="book-item book-item-wishlist">
@@ -2747,7 +2878,10 @@ let openBadgeId=null;
 
 function renderBadges(){
   const books=validBooks();
-  document.getElementById('badgeContainer').innerHTML=BADGE_CATS.map(cat=>{
+  let prefs={};
+  try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
+
+  document.getElementById('badgeContainer').innerHTML=BADGE_CATS.map((cat,ci)=>{
     const filtered=cat.badges.filter(b=>{
       const s=bstat(b,books);
       if(badgeFilter==='earned')return s.earned;
@@ -2756,31 +2890,40 @@ function renderBadges(){
       return true;
     });
     if(!filtered.length)return'';
-    return`<div class="badge-category"><div class="category-label">${cat.label}</div>
-      <div class="badge-grid">${filtered.map(b=>{
-        const s=bstat(b,books),cls=s.earned?'earned':s.cur===0?'locked':'';
-        const isOpen=openBadgeId===b.id;
-        const relBooks=booksForBadge(b,books);
-        const bookListHtml=relBooks.length===0
-          ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
-          :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
-              +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
-              +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
-              +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
-            +'</div>').join('');
-        return`<div class="badge-card ${cls} ${isOpen?'badge-card-open':''}" onclick="toggleBadgeDetail('${b.id}')">
-          ${s.earned?'<span class="earned-stamp">✓ KAZANILDI</span>':''}
-          <span class="badge-icon">${b.icon}</span>
-          <div class="badge-name">${b.name}</div>
-          <div class="badge-desc">${b.desc}</div>
-          <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
-          <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
-          ${isOpen?`<div class="badge-book-list" onclick="event.stopPropagation()">
-            <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
-            ${bookListHtml}
-          </div>`:'<div class="badge-card-hint">&#128070; detay</div>'}
-        </div>`;
-      }).join('')}</div></div>`;
+    const key='badgeCat-'+ci;
+    const isOpen=prefs[key]!==undefined?prefs[key]:true;
+    return`<div class="badge-category">
+      <div class="category-label acc-header" onclick="toggleSection('${key}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+        <span>${cat.label}</span>
+        <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+      </div>
+      <div class="acc-body ${isOpen?'open':''}" id="body-${key}">
+        <div class="badge-grid">${filtered.map(b=>{
+          const s=bstat(b,books),cls=s.earned?'earned':s.cur===0?'locked':'';
+          const isOpen2=openBadgeId===b.id;
+          const relBooks=booksForBadge(b,books);
+          const bookListHtml=relBooks.length===0
+            ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
+            :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
+                +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
+                +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
+                +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
+              +'</div>').join('');
+          return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''}" onclick="toggleBadgeDetail('${b.id}')">
+            ${s.earned?'<span class="earned-stamp">✓ KAZANILDI</span>':''}
+            <span class="badge-icon">${b.icon}</span>
+            <div class="badge-name">${b.name}</div>
+            <div class="badge-desc">${b.desc}</div>
+            <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+            <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+            ${isOpen2?`<div class="badge-book-list" onclick="event.stopPropagation()">
+              <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
+              ${bookListHtml}
+            </div>`:'<div class="badge-card-hint">&#128070; detay</div>'}
+          </div>`;
+        }).join('')}</div>
+      </div>
+    </div>`;
   }).join('');
 }
 
