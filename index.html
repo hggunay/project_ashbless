@@ -389,7 +389,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defter</button>
-      <button class="nav-tab" onclick="showPanel('stories',this)">✍️ Öykülerim</button>
+      <button class="nav-tab" onclick="showPanel('stories',this)">📖 Hikâyelerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
       <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
@@ -570,49 +570,72 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
         <span id="storiesViewingText"></span>
         <button class="btn btn-danger btn-sm" onclick="stopViewing()">← Kendi profilime dön</button>
       </div>
-      <!-- Öykü Ekle formu -->
+      <!-- Hikâye Ekle formu -->
       <div class="add-section" id="addStorySection">
-        <div class="section-title">✍️ Öykü Ekle</div>
+        <div class="section-title">📖 Hikâye Ekle</div>
+        <!-- Her zaman görünür: başlık + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
           <div class="field-group" style="grid-column:1/-1">
-            <span class="field-label">Öykü Başlığı *</span>
-            <input class="book-input" id="storyTitle" type="text" placeholder="Öykü adı..."/>
+            <span class="field-label">Hikâye Başlığı *</span>
+            <input class="book-input" id="storyTitle" type="text" placeholder="Hikâye adı..."/>
           </div>
           <div class="field-group" style="grid-column:1/-1">
             <span class="field-label">Yazar</span>
             <input class="book-input" id="storyAuthor" type="text" placeholder="Yazar adı..."/>
           </div>
         </div>
-        <!-- Kaynak türü -->
-        <div class="chip-group-label">📚 Kaynak Türü</div>
-        <div class="chip-group" id="storySourceChips" style="margin-bottom:.75rem">
-          <span class="chip active" data-val="kitap" onclick="selectStorySource(this)">📖 Kitap</span>
-          <span class="chip" data-val="ekitap" onclick="selectStorySource(this)">📱 E-Kitap</span>
-          <span class="chip" data-val="pdf" onclick="selectStorySource(this)">📄 PDF</span>
-          <span class="chip" data-val="sesli" onclick="selectStorySource(this)">🎧 Sesli</span>
-          <span class="chip" data-val="web" onclick="selectStorySource(this)">🌐 Web</span>
-        </div>
-        <!-- Link alanı - sesli veya web seçilince açılır -->
-        <div id="storyLinkWrap" style="display:none;margin-bottom:.75rem">
-          <div class="field-group">
-            <span class="field-label">🔗 Link <span style="opacity:.5;font-weight:400">(isteğe bağlı)</span></span>
-            <input class="book-input" id="storyLink" type="url" placeholder="https://..."/>
+        <!-- Daha Fazla accordion -->
+        <div>
+          <div class="acc-header" onclick="toggleStoryMore()" id="storyMoreHeader" style="margin-bottom:.5rem">
+            <span style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);">⚙️ Daha Fazla Seçenek</span>
+            <span class="acc-arrow" id="storyMoreArrow">▶</span>
+          </div>
+          <div class="acc-body" id="storyMoreBody">
+            <!-- Tarih -->
+            <div class="input-grid" style="margin-bottom:.75rem">
+              <div class="field-group" style="grid-column:1/-1">
+                <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(YYYY-AA-GG veya sadece YYYY)</span></span>
+                <input class="book-input" id="storyDate" type="text" placeholder="örn: 2024-03-15 veya 2024"/>
+              </div>
+            </div>
+            <!-- Kaynak türü -->
+            <div class="chip-group-label">📚 Kaynak Türü</div>
+            <div class="chip-group" id="storySourceChips" style="margin-bottom:.75rem">
+              <span class="chip active" data-val="kitap" onclick="selectStorySource(this)">📖 Kitap</span>
+              <span class="chip" data-val="ekitap" onclick="selectStorySource(this)">📱 E-Kitap</span>
+              <span class="chip" data-val="sesli" onclick="selectStorySource(this)">🎧 Sesli</span>
+              <span class="chip" data-val="web" onclick="selectStorySource(this)">🌐 Web</span>
+            </div>
+            <!-- Kaynak kitap adı - kitap veya ekitap seçilince açılır -->
+            <div id="storySourceBookWrap" style="display:block;margin-bottom:.75rem">
+              <div class="field-group">
+                <span class="field-label">📚 Kaynak Kitap Adı <span style="opacity:.5;font-weight:400">(isteğe bağlı — hikâyenin alındığı kitap)</span></span>
+                <input class="book-input" id="storySourceBook" type="text" placeholder="örn: Körler Ülkesi ve Diğer Karanlık Öyküler"/>
+              </div>
+            </div>
+            <!-- Link alanı -->
+            <div id="storyLinkWrap" style="display:none;margin-bottom:.75rem">
+              <div class="field-group">
+                <span class="field-label">🔗 Link <span style="opacity:.5;font-weight:400">(isteğe bağlı)</span></span>
+                <input class="book-input" id="storyLink" type="url" placeholder="https://..."/>
+              </div>
+            </div>
+            <!-- Durum -->
+            <div class="chip-group-label">📌 Durum</div>
+            <div class="chip-group" id="storyStatusChips" style="margin-bottom:.75rem">
+              <span class="chip active" data-val="read" onclick="selectStoryStatus(this)">✔ Okundu</span>
+              <span class="chip" data-val="toread" onclick="selectStoryStatus(this)">⏳ Okunacak</span>
+            </div>
           </div>
         </div>
-        <!-- Durum -->
-        <div class="chip-group-label">📌 Durum</div>
-        <div class="chip-group" id="storyStatusChips" style="margin-bottom:.75rem">
-          <span class="chip active" data-val="read" onclick="selectStoryStatus(this)">✔ Okundu</span>
-          <span class="chip" data-val="toread" onclick="selectStoryStatus(this)">⏳ Okunacak</span>
-        </div>
-        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
-          <button class="btn btn-primary" onclick="addStory()">+ Öykü Ekle</button>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">
+          <button class="btn btn-primary" onclick="addStory()">+ Hikâye Ekle</button>
           <div class="status-msg" id="addStoryStatus"></div>
         </div>
       </div>
       <!-- Filtre -->
       <div class="card">
-        <div class="card-header">✍️ Öykülerim
+        <div class="card-header">📖 Hikâyelerim
           <div class="filter-tabs">
             <button class="filter-tab active" onclick="filterStories('all',this)">Tümü</button>
             <button class="filter-tab" onclick="filterStories('read',this)">Okundu</button>
@@ -2375,11 +2398,24 @@ function confirmDeleteQuote(bookId, idx, btn){
 // ══════════════════════════════════════════════════════════════
 let storyFilter='all', storySortMode='date', storyAuthorFilter=null;
 
+function toggleStoryMore(){
+  const body=document.getElementById('storyMoreBody');
+  const arrow=document.getElementById('storyMoreArrow');
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  arrow.classList.toggle('open',!isOpen);
+}
+
 function selectStorySource(el){
   document.querySelectorAll('#storySourceChips .chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
   const val=el.dataset.val;
-  document.getElementById('storyLinkWrap').style.display=(val==='sesli'||val==='web')?'':'none';
+  const showBook=val==='kitap'||val==='ekitap';
+  const showLink=val==='sesli'||val==='web';
+  const bookWrap=document.getElementById('storySourceBookWrap');
+  const linkWrap=document.getElementById('storyLinkWrap');
+  if(bookWrap) bookWrap.style.display=showBook?'':'none';
+  if(linkWrap) linkWrap.style.display=showLink?'':'none';
 }
 
 function selectStoryStatus(el){
@@ -2403,12 +2439,19 @@ function addStory(){
   const source=getStorySource();
   const status=getStoryStatus();
   const link=document.getElementById('storyLink').value.trim()||null;
+  const sourceBook=document.getElementById('storySourceBook').value.trim()||null;
+  const rawDate=document.getElementById('storyDate').value.trim();
+  // Tarih: YYYY veya YYYY-MM-DD
+  const onlyYear=/^\d{4}$/.test(rawDate);
+  const readDate=rawDate?(onlyYear?rawDate:rawDate):null;
+  const readYearOnly=onlyYear?parseInt(rawDate):null;
   if(!title){notify('⚠️','Öykü başlığı boş olamaz.');return;}
   if(!db.stories) db.stories={};
   if(!db.stories[me]) db.stories[me]=[];
   const story={
     id:Date.now(),
-    title, author, source, status, link,
+    title, author, source, status, link, sourceBook,
+    readDate, readYearOnly,
     rating:0, note:null,
     addedAt:new Date().toISOString(),
   };
@@ -2418,10 +2461,13 @@ function addStory(){
   document.getElementById('storyTitle').value='';
   document.getElementById('storyAuthor').value='';
   document.getElementById('storyLink').value='';
+  document.getElementById('storySourceBook').value='';
+  document.getElementById('storyDate').value='';
   document.getElementById('storyLinkWrap').style.display='none';
+  document.getElementById('storySourceBookWrap').style.display='block';
   document.querySelectorAll('#storySourceChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
   document.querySelectorAll('#storyStatusChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='read'));
-  notify('✅ Öykü eklendi',`"${title}" listenize eklendi.`);
+  notify('✅ Hikâye eklendi',`"${title}" listenize eklendi.`);
   renderStories();
   renderJournal();
 }
@@ -2459,7 +2505,7 @@ function openStoryDetail(ownerId, storyId){
   if(!story) return;
   const isMe=ownerId===me;
   const user=db.users[ownerId];
-  const srcMap={kitap:'📖 Kitap',ekitap:'📱 E-Kitap',pdf:'📄 PDF',sesli:'🎧 Sesli',web:'🌐 Web'};
+  const srcMap={kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'};
   document.getElementById('modalTitle').textContent=story.title;
   document.getElementById('modalSubtitle').textContent=story.author?`— ${story.author}`:'';
   document.getElementById('modalBody').innerHTML=`
@@ -2473,6 +2519,14 @@ function openStoryDetail(ownerId, storyId){
         <div class="detail-field">
           <span class="detail-field-label">Yazar</span>
           ${isMe?`<input class="detail-input" value="${story.author||''}" placeholder="—" onchange="saveStoryField(${storyId},'author',this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.author||'—'}</span>`}
+        </div>
+        <div class="detail-field" style="grid-column:1/-1">
+          <span class="detail-field-label">📚 Kaynak Kitap Adı <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(kitabın/e-kitabın adı)</span></span>
+          ${isMe?`<input class="detail-input" value="${story.sourceBook||''}" placeholder="—" onchange="saveStoryField(${storyId},'sourceBook',this.value||null)"/>`:`<span style="font-size:.9rem;color:var(--moss)">${story.sourceBook||'—'}</span>`}
+        </div>
+        <div class="detail-field" style="grid-column:1/-1">
+          <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
+          ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
         </div>
       </div>
       <div style="margin-top:.5rem">
@@ -2512,9 +2566,18 @@ function openStoryDetail(ownerId, storyId){
   `;
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
-      <button class="btn btn-danger btn-sm" onclick="confirmRemoveStory(${storyId})">🗑 Öyküyü Sil</button>`
+      <button class="btn btn-danger btn-sm" onclick="confirmRemoveStory(${storyId})">🗑 Hikâyeyi Sil</button>`
     :'';
   document.getElementById('modalOverlay').classList.add('open');
+}
+
+function saveStoryDate(storyId, rawVal){
+  const story=(db.stories[me]||[]).find(s=>s.id===storyId);
+  if(!story) return;
+  const onlyYear=/^\d{4}$/.test(rawVal.trim());
+  story.readDate=rawVal.trim()||null;
+  story.readYearOnly=onlyYear?parseInt(rawVal.trim()):null;
+  saveDb();renderStories();
 }
 
 function saveStoryField(storyId, field, value){
@@ -2545,7 +2608,7 @@ function setStoryRating(storyId, rating){
 function confirmRemoveStory(storyId){
   const footer=document.getElementById('modalFooter');
   footer.innerHTML=`
-    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu öyküyü silmek istediğine emin misin?</span>
+    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu hikâyeyi silmek istediğine emin misin?</span>
     <div style="display:flex;gap:.5rem">
       <button class="btn btn-danger btn-sm" onclick="removeStory(${storyId})">🗑 Evet, Sil</button>
       <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openStoryDetail('${me}',${storyId})">İptal</button>
@@ -2568,7 +2631,7 @@ function renderStories(){
   const banner=document.getElementById('storiesViewingBanner');
   if(banner){
     banner.style.display=viewing?'':'none';
-    if(viewing) document.getElementById('storiesViewingText').textContent=`${user?.avatar||'📚'} ${user?.displayName||target} adlı üyenin öyküleri`;
+    if(viewing) document.getElementById('storiesViewingText').textContent=`${user?.avatar||'📚'} ${user?.displayName||target} adlı üyenin hikâyeleri`;
   }
   if(isMe){
     const addSec=document.getElementById('addStorySection');
@@ -2592,7 +2655,7 @@ function renderStories(){
     return;
   }
 
-  const srcMap={kitap:'📖',ekitap:'📱',pdf:'📄',sesli:'🎧',web:'🌐'};
+  const srcMap={kitap:'📖',ekitap:'📱',sesli:'🎧',web:'🌐'};
 
   if(storySortMode==='author'){
     // Yazara göre grupla
@@ -2619,10 +2682,13 @@ function renderStories(){
 
 function storyItemHtml(s, ownerId, srcMap){
   const stars=s.rating?'⭐'.repeat(Math.floor(s.rating))+(s.rating%1?'½':''):'';
+  const dateDisplay=s.readDate?(s.readYearOnly?s.readDate:s.readDate):'';
   return`<div class="story-item" onclick="openStoryDetail('${ownerId}',${s.id})">
     <div class="book-info">
       <span class="book-title-text">${s.title}</span>
       ${s.author?`<span class="book-meta">— ${s.author}</span>`:''}
+      ${s.sourceBook?`<span class="book-meta" style="color:var(--moss)">📚 ${s.sourceBook}</span>`:''}
+      ${dateDisplay?`<span class="book-meta">📅 ${dateDisplay}${s.readYearOnly?' (yıl)':''}</span>`:''}
       <div class="book-tags-row">
         <span class="tag format-tag">${srcMap[s.source]||s.source}</span>
         <span class="story-status-badge ${s.status==='read'?'story-read':'story-toread'}">${s.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>
@@ -2695,7 +2761,7 @@ function renderJournal(){
       cards.push({
         type:'story', u, userName:user.displayName, userAvatar:user.avatar||'📚',
         storyId:s.id, bookTitle:s.title, author:s.author,
-        rating:s.rating||0, source:s.source, link:s.link,
+        rating:s.rating||0, source:s.source, link:s.link, sourceBook:s.sourceBook||null,
         ts:s.addedAt||0, reactions:{},
       });
     });
@@ -2761,7 +2827,7 @@ function renderJournal(){
           <span class="journal-entry-book" onclick="openBook(${card.bookId})">${card.bookTitle||'—'}</span>
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
-        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'✍️ öykü':'💬 alıntı'}</span>
+        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':'💬 alıntı'}</span>
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
@@ -2769,14 +2835,15 @@ function renderJournal(){
         ${isMe?`<div style="margin-top:.5rem"><button class="journal-copy-btn" onclick="openBook(${card.bookId})">✏️ Düzenle</button></div>`:''}
       `:card.type==='story'?`
         <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem">
-          <span class="journal-entry-type-badge journal-type-story" style="margin-bottom:0">✍️ öykü okudu</span>
+          <span class="journal-entry-type-badge journal-type-story" style="margin-bottom:0">📖 hikâye okudu</span>
           ${card.rating?`<span style="font-size:.85rem;color:var(--gold)">${'⭐'.repeat(Math.floor(card.rating))}${card.rating%1?'½':''}</span>`:''}
         </div>
-        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink)">
+        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
           <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
         </div>
+        ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${card.sourceBook}</div>`:''}
         <div class="book-tags-row" style="margin-top:.3rem">
-          <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',pdf:'📄 PDF',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
+          <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
           ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
         </div>
         ${isMe?`<div style="margin-top:.4rem"><button class="journal-copy-btn" onclick="openStoryDetail('${card.u}',${card.storyId})">✏️ Düzenle</button></div>`:''}
