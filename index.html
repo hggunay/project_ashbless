@@ -84,6 +84,9 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 #bookFilterBar .book-input,#journalSearchBar .book-input{background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);}
 #bookFilterBar .book-input::placeholder,#journalSearchBar .book-input::placeholder{color:rgba(26,18,8,.35);font-style:italic;}
 #bookFilterBar .book-input:focus,#journalSearchBar .book-input:focus{border-color:var(--gold);}
+/* Defterim kitap seçme dropdown */
+#journalBookSelect{background:var(--cream);color:var(--ink);border-color:rgba(201,162,39,.35);}
+#journalBookSelect option{background:var(--cream);color:var(--ink);}
 .chip-group-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);margin-bottom:.4rem;}
 .chip-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;}
 .chip{padding:.4rem .85rem;border:1px solid rgba(201,162,39,.35);border-radius:20px;background:transparent;color:rgba(245,237,214,.6);font-family:'Crimson Pro',serif;font-size:.85rem;cursor:pointer;transition:all .2s;user-select:none;}
@@ -605,10 +608,17 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <div class="field-group" style="margin-bottom:.5rem">
             <span class="field-label">⭐ Puan (isteğe bağlı)</span>
             <div id="journalQuickStars" style="display:flex;gap:.2rem;margin-top:.2rem">
-              ${[1,2,3,4,5].map(s=>`
-                <button class="star-btn" onclick="setJournalQuickRating(${s})" data-val="${s}">★</button>
-                <button class="star-btn" onclick="setJournalQuickRating(${s-.5})" data-val="${s-.5}" style="margin-left:-.8rem;font-size:.8rem">½</button>
-              `).join('')}
+              <button class="star-btn" onclick="setJournalQuickRating(1)" data-val="1">★</button>
+              <button class="star-btn" onclick="setJournalQuickRating(0.5)" data-val="0.5" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              <button class="star-btn" onclick="setJournalQuickRating(2)" data-val="2">★</button>
+              <button class="star-btn" onclick="setJournalQuickRating(1.5)" data-val="1.5" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              <button class="star-btn" onclick="setJournalQuickRating(3)" data-val="3">★</button>
+              <button class="star-btn" onclick="setJournalQuickRating(2.5)" data-val="2.5" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              <button class="star-btn" onclick="setJournalQuickRating(4)" data-val="4">★</button>
+              <button class="star-btn" onclick="setJournalQuickRating(3.5)" data-val="3.5" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              <button class="star-btn" onclick="setJournalQuickRating(5)" data-val="5">★</button>
+              <button class="star-btn" onclick="setJournalQuickRating(4.5)" data-val="4.5" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              <span id="journalQuickRatingLabel" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);margin-left:.3rem;line-height:2"></span>
             </div>
           </div>
           <div class="field-group">
@@ -2907,10 +2917,7 @@ function markFeedVisited(){
   const now=Date.now();
   try{localStorage.setItem('aa-feed-visit-'+me,String(now));}catch(e){}
   lastFeedVisit=now;
-  const badge=document.getElementById('feedBadge');
-  const inlineBadge=document.getElementById('feedNewBadge');
-  if(badge) badge.style.display='none';
-  if(inlineBadge) inlineBadge.style.display='none';
+  updateFeedBadge();
 }
 
 function renderFeed(append=false){
@@ -2944,17 +2951,23 @@ function renderFeed(append=false){
   }
 
   function feedReactionHtml(card){
+    const cardKey=card.type==='story'
+      ?`story_${card.u}_${card.storyId}`
+      :card.type==='quote'
+        ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+        :`review_${card.u}_${card.bookId}`;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(card.type==='story'){
-        return`<button class="journal-reaction-btn ${active}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${r.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}')">
           ${r}${cnt>0?` · ${cnt}`:''}
         </button>`;
       }
       const qi=card.type==='quote'?card.quoteIdx:-1;
-      return`<button class="journal-reaction-btn ${active}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${r.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this)">
+      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}`:''}
       </button>`;
     }).join('');
@@ -3064,6 +3077,8 @@ function setJournalQuickRating(val){
   document.querySelectorAll('#journalQuickStars .star-btn').forEach(btn=>{
     btn.classList.toggle('active',journalQuickRating>=parseFloat(btn.dataset.val));
   });
+  const lbl=document.getElementById('journalQuickRatingLabel');
+  if(lbl) lbl.textContent=journalQuickRating>0?journalQuickRating+'/5':'';
 }
 
 function populateJournalBookSelect(){
@@ -3179,12 +3194,16 @@ function renderJournal(){
   }
 
   function reactionHtml(card){
+    const cardKey=card.type==='quote'
+      ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+      :`review_${card.u}_${card.bookId}`;
     return reactionList.map(r=>{
       const myR=card.reactions[me]||[];
       const active=myR.includes(r)?'active':'';
-      const cnt=Object.values(card.reactions).filter(arr=>arr.includes(r)).length;
+      const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
       const qi=card.type==='quote'?card.quoteIdx:-1;
-      return`<button class="journal-reaction-btn ${active}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${r.replace(/'/g,"\\'").replace(/"/g,'&quot;')}',this)">
+      const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}`:''}
       </button>`;
     }).join('');
@@ -3260,7 +3279,7 @@ function toggleCardReaction(type,bookOwner,bookId,quoteIdx,reaction,btnEl){
   const idx=reactObj[me].indexOf(reaction);
   if(idx>-1) reactObj[me].splice(idx,1);
   else reactObj[me].push(reaction);
-  saveDb();renderJournal();
+  saveDb();renderJournal();renderFeed();
 }
 
 function copyCardQuote(bookOwner,bookId,quoteIdx){
