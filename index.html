@@ -97,7 +97,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 @keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
 
 /* BOOK LIST */
-.book-item{display:flex;align-items:center;gap:.6rem;padding:.7rem .75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
+.book-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .book-item:hover{background:rgba(201,162,39,.08);}
 .book-item:last-child{border-bottom:none;}
 .book-item-warn{background:rgba(160,82,45,.08);border-left:3px solid var(--rust);}
@@ -112,9 +112,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .series-option{padding:.5rem .75rem;cursor:pointer;font-family:'Crimson Pro',serif;font-size:.88rem;color:var(--parchment);border-bottom:1px solid rgba(201,162,39,.1);}
 .series-option:hover{background:rgba(201,162,39,.15);}
 .book-info{flex:1;min-width:0;}
-.book-title-text{font-size:.95rem;font-weight:600;color:var(--ink);}
-.book-meta{font-size:.78rem;color:var(--rust);font-style:italic;margin-top:.1rem;}
-.book-series-text{font-size:.72rem;color:var(--moss);font-family:'Space Mono',monospace;margin-top:.1rem;}
+.book-title-text{font-size:.95rem;font-weight:600;color:var(--ink);display:block;word-break:break-word;}
+.book-meta{font-size:.78rem;color:var(--rust);font-style:italic;margin-top:.15rem;display:block;white-space:normal;word-break:break-word;}
+.book-series-text{font-size:.72rem;color:var(--moss);font-family:'Space Mono',monospace;margin-top:.15rem;display:block;word-break:break-word;}
+.book-tags-row{display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.3rem;}
 .tag{padding:.1rem .45rem;border-radius:20px;font-size:.62rem;font-family:'Space Mono',monospace;white-space:nowrap;}
 .genre-tag{background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(138,69,19,.2);}
 .format-tag{background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.25);}
@@ -395,26 +396,26 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
         <div class="card-header">📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span>
           <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
         </div>
-        <div id="bookFilterBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:none;flex-wrap:wrap;gap:.4rem">
-          <input class="book-input" id="bookSearchText" type="text" placeholder="Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
+        <div id="bookFilterBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem">
+          <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
           <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-            <option value="">Tüm türler</option>
+            <option value="">📚 Tür</option>
           </select>
           <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-            <option value="">Tüm formatlar</option>
+            <option value="">📖 Format</option>
             <option value="kitap">📖 Fiziksel</option>
             <option value="ekitap">📱 E-Kitap</option>
             <option value="sesli">🎧 Sesli</option>
             <option value="cizgi">🎨 Çizgi/Manga</option>
           </select>
           <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
-            <option value="">Tüm puanlar</option>
+            <option value="">⭐ Puan</option>
             <option value="5">⭐⭐⭐⭐⭐ 5</option>
             <option value="4">⭐⭐⭐⭐ 4+</option>
             <option value="3">⭐⭐⭐ 3+</option>
           </select>
           <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
-            <option value="">Tüm yıllar</option>
+            <option value="">📅 Yıl</option>
           </select>
         </div>
         <div id="bookList" style="padding:.5rem"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
@@ -448,22 +449,25 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
     <div id="journal" class="panel">
       <div class="card">
         <div class="card-header">📒 Okuma Defteri
-          <div class="filter-tabs">
-            <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
-            <button class="filter-tab" onclick="filterJournal('reviews',this)">Değerlendirmeler</button>
-            <button class="filter-tab" onclick="filterJournal('quotes',this)">Alıntılar</button>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <div class="filter-tabs">
+              <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
+              <button class="filter-tab" onclick="filterJournal('reviews',this)">Değerlendirmeler</button>
+              <button class="filter-tab" onclick="filterJournal('quotes',this)">Alıntılar</button>
+            </div>
+            <button class="filter-tab" onclick="toggleJournalFilter()" id="journalFilterToggle">🔍 Filtrele</button>
           </div>
         </div>
-        <div id="journalSearchBar" style="padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
-          <input class="book-input" id="journalSearchText" type="text" placeholder="🔍 Kitap adı, yazar veya alıntı metni..." style="flex:1;min-width:150px;font-size:.85rem;padding:.4rem .7rem" oninput="renderJournal()"/>
+        <div id="journalSearchBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;align-items:center">
+          <input class="book-input" id="journalSearchText" type="text" placeholder="🔍 Kitap adı, yazar veya metin..." style="flex:1;min-width:150px;font-size:.85rem;padding:.4rem .7rem" oninput="renderJournal()"/>
           <select class="book-input" id="journalFilterAuthor" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
-            <option value="">Tüm yazarlar</option>
+            <option value="">✍️ Yazar</option>
           </select>
           <select class="book-input" id="journalFilterBook" style="font-size:.8rem;padding:.4rem .6rem;max-width:140px" onchange="renderJournal()">
-            <option value="">Tüm kitaplar</option>
+            <option value="">📖 Kitap</option>
           </select>
           <select class="book-input" id="journalFilterMember" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderJournal()">
-            <option value="">Tüm üyeler</option>
+            <option value="">👤 Üye</option>
           </select>
         </div>
         <div id="journalContainer" style="padding:.5rem"></div>
@@ -1126,6 +1130,14 @@ function updateNavForViewing(isViewing){
     }
   });
 }
+function toggleJournalFilter(){
+  const bar=document.getElementById('journalSearchBar');
+  const btn=document.getElementById('journalFilterToggle');
+  const isOpen=bar.style.display==='flex';
+  bar.style.display=isOpen?'none':'flex';
+  btn.classList.toggle('active',!isOpen);
+}
+
 function toggleBookFilter(){
   const bar=document.getElementById('bookFilterBar');
   const btn=document.getElementById('bookFilterToggle');
@@ -2011,9 +2023,9 @@ function buildJournalDropdowns(allCards){
     if(c.bookTitle) books.add(c.bookTitle);
     if(c.userName) members.add(JSON.stringify({u:c.u,name:c.userName}));
   });
-  authorSel.innerHTML='<option value="">Tüm yazarlar</option>'+[...authors].sort().map(a=>`<option value="${a}"${a===curAuthor?' selected':''}>${a}</option>`).join('');
-  bookSel.innerHTML='<option value="">Tüm kitaplar</option>'+[...books].sort().map(b=>`<option value="${b}"${b===curBook?' selected':''}>${b}</option>`).join('');
-  memberSel.innerHTML='<option value="">Tüm üyeler</option>'+[...members].map(m=>{const{u,name}=JSON.parse(m);return`<option value="${u}"${u===curMember?' selected':''}>${name}</option>`;}).join('');
+  authorSel.innerHTML='<option value="">✍️ Yazar</option>'+[...authors].sort().map(a=>`<option value="${a}"${a===curAuthor?' selected':''}>${a}</option>`).join('');
+  bookSel.innerHTML='<option value="">📖 Kitap</option>'+[...books].sort().map(b=>`<option value="${b}"${b===curBook?' selected':''}>${b}</option>`).join('');
+  memberSel.innerHTML='<option value="">👤 Üye</option>'+[...members].map(m=>{const{u,name}=JSON.parse(m);return`<option value="${u}"${u===curMember?' selected':''}>${name}</option>`;}).join('');
 }
 
 function renderJournal(){
@@ -2482,14 +2494,14 @@ function renderBookList(){
     const curYear=yearSel?yearSel.value:'';
     const genres=new Set();
     readBooks.forEach(b=>(b.genres||[]).forEach(g=>genres.add(g)));
-    genreSel.innerHTML='<option value="">Tüm türler</option>'+[...genres].sort().map(g=>`<option value="${g}"${g===curGenre?' selected':''}>${g}</option>`).join('');
+    genreSel.innerHTML='<option value="">📚 Tür</option>'+[...genres].sort().map(g=>`<option value="${g}"${g===curGenre?' selected':''}>${g}</option>`).join('');
     const years=new Set();
     readBooks.forEach(b=>{
       if(b.endDate) years.add(b.endDate.substring(0,4));
       else if(b.yearOnly) years.add(b.yearOnly);
       else if(b.month) years.add(b.month.substring(0,4));
     });
-    if(yearSel) yearSel.innerHTML='<option value="">Tüm yıllar</option>'+[...years].sort().reverse().map(y=>`<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
+    if(yearSel) yearSel.innerHTML='<option value="">📅 Yıl</option>'+[...years].sort().reverse().map(y=>`<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
   }
 
   // — Filtreleri oku ve uygula —
@@ -2526,20 +2538,24 @@ function renderBookList(){
 
   function bookItemHtml(b){
     const noTitle=!b.title||b.title.startsWith('ISBN:');
-    const dateDisplay=b.endDate||(b.yearOnly?b.yearOnly+' (yıl)':'');
+    const dateDisplay=b.startDate&&b.endDate
+      ?`📅 ${b.startDate} → ✅ ${b.endDate}`
+      :b.endDate?`✅ ${b.endDate}`
+      :b.yearOnly?`📅 ${b.yearOnly} (yıl)`:'';
+    const tags=[
+      ...(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`),
+      ...(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`),
+      b.rating?`<span style="font-size:.72rem;color:var(--gold);white-space:nowrap">${'⭐'.repeat(Math.floor(b.rating))}${b.rating%1?'½':''}</span>`:'',
+      b.pages?`<span class="book-pages">${b.pages}s</span>`:'',
+    ].filter(Boolean).join('');
     return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
       <div class="book-info">
         <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
         ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
-        ${dateDisplay?`<span class="book-meta">${b.startDate&&b.endDate?'📅 '+b.startDate+' → ✅ '+b.endDate:b.endDate?'✅ '+b.endDate:b.yearOnly?'📅 '+b.yearOnly+' (yıl)':''}</span>`:''}
+        ${dateDisplay?`<span class="book-meta">${dateDisplay}</span>`:''}
         ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
+        ${tags?`<div class="book-tags-row">${tags}</div>`:''}
       </div>
-      <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center">
-        ${(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`).join('')}
-        ${(b.genres||[]).slice(0,2).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')}
-        ${b.rating?`<span style="font-size:.72rem;color:var(--gold)">${'⭐'.repeat(Math.floor(b.rating))}${b.rating%1?'½':''}</span>`:''}
-      </div>
-      ${b.pages?`<span class="book-pages">${b.pages}s</span>`:''}
     </div>`;
   }
 
