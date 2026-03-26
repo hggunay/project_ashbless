@@ -100,6 +100,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .loading::after{content:'...';animation:dots 1s infinite steps(3);}
 @keyframes dots{0%{content:'.'}33%{content:'..'}66%{content:'...'}}
 
+.load-more-btn{display:block;width:100%;padding:.75rem;background:transparent;border:1px dashed rgba(201,162,39,.3);border-radius:2px;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);cursor:pointer;text-align:center;margin-top:.5rem;transition:all .2s;}
+.load-more-btn:hover{border-color:var(--gold);color:var(--gold);background:rgba(201,162,39,.05);}
 /* STORIES */
 .story-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .story-item:hover{background:rgba(201,162,39,.08);}
@@ -399,7 +401,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
-      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
+      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar <span id="adminBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
     </div>
 
     <!-- FEED PANEL -->
@@ -584,6 +586,50 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           </select>
         </div>
         <div id="journalContainer" style="padding:.5rem"></div>
+      </div>
+      <!-- Yeni Defter Girişi -->
+      <div class="add-section" style="margin-top:1rem">
+        <div class="section-title">✏️ Yeni Giriş Ekle</div>
+        <div class="field-group" style="margin-bottom:.75rem">
+          <span class="field-label">Kitap Seç *</span>
+          <select class="book-input" id="journalBookSelect" style="font-size:.9rem">
+            <option value="">— Kitap seç —</option>
+          </select>
+        </div>
+        <div class="chip-group-label">Giriş Türü</div>
+        <div class="chip-group" id="journalEntryTypeChips" style="margin-bottom:.75rem">
+          <span class="chip active" data-val="review" onclick="selectJournalEntryType(this)">📖 Değerlendirme</span>
+          <span class="chip" data-val="quote" onclick="selectJournalEntryType(this)">💬 Alıntı</span>
+        </div>
+        <div id="journalReviewWrap">
+          <div class="field-group" style="margin-bottom:.5rem">
+            <span class="field-label">⭐ Puan (isteğe bağlı)</span>
+            <div id="journalQuickStars" style="display:flex;gap:.2rem;margin-top:.2rem">
+              ${[1,2,3,4,5].map(s=>`
+                <button class="star-btn" onclick="setJournalQuickRating(${s})" data-val="${s}">★</button>
+                <button class="star-btn" onclick="setJournalQuickRating(${s-.5})" data-val="${s-.5}" style="margin-left:-.8rem;font-size:.8rem">½</button>
+              `).join('')}
+            </div>
+          </div>
+          <div class="field-group">
+            <span class="field-label">📖 Değerlendirme</span>
+            <textarea class="book-input" id="journalReviewText" placeholder="Kitap hakkında düşüncelerini yaz..." style="min-height:80px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem;font-style:italic"></textarea>
+          </div>
+        </div>
+        <div id="journalQuoteWrap" style="display:none">
+          <div class="field-group" style="margin-bottom:.5rem">
+            <span class="field-label">💬 Alıntı Metni</span>
+            <textarea class="book-input" id="journalQuoteText" placeholder="Alıntı metni... (şiir için her mısrayı ayrı satıra yaz)" style="min-height:70px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem;font-style:italic"></textarea>
+          </div>
+          <div class="field-group">
+            <span class="field-label">Sayfa No (isteğe bağlı)</span>
+            <input class="book-input" id="journalQuotePage" type="number" placeholder="örn: 42" style="max-width:120px"/>
+          </div>
+        </div>
+        <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.75rem">
+          <button class="btn btn-primary" onclick="addJournalEntry()">+ Ekle</button>
+          <div class="status-msg" id="journalEntryStatus"></div>
+        </div>
       </div>
     </div>
 
@@ -1051,6 +1097,7 @@ async function saveDb(){
   try{await fbSet('aa-v4',db);}catch(e){}
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
+  updateAdminBadge();
 }
 function myBooks(){return db.books[me]||[];}
 function targetBooks(){return db.books[viewing||me]||[];}
@@ -1237,6 +1284,12 @@ function saveHint(){
   if(hintEl) hintEl.style.borderColor='var(--moss)';
   setTimeout(()=>{if(hintEl)hintEl.style.borderColor='';},2000);
   notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
+}
+
+function updateAdminBadge(){
+  const reqs=(db.forgotRequests||[]).filter(r=>db.users[r.u]);
+  const badge=document.getElementById('adminBadge');
+  if(badge){badge.style.display=reqs.length>0?'':'none';badge.textContent=reqs.length>0?String(reqs.length):'';}
 }
 
 function adminResetFromForgot(u){
@@ -1442,6 +1495,7 @@ function enterApp(){
   render();setTodayDate();
   showSpecialDayBanner();
   updateFeedBadge();
+  updateAdminBadge();
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist'],true),50);
 }
 
@@ -1452,7 +1506,7 @@ function showPanel(id,el){
   document.getElementById(id).classList.add('active');if(el)el.classList.add('active');
   if(id==='settings') renderSettings();
   else if(id==='stats') renderStatsPanel();
-  else if(id==='journal') renderJournal();
+  else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){renderFeed();updateFeedBadge();}
   else render();
@@ -2559,14 +2613,14 @@ function addStory(){
 }
 
 function filterStories(f,el){
-  storyFilter=f;
+  storyFilter=f; storiesPage=1;
   document.querySelectorAll('#stories .filter-tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
   renderStories();
 }
 
 function setSortStories(mode,el){
-  storySortMode=mode;
+  storySortMode=mode; storiesPage=1;
   document.getElementById('sortByDate').classList.toggle('active',mode==='date');
   document.getElementById('sortByAuthor').classList.toggle('active',mode==='author');
   renderStories();
@@ -2744,7 +2798,6 @@ function renderStories(){
   const srcMap={kitap:'📖',ekitap:'📱',sesli:'🎧',web:'🌐'};
 
   if(storySortMode==='author'){
-    // Yazara göre grupla
     const groups={};
     stories.forEach(s=>{
       const a=s.author||'Yazar Belirtilmemiş';
@@ -2760,9 +2813,11 @@ function renderStories(){
         ${list.map(s=>storyItemHtml(s,target,srcMap)).join('')}
       </div>`).join('');
   } else {
-    // Eklenme tarihine göre (yeniden eskiye)
     const sorted=[...stories].sort((a,b)=>new Date(b.addedAt)-new Date(a.addedAt));
-    container.innerHTML=sorted.map(s=>storyItemHtml(s,target,srcMap)).join('');
+    const visible=sorted.slice(0,storiesPage*PAGE_SIZE);
+    const hasMore=sorted.length>storiesPage*PAGE_SIZE;
+    container.innerHTML=visible.map(s=>storyItemHtml(s,target,srcMap)).join('')
+      +(hasMore?`<button class="load-more-btn" onclick="storiesPage++;renderStories()">↓ Daha fazla yükle (${sorted.length-storiesPage*PAGE_SIZE} kaldı)</button>`:'');
   }
 }
 
@@ -2787,9 +2842,11 @@ function storyItemHtml(s, ownerId, srcMap){
 // ── ANA SAYFA (FEED) ─────────────────────────────────────────
 let feedFilter='all';
 let lastFeedVisit=0;
+const PAGE_SIZE=20;
+let feedPage=1, storiesPage=1, booksPage=1, journalPage=1;
 
 function filterFeed(f,el){
-  feedFilter=f;
+  feedFilter=f; feedPage=1;
   document.querySelectorAll('#feed .filter-tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
   renderFeed();
@@ -2835,7 +2892,9 @@ function updateFeedBadge(){
   try{const saved=localStorage.getItem('aa-feed-visit-'+me);lastFeedVisit=saved?parseInt(saved):0;}catch(e){}
   const allCards=getFeedCards();
   const newCount=allCards.filter(c=>{
-    const ts=typeof c.ts==='number'?c.ts:new Date(c.ts||0).getTime();
+    let ts=c.ts;
+    if(typeof ts==='string') ts=new Date(ts).getTime();
+    if(!ts||isNaN(ts)) return false;
     return ts>lastFeedVisit&&c.u!==me;
   }).length;
   const badge=document.getElementById('feedBadge');
@@ -2854,10 +2913,10 @@ function markFeedVisited(){
   if(inlineBadge) inlineBadge.style.display='none';
 }
 
-function renderFeed(){
+function renderFeed(append=false){
   const container=document.getElementById('feedContainer');
   if(!container) return;
-  markFeedVisited();
+  if(!append){markFeedVisited();feedPage=1;}
 
   let cards=getFeedCards();
   if(feedFilter==='reviews') cards=cards.filter(c=>c.type==='review');
@@ -2901,8 +2960,7 @@ function renderFeed(){
     }).join('');
   }
 
-  container.innerHTML=cards.map(card=>{
-    const isMe=card.u===me;
+  function cardHtml(card){
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
     return`<div class="journal-entry">
       <div class="journal-entry-header">
@@ -2935,11 +2993,25 @@ function renderFeed(){
           </div>
         </div>
       `}
-      <div class="journal-reactions">
-        ${feedReactionHtml(card)}
-      </div>
+      <div class="journal-reactions">${feedReactionHtml(card)}</div>
     </div>`;
-  }).join('');
+  }
+
+  const visible=cards.slice(0,feedPage*PAGE_SIZE);
+  const hasMore=cards.length>feedPage*PAGE_SIZE;
+  const html=visible.map(cardHtml).join('')
+    +(hasMore?`<button class="load-more-btn" onclick="feedPage++;renderFeed(true)">↓ Daha fazla yükle (${cards.length-feedPage*PAGE_SIZE} kaldı)</button>`:'');
+
+  if(append){
+    // Eski butonu kaldır, yeni içeriği ekle
+    const oldBtn=container.querySelector('.load-more-btn');
+    if(oldBtn) oldBtn.remove();
+    const newCards=cards.slice((feedPage-1)*PAGE_SIZE,feedPage*PAGE_SIZE);
+    container.insertAdjacentHTML('beforeend',newCards.map(cardHtml).join(''));
+    if(hasMore) container.insertAdjacentHTML('beforeend',`<button class="load-more-btn" onclick="feedPage++;renderFeed(true)">↓ Daha fazla yükle (${cards.length-feedPage*PAGE_SIZE} kaldı)</button>`);
+  } else {
+    container.innerHTML=html;
+  }
 }
 
 function toggleStoryReaction(storyOwner,storyId,reaction){
@@ -2957,7 +3029,7 @@ function toggleStoryReaction(storyOwner,storyId,reaction){
 let journalFilter='all';
 
 function filterJournal(f,el){
-  journalFilter=f;
+  journalFilter=f; journalPage=1;
   document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
   if(el) el.classList.add('active');
   renderJournal();
@@ -2975,6 +3047,68 @@ function buildJournalDropdowns(allCards){
   });
   authorSel.innerHTML='<option value="">✍️ Yazar</option>'+[...authors].sort().map(a=>`<option value="${a}"${a===curAuthor?' selected':''}>${a}</option>`).join('');
   bookSel.innerHTML='<option value="">📖 Kitap</option>'+[...books].sort().map(b=>`<option value="${b}"${b===curBook?' selected':''}>${b}</option>`).join('');
+}
+
+let journalQuickRating=0;
+
+function selectJournalEntryType(el){
+  document.querySelectorAll('#journalEntryTypeChips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  const val=el.dataset.val;
+  document.getElementById('journalReviewWrap').style.display=val==='review'?'':'none';
+  document.getElementById('journalQuoteWrap').style.display=val==='quote'?'':'none';
+}
+
+function setJournalQuickRating(val){
+  journalQuickRating=journalQuickRating===val?0:val;
+  document.querySelectorAll('#journalQuickStars .star-btn').forEach(btn=>{
+    btn.classList.toggle('active',journalQuickRating>=parseFloat(btn.dataset.val));
+  });
+}
+
+function populateJournalBookSelect(){
+  const sel=document.getElementById('journalBookSelect');
+  if(!sel) return;
+  const books=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  books.sort((a,b)=>(a.title||'').localeCompare(b.title||'','tr'));
+  sel.innerHTML='<option value="">— Kitap seç —</option>'+books.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('');
+}
+
+function addJournalEntry(){
+  const bookId=parseInt(document.getElementById('journalBookSelect').value);
+  if(!bookId){notify('⚠️','Lütfen bir kitap seç.');return;}
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const typeEl=document.querySelector('#journalEntryTypeChips .chip.active');
+  const type=typeEl?typeEl.dataset.val:'review';
+  const st=document.getElementById('journalEntryStatus');
+
+  if(type==='review'){
+    const text=document.getElementById('journalReviewText').value.trim();
+    if(!text){notify('⚠️','Değerlendirme metni boş olamaz.');return;}
+    book.review=text;
+    book.reviewTs=Date.now();
+    if(journalQuickRating>0) book.rating=journalQuickRating;
+    // sıfırla
+    document.getElementById('journalReviewText').value='';
+    journalQuickRating=0;
+    document.querySelectorAll('#journalQuickStars .star-btn').forEach(b=>b.classList.remove('active'));
+  } else {
+    const text=document.getElementById('journalQuoteText').value.trim();
+    if(!text){notify('⚠️','Alıntı metni boş olamaz.');return;}
+    const page=document.getElementById('journalQuotePage').value;
+    if(!book.quotes) book.quotes=[];
+    book.quotes.push({text, page:page?parseInt(page):null, ts:Date.now()});
+    document.getElementById('journalQuoteText').value='';
+    document.getElementById('journalQuotePage').value='';
+  }
+
+  saveDb();
+  renderJournal();
+  renderFeed();
+  st.textContent='✓ Eklendi!';
+  setTimeout(()=>st.textContent='',2500);
+  notify('📒 Deftere eklendi',`"${book.title}" için ${type==='review'?'değerlendirme':'alıntı'} kaydedildi.`);
 }
 
 function renderJournal(){
@@ -3056,7 +3190,7 @@ function renderJournal(){
     }).join('');
   }
 
-  container.innerHTML=cards.map(card=>{
+  function journalCardHtml(card){
     const isMe=card.u===me;
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
     return`<div class="journal-entry">
@@ -3067,26 +3201,12 @@ function renderJournal(){
           <span class="journal-entry-book" onclick="openBook(${card.bookId})">${card.bookTitle||'—'}</span>
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
-        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':'💬 alıntı'}</span>
+        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':'💬 alıntı'}</span>
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
         <div class="journal-review">${card.text}</div>
         ${isMe?`<div style="margin-top:.5rem"><button class="journal-copy-btn" onclick="openBook(${card.bookId})">✏️ Düzenle</button></div>`:''}
-      `:card.type==='story'?`
-        <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.3rem">
-          <span class="journal-entry-type-badge journal-type-story" style="margin-bottom:0">📖 hikâye okudu</span>
-          ${card.rating?`<span style="font-size:.85rem;color:var(--gold)">${'⭐'.repeat(Math.floor(card.rating))}${card.rating%1?'½':''}</span>`:''}
-        </div>
-        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
-          <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
-        </div>
-        ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${card.sourceBook}</div>`:''}
-        <div class="book-tags-row" style="margin-top:.3rem">
-          <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
-          ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
-        </div>
-        ${isMe?`<div style="margin-top:.4rem"><button class="journal-copy-btn" onclick="openStoryDetail('${card.u}',${card.storyId})">✏️ Düzenle</button></div>`:''}
       `:`
         <div class="journal-quote">
           <div class="journal-quote-text">${card.text}</div>
@@ -3096,11 +3216,14 @@ function renderJournal(){
           </div>
         </div>
       `}
-      <div class="journal-reactions">
-        ${reactionHtml(card)}
-      </div>
+      <div class="journal-reactions">${reactionHtml(card)}</div>
     </div>`;
-  }).join('');
+  }
+
+  const visible=cards.slice(0,journalPage*PAGE_SIZE);
+  const hasMore=cards.length>journalPage*PAGE_SIZE;
+  container.innerHTML=visible.map(journalCardHtml).join('')
+    +(hasMore?`<button class="load-more-btn" onclick="journalPage++;renderJournal()">↓ Daha fazla yükle (${cards.length-journalPage*PAGE_SIZE} kaldı)</button>`:'')
 }
 
 function countReaction(bookOwner,bookId,reaction){
@@ -3516,12 +3639,20 @@ function renderBookList(){
       ?'<div class="empty-state">Filtreye uyan kitap bulunamadı.</div>'
       :'<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
   } else {
+    const newBooksAll=filteredBooks.filter(b=>!b.retroactive);
+    const pastBooksAll=filteredBooks.filter(b=>b.retroactive);
+    const totalVisible=booksPage*PAGE_SIZE;
+    const visibleNew=newBooksAll.slice(0,totalVisible);
+    const remaining=totalVisible-visibleNew.length;
+    const visiblePast=remaining>0?pastBooksAll.slice(0,remaining):[];
+    const hasMore=filteredBooks.length>totalVisible;
     let html='';
-    if(newBooks.length) html+=newBooks.map(bookItemHtml).join('');
-    if(pastBooks.length){
-      html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.5;padding:.6rem .75rem .3rem;border-top:${newBooks.length?'1px solid rgba(201,162,39,.1)':'none'}">📦 Geçmiş Okumalar (${pastBooks.length})</div>`;
-      html+=pastBooks.map(bookItemHtml).join('');
+    if(visibleNew.length) html+=visibleNew.map(bookItemHtml).join('');
+    if(visiblePast.length){
+      html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.5;padding:.6rem .75rem .3rem;border-top:${visibleNew.length?'1px solid rgba(201,162,39,.1)':'none'}">📦 Geçmiş Okumalar (${pastBooksAll.length})</div>`;
+      html+=visiblePast.map(bookItemHtml).join('');
     }
+    if(hasMore) html+=`<button class="load-more-btn" onclick="booksPage++;renderBookList()">↓ Daha fazla yükle (${filteredBooks.length-totalVisible} kaldı)</button>`;
     list.innerHTML=html;
   }
 
