@@ -80,6 +80,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .book-input{width:100%;padding:.65rem .9rem;background:rgba(245,237,214,.08);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--parchment);font-family:'Crimson Pro',serif;font-size:.95rem;outline:none;transition:border-color .2s;}
 .book-input:focus{border-color:var(--gold);}
 .book-input::placeholder{color:rgba(245,237,214,.3);font-style:italic;}
+/* Filtre bar'larındaki input — kart (açık) arka planında okunabilir */
+#bookFilterBar .book-input,#journalSearchBar .book-input{background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);}
+#bookFilterBar .book-input::placeholder,#journalSearchBar .book-input::placeholder{color:rgba(26,18,8,.35);font-style:italic;}
+#bookFilterBar .book-input:focus,#journalSearchBar .book-input:focus{border-color:var(--gold);}
 .chip-group-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);margin-bottom:.4rem;}
 .chip-group{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.75rem;}
 .chip{padding:.4rem .85rem;border:1px solid rgba(201,162,39,.35);border-radius:20px;background:transparent;color:rgba(245,237,214,.6);font-family:'Crimson Pro',serif;font-size:.85rem;cursor:pointer;transition:all .2s;user-select:none;}
@@ -1829,11 +1833,11 @@ function openBook(bookId){
         <div id="quoteList_${book.id}">
           ${(book.quotes||[]).map((q,i)=>`
             <div class="journal-quote" style="margin-bottom:.4rem">
-              ${q.text}
+              <div style="white-space:pre-wrap;word-break:break-word;font-style:italic">${q.text}</div>
               ${q.page?`<div class="journal-quote-page">s. ${q.page}</div>`:''}
               <div style="display:flex;gap:.4rem;margin-top:.4rem">
-                <button class="journal-copy-btn" style="position:static;opacity:.6" onclick="copyQuote('${me}',${book.id},${i})">📋 Kopyala</button>
-                ${isMe?`<button class="journal-copy-btn" style="position:static;opacity:.6;color:var(--rust)" onclick="deleteQuote(${book.id},${i})">🗑 Sil</button>`:''}
+                <button class="journal-copy-btn" style="position:static;opacity:.6" onclick="copyCardQuote('${me}',${book.id},${i})">📋 Kopyala</button>
+                ${isMe?`<button class="journal-copy-btn" style="position:static;opacity:.6;color:var(--rust)" onclick="confirmDeleteQuote(${book.id},${i},this)">🗑 Sil</button>`:''}
               </div>
             </div>`).join('')}
         </div>
@@ -2122,6 +2126,23 @@ function deleteQuote(bookId, idx){
   book.quotes.splice(idx,1);
   saveDb();
   openBook(bookId);
+}
+
+function confirmDeleteQuote(bookId, idx, btn){
+  if(btn.dataset.confirming==='1'){
+    deleteQuote(bookId, idx);
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='⚠️ Emin misin?';
+  btn.style.opacity='1';
+  setTimeout(()=>{
+    if(btn.dataset.confirming==='1'){
+      btn.dataset.confirming='';
+      btn.textContent='🗑 Sil';
+      btn.style.opacity='.6';
+    }
+  },3000);
 }
 
 // ── OKUMA DEFTERİ ─────────────────────────────────────────────
