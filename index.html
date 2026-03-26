@@ -196,7 +196,30 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .me-badge{font-size:.55rem;background:var(--gold);color:var(--ink);padding:.15rem .5rem;border-radius:20px;font-family:'Space Mono',monospace;font-weight:700;margin-left:.4rem;}
 .viewing-banner{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.6rem 1rem;margin-bottom:1rem;font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-size:.9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
 
-/* NOTIFICATION */
+/* SPECIAL DAY BANNER */
+.special-day-banner{
+  background:linear-gradient(135deg,#2a1a05,#1a2a05);
+  border:1px solid var(--gold);
+  border-radius:4px;
+  margin:0 1.5rem .75rem;
+  padding:.65rem 1rem;
+  display:flex;align-items:center;gap:.75rem;
+  animation:bannerSlide .4s cubic-bezier(.34,1.56,.64,1);
+  position:relative;overflow:hidden;cursor:pointer;
+}
+.special-day-banner::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--gold),transparent);
+}
+@keyframes bannerSlide{from{opacity:0;transform:translateY(-12px);}to{opacity:1;transform:translateY(0);}}
+.special-day-icon{font-size:1.6rem;flex-shrink:0;}
+.special-day-text{flex:1;min-width:0;}
+.special-day-title{font-family:'Playfair Display',serif;font-size:.92rem;font-weight:700;color:var(--gold);line-height:1.3;}
+.special-day-sub{font-family:'Crimson Pro',serif;font-style:italic;font-size:.8rem;color:var(--parchment-dark);opacity:.75;margin-top:.1rem;}
+.special-day-link{font-family:'Space Mono',monospace;font-size:.58rem;color:var(--gold);opacity:.55;margin-top:.2rem;text-decoration:underline;}
+.special-day-close{background:none;border:none;color:var(--rust);opacity:.45;cursor:pointer;font-size:1rem;padding:.2rem .3rem;flex-shrink:0;transition:opacity .15s;line-height:1;}
+.special-day-close:hover{opacity:1;}
+
 .notification{position:fixed;bottom:2rem;right:2rem;background:linear-gradient(135deg,#2a1a0a,#0a1a2a);border:1px solid var(--gold);border-radius:4px;padding:1rem 1.5rem;color:var(--parchment);max-width:280px;box-shadow:0 8px 30px rgba(0,0,0,.5);transform:translateX(120%);transition:transform .4s cubic-bezier(.34,1.56,.64,1);z-index:400;}
 .notification.show{transform:translateX(0);}
 .notif-title{font-family:'Playfair Display',serif;color:var(--gold);font-size:.95rem;margin-bottom:.2rem;}
@@ -325,6 +348,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
     </div>
   </div>
   <div class="app">
+    <div id="specialDayBannerWrap"></div>
     <div class="nav-tabs">
       <button class="nav-tab active" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
@@ -1070,10 +1094,109 @@ function setTodayDate(){
   const sd=document.getElementById('bookStartDate');
   if(sd&&!sd.value)sd.value=today;
 }
+// ── ÖZEL GÜNLER ───────────────────────────────────────────────
+const SPECIAL_DAYS = [
+  // Sabit tarihler: {month, day, icon, title, sub, url}
+  {month:1,  day:2,  icon:'🤖', title:'Isaac Asimov Günü',          sub:'Bilimkurgunun ustası, "Foundation" serisi ve robot hikayeleri...', url:'https://tr.wikipedia.org/wiki/Isaac_Asimov'},
+  {month:1,  day:3,  icon:'💍', title:'J.R.R. Tolkien Günü',        sub:'Orta Dünya\'nın yaratıcısı bugün doğdu. "Yolculuk orada ve geri dönüş..." ', url:'https://tr.wikipedia.org/wiki/J._R._R._Tolkien'},
+  {month:1,  day:15, icon:'🖊️', title:'Halit Ziya Uşaklıgil Günü', sub:'Türk edebiyatının "Aşk-ı Memnu" ustası bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Halit_Ziya_U%C5%9Fakl%C4%B1gil'},
+  {month:2,  day:7,  icon:'📜', title:'Charles Dickens Günü',        sub:'"İki Şehrin Masalı", "Oliver Twist"... Bugün onun doğum günü.', url:'https://tr.wikipedia.org/wiki/Charles_Dickens'},
+  {month:2,  day:25, icon:'🌿', title:'Yaşar Kemal Günü',            sub:'"İnce Memed"in yazarı bugün doğdu. Torosların sesi...', url:'https://tr.wikipedia.org/wiki/Ya%C5%9Far_Kemal'},
+  {month:3,  day:13, icon:'🌙', title:'Mehmet Akif Ersoy Günü',      sub:'İstiklal Marşı\'nın şairi bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Mehmet_Akif_Ersoy'},
+  {month:4,  day:15, icon:'🌸', title:'Orhan Veli Doğum Günü',       sub:'"Anlatamıyorum" — Orhan Veli bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Orhan_Veli_Kan%C4%B1k'},
+  {month:4,  day:23, icon:'📚', title:'Dünya Kitap Günü — UNESCO',   sub:'Okumak, hediye vermek ve telif haklarını kutlamak için bugün!', url:'https://tr.wikipedia.org/wiki/D%C3%BCnya_Kitap_ve_Telif_Haklar%C4%B1_G%C3%BCn%C3%BC'},
+  {month:5,  day:4,  icon:'⚔️', title:'Yıldız Savaşları Günü',       sub:'"May the 4th be with you" — Güç seninle olsun!', url:'https://tr.wikipedia.org/wiki/Star_Wars'},
+  {month:5,  day:25, icon:'🧣', title:'Havlu Günü',                  sub:'"The Hitchhiker\'s Guide to the Galaxy": Havlunu asla unutma!', url:'https://en.wikipedia.org/wiki/Towel_Day'},
+  {month:7,  day:9,  icon:'😱', title:'Dean Koontz Günü',            sub:'Gerilim ve korkunun ustası bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Dean_Koontz'},
+  {month:7,  day:16, icon:'🪐', title:'Arthur C. Clarke Günü',       sub:'"2001: Uzay Macerası"nın yaratıcısı bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Arthur_C._Clarke'},
+  {month:7,  day:31, icon:'⚡', title:'Harry Potter\'ın Doğum Günü', sub:'Hogwarts\'ın en ünlü büyücüsü bugün doğdu. Butterbeer!', url:'https://tr.wikipedia.org/wiki/Harry_Potter'},
+  {month:8,  day:12, icon:'❤️', title:'Kitapseverler Günü',          sub:'Book Lovers Day — Sevdiğin kitabı bugün bir arkadaşına öner!', url:'https://en.wikipedia.org/wiki/Book_Lovers_Day'},
+  {month:9,  day:21, icon:'🔬', title:'H.G. Wells Günü',             sub:'"Zaman Makinesi", "Dünyaların Savaşı"... Bilimkurgunun babası.', url:'https://tr.wikipedia.org/wiki/H._G._Wells'},
+  {month:9,  day:22, icon:'🍂', title:'Hobbit Günü',                 sub:'Bilbo ve Frodo Baggins\'in doğum günü. İkinci kahvaltı şart!', url:'https://en.wikipedia.org/wiki/Hobbit_Day'},
+  {month:10, day:15, icon:'📜', title:'Dünya El Yazması Günü',       sub:'Binlerce yıllık insan bilgeliğini taşıyan el yazmalarını bugün anıyoruz.', url:'https://en.wikipedia.org/wiki/World_Manuscript_Day'},
+  {month:10, day:16, icon:'🌹', title:'Oscar Wilde Günü',            sub:'"Kendim olmaktan başka seçeneğim yok." Bugün doğum günü.', url:'https://tr.wikipedia.org/wiki/Oscar_Wilde'},
+  {month:11, day:30, icon:'🎭', title:'Mark Twain Günü',             sub:'"Tom Sawyer"ın ve "Huckleberry Finn"in yaratıcısı bugün doğdu.', url:'https://tr.wikipedia.org/wiki/Mark_Twain'},
+  {month:11, day:30, icon:'🪲', title:'Franz Kafka Anma Günü',       sub:'"Dönüşüm"ün yazarı. Bugün onu anıyoruz.', url:'https://tr.wikipedia.org/wiki/Franz_Kafka'},
+  // Dinamik tarihler: {type, ...}
+  {type:'nth-weekday', month:5, nth:1, weekday:6, icon:'🎨', title:'Ücretsiz Çizgi Roman Günü',  sub:'Free Comic Book Day! Bugün dünyanın dört bir yanında çizgi roman ücretsiz dağıtılıyor.', url:'https://en.wikipedia.org/wiki/Free_Comic_Book_Day'},
+  {type:'month-only', month:6, icon:'🎧', title:'Sesli Kitap Takdir Ayı',   sub:'Haziran boyunca sesli kitapları kutluyoruz. Kulaklıkları tak!', url:'https://en.wikipedia.org/wiki/Audiobook'},
+  {type:'last-week', month:9, icon:'🚫', title:'Yasaklı Kitaplar Haftası',  sub:'Eylül\'ün son haftası. Yasaklanan kitapları okuma özgürlüğü için bugün!', url:'https://en.wikipedia.org/wiki/Banned_Books_Week'},
+];
+
+function getSpecialDay(){
+  const now=new Date();
+  const m=now.getMonth()+1, d=now.getDate(), wd=now.getDay();
+  const matches=[];
+
+  SPECIAL_DAYS.forEach(ev=>{
+    if(ev.type==='month-only'){
+      if(ev.month===m) matches.push(ev);
+    } else if(ev.type==='nth-weekday'){
+      // Ayın N'inci haftanın X günü (weekday: 0=Pazar,6=Cumartesi)
+      if(ev.month!==m) return;
+      let count=0,found=false;
+      for(let i=1;i<=31;i++){
+        const td=new Date(now.getFullYear(),m-1,i);
+        if(td.getMonth()!==m-1) break;
+        if(td.getDay()===ev.weekday){count++;if(count===ev.nth){found=(i===d);break;}}
+      }
+      if(found) matches.push(ev);
+    } else if(ev.type==='last-week'){
+      // Ayın son haftası (son 7 gün)
+      if(ev.month!==m) return;
+      const lastDay=new Date(now.getFullYear(),m,0).getDate();
+      if(d>=lastDay-6) matches.push(ev);
+    } else {
+      // Sabit tarih
+      if(ev.month===m&&ev.day===d) matches.push(ev);
+    }
+  });
+
+  return matches.length?matches[Math.floor(Math.random()*matches.length)]:null;
+}
+
+function showSpecialDayBanner(){
+  const wrap=document.getElementById('specialDayBannerWrap');
+  if(!wrap) return;
+  const day=getSpecialDay();
+  if(!day){wrap.innerHTML='';return;}
+
+  // Bugün kapatıldıysa gösterme
+  const key='aa-banner-'+new Date().toISOString().split('T')[0];
+  try{if(localStorage.getItem(key)==='closed'){wrap.innerHTML='';return;}}catch(e){}
+
+  const isMonthOnly=day.type==='month-only'||day.type==='last-week';
+  const periodLabel=isMonthOnly?'Bu ay':'Bugün';
+
+  wrap.innerHTML=`
+    <div class="special-day-banner" onclick="specialDayClick('${(day.url||'').replace(/'/g,"\\'")}')">
+      <span class="special-day-icon">${day.icon}</span>
+      <div class="special-day-text">
+        <div class="special-day-title">${periodLabel} — ${day.title}</div>
+        <div class="special-day-sub">${day.sub}</div>
+        ${day.url?`<div class="special-day-link">↗ Daha fazla bilgi</div>`:''}
+      </div>
+      <button class="special-day-close" onclick="closeSpecialDayBanner(event)" title="Kapat">✕</button>
+    </div>`;
+}
+
+function specialDayClick(url){
+  if(url) window.open(url,'_blank','noopener');
+}
+
+function closeSpecialDayBanner(e){
+  e.stopPropagation();
+  const wrap=document.getElementById('specialDayBannerWrap');
+  if(wrap) wrap.innerHTML='';
+  const key='aa-banner-'+new Date().toISOString().split('T')[0];
+  try{localStorage.setItem(key,'closed');}catch(e){}
+}
+
 function enterApp(){
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
   const user=db.users[me];document.getElementById('headerAvatar').textContent=user.avatar;document.getElementById('headerUsername').textContent=user.displayName;
   showPanel('myBooks',document.querySelector('.nav-tab'));render();setTodayDate();
+  showSpecialDayBanner();
 }
 
 // ── NAV ───────────────────────────────────────────────────────
