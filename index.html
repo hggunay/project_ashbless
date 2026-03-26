@@ -2487,7 +2487,8 @@ function renderStatsPanel(){
 
   // Özet sayılar
   let badgeCount=0;
-  BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badgeCount++;}));
+  let badgeTotal=0;
+  BADGE_CATS.forEach(c=>c.badges.forEach(b=>{badgeTotal++;if(bstat(b,books).earned)badgeCount++;}));
   const totalPages=books.reduce((s,b)=>s+(b.pages||0),0);
   const countries=new Set(books.filter(b=>b.country).map(b=>b.country.trim().toLowerCase()));
   const series=new Set(books.filter(b=>b.series).map(b=>b.series));
@@ -2573,7 +2574,7 @@ function renderStatsPanel(){
         ${statsSection('stats-overview','📈 Genel Bakış',`
           <div class="stats-grid">
             <div class="stats-big-card"><div class="stats-big-num">${books.length}</div><div class="stats-big-label">Kitap Okundu</div></div>
-            <div class="stats-big-card"><div class="stats-big-num">${badgeCount}</div><div class="stats-big-label">Rozet</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${badgeCount}</div><div class="stats-big-label">Rozet</div><div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-top:.2rem">${badgeCount}/${badgeTotal}</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${countries.size}</div><div class="stats-big-label">Ülke</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${series.size}</div><div class="stats-big-label">Seri</div></div>
             ${totalPages?`<div class="stats-big-card"><div class="stats-big-num">${totalPages.toLocaleString('tr')}</div><div class="stats-big-label">Toplam Sayfa</div></div>`:''}
@@ -2892,10 +2893,15 @@ function renderBadges(){
     if(!filtered.length)return'';
     const key='badgeCat-'+ci;
     const isOpen=prefs[key]!==undefined?prefs[key]:true;
+    const catEarned=filtered.filter(b=>bstat(b,books).earned).length;
+    const catTotal=filtered.length;
     return`<div class="badge-category">
       <div class="category-label acc-header" onclick="toggleSection('${key}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
         <span>${cat.label}</span>
-        <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+        <span style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${catEarned===catTotal?'var(--gold)':'var(--rust)'};opacity:.8">${catEarned}/${catTotal}</span>
+          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+        </span>
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${key}">
         <div class="badge-grid">${filtered.map(b=>{
