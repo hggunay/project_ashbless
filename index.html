@@ -4149,10 +4149,7 @@ function addBulkBooksToSeries(seriesId){
   const authorEl = document.getElementById('seriesBulkAuthor_'+seriesId);
   if(!textEl) return;
   const raw = textEl.value;
-  const lines = (raw.includes('\n')
-    ? raw.split('\n')
-    : raw.split(',')
-  ).map(l=>l.trim()).filter(Boolean);
+  const lines = raw.split('\n').flatMap(l=>l.split(',')).map(l=>l.trim()).filter(Boolean);
   if(!lines.length) return;
   const data = mySeriesData();
   const ser = data.series[seriesId];
