@@ -4169,15 +4169,15 @@ function renderSeriesList(){
     const bookSelectHtml = `<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
       <div style="position:relative">
         <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
-          style="width:100%;font-size:.85rem;padding:.4rem .6rem;background:var(--paper);color:var(--ink)"
+          style="width:100%;font-size:.85rem;padding:.4rem .6rem"
           oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),200)"/>
         <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
       </div>
       <div style="display:flex;gap:.4rem">
         <input class="book-input" id="seriesBookAuthor_${ser.id}" type="text" placeholder="Yazar (isteğe bağlı)"
-          style="flex:1;font-size:.82rem;padding:.35rem .5rem;background:var(--paper);color:var(--ink)"/>
+          style="flex:1;font-size:.82rem;padding:.35rem .5rem"/>
         <input class="book-input" id="seriesBookNum_${ser.id}" type="number" min="1" placeholder="#"
-          style="width:55px;font-size:.82rem;padding:.35rem .4rem;background:var(--paper);color:var(--ink)"/>
+          style="width:55px;font-size:.82rem;padding:.35rem .4rem"/>
         <button class="btn btn-sm btn-primary" onclick="addBookToSeries('${ser.id}')">+ Ekle</button>
       </div>
       <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir</div>
