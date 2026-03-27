@@ -787,13 +787,20 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
             <div style="flex:1;min-width:180px">
               <div class="field-label" style="margin-bottom:.3rem">Seri Adı *</div>
-              <input class="book-input" id="newSeriesName" type="text" placeholder="örn: Dune Serisi"/>
+              <input class="book-input" id="newSeriesName" type="text" placeholder="örn: Dune Serisi" oninput="checkSeriesMatch()"/>
             </div>
             <div style="width:80px">
               <div class="field-label" style="margin-bottom:.3rem">Toplam Kitap</div>
               <input class="book-input" id="newSeriesTotal" type="number" min="1" placeholder="6"/>
             </div>
             <button class="btn btn-primary" onclick="createSeries()">+ Oluştur</button>
+          </div>
+          <div id="seriesMatchBanner" style="display:none;margin-top:.5rem;padding:.5rem .75rem;background:rgba(74,103,65,.12);border:1px solid rgba(74,103,65,.25);border-radius:6px;font-size:.82rem;color:var(--parchment)"></div>
+          <div style="margin-top:.75rem">
+            <div class="field-label" style="margin-bottom:.3rem">Toplu Kitap Ekle <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(her satıra bir kitap adı — kopyalayıp yapıştırabilirsin)</span></div>
+            <textarea class="book-input" id="newSeriesBulkBooks" placeholder="Dune&#10;Dune Mesih&#10;Dune Çocukları&#10;Tanrı İmparatoru Dune&#10;Dune'nin Kahinleri&#10;Dune'nin Ötekileri" style="min-height:100px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.9rem;line-height:1.6"></textarea>
+            <div class="field-label" style="margin-bottom:.3rem;margin-top:.5rem">Yazar <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(opsiyonel — tümü için)</span></div>
+            <input class="book-input" id="newSeriesBulkAuthor" type="text" placeholder="Frank Herbert"/>
           </div>
           <div class="status-msg" id="seriesCreateStatus" style="margin-top:.4rem"></div>
         </div>
@@ -4011,19 +4018,87 @@ function mySeriesData(){
   return db.seriesData[me];
 }
 
-function createSeries(){
+function checkSeriesMatch(){
+  const name = document.getElementById('newSeriesName').value.trim().toLowerCase();
+  const banner = document.getElementById('seriesMatchBanner');
+  if(!name||name.length<2){ banner.style.display='none'; return; }
+  const myBooksList = myBooks().filter(b=>b.series&&b.title&&!b.title.startsWith('ISBN:'));
+  const matches = myBooksList.filter(b=>(b.series||'').toLowerCase().includes(name)||name.includes((b.series||'').toLowerCase()));
+  if(matches.length){
+    const seriesGroups={};
+    matches.forEach(b=>{ const s=b.series||'?'; if(!seriesGroups[s])seriesGroups[s]=[]; seriesGroups[s].push(b); });
+    const parts = Object.entries(seriesGroups).map(([s,books])=>
+      `<strong>${s}</strong> (${books.length} kitap)`
+    ).join(', ');
+    banner.style.display='block';
+    banner.innerHTML=`📚 Kitaplarımda eşleşen seri bulundu: ${parts} — 
+      <button class="btn btn-sm" style="font-size:.7rem;margin-left:.4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" 
+        onclick="autoImportSeries()">Otomatik aktar</button>`;
+  } else {
+    banner.style.display='none';
+  }
+}
+
+function autoImportSeries(){
   const name = document.getElementById('newSeriesName').value.trim();
   const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
   const st = document.getElementById('seriesCreateStatus');
   if(!name){ st.textContent='⚠️ Seri adı boş olamaz.'; return; }
+  const myBooksList = myBooks().filter(b=>b.series&&b.title&&!b.title.startsWith('ISBN:'));
+  const nameLow = name.toLowerCase();
+  const matches = myBooksList.filter(b=>(b.series||'').toLowerCase().includes(nameLow)||nameLow.includes((b.series||'').toLowerCase()));
+  if(!matches.length){ st.textContent='⚠️ Eşleşen kitap bulunamadı.'; return; }
   const data = mySeriesData();
   const id = 'ser_'+Date.now();
-  data.series[id] = { id, name, total, books:[], createdAt: new Date().toISOString() };
+  const books = matches
+    .sort((a,b)=>(a.seriesNum||999)-(b.seriesNum||999))
+    .map((b,i)=>({ bookId:b.id, num:b.seriesNum||i+1 }));
+  data.series[id] = { id, name, total:total||books.length, books, createdAt: new Date().toISOString() };
   saveDb();
   document.getElementById('newSeriesName').value='';
   document.getElementById('newSeriesTotal').value='';
-  st.textContent='✓ Seri oluşturuldu!';
-  setTimeout(()=>{ st.textContent=''; }, 2500);
+  document.getElementById('newSeriesBulkBooks').value='';
+  document.getElementById('seriesMatchBanner').style.display='none';
+  st.textContent=`✓ ${matches.length} kitap otomatik aktarıldı!`;
+  setTimeout(()=>{ st.textContent=''; }, 3000);
+  renderSeriesList();
+}
+
+function createSeries(){
+  const name = document.getElementById('newSeriesName').value.trim();
+  const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
+  const bulkText = document.getElementById('newSeriesBulkBooks').value.trim();
+  const bulkAuthor = document.getElementById('newSeriesBulkAuthor').value.trim();
+  const st = document.getElementById('seriesCreateStatus');
+  if(!name){ st.textContent='⚠️ Seri adı boş olamaz.'; return; }
+  const data = mySeriesData();
+  const id = 'ser_'+Date.now();
+  // Toplu kitapları parse et
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
+  let books = [];
+  if(bulkText){
+    const lines = bulkText.split('
+').map(l=>l.trim()).filter(Boolean);
+    lines.forEach((line,i)=>{
+      // Kitaplarımda var mı?
+      const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
+      if(linked){
+        books.push({ bookId:linked.id, num:i+1 });
+      } else {
+        books.push({ manualTitle:line, manualAuthor:bulkAuthor||'', num:i+1, planned:true });
+      }
+    });
+  }
+  data.series[id] = { id, name, total:total||books.length||null, books, createdAt: new Date().toISOString() };
+  saveDb();
+  document.getElementById('newSeriesName').value='';
+  document.getElementById('newSeriesTotal').value='';
+  document.getElementById('newSeriesBulkBooks').value='';
+  document.getElementById('newSeriesBulkAuthor').value='';
+  document.getElementById('seriesMatchBanner').style.display='none';
+  const bookCount = books.length;
+  st.textContent=`✓ Seri oluşturuldu${bookCount?` · ${bookCount} kitap eklendi`:''}!`;
+  setTimeout(()=>{ st.textContent=''; }, 3000);
   renderSeriesList();
 }
 
@@ -4211,23 +4286,50 @@ function checkSeriesComplete(seriesId){
   }
 }
 
-function openEditSeriesBook(seriesId, bk, idx){
+function openEditSeriesBook(seriesId, bkJson, idx){
+  // Inline edit — kitabın altında açılan form
+  const containerId = 'seriesEditForm_'+seriesId+'_'+idx;
+  const existing = document.getElementById(containerId);
+  if(existing){ existing.remove(); return; }
+  let bk;
+  try{ bk = JSON.parse(decodeURIComponent(bkJson)); }catch(e){ return; }
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser) return;
-  const title = prompt('Kitap adı:', bk.manualTitle||bk.title||'');
-  if(title===null) return;
-  const author = prompt('Yazar:', bk.manualAuthor||bk.author||'');
-  if(author===null) return;
-  const num = prompt('Seri no (#):', bk.num||'');
-  if(num===null) return;
-  const pages = prompt('Sayfa sayısı:', bk.pages||'');
-  if(pages===null) return;
-  // Güncelle
-  if(bk.planned||bk.manualTitle){
-    ser.books[idx] = {...ser.books[idx], manualTitle: title.trim(), manualAuthor: author.trim(), num: parseInt(num)||null, pages: parseInt(pages)||null};
-  } else {
-    ser.books[idx] = {...ser.books[idx], num: parseInt(num)||null, pages: parseInt(pages)||null};
+  const isPlanned = bk.planned||bk.manualTitle;
+  const div = document.createElement('div');
+  div.id = containerId;
+  div.style.cssText = 'margin-top:.4rem;padding:.6rem .75rem;background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.2);border-radius:6px;display:flex;flex-direction:column;gap:.4rem';
+  div.innerHTML = `
+    ${isPlanned?`<div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <input class="book-input" id="edit_title_${containerId}" type="text" value="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" placeholder="Kitap adı" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
+      <input class="book-input" id="edit_author_${containerId}" type="text" value="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" placeholder="Yazar" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
+    </div>`:''}
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <input class="book-input" id="edit_num_${containerId}" type="number" value="${bk.num||''}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
+      <input class="book-input" id="edit_pages_${containerId}" type="number" value="${bk.pages||''}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
+      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}',${idx},'${containerId}',${isPlanned?'true':'false'})">✓ Kaydet</button>
+      <button class="btn btn-sm" style="font-size:.72rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById('${containerId}').remove()">İptal</button>
+    </div>`;
+  // Kitap item'ının altına ekle
+  const btn = event.target.closest('button');
+  const item = btn ? btn.closest('.series-book-item') : null;
+  if(item) item.insertAdjacentElement('afterend', div);
+}
+
+function saveEditSeriesBook(seriesId, idx, containerId, isPlanned){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser||!ser.books[idx]) return;
+  const numEl = document.getElementById('edit_num_'+containerId);
+  const pagesEl = document.getElementById('edit_pages_'+containerId);
+  ser.books[idx].num = parseInt(numEl?.value)||null;
+  ser.books[idx].pages = parseInt(pagesEl?.value)||null;
+  if(isPlanned){
+    const titleEl = document.getElementById('edit_title_'+containerId);
+    const authorEl = document.getElementById('edit_author_'+containerId);
+    if(titleEl) ser.books[idx].manualTitle = titleEl.value.trim();
+    if(authorEl) ser.books[idx].manualAuthor = authorEl.value.trim();
   }
   ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
   saveDb();
@@ -4363,7 +4465,7 @@ function renderSeriesList(){
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
-          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook('${ser.id}',${JSON.stringify(bk).replace(/'/g,'&#39;').replace(/"/g,'&quot;')},${books.indexOf(bk)})">✏️</button>
+          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook('${ser.id}',encodeURIComponent(JSON.stringify(bk)),${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="removeBookFromSeries(${removeKey})">✕</button>
         </div>
       </div>`;
