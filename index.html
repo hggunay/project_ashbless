@@ -307,6 +307,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .journal-entry-type-badge{display:inline-block;font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .45rem;border-radius:20px;margin-bottom:.5rem;}
 .journal-type-review{background:rgba(138,69,19,.12);color:var(--rust);border:1px solid rgba(138,69,19,.2);}
 .journal-type-quote{background:rgba(201,162,39,.12);color:#9a7a10;border:1px solid rgba(201,162,39,.25);}
+.journal-type-series{background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.25);}
 .journal-entry-header{display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;}
 .journal-entry-meta{flex:1;min-width:0;}
 .journal-entry-user{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
@@ -358,17 +359,17 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .series-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .path-card{background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.2);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .path-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;margin-bottom:.5rem;}
-.path-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.05);margin-bottom:.3rem;cursor:grab;}
+.path-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.12);margin-bottom:.3rem;cursor:grab;}
 .path-step:active{cursor:grabbing;opacity:.7;}
-.path-step-handle{color:var(--gold);opacity:.4;font-size:.8rem;user-select:none;}
-.path-step-name{flex:1;font-size:.88rem;color:var(--ink);}
-.path-step-progress{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--rust);}
+.path-step-handle{color:var(--gold);opacity:.6;font-size:.8rem;user-select:none;}
+.path-step-name{flex:1;font-size:.88rem;color:var(--parchment);}
+.path-step-progress{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);opacity:.8;}
 .path-overall{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--moss);margin-top:.4rem;}
 .series-add-book-row{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;}
 .series-book-item.planned{opacity:.55;border-left:3px solid var(--rust);}
-.series-ac-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--paper);border:1px solid rgba(201,162,39,.25);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3);}
-.series-ac-item{padding:.5rem .75rem;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.08);transition:background .12s;}
-.series-ac-item:hover{background:rgba(201,162,39,.1);}
+.series-ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#2a1a08;border:1px solid rgba(201,162,39,.35);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.5);}
+.series-ac-item{padding:.5rem .75rem;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.1);transition:background .12s;color:var(--parchment);}
+.series-ac-item:hover{background:rgba(201,162,39,.15);}
 .series-ac-item:last-child{border-bottom:none;}
 
 </style>
@@ -1180,12 +1181,13 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};return;}
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};return;}
   }catch(e){}
   // localStorage'a düş
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
   if(!db.stories)db.stories={};
   if(!db.seriesData)db.seriesData={};
+  if(!db.seriesEvents)db.seriesEvents={};
 }
 
 async function saveDb(){
@@ -1660,12 +1662,17 @@ function stopViewing(){
 
 function updateNavForViewing(isViewing){
   const tabs=document.querySelectorAll('.nav-tab');
-  // Başka biri görüntüleniyorken gizlenecek sekmeler
-  const hiddenWhenViewing=['feed','journal','settings'];
+  // Her zaman gizlenenler
+  const alwaysHidden=['feed','journal','settings'];
+  // Sadece kapalı profilde gizlenenler
+  const hiddenIfPrivate=['series','myBadges','stats','stories','myBooks'];
+  const isPrivate = isViewing && viewing && db.users[viewing] && db.users[viewing].publicProfile===false;
   tabs.forEach(tab=>{
     const onclick=tab.getAttribute('onclick')||'';
     const panelId=onclick.match(/showPanel\('([^']+)'/)?.[1];
-    if(isViewing && panelId && hiddenWhenViewing.includes(panelId)){
+    if(isViewing && panelId && alwaysHidden.includes(panelId)){
+      tab.style.display='none';
+    } else if(isPrivate && panelId && hiddenIfPrivate.includes(panelId)){
       tab.style.display='none';
     } else {
       tab.style.display='';
@@ -3001,6 +3008,14 @@ function getFeedCards(){
         ts:s.addedAt||0, reactions:s.reactions||{},
       });
     });
+    const seriesEvs=(db.seriesEvents&&db.seriesEvents[u])||[];
+    seriesEvs.forEach(ev=>{
+      cards.push({
+        type:'series_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        seriesEventId:ev.id, seriesName:ev.seriesName, bookTitle:ev.bookTitle,
+        eventType:ev.type, ts:ev.ts||0, reactions:ev.reactions||{},
+      });
+    });
   });
   return cards;
 }
@@ -3060,9 +3075,11 @@ function renderFeed(append=false){
   function feedReactionHtml(card){
     const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
-      :card.type==='quote'
-        ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-        :`review_${card.u}_${card.bookId}`;
+      :card.type==='series_event'
+        ?`seriesev_${card.u}_${card.seriesEventId}`
+        :card.type==='quote'
+          ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+          :`review_${card.u}_${card.bookId}`;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
@@ -3071,6 +3088,11 @@ function renderFeed(append=false){
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(card.type==='story'){
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}')">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
+      if(card.type==='series_event'){
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleSeriesEventReaction('${card.u}',${card.seriesEventId},'${rEsc}')">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
@@ -3098,7 +3120,7 @@ function renderFeed(append=false){
           <span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
-        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':'💬 alıntı'}</span>
+        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='series_event'?'journal-type-series':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':'💬 alıntı'}</span>
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
@@ -3111,6 +3133,14 @@ function renderFeed(append=false){
         <div class="book-tags-row" style="margin-top:.3rem">
           <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
           ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
+        </div>
+      `:card.type==='series_event'?`
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
+          ${card.eventType==='series_start'
+            ?`📚 <strong>${card.seriesName}</strong> serisine başladı${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
+            :card.eventType==='series_continue'
+            ?`📖 <strong>${card.seriesName}</strong> serisine devam ediyor${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
+            :`✅ <strong>${card.seriesName}</strong> serisini bitirdi 🎉`}
         </div>
       `:`
         <div class="journal-quote">
@@ -3183,6 +3213,18 @@ function toggleFeedText(cardKey){
   short.style.display=isOpen?'':'none';
   full.style.display=isOpen?'none':'';
   btn.textContent=isOpen?'daha fazla':'daha az';
+}
+
+function toggleSeriesEventReaction(owner,eventId,reaction){
+  if(!db.seriesEvents||!db.seriesEvents[owner]) return;
+  const ev=db.seriesEvents[owner].find(e=>e.id===eventId);
+  if(!ev) return;
+  if(!ev.reactions) ev.reactions={};
+  if(!ev.reactions[me]) ev.reactions[me]=[];
+  const idx=ev.reactions[me].indexOf(reaction);
+  if(idx>-1) ev.reactions[me].splice(idx,1);
+  else ev.reactions[me].push(reaction);
+  saveDb();renderFeed();
 }
 
 function toggleStoryReaction(storyOwner,storyId,reaction){
@@ -4117,6 +4159,81 @@ function updateSeriesTotal(seriesId, val){
   saveDb();
 }
 
+function startReadingSeriesBook(bookId){
+  const book = myBooks().find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus = 'reading';
+  book.startDate = book.startDate || new Date().toISOString().split('T')[0];
+  // Hangi seriye ait — seri event'i kaydet
+  const data = mySeriesData();
+  Object.values(data.series||{}).forEach(ser=>{
+    const bk = (ser.books||[]).find(b=>b.bookId===bookId);
+    if(!bk) return;
+    const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
+    const readCount = (ser.books||[]).filter(b=>{
+      if(!b.bookId) return false;
+      const lb = myBooksList.find(mb=>mb.id===b.bookId);
+      return lb && lb.readingStatus!=='reading'&&lb.readingStatus!=='paused'&&lb.readingStatus!=='wishlist'&&lb.readingStatus!=='planned';
+    }).length;
+    const eventType = readCount===0 ? 'series_start' : 'series_continue';
+    addSeriesEvent(ser.id, ser.name, book.title, eventType);
+  });
+  saveDb();
+  renderSeriesList();
+  notify('📖 Okumaya Başlandı', book.title+' şu an okunanlar listesine eklendi.');
+}
+
+function addSeriesEvent(seriesId, seriesName, bookTitle, type){
+  if(!db.seriesEvents) db.seriesEvents={};
+  if(!db.seriesEvents[me]) db.seriesEvents[me]=[];
+  db.seriesEvents[me].push({
+    id: Date.now(),
+    seriesId, seriesName, bookTitle, type,
+    ts: new Date().toISOString(),
+    reactions: {}
+  });
+}
+
+function checkSeriesComplete(seriesId){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
+  const total = ser.total || (ser.books||[]).length;
+  const readCount = (ser.books||[]).filter(b=>{
+    if(!b.bookId) return false;
+    const lb = myBooksList.find(mb=>mb.id===b.bookId);
+    return lb && lb.readingStatus!=='reading'&&lb.readingStatus!=='paused'&&lb.readingStatus!=='wishlist'&&lb.readingStatus!=='planned';
+  }).length;
+  if(total>0 && readCount>=total){
+    addSeriesEvent(seriesId, ser.name, '', 'series_complete');
+    saveDb();
+  }
+}
+
+function openEditSeriesBook(seriesId, bk, idx){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  const title = prompt('Kitap adı:', bk.manualTitle||bk.title||'');
+  if(title===null) return;
+  const author = prompt('Yazar:', bk.manualAuthor||bk.author||'');
+  if(author===null) return;
+  const num = prompt('Seri no (#):', bk.num||'');
+  if(num===null) return;
+  const pages = prompt('Sayfa sayısı:', bk.pages||'');
+  if(pages===null) return;
+  // Güncelle
+  if(bk.planned||bk.manualTitle){
+    ser.books[idx] = {...ser.books[idx], manualTitle: title.trim(), manualAuthor: author.trim(), num: parseInt(num)||null, pages: parseInt(pages)||null};
+  } else {
+    ser.books[idx] = {...ser.books[idx], num: parseInt(num)||null, pages: parseInt(pages)||null};
+  }
+  ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
+  saveDb();
+  renderSeriesList();
+}
+
 function toggleSeriesMode(seriesId){
   const modeKey = 'seriesMode_'+seriesId;
   let current = 'books';
@@ -4236,14 +4353,19 @@ function renderSeriesList(){
       const statusIcon = isPlanned ? '📋' : isReading ? '📖' : isRead ? '✅' : b.readingStatus==='paused' ? '🚧' : '⏳';
       const pageInfo = isReading && b.currentPage && b.pages 
         ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
-      const removeKey = bk.planned ? `'${ser.id}','${(bk.manualTitle||'').replace(/'/g,"\\'")}',true` : `'${ser.id}',${b.id}`;
-      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id?`onclick="openBook(${b.id})"`:''}>
+      const removeKey = bk.planned ? `'${ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' ` : `'${ser.id}',${b.id},false`;
+      const canStartReading = !isReading && !isRead && b.id;
+      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
         <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
         <span class="series-book-status">${statusIcon}</span>
         <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>
         ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
         ${pageInfo}
-        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="event.stopPropagation();removeBookFromSeries(${removeKey})">✕</button>
+        <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
+          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
+          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook('${ser.id}',${JSON.stringify(bk).replace(/'/g,'&#39;').replace(/"/g,'&quot;')},${books.indexOf(bk)})">✏️</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="removeBookFromSeries(${removeKey})">✕</button>
+        </div>
       </div>`;
     }
 
