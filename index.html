@@ -4352,16 +4352,22 @@ function openEditSeriesBook(evt, seriesId, idx){
 function saveEditSeriesBook(seriesId, idx, containerId, isPlanned){
   const data = mySeriesData();
   const ser = data.series[seriesId];
-  if(!ser||!ser.books[idx]) return;
+  if(!ser) return;
+  const bkRef = seriesBkMap[seriesId+'_'+idx];
+  if(!bkRef) return;
+  const rawIdx = ser.books.findIndex(b=>
+    bkRef.bookId ? b.bookId===bkRef.bookId : b.manualTitle===bkRef.manualTitle
+  );
+  if(rawIdx<0) return;
   const numEl = document.getElementById('edit_num_'+containerId);
   const pagesEl = document.getElementById('edit_pages_'+containerId);
-  ser.books[idx].num = parseInt(numEl?.value)||null;
-  ser.books[idx].pages = parseInt(pagesEl?.value)||null;
+  ser.books[rawIdx].num = parseInt(numEl?.value)||null;
+  ser.books[rawIdx].pages = parseInt(pagesEl?.value)||null;
   if(isPlanned){
     const titleEl = document.getElementById('edit_title_'+containerId);
     const authorEl = document.getElementById('edit_author_'+containerId);
-    if(titleEl) ser.books[idx].manualTitle = titleEl.value.trim();
-    if(authorEl) ser.books[idx].manualAuthor = authorEl.value.trim();
+    if(titleEl) ser.books[rawIdx].manualTitle = titleEl.value.trim();
+    if(authorEl) ser.books[rawIdx].manualAuthor = authorEl.value.trim();
   }
   ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
   saveDb();
@@ -4479,12 +4485,12 @@ function renderSeriesList(){
     const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
     const booksRead = books.filter(bk=>{
       const s=bk.book.readingStatus;
-      return s&&s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned'&&s!=='new';
+      return s&&s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
     });
     const booksPaused = books.filter(bk=>bk.book.readingStatus==='paused');
     const booksPlanned = books.filter(bk=>{
       const s=bk.book.readingStatus;
-      return s==='wishlist'||s==='planned'||s==='new'||!s;
+      return s==='wishlist'||s==='planned'||!s;
     });
 
     function bookItemHtmlSeries(bk){
