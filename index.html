@@ -4101,8 +4101,15 @@ function createSeries(){
   renderSeriesList();
 }
 
+function confirmDeleteSeries(id){
+  const box = document.getElementById('seriesDeleteConfirm_'+id);
+  if(box) box.style.display='flex';
+}
+function cancelDeleteSeries(id){
+  const box = document.getElementById('seriesDeleteConfirm_'+id);
+  if(box) box.style.display='none';
+}
 function deleteSeries(id){
-  if(!confirm('Bu seriyi silmek istediğine emin misin?')) return;
   const data = mySeriesData();
   delete data.series[id];
   // Okuma yollarından da temizle
@@ -4530,8 +4537,13 @@ function renderSeriesList(){
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteSeries('${ser.id}')">🗑</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries('${ser.id}')">🗑</button>
         </div>
+      </div>
+      <div id="seriesDeleteConfirm_${ser.id}" style="display:none;align-items:center;gap:.5rem;margin:.3rem 0;padding:.4rem .6rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:6px;font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--rust)">
+        ⚠️ Bu seriyi silmek istediğine emin misin?
+        <button class="btn btn-sm btn-danger" style="font-size:.72rem;padding:.15rem .5rem;margin-left:.25rem" onclick="deleteSeries('${ser.id}')">Evet, sil</button>
+        <button class="btn btn-sm" style="font-size:.72rem;padding:.15rem .5rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="cancelDeleteSeries('${ser.id}')">İptal</button>
       </div>
       <div class="series-progress-wrap">
         <div class="series-progress-fill ${isDone?'done':''}" style="width:${displayPct}%"></div>
