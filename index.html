@@ -320,6 +320,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .journal-quote-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.3rem;margin-top:.4rem;}
 .journal-copy-btn{background:none;border:1px solid rgba(201,162,39,.2);border-radius:20px;cursor:pointer;font-size:.65rem;color:var(--rust);opacity:.6;font-family:'Space Mono',monospace;padding:.15rem .5rem;transition:all .15s;}
 .journal-copy-btn:hover{opacity:1;border-color:var(--gold);}
+.feed-expand-btn{background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;margin-left:.3rem;opacity:.8;transition:opacity .15s;}
+.feed-expand-btn:hover{opacity:1;text-decoration:underline;}
 .journal-reactions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .journal-reaction-btn{padding:.2rem .6rem;border:1px solid rgba(201,162,39,.25);border-radius:20px;background:transparent;font-size:.75rem;cursor:pointer;transition:all .15s;color:var(--rust);font-family:'Crimson Pro',serif;}
 .journal-reaction-btn:hover,.journal-reaction-btn.active{background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--ink);}
@@ -2981,10 +2983,25 @@ function renderFeed(append=false){
     }).join('');
   }
 
+  const FEED_TRUNCATE=300;
+  function truncateHtml(text,cardKey){
+    if(!text||text.length<=FEED_TRUNCATE) return`<span>${text||''}</span>`;
+    const short=text.substring(0,FEED_TRUNCATE);
+    return`<span>
+      <span class="feed-text-short" id="fts-${cardKey}">${short}<span style="color:var(--gold)">…</span></span>
+      <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${text}</span>
+      <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
+    </span>`;
+  }
   function cardHtml(card){
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
     const ts=typeof card.ts==='number'?card.ts:new Date(card.ts||0).getTime();
     const isNewCard=ts>lastFeedVisit&&card.u!==me;
+    const cardKey=card.type==='story'
+      ?`story_${card.u}_${card.storyId}`
+      :card.type==='quote'
+        ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+        :`review_${card.u}_${card.bookId}`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem">${card.userAvatar}</span>
@@ -2997,7 +3014,7 @@ function renderFeed(append=false){
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
-        <div class="journal-review">${card.text}</div>
+        <div class="journal-review">${truncateHtml(card.text,cardKey)}</div>
       `:card.type==='story'?`
         <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
           <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
@@ -3009,7 +3026,7 @@ function renderFeed(append=false){
         </div>
       `:`
         <div class="journal-quote">
-          <div class="journal-quote-text">${card.text}</div>
+          <div class="journal-quote-text">${truncateHtml(card.text,cardKey)}</div>
           <div class="journal-quote-footer">
             ${card.page?`<span class="journal-quote-page">s. ${card.page}</span>`:'<span></span>'}
             <button class="journal-copy-btn" onclick="copyCardQuote('${card.u}',${card.bookId},${card.quoteIdx})">📋 kopyala</button>
@@ -3035,6 +3052,17 @@ function renderFeed(append=false){
   } else {
     container.innerHTML=html;
   }
+}
+
+function toggleFeedText(cardKey){
+  const short=document.getElementById('fts-'+cardKey);
+  const full=document.getElementById('ftf-'+cardKey);
+  const btn=document.getElementById('feb-'+cardKey);
+  if(!short||!full||!btn) return;
+  const isOpen=full.style.display!=='none';
+  short.style.display=isOpen?'':'none';
+  full.style.display=isOpen?'none':'';
+  btn.textContent=isOpen?'daha fazla':'daha az';
 }
 
 function toggleStoryReaction(storyOwner,storyId,reaction){
