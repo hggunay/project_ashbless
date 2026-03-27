@@ -4148,6 +4148,7 @@ function renderSeriesList(){
   if(!container) return;
   const data = mySeriesData();
   const allSeries = Object.values(data.series||{});
+  console.log('[Seriler] me:', me, 'data:', JSON.stringify(data).substring(0,200), 'allSeries:', allSeries.length);
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
 
   if(!allSeries.length){
