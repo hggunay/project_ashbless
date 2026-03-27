@@ -2962,18 +2962,6 @@ function renderFeed(append=false){
     return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   }
 
-  function reactionNames(reactions,r,cardKey){
-    const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
-    if(!users.length) return '';
-    const names=users.map(([u])=>u===me?'Sen':(db.users[u]&&db.users[u].displayName||u));
-    if(names.length<=2) return ' · '+names.join(', ');
-    const rKey=(cardKey+'_'+r).replace(/[^a-zA-Z0-9_]/g,'_');
-    const visible=names.slice(0,2).join(', ');
-    const rest=names.slice(2);
-    return ` · <span id="rn-short-${rKey}">${visible}, <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">+${rest.length} kişi daha</button></span>`
-      +`<span id="rn-full-${rKey}" style="display:none">${names.join(', ')} <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">daha az</button></span>`;
-  }
-
   function feedReactionHtml(card){
     const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
@@ -3068,6 +3056,18 @@ function truncateHtml(text,cardKey){
     <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${text}</span>
     <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
   </span>`;
+}
+
+function reactionNames(reactions,r,cardKey){
+  const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
+  if(!users.length) return '';
+  const names=users.map(([u])=>u===me?'Sen':(db.users[u]&&db.users[u].displayName||u));
+  if(names.length<=2) return ' · '+names.join(', ');
+  const rKey=(cardKey+'_'+r).replace(/[^a-zA-Z0-9_]/g,'_');
+  const visible=names.slice(0,2).join(', ');
+  const rest=names.slice(2);
+  return ` · <span id="rn-short-${rKey}">${visible}, <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">+${rest.length} kişi daha</button></span>`
+    +`<span id="rn-full-${rKey}" style="display:none">${names.join(', ')} <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">daha az</button></span>`;
 }
 
 function toggleReactionNames(rKey){
