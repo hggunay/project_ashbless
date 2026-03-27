@@ -353,7 +353,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .series-book-item.reading{background:rgba(74,103,65,.12);border-left:3px solid var(--moss);}
 .series-book-item.unread{opacity:.45;}
 .series-book-num{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1.4rem;}
-.series-book-title{flex:1;color:var(--ink);}
+.series-book-title{flex:1;color:var(--parchment);}
 .series-book-status{font-size:.7rem;}
 .series-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .path-card{background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.2);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
@@ -3986,17 +3986,17 @@ function addBookToSeries(seriesId){
   const titleEl = document.getElementById('seriesBookTitle_'+seriesId);
   const authorEl = document.getElementById('seriesBookAuthor_'+seriesId);
   const numEl = document.getElementById('seriesBookNum_'+seriesId);
+  const pagesEl = document.getElementById('seriesBookPages_'+seriesId);
+  const pubEl = document.getElementById('seriesBookPub_'+seriesId);
   const title = titleEl ? titleEl.value.trim() : '';
   if(!title){ notify('⚠️','Kitap adı boş olamaz.'); return; }
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser) return;
 
-  // Kitaplarımda bu başlıkla eşleşen var mı?
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   const linked = myBooksList.find(b=>b.title.toLowerCase()===title.toLowerCase());
 
-  // Zaten ekli mi?
   if(linked && (ser.books||[]).find(b=>b.bookId===linked.id)){
     notify('⚠️','Bu kitap zaten seriye ekli.'); return;
   }
@@ -4005,19 +4005,37 @@ function addBookToSeries(seriesId){
   }
 
   const num = parseInt(numEl?.value)||null;
-  ser.books = ser.books||[];
+  const pages = parseInt(pagesEl?.value)||null;
+  const publisher = pubEl?pubEl.value.trim():'';
 
+  // Yazar: önce elle girileni al, yoksa seride önceki kitaptan al
+  let author = authorEl?authorEl.value.trim():'';
+  if(!author && linked) author = linked.author||'';
+  if(!author){
+    // Serideki ilk kitaptan yazar al
+    const firstWithAuthor = (ser.books||[]).find(b=>b.manualAuthor||b.bookId);
+    if(firstWithAuthor){
+      if(firstWithAuthor.manualAuthor) author = firstWithAuthor.manualAuthor;
+      else {
+        const lb = myBooksList.find(b=>b.id===firstWithAuthor.bookId);
+        if(lb) author = lb.author||'';
+      }
+    }
+  }
+
+  ser.books = ser.books||[];
   if(linked){
-    ser.books.push({ bookId: linked.id, num });
+    ser.books.push({ bookId: linked.id, num, pages: pages||linked.pages||null, publisher: publisher||linked.publisher||null });
   } else {
-    // Planlanan kitap — kitaplarımda yok
-    ser.books.push({ manualTitle: title, manualAuthor: authorEl?authorEl.value.trim():'', num, planned: true });
+    ser.books.push({ manualTitle: title, manualAuthor: author, num, pages, publisher: publisher||null, planned: true });
   }
   ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
   saveDb();
   titleEl.value='';
   if(authorEl) authorEl.value='';
   if(numEl) numEl.value='';
+  if(pagesEl) pagesEl.value='';
+  if(pubEl) pubEl.value='';
   hideSeriesAc(seriesId);
   renderSeriesList();
 }
@@ -4084,6 +4102,24 @@ function updateSeriesTotal(seriesId, val){
   saveDb();
 }
 
+function toggleSeriesMode(seriesId){
+  const modeKey = 'seriesMode_'+seriesId;
+  let current = 'books';
+  try{ current = localStorage.getItem(modeKey)||'books'; }catch(e){}
+  const next = current==='books' ? 'pages' : 'books';
+  try{ localStorage.setItem(modeKey, next); }catch(e){}
+  renderSeriesList();
+}
+
+function togglePathMode(pathId){
+  const modeKey = 'pathMode_'+pathId;
+  let current = 'books';
+  try{ current = localStorage.getItem(modeKey)||'books'; }catch(e){}
+  const next = current==='books' ? 'pages' : 'books';
+  try{ localStorage.setItem(modeKey, next); }catch(e){}
+  renderPathsList();
+}
+
 function toggleSeriesBooks(id){
   const el = document.getElementById('seriesBooks_'+id);
   if(!el) return;
@@ -4128,11 +4164,33 @@ function renderSeriesList(){
     }).filter(Boolean);
 
     const readCount = books.filter(bk=>{
-      return bk.book.readingStatus!=='reading'&&bk.book.readingStatus!=='paused'&&bk.book.readingStatus!=='wishlist';
+      const b=bk.book; if(!b||b.readingStatus==="planned"||b.readingStatus==="reading"||b.readingStatus==="paused"||b.readingStatus==="wishlist") return false; return true;
     }).length;
     const total = ser.total || books.length || 1;
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
+
+    // Sayfa modu hesabi
+    const allHavePages = books.length>0 && books.every(bk=>{
+      const pg=bk.pages||(bk.book&&bk.book.pages); return !!pg;
+    });
+    const totalPages = allHavePages ? books.reduce((s,bk)=>s+(bk.pages||(bk.book&&bk.book.pages)||0),0) : 0;
+    const readPages = books.reduce((s,bk)=>{
+      const b=bk.book; if(!b) return s;
+      if(b.readingStatus==="reading"&&b.currentPage) return s+b.currentPage;
+      const pg=bk.pages||b.pages||0;
+      if(b.readingStatus!=="planned"&&b.readingStatus!=="reading"&&b.readingStatus!=="paused"&&b.readingStatus!=="wishlist") return s+pg;
+      return s;
+    },0);
+    const pageModePossible = allHavePages && totalPages>0;
+    const modeKey = "seriesMode_"+ser.id;
+    let progressMode = "books";
+    try{ const m=localStorage.getItem(modeKey); if(m==="pages"&&pageModePossible) progressMode="pages"; }catch(e){}
+    const pagePct = pageModePossible ? Math.min(100,Math.round((readPages/totalPages)*100)) : 0;
+    const displayPct = progressMode==="pages" ? pagePct : pct;
+    const displayLabel = progressMode==="pages"
+      ? readPages.toLocaleString("tr")+" / "+totalPages.toLocaleString("tr")+" sayfa · %"+pagePct
+      : readCount+" / "+total+" kitap · %"+pct+(isDone?" · ✅ Tamamlandı":"");
 
     // Şu an okunan kitap
     const currentlyReading = books.find(bk=>bk.book.readingStatus==='reading');
@@ -4144,8 +4202,16 @@ function renderSeriesList(){
       bk.book.readingStatus!=='reading'&&readCount<total
     );
 
-    // Kitap listesi HTML
-    const bookListHtml = books.map(bk=>{
+    // Kitap listesi HTML — gruplara ayır
+    const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
+    const booksRead = books.filter(bk=>{
+      const s=bk.book.readingStatus;
+      return s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
+    });
+    const booksPaused = books.filter(bk=>bk.book.readingStatus==='paused');
+    const booksPlanned = books.filter(bk=>bk.book.readingStatus==='wishlist'||bk.book.readingStatus==='planned'||(!bk.book.readingStatus));
+
+    function bookItemHtmlSeries(bk){
       const b = bk.book;
       const isReading = b.readingStatus==='reading';
       const isRead = !isReading && b.readingStatus!=='wishlist' && b.readingStatus!=='paused';
@@ -4162,10 +4228,29 @@ function renderSeriesList(){
         ${pageInfo}
         <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="event.stopPropagation();removeBookFromSeries(${removeKey})">✕</button>
       </div>`;
-    }).join('');
+    }
+
+    const groupHtml = (label, icon, items) => items.length ? `
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
+      ${items.map(bookItemHtmlSeries).join('')}
+    ` : '';
+
+    const bookListHtml = 
+      groupHtml('Şu An Okunuyor','📖', booksReading) +
+      groupHtml('Okundu','✅', booksRead) +
+      groupHtml('Yarım Bırakıldı','🚧', booksPaused) +
+      groupHtml('Okunacak / Planlanan','⏳', booksPlanned);
 
     // Kitap ekleme select
     const availableBooks = myBooksList.filter(b=>!(ser.books||[]).find(bk=>bk.bookId===b.id));
+    // Serideki mevcut yazar
+    const seriesAuthor = (()=>{
+      for(const bk of (ser.books||[])){
+        if(bk.manualAuthor) return bk.manualAuthor;
+        if(bk.bookId){ const lb=myBooksList.find(b=>b.id===bk.bookId); if(lb&&lb.author) return lb.author; }
+      }
+      return '';
+    })();
     const bookSelectHtml = `<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
       <div style="position:relative">
         <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
@@ -4173,23 +4258,34 @@ function renderSeriesList(){
           oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),200)"/>
         <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
       </div>
-      <div style="display:flex;gap:.4rem">
-        <input class="book-input" id="seriesBookAuthor_${ser.id}" type="text" placeholder="Yazar (isteğe bağlı)"
-          style="flex:1;font-size:.82rem;padding:.35rem .5rem"/>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <input class="book-input" id="seriesBookAuthor_${ser.id}" type="text" placeholder="Yazar${seriesAuthor?' ('+seriesAuthor+')':' (opsiyonel)'}"
+          style="flex:1;min-width:120px;font-size:.82rem;padding:.35rem .5rem"/>
         <input class="book-input" id="seriesBookNum_${ser.id}" type="number" min="1" placeholder="#"
-          style="width:55px;font-size:.82rem;padding:.35rem .4rem"/>
+          style="width:50px;font-size:.82rem;padding:.35rem .4rem"/>
+        <input class="book-input" id="seriesBookPages_${ser.id}" type="number" min="1" placeholder="Sayfa"
+          style="width:65px;font-size:.82rem;padding:.35rem .4rem"/>
+      </div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+        <input class="book-input" id="seriesBookPub_${ser.id}" type="text" placeholder="Yayınevi (opsiyonel)"
+          style="flex:1;font-size:.82rem;padding:.35rem .5rem"/>
         <button class="btn btn-sm btn-primary" onclick="addBookToSeries('${ser.id}')">+ Ekle</button>
       </div>
-      <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir</div>
+      <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir · Sayfa sayısı tüm kitaplarda girilirse sayfa modunda ilerleme gösterilir</div>
     </div>`;
+
 
     return `<div class="series-card">
       <div class="series-card-header">
         <div>
           <div class="series-card-name">${ser.name}</div>
-          <div class="series-card-stats">${readCount} / ${total} kitap · %${pct}${isDone?' · ✅ Tamamlandı':''}</div>
+          <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
         </div>
-        <div style="display:flex;gap:.4rem;align-items:center">
+        <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+          ${pageModePossible ? `<button class="btn btn-sm" style="font-size:.6rem;padding:.2rem .5rem;background:${progressMode==='pages'?'rgba(74,103,65,.2)':'rgba(201,162,39,.1)'};color:${progressMode==='pages'?'var(--moss)':'var(--gold)'};border:1px solid ${progressMode==='pages'?'rgba(74,103,65,.3)':'rgba(201,162,39,.2)'}" onclick="toggleSeriesMode('${ser.id}')">
+            ${progressMode==='pages'?'📖 Sayfa modu':'📚 Kitap modu'}
+          </button>` : ''}
+          ${pageModeWarning && progressMode==='pages' ? `<span style="font-size:.6rem;color:var(--rust);opacity:.7">⚠️ Sayfa bilgisi eksik</span>` : ''}
           <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">Toplam:</div>
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
@@ -4198,7 +4294,7 @@ function renderSeriesList(){
         </div>
       </div>
       <div class="series-progress-wrap">
-        <div class="series-progress-fill ${isDone?'done':''}" style="width:${pct}%"></div>
+        <div class="series-progress-fill ${isDone?'done':''}" style="width:${displayPct}%"></div>
       </div>
       ${currentlyReading ? `<div style="font-size:.8rem;color:var(--moss);margin:.3rem 0">
         📖 Şu an: <strong>${currentlyReading.book.title}</strong>
@@ -4302,16 +4398,48 @@ function renderPathsList(){
     const steps = (path.steps||[]).map(s=>{
       const ser = allSeries[s.seriesId];
       if(!ser) return null;
-      const books = (ser.books||[]).map(bk=>myBooksList.find(b=>b.id===bk.bookId)).filter(Boolean);
-      const readCount = books.filter(b=>b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist').length;
-      const total = ser.total||books.length||1;
+      const serBooks = (ser.books||[]).map(bk=>{
+        if(bk.planned){
+          const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
+          return linked ? {...bk,book:linked} : {...bk,book:{readingStatus:'planned',pages:bk.pages||null}};
+        }
+        const book=myBooksList.find(b=>b.id===bk.bookId);
+        return book ? {...bk,book} : null;
+      }).filter(Boolean);
+      const readCount = serBooks.filter(bk=>{
+        const b=bk.book;
+        return b&&b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist';
+      }).length;
+      const total = ser.total||serBooks.length||1;
       const pct = Math.round((readCount/total)*100);
-      return { ...s, ser, readCount, total, pct };
+      // Sayfa hesabi
+      const allHavePages = serBooks.length>0&&serBooks.every(bk=>{const pg=bk.pages||(bk.book&&bk.book.pages);return!!pg;});
+      const serTotalPages = allHavePages ? serBooks.reduce((s,bk)=>s+(bk.pages||(bk.book&&bk.book.pages)||0),0) : 0;
+      const serReadPages = serBooks.reduce((s,bk)=>{
+        const b=bk.book; if(!b) return s;
+        if(b.readingStatus==='reading'&&b.currentPage) return s+b.currentPage;
+        const pg=bk.pages||b.pages||0;
+        if(b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist') return s+pg;
+        return s;
+      },0);
+      return { ...s, ser, readCount, total, pct, allHavePages, serTotalPages, serReadPages };
     }).filter(Boolean);
 
     const totalBooks = steps.reduce((s,st)=>s+st.total,0);
     const totalRead = steps.reduce((s,st)=>s+st.readCount,0);
     const overallPct = totalBooks>0 ? Math.round((totalRead/totalBooks)*100) : 0;
+    // Path sayfa modu
+    const pathAllHavePages = steps.length>0 && steps.every(st=>st.allHavePages);
+    const pathTotalPages = pathAllHavePages ? steps.reduce((s,st)=>s+st.serTotalPages,0) : 0;
+    const pathReadPages = steps.reduce((s,st)=>s+st.serReadPages,0);
+    const pathPagePct = pathAllHavePages&&pathTotalPages>0 ? Math.min(100,Math.round((pathReadPages/pathTotalPages)*100)) : 0;
+    const pathModeKey = 'pathMode_'+path.id;
+    let pathMode = 'books';
+    try{ const m=localStorage.getItem(pathModeKey); if(m==='pages'&&pathAllHavePages) pathMode='pages'; }catch(e){}
+    const pathDisplayPct = pathMode==='pages' ? pathPagePct : overallPct;
+    const pathDisplayLabel = pathMode==='pages'
+      ? pathReadPages.toLocaleString('tr')+' / '+pathTotalPages.toLocaleString('tr')+' sayfa · %'+pathPagePct
+      : totalRead+' / '+totalBooks+' kitap · %'+overallPct;
 
     // Seri ekleme select
     const usedIds = new Set((path.steps||[]).map(s=>s.seriesId));
@@ -4322,7 +4450,7 @@ function renderPathsList(){
         <span class="path-step-handle">⠿</span>
         <div class="path-step-name">
           <strong>${st.ser.name}</strong>
-          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}</div>
+          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
         </div>
         <div style="display:flex;gap:.25rem">
           <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
@@ -4340,9 +4468,12 @@ function renderPathsList(){
         <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deletePath('${path.id}')">🗑 Sil</button>
       </div>
       ${steps.length?`
-        <div class="path-overall">📊 Genel ilerleme: ${totalRead}/${totalBooks} kitap · %${overallPct}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.3rem;margin-bottom:.3rem">
+          <div class="path-overall">📊 ${pathDisplayLabel}</div>
+          ${pathAllHavePages?`<button class="btn btn-sm" style="font-size:.6rem;padding:.2rem .5rem;background:${pathMode==='pages'?'rgba(74,103,65,.2)':'rgba(201,162,39,.1)'};color:${pathMode==='pages'?'var(--moss)':'var(--gold)'};border:1px solid ${pathMode==='pages'?'rgba(74,103,65,.3)':'rgba(201,162,39,.2)'}" onclick="togglePathMode('${path.id}')">${pathMode==='pages'?'📖 Sayfa modu':'📚 Kitap modu'}</button>`:''}
+        </div>
         <div class="series-progress-wrap" style="margin-bottom:.6rem">
-          <div class="series-progress-fill ${overallPct>=100?'done':''}" style="width:${overallPct}%"></div>
+          <div class="series-progress-fill ${pathDisplayPct>=100?'done':''}" style="width:${pathDisplayPct}%"></div>
         </div>
         ${stepsHtml}
       `:'<div style="font-size:.85rem;opacity:.5;font-style:italic;margin-bottom:.5rem">Henüz seri eklenmemiş.</div>'}
