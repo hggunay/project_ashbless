@@ -2,7 +2,7 @@
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>The Armchair Adventurers</title>
 <meta name="description" content="Kitap okuma rozet takip uygulaması">
 <meta name="theme-color" content="#1a0f00">
@@ -20,7 +20,8 @@
 .pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--rust);opacity:.5;font-size:.9rem;padding:.2rem;}
 .pw-toggle:hover{opacity:1;}
 
-body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-height:100vh;background-image:radial-gradient(ellipse at 20% 50%,#2d1f0e 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#1a2d0e 0%,transparent 50%),radial-gradient(ellipse at 60% 80%,#0e1a2d 0%,transparent 50%);}
+html{overflow-x:hidden;max-width:100%;}
+body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-height:100vh;overflow-x:hidden;max-width:100%;background-image:radial-gradient(ellipse at 20% 50%,#2d1f0e 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#1a2d0e 0%,transparent 50%),radial-gradient(ellipse at 60% 80%,#0e1a2d 0%,transparent 50%);}
 
 /* AUTH */
 #authScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:2rem;}
