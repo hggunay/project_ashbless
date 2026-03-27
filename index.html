@@ -4102,12 +4102,24 @@ function createSeries(){
 }
 
 function confirmDeleteSeries(id){
-  const box = document.getElementById('seriesDeleteConfirm_'+id);
-  if(box) box.style.display='flex';
+  const old = document.getElementById('seriesDeleteConfirm_'+id);
+  if(old){ old.remove(); return; }
+  const btn = document.querySelector(`button[data-sid="${id}"]`);
+  const card = btn ? btn.closest('.series-card') : null;
+  if(!card) return;
+  const box = document.createElement('div');
+  box.id = 'seriesDeleteConfirm_'+id;
+  box.style.cssText = 'display:flex;align-items:center;gap:.5rem;margin:.3rem 0;padding:.4rem .6rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:6px;font-family:Crimson Pro,serif;font-size:.82rem;color:var(--rust);flex-wrap:wrap';
+  box.innerHTML = `⚠️ Bu seriyi silmek istediğine emin misin?
+    <button class="btn btn-sm btn-danger" style="font-size:.72rem;padding:.15rem .5rem;margin-left:.25rem" onclick="deleteSeries('${id}')">Evet, sil</button>
+    <button class="btn btn-sm" style="font-size:.72rem;padding:.15rem .5rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="cancelDeleteSeries('${id}')">İptal</button>`;
+  const header = card.querySelector('.series-card-header');
+  if(header) header.after(box);
+  else card.prepend(box);
 }
 function cancelDeleteSeries(id){
   const box = document.getElementById('seriesDeleteConfirm_'+id);
-  if(box) box.style.display='none';
+  if(box) box.remove();
 }
 function deleteSeries(id){
   const data = mySeriesData();
@@ -4292,7 +4304,7 @@ function checkSeriesComplete(seriesId){
   }
 }
 
-function openEditSeriesBook(seriesId, bkJson, idx){
+function openEditSeriesBook(evt, seriesId, bkJson, idx){
   // Inline edit — kitabın altında açılan form
   const containerId = 'seriesEditForm_'+seriesId+'_'+idx;
   const existing = document.getElementById(containerId);
@@ -4318,7 +4330,7 @@ function openEditSeriesBook(seriesId, bkJson, idx){
       <button class="btn btn-sm" style="font-size:.72rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById('${containerId}').remove()">İptal</button>
     </div>`;
   // Kitap item'ının altına ekle
-  const btn = event.target.closest('button');
+  const btn = evt.target.closest('button');
   const item = btn ? btn.closest('.series-book-item') : null;
   if(item) item.insertAdjacentElement('afterend', div);
 }
@@ -4471,7 +4483,7 @@ function renderSeriesList(){
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
-          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook('${ser.id}',encodeURIComponent(JSON.stringify(bk)),${books.indexOf(bk)})">✏️</button>
+          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',encodeURIComponent(JSON.stringify(bk)),${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="removeBookFromSeries(${removeKey})">✕</button>
         </div>
       </div>`;
@@ -4537,13 +4549,8 @@ function renderSeriesList(){
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries('${ser.id}')">🗑</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" data-sid="${ser.id}" onclick="confirmDeleteSeries('${ser.id}')">🗑</button>
         </div>
-      </div>
-      <div id="seriesDeleteConfirm_${ser.id}" style="display:none;align-items:center;gap:.5rem;margin:.3rem 0;padding:.4rem .6rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:6px;font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--rust)">
-        ⚠️ Bu seriyi silmek istediğine emin misin?
-        <button class="btn btn-sm btn-danger" style="font-size:.72rem;padding:.15rem .5rem;margin-left:.25rem" onclick="deleteSeries('${ser.id}')">Evet, sil</button>
-        <button class="btn btn-sm" style="font-size:.72rem;padding:.15rem .5rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="cancelDeleteSeries('${ser.id}')">İptal</button>
       </div>
       <div class="series-progress-wrap">
         <div class="series-progress-fill ${isDone?'done':''}" style="width:${displayPct}%"></div>
