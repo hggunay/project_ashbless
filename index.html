@@ -4132,6 +4132,53 @@ function deleteSeries(id){
   renderSeriesList();
 }
 
+function toggleSeriesAddMode(seriesId){
+  const single = document.getElementById('seriesAddSingle_'+seriesId);
+  const bulk = document.getElementById('seriesAddBulk_'+seriesId);
+  const btn = document.getElementById('seriesAddModeBtn_'+seriesId);
+  if(!single||!bulk||!btn) return;
+  const isBulk = bulk.style.display!=='none';
+  single.style.display = isBulk ? '' : 'none';
+  bulk.style.display = isBulk ? 'none' : '';
+  btn.textContent = isBulk ? '📋 Toplu giriş' : '✏️ Tek kitap';
+}
+
+function addBulkBooksToSeries(seriesId){
+  const textEl = document.getElementById('seriesBulkText_'+seriesId);
+  const authorEl = document.getElementById('seriesBulkAuthor_'+seriesId);
+  if(!textEl) return;
+  const lines = textEl.value.split('\n').map(l=>l.trim()).filter(Boolean);
+  if(!lines.length) return;
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
+  const commonAuthor = authorEl?authorEl.value.trim():'';
+  const startNum = (ser.books||[]).reduce((m,b)=>Math.max(m,b.num||0),0);
+  let added = 0;
+  lines.forEach((line,i)=>{
+    const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
+    if(linked){
+      if(!(ser.books||[]).find(b=>b.bookId===linked.id)){
+        ser.books = ser.books||[];
+        ser.books.push({ bookId:linked.id, num:startNum+i+1 });
+        added++;
+      }
+    } else {
+      if(!(ser.books||[]).find(b=>b.manualTitle&&b.manualTitle.toLowerCase()===line.toLowerCase())){
+        ser.books = ser.books||[];
+        ser.books.push({ manualTitle:line, manualAuthor:commonAuthor, num:startNum+i+1, planned:true });
+        added++;
+      }
+    }
+  });
+  ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
+  saveDb();
+  textEl.value='';
+  if(authorEl) authorEl.value='';
+  renderSeriesList();
+}
+
 function addBookToSeries(seriesId){
   const titleEl = document.getElementById('seriesBookTitle_'+seriesId);
   const authorEl = document.getElementById('seriesBookAuthor_'+seriesId);
@@ -4485,12 +4532,15 @@ function renderSeriesList(){
     const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
     const booksRead = books.filter(bk=>{
       const s=bk.book.readingStatus;
-      return s&&s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
+      // s yoksa (eski kayıt) ve bookId ile bağlıysa okundu say
+      if(!s) return !!bk.bookId;
+      return s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
     });
     const booksPaused = books.filter(bk=>bk.book.readingStatus==='paused');
     const booksPlanned = books.filter(bk=>{
       const s=bk.book.readingStatus;
-      return s==='wishlist'||s==='planned'||!s;
+      if(!s) return !bk.bookId; // bookId yoksa planlanan
+      return s==='wishlist'||s==='planned';
     });
 
     function bookItemHtmlSeries(bk){
@@ -4541,26 +4591,40 @@ function renderSeriesList(){
       return '';
     })();
     const bookSelectHtml = `<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
-      <div style="position:relative">
-        <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
-          style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-          oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),200)"/>
-        <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
+      <div style="display:flex;gap:.3rem;margin-bottom:.2rem">
+        <button class="btn btn-sm" id="seriesAddModeBtn_${ser.id}"
+          style="font-size:.68rem;padding:.15rem .5rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
+          onclick="toggleSeriesAddMode('${ser.id}')">📋 Toplu giriş</button>
       </div>
-      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-        <input class="book-input" id="seriesBookAuthor_${ser.id}" type="text" placeholder="Yazar${seriesAuthor?' ('+seriesAuthor+')':' (opsiyonel)'}"
-          style="flex:1;min-width:120px;font-size:.82rem;padding:.35rem .5rem"/>
-        <input class="book-input" id="seriesBookNum_${ser.id}" type="number" min="1" placeholder="#"
-          style="width:50px;font-size:.82rem;padding:.35rem .4rem"/>
-        <input class="book-input" id="seriesBookPages_${ser.id}" type="number" min="1" placeholder="Sayfa"
-          style="width:65px;font-size:.82rem;padding:.35rem .4rem"/>
+      <div id="seriesAddSingle_${ser.id}">
+        <div style="position:relative">
+          <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
+            style="width:100%;font-size:.85rem;padding:.4rem .6rem"
+            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),200)"/>
+          <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
+          <input class="book-input" id="seriesBookAuthor_${ser.id}" type="text" placeholder="Yazar${seriesAuthor?' ('+seriesAuthor+')':' (opsiyonel)'}"
+            style="flex:1;min-width:120px;font-size:.82rem;padding:.35rem .5rem"/>
+          <input class="book-input" id="seriesBookNum_${ser.id}" type="number" min="1" placeholder="#"
+            style="width:50px;font-size:.82rem;padding:.35rem .4rem"/>
+          <input class="book-input" id="seriesBookPages_${ser.id}" type="number" min="1" placeholder="Sayfa"
+            style="width:65px;font-size:.82rem;padding:.35rem .4rem"/>
+        </div>
+        <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.3rem">
+          <button class="btn btn-sm btn-primary" onclick="addBookToSeries('${ser.id}')">+ Ekle</button>
+        </div>
       </div>
-      <div style="display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
-        <input class="book-input" id="seriesBookPub_${ser.id}" type="text" placeholder="Yayınevi (opsiyonel)"
-          style="flex:1;font-size:.82rem;padding:.35rem .5rem"/>
-        <button class="btn btn-sm btn-primary" onclick="addBookToSeries('${ser.id}')">+ Ekle</button>
+      <div id="seriesAddBulk_${ser.id}" style="display:none">
+        <textarea class="book-input" id="seriesBulkText_${ser.id}" placeholder="Her satıra bir kitap adı&#10;Asimov'un Vakfı&#10;Vakıf ve İmparatorluk&#10;İkinci Vakıf"
+          style="min-height:90px;resize:vertical;font-size:.85rem;line-height:1.5"></textarea>
+        <div style="display:flex;gap:.4rem;align-items:center;margin-top:.3rem">
+          <input class="book-input" id="seriesBulkAuthor_${ser.id}" type="text" placeholder="Yazar (opsiyonel — tümü için)"
+            style="flex:1;font-size:.82rem;padding:.35rem .5rem"/>
+          <button class="btn btn-sm btn-primary" onclick="addBulkBooksToSeries('${ser.id}')">+ Toplu Ekle</button>
+        </div>
       </div>
-      <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir · Sayfa sayısı tüm kitaplarda girilirse sayfa modunda ilerleme gösterilir</div>
+      <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic;margin-top:.2rem">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir</div>
     </div>`;
 
 
