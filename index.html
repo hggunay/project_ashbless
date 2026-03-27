@@ -1162,6 +1162,7 @@ function booksForBadge(badge,books){
 // ── STATE ─────────────────────────────────────────────────────
 let db={users:{},books:{}};
 let me=null,viewing=null,badgeFilter='all',modalBookId=null;
+const seriesBkMap={};
 
 // ── FİREBASE ──────────────────────────────────────────────────
 const FB_URL='https://armchair-adventurers-default-rtdb.europe-west1.firebasedatabase.app';
@@ -4101,11 +4102,10 @@ function createSeries(){
   renderSeriesList();
 }
 
-function confirmDeleteSeries(id){
+function confirmDeleteSeries(evt, id){
   const old = document.getElementById('seriesDeleteConfirm_'+id);
   if(old){ old.remove(); return; }
-  const btn = document.querySelector(`button[data-sid="${id}"]`);
-  const card = btn ? btn.closest('.series-card') : null;
+  const card = evt.target.closest('.series-card');
   if(!card) return;
   const box = document.createElement('div');
   box.id = 'seriesDeleteConfirm_'+id;
@@ -4304,17 +4304,17 @@ function checkSeriesComplete(seriesId){
   }
 }
 
-function openEditSeriesBook(evt, seriesId, bkJson, idx){
+function openEditSeriesBook(evt, seriesId, idx){
   // Inline edit — kitabın altında açılan form
   const containerId = 'seriesEditForm_'+seriesId+'_'+idx;
   const existing = document.getElementById(containerId);
   if(existing){ existing.remove(); return; }
-  let bk;
-  try{ bk = JSON.parse(decodeURIComponent(bkJson)); }catch(e){ return; }
+  const bk = seriesBkMap[seriesId+'_'+idx];
+  if(!bk){ return; }
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser) return;
-  const isPlanned = bk.planned||bk.manualTitle;
+  const isPlanned = !!(bk.planned||bk.manualTitle);
   const div = document.createElement('div');
   div.id = containerId;
   div.style.cssText = 'margin-top:.4rem;padding:.6rem .75rem;background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.2);border-radius:6px;display:flex;flex-direction:column;gap:.4rem';
@@ -4326,10 +4326,9 @@ function openEditSeriesBook(evt, seriesId, bkJson, idx){
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
       <input class="book-input" id="edit_num_${containerId}" type="number" value="${bk.num||''}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
       <input class="book-input" id="edit_pages_${containerId}" type="number" value="${bk.pages||''}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
-      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}',${idx},'${containerId}',${isPlanned?'true':'false'})">✓ Kaydet</button>
+      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}',${idx},'${containerId}',${isPlanned})">✓ Kaydet</button>
       <button class="btn btn-sm" style="font-size:.72rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById('${containerId}').remove()">İptal</button>
     </div>`;
-  // Kitap item'ının altına ekle
   const btn = evt.target.closest('button');
   const item = btn ? btn.closest('.series-book-item') : null;
   if(item) item.insertAdjacentElement('afterend', div);
@@ -4383,6 +4382,11 @@ function toggleSeriesBooks(id){
 function renderSeriesList(){
   const container = document.getElementById('seriesListContainer');
   if(!container) return;
+  // Açık kartları hatırla
+  const openIds = new Set(
+    [...document.querySelectorAll('.series-books-list.open')]
+      .map(el=>el.id.replace('seriesBooks_',''))
+  );
   const data = mySeriesData();
   const allSeries = Object.values(data.series||{});
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
@@ -4467,6 +4471,8 @@ function renderSeriesList(){
 
     function bookItemHtmlSeries(bk){
       const b = bk.book;
+      const mapKey = ser.id+'_'+books.indexOf(bk);
+      seriesBkMap[mapKey] = bk;
       const isReading = b.readingStatus==='reading';
       const isRead = !isReading && b.readingStatus!=='wishlist' && b.readingStatus!=='paused';
       const isPlanned = b.readingStatus==='planned';
@@ -4483,7 +4489,7 @@ function renderSeriesList(){
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
-          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',encodeURIComponent(JSON.stringify(bk)),${books.indexOf(bk)})">✏️</button>
+          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="removeBookFromSeries(${removeKey})">✕</button>
         </div>
       </div>`;
@@ -4549,7 +4555,7 @@ function renderSeriesList(){
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" data-sid="${ser.id}" onclick="confirmDeleteSeries('${ser.id}')">🗑</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>
         </div>
       </div>
       <div class="series-progress-wrap">
@@ -4576,6 +4582,13 @@ function renderSeriesList(){
     </div>`;
   }).join('');
   } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--rust)">Render hatası: '+e.message+'</div>'; }
+  // Açık kartları geri aç
+  openIds.forEach(id=>{
+    const el = document.getElementById('seriesBooks_'+id);
+    const btn = document.getElementById('seriesToggleBtn_'+id);
+    if(el){ el.classList.add('open'); }
+    if(btn){ btn.textContent='▲ Gizle'; }
+  });
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
