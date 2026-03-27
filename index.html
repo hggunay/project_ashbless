@@ -2960,6 +2960,13 @@ function renderFeed(append=false){
     return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   }
 
+  function reactionNames(reactions,r){
+    const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
+    if(!users.length) return '';
+    const names=users.map(([u])=>u===me?'Sen':(db.users[u]&&db.users[u].displayName||u));
+    return ' · '+names.join(', ');
+  }
+
   function feedReactionHtml(card){
     const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
@@ -2970,15 +2977,16 @@ function renderFeed(append=false){
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      const names=cnt>0?reactionNames(card.reactions,r):'';
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(card.type==='story'){
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}')">
-          ${r}${cnt>0?` · ${cnt}`:''}
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       const qi=card.type==='quote'?card.quoteIdx:-1;
       return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
-        ${r}${cnt>0?` · ${cnt}`:''}
+        ${r}${cnt>0?` · ${cnt}${names}`:''}
       </button>`;
     }).join('');
   }
@@ -3242,10 +3250,11 @@ function renderJournal(){
       const myR=card.reactions[me]||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      const names=cnt>0?reactionNames(card.reactions,r):'';
       const qi=card.type==='quote'?card.quoteIdx:-1;
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
-        ${r}${cnt>0?` · ${cnt}`:''}
+        ${r}${cnt>0?` · ${cnt}${names}`:''}
       </button>`;
     }).join('');
   }
