@@ -4138,7 +4138,7 @@ function toggleSeriesAddMode(seriesId){
   const bulk = document.getElementById('seriesAddBulk_'+seriesId);
   const btn = document.getElementById('seriesAddModeBtn_'+seriesId);
   if(!single||!bulk||!btn) return;
-  const isBulk = bulk.style.display!=='none';
+  const isBulk = getComputedStyle(bulk).display!=='none';
   single.style.display = isBulk ? '' : 'none';
   bulk.style.display = isBulk ? 'none' : '';
   btn.textContent = isBulk ? '📋 Toplu giriş' : '✏️ Tek kitap';
