@@ -4199,6 +4199,7 @@ function renderSeriesList(){
       return s;
     },0);
     const pageModePossible = allHavePages && totalPages>0;
+    const pageModeWarning = !pageModePossible && books.length>0;
     const modeKey = "seriesMode_"+ser.id;
     let progressMode = "books";
     try{ const m=localStorage.getItem(modeKey); if(m==="pages"&&pageModePossible) progressMode="pages"; }catch(e){}
