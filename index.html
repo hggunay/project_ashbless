@@ -4148,7 +4148,6 @@ function renderSeriesList(){
   if(!container) return;
   const data = mySeriesData();
   const allSeries = Object.values(data.series||{});
-  console.log('[Seriler] me:', me, 'data:', JSON.stringify(data).substring(0,200), 'allSeries:', allSeries.length);
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
 
   if(!allSeries.length){
@@ -4167,6 +4166,7 @@ function renderSeriesList(){
     return (a.name||'').localeCompare(b.name||'','tr');
   });
 
+  try {
   container.innerHTML = allSeries.map(ser=>{
     const books = (ser.books||[]).map(bk=>{
       if(bk.planned){
@@ -4332,6 +4332,7 @@ function renderSeriesList(){
       </div>
     </div>`;
   }).join('');
+  } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--rust)">Render hatası: '+e.message+'</div>'; }
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
