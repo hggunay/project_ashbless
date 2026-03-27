@@ -322,6 +322,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .journal-copy-btn:hover{opacity:1;border-color:var(--gold);}
 .feed-expand-btn{background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;margin-left:.3rem;opacity:.8;transition:opacity .15s;}
 .feed-expand-btn:hover{opacity:1;text-decoration:underline;}
+.reaction-more-btn{background:none;border:none;cursor:pointer;font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;opacity:.8;transition:opacity .15s;}
+.reaction-more-btn:hover{opacity:1;text-decoration:underline;}
 .journal-reactions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .journal-reaction-btn{padding:.2rem .6rem;border:1px solid rgba(201,162,39,.25);border-radius:20px;background:transparent;font-size:.75rem;cursor:pointer;transition:all .15s;color:var(--rust);font-family:'Crimson Pro',serif;}
 .journal-reaction-btn:hover,.journal-reaction-btn.active{background:rgba(201,162,39,.15);border-color:var(--gold);color:var(--ink);}
@@ -2960,11 +2962,16 @@ function renderFeed(append=false){
     return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   }
 
-  function reactionNames(reactions,r){
+  function reactionNames(reactions,r,cardKey){
     const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
     if(!users.length) return '';
     const names=users.map(([u])=>u===me?'Sen':(db.users[u]&&db.users[u].displayName||u));
-    return ' · '+names.join(', ');
+    if(names.length<=2) return ' · '+names.join(', ');
+    const rKey=(cardKey+'_'+r).replace(/[^a-zA-Z0-9_]/g,'_');
+    const visible=names.slice(0,2).join(', ');
+    const rest=names.slice(2);
+    return ` · <span id="rn-short-${rKey}">${visible}, <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">+${rest.length} kişi daha</button></span>`
+      +`<span id="rn-full-${rKey}" style="display:none">${names.join(', ')} <button class="reaction-more-btn" onclick="toggleReactionNames('${rKey}')">daha az</button></span>`;
   }
 
   function feedReactionHtml(card){
@@ -2977,7 +2984,7 @@ function renderFeed(append=false){
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
-      const names=cnt>0?reactionNames(card.reactions,r):'';
+      const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(card.type==='story'){
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}')">
@@ -2991,16 +2998,6 @@ function renderFeed(append=false){
     }).join('');
   }
 
-  const FEED_TRUNCATE=300;
-  function truncateHtml(text,cardKey){
-    if(!text||text.length<=FEED_TRUNCATE) return`<span>${text||''}</span>`;
-    const short=text.substring(0,FEED_TRUNCATE);
-    return`<span>
-      <span class="feed-text-short" id="fts-${cardKey}">${short}<span style="color:var(--gold)">…</span></span>
-      <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${text}</span>
-      <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
-    </span>`;
-  }
   function cardHtml(card){
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
     const ts=typeof card.ts==='number'?card.ts:new Date(card.ts||0).getTime();
@@ -3060,6 +3057,26 @@ function renderFeed(append=false){
   } else {
     container.innerHTML=html;
   }
+}
+
+const FEED_TRUNCATE=300;
+function truncateHtml(text,cardKey){
+  if(!text||text.length<=FEED_TRUNCATE) return`<span>${text||''}</span>`;
+  const short=text.substring(0,FEED_TRUNCATE);
+  return`<span>
+    <span class="feed-text-short" id="fts-${cardKey}">${short}<span style="color:var(--gold)">…</span></span>
+    <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${text}</span>
+    <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
+  </span>`;
+}
+
+function toggleReactionNames(rKey){
+  const short=document.getElementById('rn-short-'+rKey);
+  const full=document.getElementById('rn-full-'+rKey);
+  if(!short||!full) return;
+  const isOpen=full.style.display!=='none';
+  short.style.display=isOpen?'':'none';
+  full.style.display=isOpen?'none':'';
 }
 
 function toggleFeedText(cardKey){
@@ -3250,7 +3267,7 @@ function renderJournal(){
       const myR=card.reactions[me]||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
-      const names=cnt>0?reactionNames(card.reactions,r):'';
+      const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
       const qi=card.type==='quote'?card.quoteIdx:-1;
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
@@ -3262,6 +3279,9 @@ function renderJournal(){
   function journalCardHtml(card){
     const isMe=card.u===me;
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
+    const cardKey=card.type==='quote'
+      ?`jquote_${card.u}_${card.bookId}_${card.quoteIdx}`
+      :`jreview_${card.u}_${card.bookId}`;
     return`<div class="journal-entry">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem">${card.userAvatar}</span>
@@ -3274,11 +3294,11 @@ function renderJournal(){
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
-        <div class="journal-review">${card.text}</div>
+        <div class="journal-review">${truncateHtml(card.text,cardKey)}</div>
         ${isMe?`<div style="margin-top:.5rem"><button class="journal-copy-btn" onclick="openBook(${card.bookId})">✏️ Düzenle</button></div>`:''}
       `:`
         <div class="journal-quote">
-          <div class="journal-quote-text">${card.text}</div>
+          <div class="journal-quote-text">${truncateHtml(card.text,cardKey)}</div>
           <div class="journal-quote-footer">
             ${card.page?`<span class="journal-quote-page">s. ${card.page}</span>`:'<span></span>'}
             <button class="journal-copy-btn" onclick="copyCardQuote('${card.u}',${card.bookId},${card.quoteIdx})">📋 kopyala</button>
