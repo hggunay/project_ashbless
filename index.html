@@ -80,6 +80,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .field-group{display:flex;flex-direction:column;gap:.3rem;}
 .field-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);}
 .book-input{width:100%;padding:.65rem .9rem;background:rgba(245,237,214,.08);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--parchment);font-family:'Crimson Pro',serif;font-size:.95rem;outline:none;transition:border-color .2s;}
+select.book-input option{background:#2a1a08;color:var(--parchment);}
 .book-input:focus{border-color:var(--gold);}
 .book-input::placeholder{color:rgba(245,237,214,.3);font-style:italic;}
 /* Filtre bar'larındaki input — kart (açık) arka planında okunabilir */
@@ -4147,7 +4148,11 @@ function addBulkBooksToSeries(seriesId){
   const textEl = document.getElementById('seriesBulkText_'+seriesId);
   const authorEl = document.getElementById('seriesBulkAuthor_'+seriesId);
   if(!textEl) return;
-  const lines = textEl.value.split('\n').map(l=>l.trim()).filter(Boolean);
+  const raw = textEl.value;
+  const lines = (raw.includes('\n')
+    ? raw.split('\n')
+    : raw.split(',')
+  ).map(l=>l.trim()).filter(Boolean);
   if(!lines.length) return;
   const data = mySeriesData();
   const ser = data.series[seriesId];
