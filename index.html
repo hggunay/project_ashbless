@@ -4233,6 +4233,21 @@ function hideSeriesAc(seriesId){
   if(dropdown) dropdown.style.display='none';
 }
 
+function confirmRemoveBookFromSeries(evt, seriesId, bookId, isPlanned, manualTitle){
+  const item = evt.target.closest('.series-book-item');
+  if(!item) return;
+  const existId = 'removeConfirm_'+seriesId+'_'+(bookId||manualTitle||'');
+  const exist = document.getElementById(existId);
+  if(exist){ exist.remove(); return; }
+  const box = document.createElement('div');
+  box.id = existId;
+  box.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.3rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--rust);flex-wrap:wrap;margin-top:.2rem';
+  const args = isPlanned ? `'${seriesId}',null,true,'${(manualTitle||'').replace(/'/g,"\\'")}'` : `'${seriesId}',${bookId},false`;
+  box.innerHTML = `Kitabı seriden çıkar?
+    <button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="removeBookFromSeries(${args})">Evet</button>
+    <button class="btn btn-sm" style="font-size:.68rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="this.closest('div[id]').remove()">İptal</button>`;
+  item.insertAdjacentElement('afterend', box);
+}
 function removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle){
   const data = mySeriesData();
   const ser = data.series[seriesId];
@@ -4464,10 +4479,13 @@ function renderSeriesList(){
     const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
     const booksRead = books.filter(bk=>{
       const s=bk.book.readingStatus;
-      return s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
+      return s&&s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned'&&s!=='new';
     });
     const booksPaused = books.filter(bk=>bk.book.readingStatus==='paused');
-    const booksPlanned = books.filter(bk=>bk.book.readingStatus==='wishlist'||bk.book.readingStatus==='planned'||(!bk.book.readingStatus));
+    const booksPlanned = books.filter(bk=>{
+      const s=bk.book.readingStatus;
+      return s==='wishlist'||s==='planned'||s==='new'||!s;
+    });
 
     function bookItemHtmlSeries(bk){
       const b = bk.book;
@@ -4490,7 +4508,7 @@ function renderSeriesList(){
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
           <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="removeBookFromSeries(${removeKey})">✕</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
         </div>
       </div>`;
     }
