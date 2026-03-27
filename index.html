@@ -339,6 +339,33 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
   .leaderboard-grid{grid-template-columns:repeat(2,1fr);}
   .header-username{display:none;}
 }
+.series-card{background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.15);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
+.series-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;}
+.series-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);font-weight:700;}
+.series-card-stats{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;}
+.series-progress-wrap{background:rgba(201,162,39,.1);border-radius:20px;height:6px;margin:.4rem 0;}
+.series-progress-fill{background:var(--gold);border-radius:20px;height:6px;transition:width .4s ease;}
+.series-progress-fill.done{background:var(--moss);}
+.series-books-list{margin-top:.6rem;display:none;}
+.series-books-list.open{display:block;}
+.series-book-item{display:flex;align-items:center;gap:.5rem;padding:.3rem .4rem;border-radius:6px;font-size:.85rem;cursor:pointer;transition:background .15s;}
+.series-book-item:hover{background:rgba(201,162,39,.08);}
+.series-book-item.reading{background:rgba(74,103,65,.12);border-left:3px solid var(--moss);}
+.series-book-item.unread{opacity:.45;}
+.series-book-num{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1.4rem;}
+.series-book-title{flex:1;color:var(--ink);}
+.series-book-status{font-size:.7rem;}
+.series-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
+.path-card{background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.2);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
+.path-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;margin-bottom:.5rem;}
+.path-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.05);margin-bottom:.3rem;cursor:grab;}
+.path-step:active{cursor:grabbing;opacity:.7;}
+.path-step-handle{color:var(--gold);opacity:.4;font-size:.8rem;user-select:none;}
+.path-step-name{flex:1;font-size:.88rem;color:var(--ink);}
+.path-step-progress{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--rust);}
+.path-overall{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--moss);margin-top:.4rem;}
+.series-add-book-row{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;}
+
 </style>
 </head>
 <body>
@@ -406,6 +433,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
       <button class="nav-tab" onclick="showPanel('feed',this)">🏠 Ana Sayfa <span id="feedBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('stories',this)">📖 Hikâyelerim</button>
+      <button class="nav-tab" onclick="showPanel('series',this)">📚 Seriler</button>
       <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defterim</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
@@ -735,6 +763,51 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
           <button class="filter-tab" id="activeAuthorFilter" style="display:none" onclick="clearAuthorFilter()">✕ Yazar filtresi</button>
         </div>
         <div id="storiesContainer" style="padding:.5rem"></div>
+      </div>
+    </div>
+
+
+    <!-- SERIES PANEL -->
+    <div id="series" class="panel">
+      <div class="filter-tabs" style="margin-bottom:1rem">
+        <button class="filter-tab active" id="seriesTabBtn" onclick="switchSeriesTab('series',this)">📚 Serilerim</button>
+        <button class="filter-tab" id="pathsTabBtn" onclick="switchSeriesTab('paths',this)">🗺️ Okuma Yolları</button>
+      </div>
+
+      <!-- SERİLER ALT PANELİ -->
+      <div id="seriesSubPanel">
+        <div class="add-section" style="margin-bottom:1rem">
+          <div class="section-title">➕ Yeni Seri Oluştur</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:180px">
+              <div class="field-label" style="margin-bottom:.3rem">Seri Adı *</div>
+              <input class="book-input" id="newSeriesName" type="text" placeholder="örn: Dune Serisi"/>
+            </div>
+            <div style="width:80px">
+              <div class="field-label" style="margin-bottom:.3rem">Toplam Kitap</div>
+              <input class="book-input" id="newSeriesTotal" type="number" min="1" placeholder="6"/>
+            </div>
+            <button class="btn btn-primary" onclick="createSeries()">+ Oluştur</button>
+          </div>
+          <div class="status-msg" id="seriesCreateStatus" style="margin-top:.4rem"></div>
+        </div>
+        <div id="seriesListContainer"></div>
+      </div>
+
+      <!-- OKUMA YOLLARI ALT PANELİ -->
+      <div id="pathsSubPanel" style="display:none">
+        <div class="add-section" style="margin-bottom:1rem">
+          <div class="section-title">➕ Yeni Okuma Yolu</div>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
+            <div style="flex:1;min-width:200px">
+              <div class="field-label" style="margin-bottom:.3rem">Yol Adı *</div>
+              <input class="book-input" id="newPathName" type="text" placeholder="örn: Asimov Evren Sırası"/>
+            </div>
+            <button class="btn btn-primary" onclick="createPath()">+ Oluştur</button>
+          </div>
+          <div class="status-msg" id="pathCreateStatus" style="margin-top:.4rem"></div>
+        </div>
+        <div id="pathsListContainer"></div>
       </div>
     </div>
 
@@ -1102,11 +1175,12 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};return;}
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};return;}
   }catch(e){}
   // localStorage'a düş
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
   if(!db.stories)db.stories={};
+  if(!db.seriesData)db.seriesData={};
 }
 
 async function saveDb(){
@@ -1531,6 +1605,7 @@ function showPanel(id,el){
   else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
+  else if(id==='series'){renderSeriesList();}
   else render();
 }
 function viewMember(u){
@@ -3853,6 +3928,345 @@ function renderMembers(){
 }
 
 function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==='password'?'text':'password';btn.textContent=el.type==='password'?'👁':'🔒';}
+
+// ── SERİ SİSTEMİ ─────────────────────────────────────────────
+
+let seriesSubTab = 'series'; // 'series' | 'paths'
+
+function switchSeriesTab(tab, el){
+  seriesSubTab = tab;
+  document.querySelectorAll('#seriesTabBtn,#pathsTabBtn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('seriesSubPanel').style.display = tab==='series' ? '' : 'none';
+  document.getElementById('pathsSubPanel').style.display = tab==='paths' ? '' : 'none';
+  if(tab==='series') renderSeriesList();
+  else renderPathsList();
+}
+
+function mySeriesData(){
+  if(!db.seriesData) db.seriesData={};
+  if(!db.seriesData[me]) db.seriesData[me]={series:{},paths:{}};
+  return db.seriesData[me];
+}
+
+function createSeries(){
+  const name = document.getElementById('newSeriesName').value.trim();
+  const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
+  const st = document.getElementById('seriesCreateStatus');
+  if(!name){ st.textContent='⚠️ Seri adı boş olamaz.'; return; }
+  const data = mySeriesData();
+  const id = 'ser_'+Date.now();
+  data.series[id] = { id, name, total, books:[], createdAt: new Date().toISOString() };
+  saveDb();
+  document.getElementById('newSeriesName').value='';
+  document.getElementById('newSeriesTotal').value='';
+  st.textContent='✓ Seri oluşturuldu!';
+  setTimeout(()=>{ st.textContent=''; }, 2500);
+  renderSeriesList();
+}
+
+function deleteSeries(id){
+  if(!confirm('Bu seriyi silmek istediğine emin misin?')) return;
+  const data = mySeriesData();
+  delete data.series[id];
+  // Okuma yollarından da temizle
+  Object.values(data.paths||{}).forEach(p=>{
+    p.steps = (p.steps||[]).filter(s=>s.seriesId!==id);
+  });
+  saveDb();
+  renderSeriesList();
+}
+
+function addBookToSeries(seriesId){
+  const sel = document.getElementById('seriesBookSel_'+seriesId);
+  if(!sel||!sel.value) return;
+  const bookId = parseInt(sel.value);
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  if((ser.books||[]).find(b=>b.bookId===bookId)){ 
+    notify('⚠️','Bu kitap zaten seriye ekli.'); return; 
+  }
+  const num = parseInt(document.getElementById('seriesBookNum_'+seriesId)?.value)||null;
+  ser.books = ser.books||[];
+  ser.books.push({ bookId, num });
+  ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
+  saveDb();
+  renderSeriesList();
+}
+
+function removeBookFromSeries(seriesId, bookId){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  ser.books = (ser.books||[]).filter(b=>b.bookId!==bookId);
+  saveDb();
+  renderSeriesList();
+}
+
+function updateSeriesTotal(seriesId, val){
+  const data = mySeriesData();
+  if(data.series[seriesId]) data.series[seriesId].total = parseInt(val)||null;
+  saveDb();
+}
+
+function toggleSeriesBooks(id){
+  const el = document.getElementById('seriesBooks_'+id);
+  if(!el) return;
+  el.classList.toggle('open');
+  const btn = document.getElementById('seriesToggleBtn_'+id);
+  if(btn) btn.textContent = el.classList.contains('open') ? '▲ Gizle' : '▼ Kitaplar';
+}
+
+function renderSeriesList(){
+  const container = document.getElementById('seriesListContainer');
+  if(!container) return;
+  const data = mySeriesData();
+  const allSeries = Object.values(data.series||{});
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+
+  if(!allSeries.length){
+    container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz seri oluşturmadın. Yukarıdan başlayabilirsin!</div>`;
+    return;
+  }
+
+  // Sıralama: önce devam edenler (şu an okunan kitabı olanlar)
+  const readingIds = new Set(myBooksList.filter(b=>b.readingStatus==='reading').map(b=>b.id));
+
+  allSeries.sort((a,b)=>{
+    const aActive = (a.books||[]).some(bk=>readingIds.has(bk.bookId));
+    const bActive = (b.books||[]).some(bk=>readingIds.has(bk.bookId));
+    if(aActive && !bActive) return -1;
+    if(!aActive && bActive) return 1;
+    return (a.name||'').localeCompare(b.name||'','tr');
+  });
+
+  container.innerHTML = allSeries.map(ser=>{
+    const books = (ser.books||[]).map(bk=>{
+      const book = myBooksList.find(b=>b.id===bk.bookId);
+      return book ? {...bk, book} : null;
+    }).filter(Boolean);
+
+    const readCount = books.filter(bk=>{
+      return bk.book.readingStatus!=='reading'&&bk.book.readingStatus!=='paused'&&bk.book.readingStatus!=='wishlist';
+    }).length;
+    const total = ser.total || books.length || 1;
+    const pct = Math.round((readCount/total)*100);
+    const isDone = readCount>=total && total>0;
+
+    // Şu an okunan kitap
+    const currentlyReading = books.find(bk=>bk.book.readingStatus==='reading');
+
+    // Sıradaki okunmamış
+    const nextUnread = books.find(bk=>
+      bk.book.readingStatus==='wishlist'||
+      (!bk.book.readingStatus||bk.book.readingStatus==='new'||bk.book.readingStatus==='past')&&
+      bk.book.readingStatus!=='reading'&&readCount<total
+    );
+
+    // Kitap listesi HTML
+    const bookListHtml = books.map(bk=>{
+      const b = bk.book;
+      const isReading = b.readingStatus==='reading';
+      const isRead = !isReading && b.readingStatus!=='wishlist' && b.readingStatus!=='paused';
+      const statusIcon = isReading ? '📖' : isRead ? '✅' : b.readingStatus==='paused' ? '🚧' : '⏳';
+      const pageInfo = isReading && b.currentPage && b.pages 
+        ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
+      return `<div class="series-book-item ${isReading?'reading':isRead?'':'unread'}" onclick="openBook(${b.id})">
+        <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
+        <span class="series-book-status">${statusIcon}</span>
+        <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>
+        ${pageInfo}
+        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="event.stopPropagation();removeBookFromSeries('${ser.id}',${b.id})">✕</button>
+      </div>`;
+    }).join('');
+
+    // Kitap ekleme select
+    const availableBooks = myBooksList.filter(b=>!(ser.books||[]).find(bk=>bk.bookId===b.id));
+    const bookSelectHtml = `<div class="series-add-book-row">
+      <select class="book-input" id="seriesBookSel_${ser.id}" style="flex:1;font-size:.8rem;padding:.35rem .5rem">
+        <option value="">— Kitap seç —</option>
+        ${availableBooks.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('')}
+      </select>
+      <input class="book-input" id="seriesBookNum_${ser.id}" type="number" min="1" placeholder="#" style="width:55px;font-size:.8rem;padding:.35rem .4rem"/>
+      <button class="btn btn-sm btn-primary" onclick="addBookToSeries('${ser.id}')">+ Ekle</button>
+    </div>`;
+
+    return `<div class="series-card">
+      <div class="series-card-header">
+        <div>
+          <div class="series-card-name">${ser.name}</div>
+          <div class="series-card-stats">${readCount} / ${total} kitap · %${pct}${isDone?' · ✅ Tamamlandı':''}</div>
+        </div>
+        <div style="display:flex;gap:.4rem;align-items:center">
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">Toplam:</div>
+          <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
+            style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
+            onchange="updateSeriesTotal('${ser.id}',this.value)"/>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteSeries('${ser.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="series-progress-wrap">
+        <div class="series-progress-fill ${isDone?'done':''}" style="width:${pct}%"></div>
+      </div>
+      ${currentlyReading ? `<div style="font-size:.8rem;color:var(--moss);margin:.3rem 0">
+        📖 Şu an: <strong>${currentlyReading.book.title}</strong>
+        ${currentlyReading.book.currentPage&&currentlyReading.book.pages
+          ?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.7"> · ${currentlyReading.book.currentPage}/${currentlyReading.book.pages} sayfa</span>`:''}
+      </div>` : ''}
+      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--rust);opacity:.7;margin:.3rem 0">⏭ Sıradaki: ${nextUnread.book.title}</div>` : ''}
+      <div class="series-actions">
+        <button class="btn btn-sm" id="seriesToggleBtn_${ser.id}" 
+          style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
+          onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${books.length})</button>
+      </div>
+      <div class="series-books-list" id="seriesBooks_${ser.id}">
+        ${bookListHtml}
+        <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(201,162,39,.1)">
+          <div style="font-size:.75rem;color:var(--rust);opacity:.7;margin-bottom:.3rem">Kitap Ekle</div>
+          ${bookSelectHtml}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── OKUMA YOLLARI ─────────────────────────────────────────────
+
+function createPath(){
+  const name = document.getElementById('newPathName').value.trim();
+  const st = document.getElementById('pathCreateStatus');
+  if(!name){ st.textContent='⚠️ Yol adı boş olamaz.'; return; }
+  const data = mySeriesData();
+  if(!data.paths) data.paths={};
+  const id = 'path_'+Date.now();
+  data.paths[id] = { id, name, steps:[], createdAt: new Date().toISOString() };
+  saveDb();
+  document.getElementById('newPathName').value='';
+  st.textContent='✓ Okuma yolu oluşturuldu!';
+  setTimeout(()=>{ st.textContent=''; }, 2500);
+  renderPathsList();
+}
+
+function deletePath(id){
+  if(!confirm('Bu okuma yolunu silmek istediğine emin misin?')) return;
+  const data = mySeriesData();
+  delete data.paths[id];
+  saveDb();
+  renderPathsList();
+}
+
+function addSeriesToPath(pathId){
+  const sel = document.getElementById('pathSeriesSel_'+pathId);
+  if(!sel||!sel.value) return;
+  const data = mySeriesData();
+  const path = data.paths[pathId];
+  if(!path) return;
+  if((path.steps||[]).find(s=>s.seriesId===sel.value)){
+    notify('⚠️','Bu seri zaten yolda mevcut.'); return;
+  }
+  path.steps = path.steps||[];
+  path.steps.push({ seriesId: sel.value });
+  saveDb();
+  renderPathsList();
+}
+
+function removeStepFromPath(pathId, seriesId){
+  const data = mySeriesData();
+  const path = data.paths[pathId];
+  if(!path) return;
+  path.steps = (path.steps||[]).filter(s=>s.seriesId!==seriesId);
+  saveDb();
+  renderPathsList();
+}
+
+function moveStep(pathId, idx, dir){
+  const data = mySeriesData();
+  const path = data.paths[pathId];
+  if(!path||!path.steps) return;
+  const newIdx = idx+dir;
+  if(newIdx<0||newIdx>=path.steps.length) return;
+  const tmp = path.steps[idx];
+  path.steps[idx] = path.steps[newIdx];
+  path.steps[newIdx] = tmp;
+  saveDb();
+  renderPathsList();
+}
+
+function renderPathsList(){
+  const container = document.getElementById('pathsListContainer');
+  if(!container) return;
+  const data = mySeriesData();
+  const allPaths = Object.values(data.paths||{});
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+
+  if(!allPaths.length){
+    container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz okuma yolu oluşturmadın. Önce seriler oluşturup buradan birleştirebilirsin!</div>`;
+    return;
+  }
+
+  const allSeries = data.series||{};
+
+  container.innerHTML = allPaths.map(path=>{
+    const steps = (path.steps||[]).map(s=>{
+      const ser = allSeries[s.seriesId];
+      if(!ser) return null;
+      const books = (ser.books||[]).map(bk=>myBooksList.find(b=>b.id===bk.bookId)).filter(Boolean);
+      const readCount = books.filter(b=>b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist').length;
+      const total = ser.total||books.length||1;
+      const pct = Math.round((readCount/total)*100);
+      return { ...s, ser, readCount, total, pct };
+    }).filter(Boolean);
+
+    const totalBooks = steps.reduce((s,st)=>s+st.total,0);
+    const totalRead = steps.reduce((s,st)=>s+st.readCount,0);
+    const overallPct = totalBooks>0 ? Math.round((totalRead/totalBooks)*100) : 0;
+
+    // Seri ekleme select
+    const usedIds = new Set((path.steps||[]).map(s=>s.seriesId));
+    const availableSeries = Object.values(allSeries).filter(s=>!usedIds.has(s.id));
+
+    const stepsHtml = steps.map((st,i)=>`
+      <div class="path-step" id="pathStep_${path.id}_${i}">
+        <span class="path-step-handle">⠿</span>
+        <div class="path-step-name">
+          <strong>${st.ser.name}</strong>
+          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}</div>
+        </div>
+        <div style="display:flex;gap:.25rem">
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+            onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+            onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
+            onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+        </div>
+      </div>`).join('');
+
+    return `<div class="path-card">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
+        <div class="path-card-name">${path.name}</div>
+        <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deletePath('${path.id}')">🗑 Sil</button>
+      </div>
+      ${steps.length?`
+        <div class="path-overall">📊 Genel ilerleme: ${totalRead}/${totalBooks} kitap · %${overallPct}</div>
+        <div class="series-progress-wrap" style="margin-bottom:.6rem">
+          <div class="series-progress-fill ${overallPct>=100?'done':''}" style="width:${overallPct}%"></div>
+        </div>
+        ${stepsHtml}
+      `:'<div style="font-size:.85rem;opacity:.5;font-style:italic;margin-bottom:.5rem">Henüz seri eklenmemiş.</div>'}
+      ${availableSeries.length?`
+        <div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+          <select class="book-input" id="pathSeriesSel_${path.id}" style="flex:1;font-size:.8rem;padding:.35rem .5rem">
+            <option value="">— Seri ekle —</option>
+            ${availableSeries.map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="addSeriesToPath('${path.id}')">+ Ekle</button>
+        </div>`:''}
+    </div>`;
+  }).join('');
+}
+
 async function init(){
   await loadDb();
   renderPills();
