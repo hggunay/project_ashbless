@@ -4077,8 +4077,7 @@ function createSeries(){
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   let books = [];
   if(bulkText){
-    const lines = bulkText.split('
-').map(l=>l.trim()).filter(Boolean);
+    const lines = bulkText.split("\n").map(l=>l.trim()).filter(Boolean);
     lines.forEach((line,i)=>{
       // Kitaplarımda var mı?
       const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
