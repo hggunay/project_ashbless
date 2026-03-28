@@ -4010,6 +4010,12 @@ function mySeriesData(){
   if(!db.seriesData[me]) db.seriesData[me]={series:{},paths:{}};
   return db.seriesData[me];
 }
+function viewSeriesData(){
+  const u = viewing||me;
+  if(!db.seriesData) db.seriesData={};
+  if(!db.seriesData[u]) db.seriesData[u]={series:{},paths:{}};
+  return db.seriesData[u];
+}
 
 function checkSeriesMatch(){
   const name = document.getElementById('newSeriesName').value.trim().toLowerCase();
@@ -4450,10 +4456,17 @@ function toggleSeriesBooks(id){
 function renderSeriesList(){
   const container = document.getElementById('seriesListContainer');
   if(!container) return;
+  // Ziyaret modunda formları gizle
+  const isViewing = !!viewing;
+  ['newSeriesName','newSeriesTotal','newSeriesGroupId','newSeriesBulkBooks','newSeriesBulkAuthor','newPathName'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.closest('.add-section') && (el.closest('.add-section').style.display=isViewing?'none':'');
+  });
+  // Formların tüm add-section'larını gizle/göster
+  document.querySelectorAll('#series .add-section').forEach(s=>s.style.display=isViewing?'none':'');
   // Grup select'i güncelle
   const groupSel = document.getElementById('newSeriesGroupId');
   if(groupSel){
-    const data0 = mySeriesData();
+    const data0 = viewSeriesData();
     const paths0 = Object.values(data0.paths||{});
     groupSel.innerHTML = '<option value="">— Gruba ekleme —</option>' +
       paths0.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -4463,7 +4476,7 @@ function renderSeriesList(){
     [...document.querySelectorAll('.series-books-list.open')]
       .map(el=>el.id.replace('seriesBooks_',''))
   );
-  const data = mySeriesData();
+  const data = viewSeriesData();
   const allSeries = Object.values(data.series||{});
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
 
@@ -4691,7 +4704,7 @@ function renderSeriesList(){
 }
 
 function renderGroupCards(seriesContainer){
-  const data = mySeriesData();
+  const data = viewSeriesData();
   const allPaths = Object.values(data.paths||{});
   if(!allPaths.length) return;
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
