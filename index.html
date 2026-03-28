@@ -2632,6 +2632,11 @@ function markAsUnread(bookId){
   book.readingStatus='planned';
   book.endDate=null;
   book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
+  // Bu kitaba ait seri eventlerini temizle
+  if(db.seriesEvents&&db.seriesEvents[me]){
+    db.seriesEvents[me]=db.seriesEvents[me].filter(ev=>ev.bookTitle!==book.title);
+  }
+  // Review ve quote'ları koru — sadece status'u geri al
   saveDb();
   closeModal();
   render();
