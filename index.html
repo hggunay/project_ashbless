@@ -801,6 +801,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
               <input type="checkbox" id="privateNotesOnlyNoted" onchange="renderPrivateNotes()" checked style="accent-color:var(--gold)"/> Sadece notlu
             </label>
+            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="privateNotesShowArchive" onchange="renderPrivateNotes()" style="accent-color:var(--gold)"/> 📦 Arşiv
+            </label>
           </div>
           <div id="privateNotesContainer" style="padding:.75rem"></div>
         </div>
@@ -1230,7 +1233,7 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};return;}
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};return;}
   }catch(e){}
   // localStorage'a düş
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
@@ -2286,8 +2289,39 @@ function removeBook(id){
   }
 }
 function confirmRemoveBook(id){
+  const book=myBooks().find(b=>b.id===id);
+  if(!book) return;
+  const hasNote=book.comment&&book.comment.trim();
+  if(hasNote){
+    // Notlar var — kullanıcıya sor
+    const footer=document.getElementById('modalFooter');
+    footer.innerHTML=`
+      <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu kitabın kişisel notu var. Notlar da silinsin mi?</span>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-danger btn-sm" onclick="confirmRemoveBookFinal(${id},true)">🗑 Kitap + Notu Sil</button>
+        <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="confirmRemoveBookFinal(${id},false)">📓 Kitabı Sil, Notu Arşivle</button>
+        <button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--rust)" onclick="openBook(${id})">İptal</button>
+      </div>`;
+    return;
+  }
+  confirmRemoveBookFinal(id, true);
+}
+
+function confirmRemoveBookFinal(id, deleteNote){
+  const book=myBooks().find(b=>b.id===id);
+  if(!book) return;
+  if(!deleteNote && book.comment){
+    // Notu arşive taşı
+    if(!db.archivedNotes) db.archivedNotes={};
+    if(!db.archivedNotes[me]) db.archivedNotes[me]=[];
+    db.archivedNotes[me].push({
+      bookId:id, title:book.title, author:book.author||'',
+      comment:book.comment, archivedAt:new Date().toISOString()
+    });
+  }
   db.books[me]=myBooks().filter(b=>b.id!==id);
   saveDb();closeModal();renderSafe();
+  notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
 }
 
 // ── MODAL ─────────────────────────────────────────────────────
@@ -3515,15 +3549,38 @@ function renderPrivateNotes(){
   if(!container) return;
   const q = (document.getElementById('privateNotesSearch')?.value||'').toLowerCase().trim();
   const onlyNoted = document.getElementById('privateNotesOnlyNoted')?.checked ?? true;
+  const showArchive = document.getElementById('privateNotesShowArchive')?.checked ?? false;
+
+  // Arşivlenmiş notlar
+  if(showArchive){
+    const archived=(db.archivedNotes&&db.archivedNotes[me])||[];
+    const filteredArch=archived.filter(n=>
+      !q||(n.title||'').toLowerCase().includes(q)||(n.author||'').toLowerCase().includes(q)||(n.comment||'').toLowerCase().includes(q)
+    );
+    if(!filteredArch.length){
+      container.innerHTML=`<div class="empty-state" style="padding:1.5rem">Arşivde not yok.</div>`;
+      return;
+    }
+    container.innerHTML=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.08em">📦 Kütüphaneden kaldırılan kitapların notları</div>`
+      +filteredArch.map((n,i)=>`
+      <div style="border-bottom:1px solid rgba(201,162,39,.1);padding:.75rem 0">
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
+          <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);flex:1">${n.title}</span>
+          ${n.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic">${n.author}</span>`:''}
+          <button onclick="deleteArchivedNote(${i})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--rust);opacity:.6" title="Notu sil">✕</button>
+        </div>
+        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;font-style:italic;color:var(--ink);opacity:.8;white-space:pre-wrap">${n.comment}</div>
+      </div>`).join('');
+    return;
+  }
 
   const allMyBooks = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
   allMyBooks.sort((a,b)=>(b.addedAt||'').localeCompare(a.addedAt||''));
 
   let filtered = allMyBooks;
-  // planned kitaplar sadece notu varsa göster (onlyNoted kapalı olsa bile)
   filtered = filtered.filter(b=>b.readingStatus!=='planned'||b.comment);
   if(onlyNoted) filtered = filtered.filter(b=>b.comment);
-  if(q) filtered = filtered.filter(b=>(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q));
+  if(q) filtered = filtered.filter(b=>(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q)||(b.comment||'').toLowerCase().includes(q));
 
   if(!filtered.length){
     const msg = onlyNoted && !q ? 'Henüz kişisel not yok. Bir kitabı açıp not ekle, ya da "Sadece notlu" filtresini kaldır.'
@@ -3542,6 +3599,7 @@ function renderPrivateNotes(){
         <span style="font-size:.85rem">${statusIcon(b.readingStatus)}</span>
         <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);flex:1">${b.title}</span>
         ${b.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic;flex-shrink:0">${b.author}</span>`:''}
+        ${note?`<button onclick="event.stopPropagation();deletePrivateNote(${b.id})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--rust);opacity:.5;flex-shrink:0" title="Notu sil">✕</button>`:''}
         <span style="font-size:.7rem;color:var(--gold);opacity:.7;flex-shrink:0">${note?'✏️ not var':'+ ekle'}</span>
       </div>
       <div id="${sid}" style="display:none;margin-top:.35rem">
@@ -3551,6 +3609,21 @@ function renderPrivateNotes(){
       </div>
     </div>`;
   }).join('');
+}
+
+function deletePrivateNote(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.comment=null;
+  saveDb();
+  renderPrivateNotes();
+}
+
+function deleteArchivedNote(idx){
+  if(!db.archivedNotes||!db.archivedNotes[me]) return;
+  db.archivedNotes[me].splice(idx,1);
+  saveDb();
+  renderPrivateNotes();
 }
 
 function togglePrivateNote(sid){
