@@ -4338,6 +4338,8 @@ function startReadingSeriesBook(bookId){
   saveDb();
   renderSeriesList();
   notify('📖 Okumaya Başlandı', book.title+' şu an okunanlar listesine eklendi.');
+  const myBooksTab=[...document.querySelectorAll('.nav-tab')].find(t=>t.getAttribute('onclick')&&t.getAttribute('onclick').includes("'myBooks'"));
+  showPanel('myBooks',myBooksTab||null);
 }
 
 function addSeriesEvent(seriesId, seriesName, bookTitle, type){
@@ -4731,21 +4733,21 @@ function removeStepFromPath(pathId, seriesId){
 }
 
 function togglePathCard(pathId){
-  const body=document.getElementById("pathCardBody_"+pathId);
-  const arrow=document.getElementById("pathCardArrow_"+pathId);
+  const body=document.getElementById('pathCardBody_'+pathId);
+  const arrow=document.getElementById('pathCardArrow_'+pathId);
   if(!body) return;
-  const open=body.style.display==="none";
-  body.style.display=open?"block":"none";
-  if(arrow) arrow.textContent=open?"▲":"▼";
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(arrow) arrow.textContent=open?'▲':'▼';
 }
 
 function togglePathStep(key){
-  const books=document.getElementById("pathStepBooks_"+key);
-  const arrow=document.getElementById("pathStepArrow_"+key);
+  const books=document.getElementById('pathStepBooks_'+key);
+  const arrow=document.getElementById('pathStepArrow_'+key);
   if(!books) return;
-  const open=books.style.display==="none";
-  books.style.display=open?"block":"none";
-  if(arrow) arrow.textContent=open?"▲":"▼";
+  const open=books.style.display==='none';
+  books.style.display=open?'block':'none';
+  if(arrow) arrow.textContent=open?'▲':'▼';
 }
 
 function moveStep(pathId, idx, dir){
@@ -4829,26 +4831,31 @@ function renderPathsList(){
     const stepsHtml = steps.map((st,i)=>{
       const stepKey = path.id+'_'+i;
       const booksHtml = (st.ser.books||[]).map(bk=>{
-        let title='', author='', statusIcon='⏳', isRead=false;
+        let title='', author='', bookId=null, statusIcon='⏳', isRead=false;
         if(bk.planned||bk.manualTitle){
           const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
           title=bk.manualTitle||''; author=bk.manualAuthor||'';
           if(linked){
+            bookId=linked.id;
             isRead=linked.readingStatus!=='planned'&&linked.readingStatus!=='reading'&&linked.readingStatus!=='paused'&&linked.readingStatus!=='wishlist';
             statusIcon=linked.readingStatus==='reading'?'📖':linked.readingStatus==='paused'?'🚧':linked.readingStatus==='planned'?'📋':isRead?'✅':'⏳';
           } else { statusIcon='📋'; }
         } else {
           const book=myBooksList.find(b=>b.id===bk.bookId);
           if(!book) return '';
-          title=book.title||''; author=book.author||'';
+          bookId=book.id; title=book.title||''; author=book.author||'';
           isRead=book.readingStatus!=='planned'&&book.readingStatus!=='reading'&&book.readingStatus!=='paused'&&book.readingStatus!=='wishlist';
+          const canStart=!isRead&&book.readingStatus!=='reading';
           statusIcon=book.readingStatus==='reading'?'📖':book.readingStatus==='paused'?'🚧':book.readingStatus==='planned'?'📋':isRead?'✅':'⏳';
         }
+        const book2=bookId?myBooksList.find(b=>b.id===bookId):null;
+        const canStart=book2&&book2.readingStatus!=='reading'&&!isRead;
         return '<div style="display:flex;align-items:center;gap:.4rem;padding:.2rem .8rem;font-size:.8rem;'+(isRead?'opacity:.6':'')+'">'
           +'<span style="min-width:1.6rem;font-family:Space Mono,monospace;font-size:.6rem;color:var(--rust)">'+(bk.num?'#'+bk.num:'')+'</span>'
           +'<span>'+statusIcon+'</span>'
-          +'<span style="color:var(--parchment)">'+title+'</span>'
+          +'<span style="flex:1;color:var(--parchment)">'+title+'</span>'
           +(author?'<span style="opacity:.45;font-size:.75rem"> — '+author+'</span>':'')
+          +(canStart?'<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3);margin-left:.25rem" onclick="startReadingSeriesBook('+bookId+')">📖 Başla</button>':'')
           +'</div>';
       }).filter(Boolean).join('');
       return `
