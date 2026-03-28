@@ -776,6 +776,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
     <!-- SERIES PANEL -->
     <div id="series" class="panel">
+      <div id="seriesViewingBanner" class="viewing-banner" style="display:none">
+        <span id="seriesViewingText"></span>
+        <button class="btn btn-sm" onclick="viewMember(null)" style="font-size:.75rem">✕ Kendi profilime dön</button>
+      </div>
       <!-- OLUŞTURMA FORMLARI -->
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <!-- Yeni Seri -->
@@ -3701,9 +3705,10 @@ function confirmDeleteProfile(){
 
 function renderBanners(){
   const isV=!!viewing,name=viewing?(db.users[viewing]?.displayName||viewing):'',av=viewing?(db.users[viewing]?.avatar||'📚'):'';
-  ['viewingBanner','viewingBanner2'].forEach((id,i)=>{
-    const el=document.getElementById(id);el.style.display=isV?'':'none';
-    if(isV)document.getElementById(['viewingText','viewingText2'][i]).textContent=`${av} ${name} adlı üyenin profilini görüntülüyorsunuz`;
+  ['viewingBanner','viewingBanner2','seriesViewingBanner'].forEach((id,i)=>{
+    const el=document.getElementById(id); if(!el) return; el.style.display=isV?'':'none';
+    const textId=['viewingText','viewingText2','seriesViewingText'][i];
+    if(isV){ const t=document.getElementById(textId); if(t) t.textContent=`${av} ${name} adlı üyenin profilini görüntülüyorsunuz`; }
   });
   document.getElementById('addBookSection').style.display=isV?'none':'';
   // Header'da kimin profiline bakıldığını göster
@@ -4478,7 +4483,7 @@ function renderSeriesList(){
   );
   const data = viewSeriesData();
   const allSeries = Object.values(data.series||{});
-  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
 
   if(!allSeries.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz seri oluşturmadın. Yukarıdan başlayabilirsin!</div>`;
@@ -4707,7 +4712,7 @@ function renderGroupCards(seriesContainer){
   const data = viewSeriesData();
   const allPaths = Object.values(data.paths||{});
   if(!allPaths.length) return;
-  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
   const allSeries = data.series||{};
 
   // Grup kartlarını üste taşı — her grup kartını seriesListContainer'ın başına ekle
@@ -4912,7 +4917,7 @@ function renderPathsList(){
   if(!container) return;
   const data = mySeriesData();
   const allPaths = Object.values(data.paths||{});
-  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
 
   if(!allPaths.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz okuma yolu oluşturmadın. Önce seriler oluşturup buradan birleştirebilirsin!</div>`;
