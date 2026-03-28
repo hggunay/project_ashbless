@@ -4581,8 +4581,8 @@ function renderSeriesList(){
         ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
       const removeKey = bk.planned ? `'${ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' ` : `'${ser.id}',${b.id},false`;
       const canStartReading = !isReading && b.id;
-      const plannedStartBtn = (!isReading&&bk.planned)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
-      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
+      const isOwn = !viewing;
+      const plannedStartBtn = (!isReading&&bk.planned)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
         <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
         <span class="series-book-status">${statusIcon}</span>
         <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>
@@ -4590,8 +4590,8 @@ function renderSeriesList(){
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedStartBtn}
-          <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
+          ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}
         </div>
       </div>`;
     }
@@ -4783,7 +4783,7 @@ function renderGroupCards(seriesContainer){
               ?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${lb.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`
               :`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${st.ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`):'';
             const removeKey=bk.planned?`'${st.ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' `:`'${st.ser.id}',${lb.id||'null'},false`;
-            return `<div style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${startBtn}<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="goToFullSeriesCard('${st.ser.id}')">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button></div></div>`;
+            return `<div style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${startBtn}${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="goToFullSeriesCard('${st.ser.id}')">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}</div></div>`;
           }).join('');
           const serOpenKey='serInGrp_'+st.ser.id;
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
@@ -4791,12 +4791,12 @@ function renderGroupCards(seriesContainer){
             <div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;cursor:pointer;background:rgba(74,103,65,.06)" onclick="toggleSeriesInGroup('${st.ser.id}',this)">
               <span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>
               <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
-              <div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
+              ${!viewing?`<div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="goToFullSeriesCard('${st.ser.id}')" title="Tam kartı göster">✏️</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
                 <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
-              </div>
+              </div>`:''}
               <span style="font-size:.7rem;color:var(--moss)">${serIsOpen?'▲':'▼'}</span>
             </div>
             <div class="ser-in-grp-books" data-sid="${st.ser.id}" style="display:${serIsOpen?'block':'none'};padding:.3rem 0">${booksHtml||'<div style="padding:.2rem 1rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
@@ -4835,6 +4835,7 @@ function toggleSeriesInGroup(seriesId, headerEl){
 }
 
 function goToFullSeriesCard(seriesId){
+  if(viewing) return;
   const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
   if(!card) return;
   card.style.display='';
