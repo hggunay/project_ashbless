@@ -4796,20 +4796,20 @@ function renderGroupCards(seriesContainer){
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
                 <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
-              </div>`:''}
+              </div>`:`<div onclick="event.stopPropagation()"><button class="btn btn-sm btn-primary" style="font-size:.55rem;padding:.1rem .3rem" onclick="copySeriesToMyList('${st.ser.id}')">📚 Ekle</button></div>`}
               <span style="font-size:.7rem;color:var(--moss)">${serIsOpen?'▲':'▼'}</span>
             </div>
             <div class="ser-in-grp-books" data-sid="${st.ser.id}" style="display:${serIsOpen?'block':'none'};padding:.3rem 0">${booksHtml||'<div style="padding:.2rem 1rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
           </div>`;
         }).join('')}
         ${steps.length===0?'<div style="font-size:.85rem;opacity:.5;font-style:italic">Henüz seri eklenmemiş.</div>':''}
-        <div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+        ${!viewing?`<div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
           <select class="book-input" id="grpSerSel_${path.id}" style="flex:1;font-size:.8rem;padding:.35rem .5rem">
             <option value="">— Mevcut seriyi gruba ekle —</option>
             ${Object.values(allSeries).filter(s=>!(path.steps||[]).find(st=>st.seriesId===s.id)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
           </select>
           <button class="btn btn-sm btn-primary" onclick="addSeriesToPath('${path.id}')">+ Ekle</button>
-        </div>
+        </div>`:''}
       </div>`;
     seriesContainer.prepend(div);
   });
