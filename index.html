@@ -87,6 +87,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 #bookFilterBar .book-input,#journalSearchBar .book-input{background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);}
 #bookFilterBar .book-input::placeholder,#journalSearchBar .book-input::placeholder{color:rgba(26,18,8,.35);font-style:italic;}
 #bookFilterBar .book-input:focus,#journalSearchBar .book-input:focus{border-color:var(--gold);}
+#jPanel-private .book-input{background:rgba(245,237,214,.92);color:var(--ink);border-color:rgba(201,162,39,.3);}
+#jPanel-private .book-input::placeholder{color:rgba(26,18,8,.35);font-style:italic;}
 /* Defterim kitap seçme dropdown */
 #journalBookSelect{background:var(--cream);color:var(--ink);border-color:rgba(201,162,39,.35);}
 #journalBookSelect option{background:var(--cream);color:var(--ink);}
@@ -627,9 +629,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         <div class="section-title">✏️ Yeni Giriş Ekle</div>
         <div class="field-group" style="margin-bottom:.75rem">
           <span class="field-label">Kitap Seç *</span>
-          <select class="book-input" id="journalBookSelect" style="font-size:.9rem">
-            <option value="">— Kitap seç —</option>
-          </select>
+          <div class="autocomplete-wrap">
+            <input class="book-input" id="journalBookSearch" type="text" placeholder="Kitap adı yaz..." autocomplete="off"
+              oninput="journalBookAcSearch(this.value)" onblur="setTimeout(()=>journalBookAcHide(),200)" style="font-size:.9rem"/>
+            <div class="autocomplete-list" id="journalBookAcList" style="display:none"></div>
+            <input type="hidden" id="journalBookSelect" value=""/>
+          </div>
         </div>
         <div class="chip-group-label">Giriş Türü</div>
         <div class="chip-group" id="journalEntryTypeChips" style="margin-bottom:.75rem">
@@ -790,6 +795,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div id="jPanel-private" style="display:none">
         <div class="card">
           <div class="card-header">📓 Kişisel Notlar <span style="font-size:.6rem;font-family:'Space Mono',monospace;opacity:.5;font-weight:400">— sadece sana görünür</span></div>
+          <div style="padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input class="book-input" id="privateNotesSearch" type="text" placeholder="🔍 Kitap ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.35rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" oninput="renderPrivateNotes()"/>
+            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="privateNotesOnlyNoted" onchange="renderPrivateNotes()" checked style="accent-color:var(--gold)"/> Sadece notlu
+            </label>
+          </div>
           <div id="privateNotesContainer" style="padding:.75rem"></div>
         </div>
       </div>
@@ -1640,7 +1651,7 @@ function enterApp(){
   if(targetTab) targetTab.classList.add('active');
   if(targetPanel==='settings') renderSettings();
   else if(targetPanel==='stats') renderStatsPanel();
-  else if(targetPanel==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
+  else if(targetPanel==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(targetPanel==='stories') renderStories();
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
@@ -1656,7 +1667,7 @@ function showPanel(id,el){
   try{ localStorage.setItem('aa-lastpanel', id); if(me) localStorage.setItem('aa-lastpanel-'+me, id); }catch(e){}
   if(id==='settings') renderSettings();
   else if(id==='stats') renderStatsPanel();
-  else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
+  else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
   else if(id==='series'){renderSeriesList();}
@@ -3358,11 +3369,33 @@ function setJournalQuickRating(val){
 }
 
 function populateJournalBookSelect(){
-  const sel=document.getElementById('journalBookSelect');
-  if(!sel) return;
-  const books=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
-  books.sort((a,b)=>(a.title||'').localeCompare(b.title||'','tr'));
-  sel.innerHTML='<option value="">— Kitap seç —</option>'+books.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('');
+  // Artık sadece veriyi hazırlıyoruz, dropdown doldurmaya gerek yok
+}
+
+let _journalAcBooks=[];
+function journalBookAcSearch(q){
+  if(!_journalAcBooks.length){
+    _journalAcBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+    _journalAcBooks.sort((a,b)=>(a.title||'').localeCompare(b.title||'','tr'));
+  }
+  const list=document.getElementById('journalBookAcList');
+  if(!q.trim()){list.style.display='none';return;}
+  const ql=q.toLowerCase();
+  const matches=_journalAcBooks.filter(b=>(b.title||'').toLowerCase().includes(ql)||(b.author||'').toLowerCase().includes(ql)).slice(0,8);
+  if(!matches.length){list.style.display='none';return;}
+  list.innerHTML=matches.map(b=>`<div class="autocomplete-item" onmousedown="journalBookAcSelect(${b.id},'${(b.title||'').replace(/'/g,"\\'")}')">
+    <span class="ac-title">${b.title}</span>${b.author?`<span class="ac-author"> — ${b.author}</span>`:''}
+  </div>`).join('');
+  list.style.display='';
+}
+function journalBookAcSelect(id, title){
+  document.getElementById('journalBookSelect').value=id;
+  document.getElementById('journalBookSearch').value=title;
+  document.getElementById('journalBookAcList').style.display='none';
+}
+function journalBookAcHide(){
+  const list=document.getElementById('journalBookAcList');
+  if(list) list.style.display='none';
 }
 
 function addJournalEntry(){
@@ -3413,34 +3446,37 @@ function switchJournalTab(tab){
 function renderPrivateNotes(){
   const container = document.getElementById('privateNotesContainer');
   if(!container) return;
-  const books = validBooks().concat(
-    myBooks().filter(b=>b.readingStatus==='reading'||b.readingStatus==='paused'||b.readingStatus==='planned')
-      .filter(b=>b.title&&!b.title.startsWith('ISBN:'))
-  );
-  // Tekrarları kaldır
-  const seen = new Set();
-  const allBooks = books.filter(b=>{ if(seen.has(b.id)) return false; seen.add(b.id); return true; });
-  allBooks.sort((a,b)=>(b.addedAt||'').localeCompare(a.addedAt||''));
+  const q = (document.getElementById('privateNotesSearch')?.value||'').toLowerCase().trim();
+  const onlyNoted = document.getElementById('privateNotesOnlyNoted')?.checked ?? true;
 
-  if(!allBooks.length){
-    container.innerHTML=`<div class="empty-state" style="padding:1.5rem">Henüz kitap yok. Kitap ekledikçe notlar burada belirecek.</div>`;
+  const allMyBooks = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  allMyBooks.sort((a,b)=>(b.addedAt||'').localeCompare(a.addedAt||''));
+
+  let filtered = allMyBooks;
+  if(onlyNoted) filtered = filtered.filter(b=>b.comment);
+  if(q) filtered = filtered.filter(b=>(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q));
+
+  if(!filtered.length){
+    const msg = onlyNoted && !q ? 'Henüz kişisel not yok. Bir kitabı açıp not ekle, ya da "Sadece notlu" filtresini kaldır.'
+      : q ? 'Arama sonucu bulunamadı.' : 'Henüz kitap yok.';
+    container.innerHTML=`<div class="empty-state" style="padding:1.5rem">${msg}</div>`;
     return;
   }
 
   const statusIcon = s => s==='reading'?'📖':s==='paused'?'🚧':s==='planned'?'⏳':'✅';
 
-  container.innerHTML = allBooks.map(b=>{
+  container.innerHTML = filtered.map(b=>{
     const note = b.comment||'';
     const sid = `pnote-${b.id}`;
     return `<div style="border-bottom:1px solid rgba(201,162,39,.1);padding:.75rem 0">
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;cursor:pointer" onclick="togglePrivateNote('${sid}')">
         <span style="font-size:.85rem">${statusIcon(b.readingStatus)}</span>
         <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);flex:1">${b.title}</span>
-        ${b.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic">${b.author}</span>`:''}
-        <span style="font-size:.7rem;color:var(--gold);opacity:.6">${note?'✏️':'+ not'}</span>
+        ${b.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic;flex-shrink:0">${b.author}</span>`:''}
+        <span style="font-size:.7rem;color:var(--gold);opacity:.7;flex-shrink:0">${note?'✏️ not var':'+ ekle'}</span>
       </div>
-      <div id="${sid}" style="display:none;margin-top:.35rem">
-        <textarea class="book-input" style="width:100%;min-height:90px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem;font-style:italic;box-sizing:border-box"
+      <div id="${sid}" style="display:${note?'':'none'};margin-top:.35rem">
+        <textarea class="book-input" style="width:100%;min-height:90px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem;box-sizing:border-box"
           placeholder="Kişisel notun... (sadece sen görebilirsin)"
           onchange="savePrivateNote(${b.id},this.value)">${note}</textarea>
       </div>
