@@ -4707,7 +4707,6 @@ function renderGroupCards(seriesContainer){
   });
   seriesContainer.querySelectorAll('.series-card[data-sid]').forEach(card=>{
     const sid = card.dataset.sid;
-    if(card.dataset.manualShow) return;
     card.style.display = groupedSeriesIds.has(sid) ? 'none' : '';
   });
 
@@ -4765,6 +4764,7 @@ function renderGroupCards(seriesContainer){
               <span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>
               <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
               <div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
+                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="goToFullSeriesCard('${st.ser.id}')" title="Tam kartı göster">✏️</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
                 <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
@@ -4797,26 +4797,29 @@ function toggleGroupCard(pathId, card){
 }
 
 function toggleSeriesInGroup(seriesId, headerEl){
+  // Grup içinde kitapları göster/gizle
   const body=headerEl.parentElement.querySelector('.ser-in-grp-books');
   const arrow=headerEl.querySelector('span:last-child');
   const isOpen=body.style.display!=='none';
   body.style.display=isOpen?'none':'block';
   if(arrow) arrow.textContent=isOpen?'▼':'▲';
   sessionStorage.setItem('serInGrp_'+seriesId, isOpen?'0':'1');
-  // Tam seri kartına scroll et ve vurgula
-  if(isOpen) return;
-  setTimeout(()=>{
-    const card=document.querySelector('.series-card[data-sid="'+seriesId+'"]');
-    if(!card) return;
-    card.style.display='';
-    card.dataset.manualShow='1';
-    const booksEl=document.getElementById('seriesBooks_'+seriesId);
-    const btn=document.getElementById('seriesToggleBtn_'+seriesId);
-    if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
-    card.scrollIntoView({behavior:'smooth',block:'center'});
-    card.style.outline='2px solid var(--moss)';
-    setTimeout(()=>{ card.style.outline=''; },1800);
-  },200);
+}
+
+function goToFullSeriesCard(seriesId){
+  // Tüm serileri göster (grubu geçici kaldır), ilgili karta git
+  const data = mySeriesData();
+  // Gruba bağlı serileri geçici göster
+  document.querySelectorAll('.series-card[data-sid]').forEach(c=>c.style.display='');
+  // İlgili kartı bul, aç ve scroll et
+  const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
+  if(!card) return;
+  const booksEl = document.getElementById('seriesBooks_'+seriesId);
+  const btn = document.getElementById('seriesToggleBtn_'+seriesId);
+  if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
+  card.scrollIntoView({behavior:'smooth',block:'center'});
+  card.style.outline='2px solid var(--moss)';
+  setTimeout(()=>{ card.style.outline=''; },1800);
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
