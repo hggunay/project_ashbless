@@ -2399,6 +2399,9 @@ function openBook(bookId){
         ${book.readingStatus==='paused'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="resumeReading(${book.id});closeModal()">📖 Devam et</button>
           <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>`:''}
+        ${book.readingStatus==='new'?`
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''
+        }
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
       </div>`
@@ -2618,6 +2621,18 @@ function finishReading(bookId){
     launchConfetti('badge');
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
   }
+}
+
+function markAsUnread(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus='planned';
+  book.endDate=null;
+  book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
+  saveDb();
+  closeModal();
+  render();
+  notify('↩️ Geri Alındı',`"${book.title}" okunmadı olarak işaretlendi.`);
 }
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
