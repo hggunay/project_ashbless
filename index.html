@@ -52,7 +52,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .club-name{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 2px 20px rgba(201,162,39,.3);line-height:1.1;}
 .club-subtitle{font-family:'Crimson Pro',serif;font-style:italic;color:var(--parchment-dark);font-size:1rem;margin-top:.4rem;opacity:.7;}
 .header-user{position:absolute;top:1.5rem;right:1.5rem;display:flex;align-items:center;gap:.5rem;}
-.header-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;}
+.header-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;overflow:hidden;}
 .header-username{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
 .logout-btn{background:none;border:1px solid rgba(201,162,39,.3);color:var(--parchment-dark);font-size:.65rem;font-family:'Space Mono',monospace;padding:.3rem .6rem;border-radius:20px;cursor:pointer;transition:all .15s;}
 .logout-btn:hover{border-color:var(--gold);color:var(--gold);}
@@ -890,20 +890,25 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <div class="detail-section">
             <div class="detail-section-title">👤 Profil Bilgileri</div>
             <div style="display:flex;align-items:center;gap:1rem;margin-bottom:1.25rem">
-              <span style="font-size:3rem" id="settingsAvatar"></span>
+              <span style="font-size:3rem;position:relative;cursor:pointer" id="settingsAvatar" onclick="document.getElementById('avatarFileInput').click()" title="Fotoğraf yükle"></span>
               <div>
                 <div style="font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;color:var(--gold)" id="settingsDisplayName"></div>
                 <div style="font-size:.8rem;opacity:.5;font-family:'Space Mono',monospace" id="settingsUsername"></div>
               </div>
             </div>
+            <input type="file" id="avatarFileInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(this)"/>
             <div class="detail-grid" style="margin-bottom:.75rem">
               <div class="detail-field">
                 <label class="detail-field-label">Görünen İsim</label>
                 <input class="detail-input" id="settingName" type="text" placeholder="Görünen ismin"/>
               </div>
               <div class="detail-field">
-                <label class="detail-field-label">Avatar Emoji</label>
-                <input class="detail-input" id="settingAvatar" type="text" placeholder="🧙‍♂️" maxlength="4"/>
+                <label class="detail-field-label">Avatar Emoji <span style="font-size:.65rem;opacity:.6">(fotoğraf yoksa)</span></label>
+                <div style="display:flex;gap:.4rem;align-items:center">
+                  <input class="detail-input" id="settingAvatar" type="text" placeholder="🧙‍♂️" maxlength="4" style="flex:1"/>
+                  <button class="btn btn-sm" style="white-space:nowrap;font-size:.7rem" onclick="document.getElementById('avatarFileInput').click()">📷 Fotoğraf</button>
+                  <button class="btn btn-sm btn-danger" style="font-size:.7rem" onclick="removeAvatarPhoto()" id="removeAvatarBtn" style="display:none">✕</button>
+                </div>
               </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveProfile()">💾 Profili Kaydet</button>
@@ -1322,11 +1327,70 @@ function showHint(){
     box.textContent='💡 İpucu: '+db.users[u].hint;
   }
 }
+// ── AVATAR ────────────────────────────────────────────────────
+function avatarHtml(av, size='2rem'){
+  if(av&&av.startsWith('data:')){
+    return `<img src="${av}" style="width:${size};height:${size};border-radius:50%;object-fit:cover;display:block;"/>`;
+  }
+  return `<span style="font-size:${size};line-height:1">${av||'📚'}</span>`;
+}
+function setAvatarEl(el, av){
+  if(!el) return;
+  if(av&&av.startsWith('data:')){
+    el.innerHTML=`<img src="${av}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
+    el.style.fontSize='0';
+  } else {
+    el.innerHTML='';
+    el.textContent=av||'📚';
+    el.style.fontSize='';
+  }
+}
+function handleAvatarUpload(input){
+  const file=input.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas');
+      const size=120;
+      canvas.width=size;canvas.height=size;
+      const ctx=canvas.getContext('2d');
+      // Kare kırp
+      const s=Math.min(img.width,img.height);
+      const ox=(img.width-s)/2,oy=(img.height-s)/2;
+      ctx.drawImage(img,ox,oy,s,s,0,0,size,size);
+      const b64=canvas.toDataURL('image/jpeg',0.7);
+      db.users[me].avatar=b64;
+      saveDb();
+      setAvatarEl(document.getElementById('settingsAvatar'),b64);
+      setAvatarEl(document.getElementById('headerAvatar'),b64);
+      const removeBtn=document.getElementById('removeAvatarBtn');
+      if(removeBtn) removeBtn.style.display='';
+      notify('📷 Fotoğraf Güncellendi','Profil fotoğrafın kaydedildi.');
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
+  input.value='';
+}
+function removeAvatarPhoto(){
+  const emoji=document.getElementById('settingAvatar')?.value.trim()||'📚';
+  db.users[me].avatar=emoji;
+  saveDb();
+  setAvatarEl(document.getElementById('settingsAvatar'),emoji);
+  setAvatarEl(document.getElementById('headerAvatar'),emoji);
+  const removeBtn=document.getElementById('removeAvatarBtn');
+  if(removeBtn) removeBtn.style.display='none';
+  notify('✕ Fotoğraf Kaldırıldı','Avatar emoji\'ye döndürüldü.');
+}
+// ──────────────────────────────────────────────────────────────
+
 function updateProfile(field, value){
   if(!value.trim()) return;
   db.users[me][field] = value.trim();
   if(field==='displayName') document.getElementById('headerUsername').textContent=value.trim();
-  if(field==='avatar') document.getElementById('headerAvatar').textContent=value.trim();
+  if(field==='avatar') setAvatarEl(document.getElementById('headerAvatar'),value.trim());
   saveDb();
 }
 
@@ -1359,13 +1423,15 @@ function deleteProfile(){
 function renderSettings(){
   const user=db.users[me];
   if(!user) return;
-  document.getElementById('settingsAvatar').textContent=user.avatar||'📚';
+  setAvatarEl(document.getElementById('settingsAvatar'), user.avatar||'📚');
   document.getElementById('settingsDisplayName').textContent=user.displayName||'';
   document.getElementById('settingsUsername').textContent='@'+me;
   const nameEl=document.getElementById('settingName');
   const avatarEl=document.getElementById('settingAvatar');
   if(nameEl) nameEl.value=user.displayName||'';
-  if(avatarEl) avatarEl.value=user.avatar||'📚';
+  if(avatarEl) avatarEl.value=(user.avatar||'').startsWith('data:')?'📚':user.avatar||'📚';
+  const removeBtn=document.getElementById('removeAvatarBtn');
+  if(removeBtn) removeBtn.style.display=(user.avatar||'').startsWith('data:')?'':'none';
   document.getElementById('settingPw').value='';
   const hintEl=document.getElementById('settingHint');
   if(hintEl) hintEl.value=user.hint||'';
@@ -1629,7 +1695,7 @@ function closeSpecialDayBanner(e,idx){
 
 function enterApp(){
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
-  const user=db.users[me];document.getElementById('headerAvatar').textContent=user.avatar;document.getElementById('headerUsername').textContent=user.displayName;
+  const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
   updateAdminBadge();
   render();setTodayDate();
@@ -3201,7 +3267,7 @@ function renderFeed(append=false){
         :`review_${card.u}_${card.bookId}`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
-        <span style="font-size:1.3rem">${card.userAvatar}</span>
+        <span style="font-size:1.3rem;display:inline-flex;align-items:center">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
           <span class="journal-entry-user">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
           <span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>
@@ -3593,7 +3659,7 @@ function renderJournal(){
       :`jreview_${card.u}_${card.bookId}`;
     return`<div class="journal-entry">
       <div class="journal-entry-header">
-        <span style="font-size:1.3rem">${card.userAvatar}</span>
+        <span style="font-size:1.3rem;display:inline-flex;align-items:center">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
           <span class="journal-entry-user">${card.userName}</span>
           <span class="journal-entry-book" onclick="openBook(${card.bookId})">${card.bookTitle||'—'}</span>
@@ -3877,14 +3943,14 @@ function renderBanners(){
   const headerAvatar=document.getElementById('headerAvatar');
   const headerUsername=document.getElementById('headerUsername');
   if(isV){
-    headerAvatar.textContent=av;
+    setAvatarEl(headerAvatar,av);
     headerAvatar.style.border='2px solid var(--rust)';
     headerUsername.textContent=name;
     headerUsername.style.color='var(--rust)';
   } else {
     const user=db.users[me];
     if(user){
-      headerAvatar.textContent=user.avatar||'📚';
+      setAvatarEl(headerAvatar,user.avatar||'📚');
       headerAvatar.style.border='2px solid var(--gold)';
       headerUsername.textContent=user.displayName||me;
       headerUsername.style.color='var(--gold)';
@@ -4153,13 +4219,13 @@ function renderMembers(){
   const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badges++;}));return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
   document.getElementById('leaderboardGrid').innerHTML=sorted.map((m,i)=>`
     <div class="leader-card ${m.u===me?'me':''}" onclick="viewMember('${m.u}')">
-      <span class="leader-rank">#${i+1}</span><span class="leader-avatar">${m.avatar}</span>
+      <span class="leader-rank">#${i+1}</span><span class="leader-avatar">${avatarHtml(m.avatar,"2rem")}</span>
       <div class="leader-name">${m.displayName}${m.u===me?'<span class="me-badge">BEN</span>':''}</div>
       <div class="leader-stats">${m.books} kitap · ${m.badges} rozet</div>
     </div>`).join('');
   document.getElementById('membersGrid').innerHTML=sorted.map(m=>`
     <div class="member-card ${m.u===me?'me':''}" onclick="viewMember('${m.u}')">
-      <span class="member-card-avatar">${m.avatar}</span>
+      <span class="member-card-avatar">${avatarHtml(m.avatar,"3rem")}</span>
       <div class="member-card-name">${m.displayName}${m.u===me?'<span class="me-badge">BEN</span>':''}</div>
       <div class="member-card-stats">📚 ${m.books} kitap okundu<br>🏅 ${m.badges} rozet kazanıldı</div>
     </div>`).join('');
