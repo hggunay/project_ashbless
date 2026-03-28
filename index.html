@@ -4817,17 +4817,19 @@ function toggleSeriesInGroup(seriesId, headerEl){
 }
 
 function goToFullSeriesCard(seriesId){
-  document.querySelectorAll('.series-card[data-sid]').forEach(c=>c.style.display='');
   const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
   if(!card) return;
+  card.style.display='';
+  card.dataset.pinned='1';
   const booksEl = document.getElementById('seriesBooks_'+seriesId);
   const btn = document.getElementById('seriesToggleBtn_'+seriesId);
   if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
   card.scrollIntoView({behavior:'smooth',block:'center'});
   card.style.outline='2px solid var(--moss)';
-  // Vurgulama süresince bu kartı gizleme
-  card.dataset.pinned='1';
-  setTimeout(()=>{ card.style.outline=''; delete card.dataset.pinned; },2000);
+  setTimeout(()=>card.style.outline='',1500);
+  // Kullanıcı sayfanın başka yerine tıklayınca pin kaldır
+  function unpin(e){ if(!card.contains(e.target)){ delete card.dataset.pinned; card.style.display='none'; document.removeEventListener('click',unpin,true); } }
+  setTimeout(()=>document.addEventListener('click',unpin,true),300);
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
