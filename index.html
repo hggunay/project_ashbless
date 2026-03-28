@@ -211,7 +211,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.locked{opacity:.45;filter:grayscale(.4);}
 @keyframes badgeShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes badgeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 22px rgba(201,162,39,.7),0 0 40px rgba(201,162,39,.35)}}
-.badge-card.badge-shine{animation:badgeGlow .8s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;}
+.badge-card.badge-shine{animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;}
+.badge-new-tag{position:absolute;top:.35rem;right:.35rem;font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;background:linear-gradient(135deg,var(--gold),#e8c840);color:var(--ink);padding:.15rem .4rem;border-radius:20px;letter-spacing:.05em;animation:badgeGlow .8s ease infinite;}
 #confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;}
 .badge-icon{font-size:2rem;margin-bottom:.5rem;display:block;}
 .badge-name{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;color:var(--ink);margin-bottom:.35rem;line-height:1.3;}
@@ -1167,7 +1168,7 @@ function booksForBadge(badge,books){
 
 // ── STATE ─────────────────────────────────────────────────────
 let db={users:{},books:{}};
-let me=null,viewing=null,badgeFilter='all',modalBookId=null;
+let me=null,viewing=null,badgeFilter='all',modalBookId=null,pendingShimmerBadges=new Set();
 const seriesBkMap={};
 
 // ── FİREBASE ──────────────────────────────────────────────────
@@ -2169,16 +2170,7 @@ async function addBook(){
   render();
   if(newlyEarned.length){
     launchConfetti('badge');
-    // Rozetler sekmesi açıksa shimmer uygula, değilse render sonrası bekle
-    setTimeout(()=>{
-      document.querySelectorAll('.badge-card.earned').forEach(card=>{
-        const m=(card.getAttribute('onclick')||'').match(/toggleBadgeDetail\('([^']+)'\)/);
-        if(m&&newlyEarned.includes(m[1])){
-          card.classList.add('badge-shine');
-          setTimeout(()=>card.classList.remove('badge-shine'),3600);
-        }
-      });
-    },300);
+    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
   }
 }
 
@@ -3981,8 +3973,10 @@ function renderBadges(){
                 +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
                 +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
               +'</div>').join('');
-          return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''}" onclick="toggleBadgeDetail('${b.id}')">
-            ${s.earned?'<span class="earned-stamp">✓ KAZANILDI</span>':''}
+          const isNew=pendingShimmerBadges.has(b.id);
+          return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''} ${isNew?'badge-shine':''}" onclick="toggleBadgeDetail('${b.id}')">
+            ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
+            ${s.earned&&!isNew?'<span class="earned-stamp">✓ KAZANILDI</span>':''}
             <span class="badge-icon">${b.icon}</span>
             <div class="badge-name">${b.name}</div>
             <div class="badge-desc">${b.desc}</div>
@@ -4000,6 +3994,7 @@ function renderBadges(){
 }
 
 function toggleBadgeDetail(badgeId){
+  pendingShimmerBadges.delete(badgeId);
   openBadgeId=(openBadgeId===badgeId)?null:badgeId;
   renderBadges();
 }
