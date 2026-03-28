@@ -4564,6 +4564,8 @@ function renderSeriesList(){
         ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveSeriesBook('${ser.id}',${books.indexOf(bk)},-1)" ${books.indexOf(bk)===0?'disabled':''}>▲</button>
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveSeriesBook('${ser.id}',${books.indexOf(bk)},1)" ${books.indexOf(bk)===books.length-1?'disabled':''}>▼</button>
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
           <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
@@ -4728,6 +4730,24 @@ function removeStepFromPath(pathId, seriesId){
   path.steps = (path.steps||[]).filter(s=>s.seriesId!==seriesId);
   saveDb();
   renderPathsList();
+}
+
+function moveSeriesBook(seriesId, visIdx, dir){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser||!ser.books) return;
+  const bkRef = seriesBkMap[seriesId+'_'+visIdx];
+  if(!bkRef) return;
+  const rawIdx = ser.books.findIndex(b=>bkRef.bookId ? b.bookId===bkRef.bookId : b.manualTitle===bkRef.manualTitle);
+  if(rawIdx<0) return;
+  const targetIdx = rawIdx+dir;
+  if(targetIdx<0||targetIdx>=ser.books.length) return;
+  [ser.books[rawIdx], ser.books[targetIdx]] = [ser.books[targetIdx], ser.books[rawIdx]];
+  // num değerlerini de güncelle
+  ser.books[rawIdx].num = rawIdx+1;
+  ser.books[targetIdx].num = targetIdx+1;
+  saveDb();
+  renderSeriesList();
 }
 
 function moveStep(pathId, idx, dir){
