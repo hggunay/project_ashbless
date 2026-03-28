@@ -2598,13 +2598,26 @@ function finishReading(bookId){
   saveDb();
   // Rozet kontrolü
   const prev=myBooks().map(b=>({...b}));
+  const newlyEarned=[];
   BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
     if(!bstat(b,prev.filter(x=>x.readingStatus!=='wishlist'&&x.readingStatus!=='reading')).earned
-      &&bstat(b,validBooks()).earned)
+      &&bstat(b,validBooks()).earned){
       notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
+      newlyEarned.push(b.id);
+    }
   }));
+  // Seri tamamlanma kontrolü
+  if(book.series){
+    const data=mySeriesData();
+    const matchedSer=Object.values(data.series||{}).find(s=>s.name===book.series);
+    if(matchedSer) checkSeriesComplete(matchedSer.id);
+  }
   render();
   notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
+  if(newlyEarned.length){
+    launchConfetti('badge');
+    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
+  }
 }
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
