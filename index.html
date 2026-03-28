@@ -4706,8 +4706,11 @@ function renderGroupCards(seriesContainer){
   allPaths.forEach(path=>{
     (path.steps||[]).forEach(s=>groupedSeriesIds.add(s.seriesId));
   });
+  // Seri kaydındaki groupId de kontrol et
+  Object.values(allSeries).forEach(s=>{ if(s.groupId) groupedSeriesIds.add(s.id); });
   seriesContainer.querySelectorAll('.series-card[data-sid]').forEach(card=>{
     const sid = card.dataset.sid;
+    if(card.dataset.pinned) return;
     card.style.display = groupedSeriesIds.has(sid) ? 'none' : '';
   });
 
@@ -4814,11 +4817,7 @@ function toggleSeriesInGroup(seriesId, headerEl){
 }
 
 function goToFullSeriesCard(seriesId){
-  // Tüm serileri göster (grubu geçici kaldır), ilgili karta git
-  const data = mySeriesData();
-  // Gruba bağlı serileri geçici göster
   document.querySelectorAll('.series-card[data-sid]').forEach(c=>c.style.display='');
-  // İlgili kartı bul, aç ve scroll et
   const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
   if(!card) return;
   const booksEl = document.getElementById('seriesBooks_'+seriesId);
@@ -4826,7 +4825,9 @@ function goToFullSeriesCard(seriesId){
   if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
   card.scrollIntoView({behavior:'smooth',block:'center'});
   card.style.outline='2px solid var(--moss)';
-  setTimeout(()=>{ card.style.outline=''; },1800);
+  // Vurgulama süresince bu kartı gizleme
+  card.dataset.pinned='1';
+  setTimeout(()=>{ card.style.outline=''; delete card.dataset.pinned; },2000);
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
