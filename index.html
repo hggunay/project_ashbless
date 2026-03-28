@@ -3572,51 +3572,45 @@ function renderJournal(){
   const filterAuthor=document.getElementById('journalFilterAuthor')?.value||'';
   const filterBook=document.getElementById('journalFilterBook')?.value||'';
 
-  let cards=[];
-  // Defterim = sadece kendi değerlendirme ve alıntılar
-  const myUser=db.users[me];
   const myBooksList=db.books[me]||[];
-  myBooksList.forEach(b=>{
-    if(b.review&&b.review.trim()){
-      cards.push({
-        type:'review', u:me, userName:myUser.displayName, userAvatar:myUser.avatar||'📚',
-        bookId:b.id, bookTitle:b.title, author:b.author,
-        rating:b.rating||0, text:b.review, ts:b.reviewTs||b.addedAt||0,
-        reactions:b.reviewReactions||{},
-      });
-    }
-    (b.quotes||[]).forEach((q,qi)=>{
-      cards.push({
-        type:'quote', u:me, userName:myUser.displayName, userAvatar:myUser.avatar||'📚',
-        bookId:b.id, bookTitle:b.title, author:b.author,
-        text:q.text, page:q.page, ts:q.ts||b.addedAt||0, quoteIdx:qi,
-        reactions:q.reactions||{},
-      });
-    });
-  });
 
-  buildJournalDropdowns(cards);
+  // Kitap bazlı grupla
+  let bookGroups=myBooksList
+    .filter(b=>b.title&&!b.title.startsWith('ISBN:'))
+    .map(b=>({
+      book:b,
+      review:(b.review&&b.review.trim())?{text:b.review,rating:b.rating||0,ts:b.reviewTs||b.addedAt||0}:null,
+      quotes:(b.quotes||[]).map((q,qi)=>({...q,qi})),
+    }))
+    .filter(g=>g.review||g.quotes.length);
 
-  if(journalFilter==='reviews') cards=cards.filter(c=>c.type==='review');
-  if(journalFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
-  if(filterAuthor) cards=cards.filter(c=>c.author===filterAuthor);
-  if(filterBook) cards=cards.filter(c=>c.bookTitle===filterBook);
-  if(searchText) cards=cards.filter(c=>
-    (c.bookTitle||'').toLowerCase().includes(searchText)||
-    (c.author||'').toLowerCase().includes(searchText)||
-    (c.text||'').toLowerCase().includes(searchText)
+  buildJournalDropdowns(myBooksList.flatMap(b=>{
+    const c=[];
+    if(b.review) c.push({type:'review',bookTitle:b.title,author:b.author});
+    (b.quotes||[]).forEach(q=>c.push({type:'quote',bookTitle:b.title,author:b.author}));
+    return c;
+  }));
+
+  // Filtrele
+  if(journalFilter==='reviews') bookGroups=bookGroups.filter(g=>g.review);
+  if(journalFilter==='quotes') bookGroups=bookGroups.filter(g=>g.quotes.length);
+  if(filterAuthor) bookGroups=bookGroups.filter(g=>(g.book.author||'')=== filterAuthor);
+  if(filterBook) bookGroups=bookGroups.filter(g=>g.book.title===filterBook);
+  if(searchText) bookGroups=bookGroups.filter(g=>
+    (g.book.title||'').toLowerCase().includes(searchText)||
+    (g.book.author||'').toLowerCase().includes(searchText)||
+    (g.review&&g.review.text.toLowerCase().includes(searchText))||
+    g.quotes.some(q=>(q.text||'').toLowerCase().includes(searchText))
   );
 
-  cards.sort((a,b)=>{
-    const getTs=c=>{
-      if(typeof c.ts==='number'&&c.ts>0) return c.ts;
-      if(typeof c.ts==='string'&&c.ts) return new Date(c.ts).getTime()||0;
-      return 0;
-    };
-    return getTs(b)-getTs(a);
+  // Sırala — en son eklenen/düzenlenen üste
+  bookGroups.sort((a,b)=>{
+    const tsA=Math.max(a.review?.ts||0,...a.quotes.map(q=>q.ts||0));
+    const tsB=Math.max(b.review?.ts||0,...b.quotes.map(q=>q.ts||0));
+    return tsB-tsA;
   });
 
-  if(!cards.length){
+  if(!bookGroups.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">
       ${(journalFilter==='all'&&!searchText&&!filterAuthor&&!filterBook)
         ?'Henüz defter girişi yok. Kitap detayından puan, yorum veya alıntı ekleyebilirsin.'
@@ -3625,8 +3619,6 @@ function renderJournal(){
     return;
   }
 
-  const reactionList=['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
-
   function fmtDate(ts){
     if(!ts) return '';
     const d=new Date(typeof ts==='number'?ts:ts);
@@ -3634,61 +3626,112 @@ function renderJournal(){
     return d.toLocaleDateString('tr-TR',{day:'numeric',month:'short',year:'numeric'});
   }
 
+  function stars(r){return r?'⭐'.repeat(Math.floor(r))+(r%1?'½':''):'';}
+
   function reactionHtml(card){
+    const reactionList=['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
     const cardKey=card.type==='quote'
-      ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-      :`review_${card.u}_${card.bookId}`;
+      ?`quote_${me}_${card.bookId}_${card.qi}`
+      :`review_${me}_${card.bookId}`;
     return reactionList.map(r=>{
-      const myR=card.reactions[me]||[];
+      const reactions=card.type==='quote'
+        ?(card.reactions||{})
+        :(card.reactions||{});
+      const myR=reactions[me]||[];
       const active=myR.includes(r)?'active':'';
-      const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
-      const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
-      const qi=card.type==='quote'?card.quoteIdx:-1;
+      const cnt=Object.values(reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      const names=cnt>0?reactionNames(reactions,r,cardKey):'';
+      const qi=card.type==='quote'?card.qi:-1;
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
-      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
+      return`<button class="journal-reaction-btn ${active}" onclick="toggleCardReaction('${card.type}','${me}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}${names}`:''}
       </button>`;
     }).join('');
   }
 
-  function journalCardHtml(card){
-    const isMe=card.u===me;
-    const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
-    const cardKey=card.type==='quote'
-      ?`jquote_${card.u}_${card.bookId}_${card.quoteIdx}`
-      :`jreview_${card.u}_${card.bookId}`;
-    return`<div class="journal-entry">
-      <div class="journal-entry-header">
-        <span style="font-size:1.3rem;display:inline-flex;align-items:center">${avatarHtml(card.userAvatar,"1.5rem")}</span>
-        <div class="journal-entry-meta">
-          <span class="journal-entry-user">${card.userName}</span>
-          <span class="journal-entry-book" onclick="openBook(${card.bookId})">${card.bookTitle||'—'}</span>
-          <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
-        </div>
-        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':'💬 alıntı'}</span>
-      </div>
-      ${card.type==='review'?`
-        ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
-        <div class="journal-review">${truncateHtml(card.text,cardKey)}</div>
-        ${isMe?`<div style="margin-top:.5rem"><button class="journal-copy-btn" onclick="openBook(${card.bookId})">✏️ Düzenle</button></div>`:''}
-      `:`
-        <div class="journal-quote">
-          <div class="journal-quote-text">${truncateHtml(card.text,cardKey)}</div>
-          <div class="journal-quote-footer">
-            ${card.page?`<span class="journal-quote-page">s. ${card.page}</span>`:'<span></span>'}
-            <button class="journal-copy-btn" onclick="copyCardQuote('${card.u}',${card.bookId},${card.quoteIdx})">📋 kopyala</button>
+  const visible=bookGroups.slice(0,journalPage*PAGE_SIZE);
+  const hasMore=bookGroups.length>journalPage*PAGE_SIZE;
+
+  container.innerHTML=visible.map(g=>{
+    const b=g.book;
+    const openKey=`jbook_${b.id}`;
+    const isOpen=sessionStorage.getItem(openKey)!=='0';
+    const reviewCount=g.review?1:0;
+    const quoteCount=g.quotes.length;
+    const badge=stars(b.rating);
+
+    const reviewHtml=g.review?`
+      <div style="padding:.6rem .75rem;border-radius:4px;background:rgba(138,69,19,.06);margin-bottom:.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.35rem">
+          <span class="journal-entry-type-badge journal-type-review">📖 değerlendirme</span>
+          <div style="display:flex;align-items:center;gap:.5rem">
+            ${badge?`<span style="font-size:.8rem">${badge}</span>`:''}
+            <span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">${fmtDate(g.review.ts)}</span>
+            <button class="journal-copy-btn" onclick="openBook(${b.id})">✏️ düzenle</button>
           </div>
         </div>
-      `}
-      <div class="journal-reactions">${reactionHtml(card)}</div>
-    </div>`;
-  }
+        <div class="journal-review">${truncateHtml(g.review.text,`jrev_${b.id}`)}</div>
+        <div class="journal-reactions">${reactionHtml({type:'review',bookId:b.id,reactions:b.reviewReactions||{}})}</div>
+      </div>`:''
 
-  const visible=cards.slice(0,journalPage*PAGE_SIZE);
-  const hasMore=cards.length>journalPage*PAGE_SIZE;
-  container.innerHTML=visible.map(journalCardHtml).join('')
-    +(hasMore?`<button class="load-more-btn" onclick="journalPage++;renderJournal()">↓ Daha fazla yükle (${cards.length-journalPage*PAGE_SIZE} kaldı)</button>`:'')
+    const quotesHtml=g.quotes.map((q,i)=>`
+      <div style="padding:.5rem .75rem;border-radius:4px;background:rgba(201,162,39,.05);margin-bottom:.4rem;border-left:2px solid rgba(201,162,39,.3)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+          <span class="journal-entry-type-badge journal-type-quote" style="flex-shrink:0">💬 alıntı</span>
+          <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+            ${q.page?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">s.${q.page}</span>`:''}
+            <span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">${fmtDate(q.ts)}</span>
+            <button class="journal-copy-btn" onclick="copyCardQuote('${me}',${b.id},${q.qi})">📋</button>
+            <button class="journal-copy-btn" style="color:var(--rust)" onclick="deleteQuote(${b.id},${q.qi})">✕</button>
+          </div>
+        </div>
+        <div class="journal-quote-text" style="margin-top:.3rem">${truncateHtml(q.text,`jq_${b.id}_${q.qi}`)}</div>
+        <div class="journal-reactions">${reactionHtml({type:'quote',bookId:b.id,qi:q.qi,reactions:q.reactions||{}})}</div>
+      </div>`).join('');
+
+    return`<div class="journal-entry" style="padding:0;overflow:hidden">
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.75rem;cursor:pointer;background:rgba(201,162,39,.04);border-bottom:1px solid rgba(201,162,39,.1)"
+        onclick="toggleJournalBook('${openKey}','jbody_${b.id}')">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Playfair Display',serif;font-size:.98rem;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.title}</div>
+          ${b.author?`<div style="font-size:.75rem;color:var(--rust);font-style:italic">${b.author}</div>`:''}
+        </div>
+        <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
+          ${badge?`<span style="font-size:.75rem">${badge}</span>`:''}
+          ${reviewCount?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;background:rgba(138,69,19,.12);color:var(--rust);padding:.1rem .35rem;border-radius:20px">📖 ${reviewCount}</span>`:''}
+          ${quoteCount?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;background:rgba(201,162,39,.12);color:#9a7a10;padding:.1rem .35rem;border-radius:20px">💬 ${quoteCount}</span>`:''}
+          <span style="color:var(--gold);font-size:.8rem">${isOpen?'▲':'▼'}</span>
+        </div>
+      </div>
+      <div id="jbody_${b.id}" style="display:${isOpen?'':'none'};padding:.6rem .75rem">
+        ${reviewHtml}
+        ${quotesHtml}
+        <button class="journal-copy-btn" style="margin-top:.2rem" onclick="openBook(${b.id})">+ Değerlendirme veya alıntı ekle</button>
+      </div>
+    </div>`;
+  }).join('')
+  +(hasMore?`<button class="load-more-btn" onclick="journalPage++;renderJournal()">↓ Daha fazla yükle (${bookGroups.length-journalPage*PAGE_SIZE} kaldı)</button>`:'');
 }
+
+function toggleJournalBook(key, bodyId){
+  const body=document.getElementById(bodyId);
+  if(!body) return;
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'';
+  sessionStorage.setItem(key,isOpen?'0':'1');
+  renderJournal();
+}
+
+function deleteQuote(bookId, qi){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book||!book.quotes) return;
+  book.quotes.splice(qi,1);
+  saveDb();
+  renderJournal();
+  renderFeed();
+}
+
+
 
 function countReaction(bookOwner,bookId,reaction){
   const book=(db.books[bookOwner]||[]).find(b=>b.id===bookId);
