@@ -1268,7 +1268,7 @@ function showAuthTab(tab){
 function renderPills(){
   const p=document.getElementById('memberPills'),names=Object.keys(db.users);
   if(!names.length){p.innerHTML='<span style="opacity:.5;font-size:.8rem;font-style:italic">Henüz kayıtlı üye yok.</span>';return;}
-  p.innerHTML=names.map(u=>`<span class="member-pill" onclick="document.getElementById('loginUsername').value='${u}'">${db.users[u].avatar} ${db.users[u].displayName}</span>`).join('');
+  p.innerHTML=names.map(u=>`<span class="member-pill" onclick="document.getElementById('loginUsername').value='${u}'">${avatarHtml(db.users[u].avatar||'📚','1.1rem')} ${db.users[u].displayName}</span>`).join('');
 }
 function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
