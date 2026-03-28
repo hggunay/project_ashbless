@@ -2159,10 +2159,27 @@ async function addBook(){
   document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='new'));
 
   const newBooks=validBooks();
+  const newlyEarned=[];
   BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
-    if(!bstat(b,prevBooks).earned&&bstat(b,newBooks).earned)notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
+    if(!bstat(b,prevBooks).earned&&bstat(b,newBooks).earned){
+      notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
+      newlyEarned.push(b.id);
+    }
   }));
   render();
+  if(newlyEarned.length){
+    launchConfetti('badge');
+    // Rozetler sekmesi açıksa shimmer uygula, değilse render sonrası bekle
+    setTimeout(()=>{
+      document.querySelectorAll('.badge-card.earned').forEach(card=>{
+        const m=(card.getAttribute('onclick')||'').match(/toggleBadgeDetail\('([^']+)'\)/);
+        if(m&&newlyEarned.includes(m[1])){
+          card.classList.add('badge-shine');
+          setTimeout(()=>card.classList.remove('badge-shine'),3600);
+        }
+      });
+    },300);
+  }
 }
 
 function removeBook(id){
@@ -3928,7 +3945,6 @@ let openBadgeId=null;
 
 function renderBadges(){
   const books=validBooks();
-  const prevEarned=currentEarnedBadgeIds();
   let prefs={};
   try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
 
@@ -3981,7 +3997,6 @@ function renderBadges(){
       </div>
     </div>`;
   }).join('');
-  shimmerNewBadges(prevEarned);
 }
 
 function toggleBadgeDetail(badgeId){
