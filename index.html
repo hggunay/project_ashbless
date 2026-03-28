@@ -686,7 +686,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <button class="filter-tab active" onclick="filterJournal('all',this)">Tümü</button>
               <button class="filter-tab" onclick="filterJournal('reviews',this)">Değerlendirmeler</button>
               <button class="filter-tab" onclick="filterJournal('quotes',this)">Alıntılar</button>
-              <button class="filter-tab" onclick="filterJournal('starred',this)">⭐ Yıldızlı</button>
+              <button class="filter-tab" onclick="filterJournal('starred',this)">🔖 Yer İmleri</button>
             </div>
             <button class="filter-tab" onclick="toggleJournalFilter()" id="journalFilterToggle">🔍 Filtrele</button>
           </div>
@@ -3442,7 +3442,7 @@ function populateJournalBookSelect(){
 let _journalAcBooks=[];
 function journalBookAcSearch(q){
   if(!_journalAcBooks.length){
-    _journalAcBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+    _journalAcBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned');
     _journalAcBooks.sort((a,b)=>(a.title||'').localeCompare(b.title||'','tr'));
   }
   const list=document.getElementById('journalBookAcList');
@@ -3579,7 +3579,7 @@ function renderJournal(){
 
   // Kitap bazlı grupla
   let bookGroups=myBooksList
-    .filter(b=>b.title&&!b.title.startsWith('ISBN:'))
+    .filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='planned')
     .map(b=>({
       book:b,
       review:(b.review&&b.review.trim())?{text:b.review,rating:b.rating||0,ts:b.reviewTs||b.addedAt||0}:null,
@@ -3633,15 +3633,13 @@ function renderJournal(){
   function stars(r){return r?'⭐'.repeat(Math.floor(r))+(r%1?'½':''):'';}
 
   function starToggleHtml(b, type, qi){
-    // type: 'review' veya 'quote', qi: alıntı index (quote için)
-    const field = type==='review' ? 'reviewStarred' : null;
     const isStarred = type==='review'
       ? (b.reviewStarred||false)
       : ((b.quotes||[])[qi]?.starred||false);
     const onclick = type==='review'
       ? `toggleJournalStar(${b.id},'review',-1)`
       : `toggleJournalStar(${b.id},'quote',${qi})`;
-    return `<button onclick="${onclick}" style="background:none;border:none;cursor:pointer;font-size:.9rem;padding:0;opacity:${isStarred?'1':'.3'}" title="${isStarred?'Yıldızı kaldır':'Yıldızla'}">${isStarred?'⭐':'☆'}</button>`;
+    return `<button onclick="${onclick}" style="background:none;border:none;cursor:pointer;font-size:.85rem;padding:0;opacity:${isStarred?'1':'.3'}" title="${isStarred?'Yer imini kaldır':'Yer imi ekle'}">${isStarred?'🔖':'🔖'}</button>`;
   }
 
   const visible=bookGroups.slice(0,journalPage*PAGE_SIZE);
@@ -3693,7 +3691,7 @@ function renderJournal(){
           ${b.author?`<div style="font-size:.75rem;color:var(--rust);font-style:italic">${b.author}</div>`:''}
         </div>
         <div style="display:flex;align-items:center;gap:.4rem;flex-shrink:0">
-          ${hasStarred?'<span style="font-size:.75rem">⭐</span>':''}
+          ${hasStarred?'<span style="font-size:.75rem">🔖</span>':''}
           ${badge?`<span style="font-size:.75rem">${badge}</span>`:''}
           ${reviewCount?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;background:rgba(138,69,19,.12);color:var(--rust);padding:.1rem .35rem;border-radius:20px">📖 ${reviewCount}</span>`:''}
           ${quoteCount?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;background:rgba(201,162,39,.12);color:#9a7a10;padding:.1rem .35rem;border-radius:20px">💬 ${quoteCount}</span>`:''}
