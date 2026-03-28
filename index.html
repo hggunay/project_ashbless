@@ -3567,7 +3567,7 @@ function renderPrivateNotes(){
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
           <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);flex:1">${n.title}</span>
           ${n.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic">${n.author}</span>`:''}
-          <button onclick="deleteArchivedNote(${i})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--rust);opacity:.6" title="Notu sil">✕</button>
+          <button onclick="event.stopPropagation();deleteArchivedNote(${i},this)" style="background:rgba(138,69,19,.12);border:1px solid rgba(138,69,19,.25);border-radius:4px;cursor:pointer;font-size:.7rem;color:var(--rust);padding:.1rem .4rem;flex-shrink:0" title="Notu sil">✕ sil</button>
         </div>
         <div style="font-family:'Crimson Pro',serif;font-size:.9rem;font-style:italic;color:var(--ink);opacity:.8;white-space:pre-wrap">${n.comment}</div>
       </div>`).join('');
@@ -3599,7 +3599,7 @@ function renderPrivateNotes(){
         <span style="font-size:.85rem">${statusIcon(b.readingStatus)}</span>
         <span style="font-family:'Playfair Display',serif;font-size:.95rem;font-weight:600;color:var(--ink);flex:1">${b.title}</span>
         ${b.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic;flex-shrink:0">${b.author}</span>`:''}
-        ${note?`<button onclick="event.stopPropagation();deletePrivateNote(${b.id})" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--rust);opacity:.5;flex-shrink:0" title="Notu sil">✕</button>`:''}
+        ${note?`<button onclick="event.stopPropagation();deletePrivateNote(${b.id},this)" style="background:rgba(138,69,19,.12);border:1px solid rgba(138,69,19,.25);border-radius:4px;cursor:pointer;font-size:.7rem;color:var(--rust);padding:.1rem .4rem;flex-shrink:0" title="Notu sil">✕ sil</button>`:''}
         <span style="font-size:.7rem;color:var(--gold);opacity:.7;flex-shrink:0">${note?'✏️ not var':'+ ekle'}</span>
       </div>
       <div id="${sid}" style="display:none;margin-top:.35rem">
@@ -3611,19 +3611,37 @@ function renderPrivateNotes(){
   }).join('');
 }
 
-function deletePrivateNote(bookId){
+function deletePrivateNote(bookId, btn){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
-  book.comment=null;
-  saveDb();
-  renderPrivateNotes();
+  showInlineConfirm(btn, 'Notu sil?', ()=>{
+    book.comment=null;
+    saveDb();
+    renderPrivateNotes();
+  });
 }
 
-function deleteArchivedNote(idx){
+function deleteArchivedNote(idx, btn){
   if(!db.archivedNotes||!db.archivedNotes[me]) return;
-  db.archivedNotes[me].splice(idx,1);
-  saveDb();
-  renderPrivateNotes();
+  showInlineConfirm(btn, 'Kalıcı sil?', ()=>{
+    db.archivedNotes[me].splice(idx,1);
+    saveDb();
+    renderPrivateNotes();
+  });
+}
+
+function showInlineConfirm(anchorBtn, label, onConfirm){
+  // Varsa önceki confirm kutusunu kapat
+  document.querySelectorAll('.inline-confirm-box').forEach(el=>el.remove());
+  const box=document.createElement('span');
+  box.className='inline-confirm-box';
+  box.style.cssText="display:inline-flex;align-items:center;gap:.3rem;background:var(--cream);border:1px solid rgba(138,69,19,.35);border-radius:6px;padding:.2rem .45rem;font-family:Space Mono,monospace;font-size:.6rem;color:var(--rust);box-shadow:0 2px 8px rgba(0,0,0,.12);position:relative;z-index:10;vertical-align:middle;margin-left:.3rem";
+  box.innerHTML=`<span>${label}</span><button style="background:rgba(138,69,19,.18);border:1px solid rgba(138,69,19,.3);border-radius:3px;cursor:pointer;font-size:.6rem;color:var(--rust);padding:.05rem .3rem" class="ic-yes">Evet</button><button style="background:transparent;border:none;cursor:pointer;font-size:.6rem;color:var(--rust);opacity:.6;padding:.05rem .2rem" class="ic-no">İptal</button>`;
+  box.querySelector('.ic-yes').onclick=(e)=>{e.stopPropagation();box.remove();onConfirm();};
+  box.querySelector('.ic-no').onclick=(e)=>{e.stopPropagation();box.remove();};
+  anchorBtn.insertAdjacentElement('afterend',box);
+  // Dışarı tıklayınca kapat
+  setTimeout(()=>document.addEventListener('click',function h(){box.remove();document.removeEventListener('click',h);},{once:true}),10);
 }
 
 function togglePrivateNote(sid){
@@ -3712,7 +3730,7 @@ function renderJournal(){
     const onclick = type==='review'
       ? `toggleJournalStar(${b.id},'review',-1)`
       : `toggleJournalStar(${b.id},'quote',${qi})`;
-    return `<button onclick="${onclick}" style="background:none;border:none;cursor:pointer;font-size:.85rem;padding:0;opacity:${isStarred?'1':'.3'}" title="${isStarred?'Yer imini kaldır':'Yer imi ekle'}">${isStarred?'🔖':'🔖'}</button>`;
+    return `<button onclick="${onclick}" style="background:${isStarred?'rgba(201,162,39,.2)':'rgba(201,162,39,.07)'};border:1px solid ${isStarred?'rgba(201,162,39,.5)':'rgba(201,162,39,.2)'};border-radius:4px;cursor:pointer;font-size:.75rem;padding:.1rem .35rem;color:${isStarred?'var(--gold)':'rgba(201,162,39,.4)'}" title="${isStarred?'Yer imini kaldır':'Yer imi ekle'}">${isStarred?'🔖 yer imi var':'🔖'}</button>`;
   }
 
   const visible=bookGroups.slice(0,journalPage*PAGE_SIZE);
@@ -3735,7 +3753,7 @@ function renderJournal(){
             ${badge?`<span style="font-size:.8rem">${badge}</span>`:''}
             <span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">${fmtDate(g.review.ts)}</span>
             ${starToggleHtml(b,'review',-1)}
-            <button class="journal-copy-btn" onclick="openBook(${b.id})">✏️ düzenle</button>
+            <button style="background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.65rem;color:var(--rust);padding:.1rem .35rem;font-family:'Space Mono',monospace" onclick="openBook(${b.id})">✏️ düzenle</button>
           </div>
         </div>
         <div class="journal-review">${truncateHtml(g.review.text,`jrev_${b.id}`)}</div>
@@ -3749,8 +3767,8 @@ function renderJournal(){
             ${q.page?`<span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">s.${q.page}</span>`:''}
             <span style="font-family:'Space Mono',monospace;font-size:.55rem;opacity:.5">${fmtDate(q.ts)}</span>
             ${starToggleHtml(b,'quote',q.qi)}
-            <button class="journal-copy-btn" onclick="copyCardQuote('${me}',${b.id},${q.qi})">📋</button>
-            <button class="journal-copy-btn" style="color:var(--rust)" onclick="deleteQuote(${b.id},${q.qi})">✕</button>
+            <button style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:4px;cursor:pointer;font-size:.65rem;color:var(--rust);padding:.1rem .35rem;font-family:'Space Mono',monospace" onclick="copyCardQuote('${me}',${b.id},${q.qi})">📋 kopyala</button>
+            <button style="background:rgba(138,69,19,.12);border:1px solid rgba(138,69,19,.25);border-radius:4px;cursor:pointer;font-size:.65rem;color:var(--rust);padding:.1rem .35rem;font-family:'Space Mono',monospace" onclick="deleteQuote(${b.id},${q.qi},this)">✕ sil</button>
           </div>
         </div>
         <div class="journal-quote-text" style="margin-top:.3rem">${truncateHtml(q.text,`jq_${b.id}_${q.qi}`)}</div>
@@ -3774,7 +3792,7 @@ function renderJournal(){
       <div id="jbody_${b.id}" style="display:${isOpen?'':'none'};padding:.6rem .75rem">
         ${reviewHtml}
         ${quotesHtml}
-        <button class="journal-copy-btn" style="margin-top:.2rem" onclick="openBook(${b.id})">+ Değerlendirme veya alıntı ekle</button>
+        <button style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:4px;cursor:pointer;font-size:.7rem;color:var(--rust);padding:.25rem .6rem;font-family:'Space Mono',monospace;margin-top:.3rem" onclick="openBook(${b.id})">+ değerlendirme veya alıntı ekle</button>
       </div>
     </div>`;
   }).join('')
@@ -3804,13 +3822,15 @@ function toggleJournalBook(key, bodyId){
   renderJournal();
 }
 
-function deleteQuote(bookId, qi){
+function deleteQuote(bookId, qi, btn){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book||!book.quotes) return;
-  book.quotes.splice(qi,1);
-  saveDb();
-  renderJournal();
-  renderFeed();
+  showInlineConfirm(btn, 'Alıntıyı sil?', ()=>{
+    book.quotes.splice(qi,1);
+    saveDb();
+    renderJournal();
+    renderFeed();
+  });
 }
 
 
