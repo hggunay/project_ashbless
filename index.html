@@ -360,8 +360,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .series-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .path-card{background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.2);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .path-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;margin-bottom:.5rem;}
-.path-step{display:flex;flex-direction:column;align-items:stretch;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.12);margin-bottom:.3rem;}
-.path-step-books{display:none;}.path-step-books.open{display:block;}
+.path-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.12);margin-bottom:.3rem;cursor:grab;}
+.path-step:active{cursor:grabbing;opacity:.7;}
 .path-step-handle{color:var(--gold);opacity:.6;font-size:.8rem;user-select:none;}
 .path-step-name{flex:1;font-size:.88rem;color:var(--parchment);}
 .path-step-progress{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);opacity:.8;}
@@ -776,51 +776,50 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
     <!-- SERIES PANEL -->
     <div id="series" class="panel">
-      <!-- SERİLER ALT PANELİ -->
-      <div id="seriesSubPanel">
-        <div class="add-section" style="margin-bottom:1rem">
-          <div class="section-title">➕ Yeni Seri Oluştur</div>
+      <!-- OLUŞTURMA FORMLARI -->
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem">
+        <!-- Yeni Seri -->
+        <div class="add-section" style="flex:1;min-width:260px">
+          <div class="section-title">➕ Yeni Seri</div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
-            <div style="flex:1;min-width:180px">
+            <div style="flex:1;min-width:150px">
               <div class="field-label" style="margin-bottom:.3rem">Seri Adı *</div>
               <input class="book-input" id="newSeriesName" type="text" placeholder="örn: Dune Serisi" oninput="checkSeriesMatch()"/>
             </div>
-            <div style="width:80px">
-              <div class="field-label" style="margin-bottom:.3rem">Toplam Kitap</div>
+            <div style="width:70px">
+              <div class="field-label" style="margin-bottom:.3rem">Toplam</div>
               <input class="book-input" id="newSeriesTotal" type="number" min="1" placeholder="6"/>
+            </div>
+            <div style="flex:1;min-width:150px">
+              <div class="field-label" style="margin-bottom:.3rem">Grup (opsiyonel)</div>
+              <select class="book-input" id="newSeriesGroupId" style="font-size:.82rem;padding:.35rem .5rem">
+                <option value="">— Gruba ekleme —</option>
+              </select>
             </div>
             <button class="btn btn-primary" onclick="createSeries()">+ Oluştur</button>
           </div>
           <div id="seriesMatchBanner" style="display:none;margin-top:.5rem;padding:.5rem .75rem;background:rgba(74,103,65,.12);border:1px solid rgba(74,103,65,.25);border-radius:6px;font-size:.82rem;color:var(--parchment)"></div>
           <div style="margin-top:.75rem">
-            <div class="field-label" style="margin-bottom:.3rem">Toplu Kitap Ekle <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(her satıra bir kitap adı — kopyalayıp yapıştırabilirsin)</span></div>
-            <textarea class="book-input" id="newSeriesBulkBooks" placeholder="Dune&#10;Dune Mesih&#10;Dune Çocukları&#10;Tanrı İmparatoru Dune&#10;Dune'nin Kahinleri&#10;Dune'nin Ötekileri" style="min-height:100px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.9rem;line-height:1.6"></textarea>
-            <div class="field-label" style="margin-bottom:.3rem;margin-top:.5rem">Yazar <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(opsiyonel — tümü için)</span></div>
+            <div class="field-label" style="margin-bottom:.3rem">Toplu Kitap Ekle <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(her satıra bir kitap adı)</span></div>
+            <textarea class="book-input" id="newSeriesBulkBooks" placeholder="Dune&#10;Dune Mesih&#10;Dune Çocukları" style="min-height:80px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.9rem;line-height:1.6"></textarea>
+            <div class="field-label" style="margin-bottom:.3rem;margin-top:.5rem">Yazar <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(opsiyonel)</span></div>
             <input class="book-input" id="newSeriesBulkAuthor" type="text" placeholder="Frank Herbert"/>
           </div>
           <div class="status-msg" id="seriesCreateStatus" style="margin-top:.4rem"></div>
         </div>
-        <div id="seriesListContainer"></div>
-      </div>
-
-      <!-- OKUMA YOLLARI ALT PANELİ -->
-      <div style="border-top:1px solid rgba(201,162,39,.2);margin:1.5rem 0 1rem;padding-top:1rem">
-        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);margin-bottom:1rem">🗺️ Okuma Yolları</div>
-      </div>
-      <div id="pathsSubPanel">
-        <div class="add-section" style="margin-bottom:1rem">
-          <div class="section-title">➕ Yeni Okuma Yolu</div>
-          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
-            <div style="flex:1;min-width:200px">
-              <div class="field-label" style="margin-bottom:.3rem">Yol Adı *</div>
-              <input class="book-input" id="newPathName" type="text" placeholder="örn: Asimov Evren Sırası"/>
-            </div>
-            <button class="btn btn-primary" onclick="createPath()">+ Oluştur</button>
-          </div>
+        <!-- Yeni Grup -->
+        <div class="add-section" style="flex:0 0 220px;min-width:200px">
+          <div class="section-title">🗂 Yeni Grup</div>
+          <div class="field-label" style="margin-bottom:.3rem">Grup Adı *</div>
+          <input class="book-input" id="newPathName" type="text" placeholder="örn: Asimov Evreni"/>
+          <button class="btn btn-primary" style="margin-top:.5rem;width:100%" onclick="createPath()">+ Oluştur</button>
           <div class="status-msg" id="pathCreateStatus" style="margin-top:.4rem"></div>
         </div>
-        <div id="pathsListContainer"></div>
       </div>
+
+      <!-- TEK LİSTE: gruplar + tekil seriler -->
+      <div id="seriesListContainer"></div>
+      <div id="pathsListContainer" style="display:none"></div>
     </div>
 
     <!-- STATS PANEL -->
@@ -1634,7 +1633,7 @@ function showPanel(id,el){
   else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
-  else if(id==='series'){renderSeriesList();renderPathsList();}
+  else if(id==='series'){renderSeriesList();}
   else render();
 }
 function viewMember(u){
@@ -4000,12 +3999,10 @@ function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==
 
 // ── SERİ SİSTEMİ ─────────────────────────────────────────────
 
-let seriesSubTab = 'series';
+let seriesSubTab = 'series'; // 'series' | 'paths'
 
 function switchSeriesTab(tab, el){
-  seriesSubTab = tab;
   renderSeriesList();
-  renderPathsList();
 }
 
 function mySeriesData(){
@@ -4065,6 +4062,7 @@ function createSeries(){
   const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
   const bulkText = document.getElementById('newSeriesBulkBooks').value.trim();
   const bulkAuthor = document.getElementById('newSeriesBulkAuthor').value.trim();
+  const groupId = (document.getElementById('newSeriesGroupId')||{}).value||'';
   const st = document.getElementById('seriesCreateStatus');
   if(!name){ st.textContent='⚠️ Seri adı boş olamaz.'; return; }
   const data = mySeriesData();
@@ -4084,7 +4082,11 @@ function createSeries(){
       }
     });
   }
-  data.series[id] = { id, name, total:total||books.length||null, books, createdAt: new Date().toISOString() };
+  data.series[id] = { id, name, total:total||books.length||null, books, groupId:groupId||null, createdAt: new Date().toISOString() };
+  if(groupId && data.paths[groupId]){
+    data.paths[groupId].steps = data.paths[groupId].steps||[];
+    data.paths[groupId].steps.push({seriesId:id});
+  }
   saveDb();
   document.getElementById('newSeriesName').value='';
   document.getElementById('newSeriesTotal').value='';
@@ -4434,7 +4436,7 @@ function togglePathMode(pathId){
   try{ current = localStorage.getItem(modeKey)||'books'; }catch(e){}
   const next = current==='books' ? 'pages' : 'books';
   try{ localStorage.setItem(modeKey, next); }catch(e){}
-  renderPathsList();
+  renderSeriesList();
 }
 
 function toggleSeriesBooks(id){
@@ -4448,6 +4450,14 @@ function toggleSeriesBooks(id){
 function renderSeriesList(){
   const container = document.getElementById('seriesListContainer');
   if(!container) return;
+  // Grup select'i güncelle
+  const groupSel = document.getElementById('newSeriesGroupId');
+  if(groupSel){
+    const data0 = mySeriesData();
+    const paths0 = Object.values(data0.paths||{});
+    groupSel.innerHTML = '<option value="">— Gruba ekleme —</option>' +
+      paths0.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  }
   // Açık kartları hatırla
   const openIds = new Set(
     [...document.querySelectorAll('.series-books-list.open')]
@@ -4626,7 +4636,7 @@ function renderSeriesList(){
     </div>`;
 
 
-    return `<div class="series-card">
+    return `<div class="series-card" data-sid="${ser.id}">
       <div class="series-card-header">
         <div>
           <div class="series-card-name">${ser.name}</div>
@@ -4675,6 +4685,123 @@ function renderSeriesList(){
     if(el){ el.classList.add('open'); }
     if(btn){ btn.textContent='▲ Gizle'; }
   });
+  // Grup kartlarını üste ekle
+  renderGroupCards(container);
+}
+
+function renderGroupCards(seriesContainer){
+  const data = mySeriesData();
+  const allPaths = Object.values(data.paths||{});
+  if(!allPaths.length) return;
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const allSeries = data.series||{};
+
+  // Grup kartlarını üste taşı — her grup kartını seriesListContainer'ın başına ekle
+  const existingGroups = seriesContainer.querySelectorAll('.group-card');
+  existingGroups.forEach(g=>g.remove());
+
+  // Gruba bağlı seri kartlarını gizle
+  const groupedSeriesIds = new Set();
+  allPaths.forEach(path=>{
+    (path.steps||[]).forEach(s=>groupedSeriesIds.add(s.seriesId));
+  });
+  seriesContainer.querySelectorAll('.series-card[data-sid]').forEach(card=>{
+    const sid = card.dataset.sid;
+    card.style.display = groupedSeriesIds.has(sid) ? 'none' : '';
+  });
+
+  // Grup kartlarını oluştur ve üste ekle (ters sırayla prepend)
+  [...allPaths].reverse().forEach(path=>{
+    const steps = (path.steps||[]).map(s=>{
+      const ser = allSeries[s.seriesId];
+      if(!ser) return null;
+      const serBooks = (ser.books||[]).map(bk=>{
+        if(bk.planned){
+          const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
+          return linked?{...bk,book:linked}:{...bk,book:{readingStatus:'planned',title:bk.manualTitle,pages:bk.pages||null}};
+        }
+        const book=myBooksList.find(b=>b.id===bk.bookId);
+        return book?{...bk,book}:null;
+      }).filter(Boolean);
+      const readCount=serBooks.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist';}).length;
+      const total=ser.total||serBooks.length||1;
+      const pct=Math.round((readCount/total)*100);
+      return {...s,ser,serBooks,readCount,total,pct};
+    }).filter(Boolean);
+
+    const totalBooks=steps.reduce((s,st)=>s+st.total,0);
+    const totalRead=steps.reduce((s,st)=>s+st.readCount,0);
+    const overallPct=totalBooks>0?Math.round((totalRead/totalBooks)*100):0;
+
+    const div=document.createElement('div');
+    div.className='group-card';
+    div.dataset.pathId=path.id;
+    const openKey='groupOpen_'+path.id;
+    const isOpen=sessionStorage.getItem(openKey)==='1';
+    div.style.cssText='background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.25);border-radius:10px;padding:1rem;margin-bottom:.75rem';
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex-wrap:wrap" onclick="toggleGroupCard('${path.id}',this.closest('.group-card'))">
+        <span style="font-size:1rem">🗂</span>
+        <span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
+        <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>
+        </div>
+        <span style="color:var(--moss);font-size:.8rem">${isOpen?'▲':'▼'}</span>
+      </div>
+      <div class="group-card-body" style="display:${isOpen?'block':'none'};margin-top:.75rem">
+        ${steps.map((st,i)=>{
+          const booksHtml=st.serBooks.map(bk=>{
+            const title=bk.book.title||bk.manualTitle||'?';
+            const lb=bk.book;
+            const ico=lb.readingStatus==='reading'?'📖':lb.readingStatus==='paused'?'🚧':(lb.readingStatus==='planned'||lb.readingStatus==='wishlist')?'⏳':'✅';
+            return `<div style="padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span>${title}</span></div>`;
+          }).join('');
+          const serOpenKey='serInGrp_'+st.ser.id;
+          const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
+          return `<div style="border:1px solid rgba(74,103,65,.2);border-radius:6px;margin-bottom:.4rem;overflow:hidden">
+            <div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;cursor:pointer;background:rgba(74,103,65,.06)" onclick="toggleSeriesInGroup('${st.ser.id}',this)">
+              <span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>
+              <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
+              <div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
+                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
+                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
+                <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+              </div>
+              <span style="font-size:.7rem;color:var(--moss)">${serIsOpen?'▲':'▼'}</span>
+            </div>
+            <div class="ser-in-grp-books" data-sid="${st.ser.id}" style="display:${serIsOpen?'block':'none'};padding:.3rem 0">${booksHtml||'<div style="padding:.2rem 1rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
+          </div>`;
+        }).join('')}
+        ${steps.length===0?'<div style="font-size:.85rem;opacity:.5;font-style:italic">Henüz seri eklenmemiş.</div>':''}
+        <div style="display:flex;gap:.4rem;align-items:center;margin-top:.5rem;flex-wrap:wrap">
+          <select class="book-input" id="grpSerSel_${path.id}" style="flex:1;font-size:.8rem;padding:.35rem .5rem">
+            <option value="">— Mevcut seriyi gruba ekle —</option>
+            ${Object.values(allSeries).filter(s=>!(path.steps||[]).find(st=>st.seriesId===s.id)).map(s=>`<option value="${s.id}">${s.name}</option>`).join('')}
+          </select>
+          <button class="btn btn-sm btn-primary" onclick="addSeriesToPath('${path.id}')">+ Ekle</button>
+        </div>
+      </div>`;
+    seriesContainer.prepend(div);
+  });
+}
+
+function toggleGroupCard(pathId, card){
+  const body=card.querySelector('.group-card-body');
+  const arrow=card.querySelector('span:last-child');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  if(arrow) arrow.textContent=isOpen?'▼':'▲';
+  sessionStorage.setItem('groupOpen_'+pathId, isOpen?'0':'1');
+}
+
+function toggleSeriesInGroup(seriesId, headerEl){
+  const body=headerEl.parentElement.querySelector('.ser-in-grp-books');
+  const arrow=headerEl.querySelector('span:last-child');
+  const isOpen=body.style.display!=='none';
+  body.style.display=isOpen?'none':'block';
+  if(arrow) arrow.textContent=isOpen?'▼':'▲';
+  sessionStorage.setItem('serInGrp_'+seriesId, isOpen?'0':'1');
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
@@ -4691,7 +4818,7 @@ function createPath(){
   document.getElementById('newPathName').value='';
   st.textContent='✓ Okuma yolu oluşturuldu!';
   setTimeout(()=>{ st.textContent=''; }, 2500);
-  renderPathsList();
+  renderSeriesList();
 }
 
 function deletePath(id){
@@ -4699,22 +4826,22 @@ function deletePath(id){
   const data = mySeriesData();
   delete data.paths[id];
   saveDb();
-  renderPathsList();
+  renderSeriesList();
 }
 
 function addSeriesToPath(pathId){
-  const sel = document.getElementById('pathSeriesSel_'+pathId);
+  const sel = document.getElementById('grpSerSel_'+pathId) || document.getElementById('pathSeriesSel_'+pathId);
   if(!sel||!sel.value) return;
   const data = mySeriesData();
   const path = data.paths[pathId];
   if(!path) return;
   if((path.steps||[]).find(s=>s.seriesId===sel.value)){
-    notify('⚠️','Bu seri zaten yolda mevcut.'); return;
+    notify('⚠️','Bu seri zaten grupta mevcut.'); return;
   }
   path.steps = path.steps||[];
   path.steps.push({ seriesId: sel.value });
   saveDb();
-  renderPathsList();
+  renderSeriesList();
 }
 
 function removeStepFromPath(pathId, seriesId){
@@ -4723,7 +4850,7 @@ function removeStepFromPath(pathId, seriesId){
   if(!path) return;
   path.steps = (path.steps||[]).filter(s=>s.seriesId!==seriesId);
   saveDb();
-  renderPathsList();
+  renderSeriesList();
 }
 
 function moveStep(pathId, idx, dir){
@@ -4736,7 +4863,7 @@ function moveStep(pathId, idx, dir){
   path.steps[idx] = path.steps[newIdx];
   path.steps[newIdx] = tmp;
   saveDb();
-  renderPathsList();
+  renderSeriesList();
 }
 
 function renderPathsList(){
@@ -4804,39 +4931,22 @@ function renderPathsList(){
     const usedIds = new Set((path.steps||[]).map(s=>s.seriesId));
     const availableSeries = Object.values(allSeries).filter(s=>!usedIds.has(s.id));
 
-    const stepsHtml = steps.map((st,i)=>{
-      const booksHtml = st.ser ? (st.ser.books||[]).map(bk=>{
-        const title = bk.manualTitle || (myBooksList.find(b=>b.id===bk.bookId)||{}).title || '?';
-        const status = bk.planned ? '⏳' : (()=>{
-          const lb = myBooksList.find(b=>b.id===bk.bookId);
-          if(!lb) return '⏳';
-          if(lb.readingStatus==='reading') return '📖';
-          if(lb.readingStatus==='paused') return '🚧';
-          if(lb.readingStatus==='wishlist'||lb.readingStatus==='planned') return '⏳';
-          return '✅';
-        })();
-        return `<div style="padding:.2rem .5rem .2rem 1.5rem;font-size:.8rem;color:var(--parchment);opacity:.85">${status} ${bk.num?'#'+bk.num+' ':''}<span>${title}</span></div>`;
-      }).join('') : '';
-      return `
+    const stepsHtml = steps.map((st,i)=>`
       <div class="path-step" id="pathStep_${path.id}_${i}">
-        <div style="display:flex;align-items:center;width:100%;gap:.4rem;cursor:pointer" onclick="this.parentElement.querySelector('.path-step-books').classList.toggle('open')">
-          <span class="path-step-handle">⠿</span>
-          <div class="path-step-name" style="flex:1">
-            <strong>${st.ser.name}</strong>
-            <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
-          </div>
-          <div style="display:flex;gap:.25rem" onclick="event.stopPropagation()">
-            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-              onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
-            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-              onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
-            <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
-              onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
-          </div>
+        <span class="path-step-handle">⠿</span>
+        <div class="path-step-name">
+          <strong>${st.ser.name}</strong>
+          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
         </div>
-        <div class="path-step-books" style="width:100%;border-top:1px solid rgba(201,162,39,.1);margin-top:.3rem;padding-top:.3rem">${booksHtml||'<div style="padding:.2rem .5rem .2rem 1.5rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
-      </div>`;
-    }).join('');
+        <div style="display:flex;gap:.25rem">
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+            onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
+          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+            onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
+            onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+        </div>
+      </div>`).join('');
 
     return `<div class="path-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
