@@ -360,8 +360,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .series-actions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
 .path-card{background:rgba(74,103,65,.08);border:1px solid rgba(74,103,65,.2);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .path-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;margin-bottom:.5rem;}
-.path-step{display:flex;align-items:center;gap:.6rem;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.12);margin-bottom:.3rem;cursor:grab;}
-.path-step:active{cursor:grabbing;opacity:.7;}
+.path-step{display:flex;flex-direction:column;align-items:stretch;padding:.4rem .5rem;border-radius:6px;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.12);margin-bottom:.3rem;}
+.path-step-books{display:none;}.path-step-books.open{display:block;}
 .path-step-handle{color:var(--gold);opacity:.6;font-size:.8rem;user-select:none;}
 .path-step-name{flex:1;font-size:.88rem;color:var(--parchment);}
 .path-step-progress{font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);opacity:.8;}
@@ -776,11 +776,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
     <!-- SERIES PANEL -->
     <div id="series" class="panel">
-      <div class="filter-tabs" style="margin-bottom:1rem">
-        <button class="filter-tab active" id="seriesTabBtn" onclick="switchSeriesTab('series',this)">📚 Serilerim</button>
-        <button class="filter-tab" id="pathsTabBtn" onclick="switchSeriesTab('paths',this)">🗺️ Okuma Yolları</button>
-      </div>
-
       <!-- SERİLER ALT PANELİ -->
       <div id="seriesSubPanel">
         <div class="add-section" style="margin-bottom:1rem">
@@ -809,7 +804,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       </div>
 
       <!-- OKUMA YOLLARI ALT PANELİ -->
-      <div id="pathsSubPanel" style="display:none">
+      <div style="border-top:1px solid rgba(201,162,39,.2);margin:1.5rem 0 1rem;padding-top:1rem">
+        <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);margin-bottom:1rem">🗺️ Okuma Yolları</div>
+      </div>
+      <div id="pathsSubPanel">
         <div class="add-section" style="margin-bottom:1rem">
           <div class="section-title">➕ Yeni Okuma Yolu</div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
@@ -1636,7 +1634,7 @@ function showPanel(id,el){
   else if(id==='journal'){populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
-  else if(id==='series'){renderSeriesList();}
+  else if(id==='series'){renderSeriesList();renderPathsList();}
   else render();
 }
 function viewMember(u){
@@ -2394,32 +2392,16 @@ function openBook(bookId){
 }
 
 
-function goToSeries(seriesName){
-  const data = mySeriesData();
-  const ser = Object.values(data.series||{}).find(s=>(s.name||'').toLowerCase()===seriesName.toLowerCase());
-  const t = [...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'series'"));
-  showPanel('series', t||null);
-  if(ser){
-    setTimeout(()=>{
-      switchSeriesTab('series', document.getElementById('seriesTabBtn'));
-      const card = document.getElementById('seriesBooks_'+ser.id);
-      if(card){ card.classList.add('open'); card.style.display=''; }
-      const header = document.querySelector('[data-series-id="'+ser.id+'"]');
-      if(header){ header.scrollIntoView({behavior:'smooth',block:'center'}); header.style.outline='2px solid var(--gold)'; setTimeout(()=>header.style.outline='',1500); }
-    }, 150);
-  }
-}
 function dFieldSeries(label,field,val,editable,bookId){
   const display = val||'—';
-  const linkBtn = val ? '<button onclick="goToSeries(\''+val.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);padding:0 .25rem;opacity:.8" title="Seriye git">📚</button>' : '';
-  if(!editable) return '<div class="detail-field"><span class="detail-field-label">'+label+'</span><span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">'+display+linkBtn+'</span></div>';
+  if(!editable) return '<div class="detail-field"><span class="detail-field-label">'+label+'</span><span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">'+display+'</span></div>';
   const allSeries=[...new Set((db.books[me]||[]).filter(b=>b.series&&b.id!==bookId).map(b=>b.series))];
   const dlId='dl_series_'+bookId;
   let html='<div class="detail-field"><span class="detail-field-label">'+label+'</span>';
   html+='<datalist id="'+dlId+'">';
   allSeries.forEach(function(s){html+='<option value="'+s.replace(/"/g,'&quot;')+'">'+s+'</option>';});
   html+='</datalist>';
-  html+='<div style="display:flex;align-items:center;gap:.25rem"><input class="detail-input" type="text" list="'+dlId+'" value="'+(val||'')+'" placeholder="Seri adı..." onchange="saveField('+bookId+',\'series\',this.value)" style="flex:1"/>'+linkBtn+'</div>';
+  html+='<input class="detail-input" type="text" list="'+dlId+'" value="'+(val||'')+'" placeholder="Seri adı..." onchange="saveField('+bookId+',\'series\',this.value)"/>';
   html+='</div>';
   return html;
 }
@@ -4018,16 +4000,12 @@ function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==
 
 // ── SERİ SİSTEMİ ─────────────────────────────────────────────
 
-let seriesSubTab = 'series'; // 'series' | 'paths'
+let seriesSubTab = 'series';
 
 function switchSeriesTab(tab, el){
   seriesSubTab = tab;
-  document.querySelectorAll('#seriesTabBtn,#pathsTabBtn').forEach(b=>b.classList.remove('active'));
-  if(el) el.classList.add('active');
-  document.getElementById('seriesSubPanel').style.display = tab==='series' ? '' : 'none';
-  document.getElementById('pathsSubPanel').style.display = tab==='paths' ? '' : 'none';
-  if(tab==='series') renderSeriesList();
-  else renderPathsList();
+  renderSeriesList();
+  renderPathsList();
 }
 
 function mySeriesData(){
@@ -4332,39 +4310,6 @@ function updateSeriesTotal(seriesId, val){
   saveDb();
 }
 
-function startPlannedBook(seriesId, manualTitle, manualAuthor){
-  const data = mySeriesData();
-  const ser = data.series[seriesId];
-  if(!ser) return;
-  const bkIdx = (ser.books||[]).findIndex(b=>b.planned&&(b.manualTitle||'').toLowerCase()===manualTitle.toLowerCase());
-  if(bkIdx===-1){ notify('⚠️','Kitap bulunamadı.'); return; }
-  const bk = ser.books[bkIdx];
-  const now = new Date();
-  const newBook = {
-    id: Date.now(),
-    title: manualTitle,
-    author: manualAuthor||bk.manualAuthor||'',
-    pages: bk.pages||null,
-    pubYear: null, genres:[], country:null, femaleAuthor:false, youngAuthor:false,
-    formats:[], series: ser.name||null, seriesNum: bk.num||null, seriesTotal: ser.total||null,
-    readingStatus:'reading',
-    publisher: bk.publisher||null,
-    month: now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),
-    addedAt: now.toISOString(),
-    startDate: now.toISOString().split('T')[0],
-    endDate: null, currentPage: null,
-    retroactive:false, seriesComplete:false, miniSeriesComplete:false, bigSeriesComplete:false,
-    pre1900:false, pre1980comic:false, halloween:false
-  };
-  db.books[me].push(newBook);
-  ser.books[bkIdx] = { bookId: newBook.id, num: bk.num||null, pages: bk.pages||null, publisher: bk.publisher||null };
-  addSeriesEvent(seriesId, ser.name, manualTitle, 'series_start');
-  saveDb();
-  renderSeriesList();
-  notify('📖 Okumaya Başlandı', manualTitle+' kitaplığına eklendi ve okumaya başlandı.');
-  var _t=[...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'myBooks'"));
-  showPanel('myBooks',_t||null);
-}
 function startReadingSeriesBook(bookId){
   const book = myBooks().find(b=>b.id===bookId);
   if(!book) return;
@@ -4615,7 +4560,7 @@ function renderSeriesList(){
         ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
-          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:((!isReading&&!isRead&&bk.planned)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'')} 
+          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
           <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
         </div>
@@ -4682,7 +4627,7 @@ function renderSeriesList(){
 
 
     return `<div class="series-card">
-      <div class="series-card-header" data-series-id="${ser.id}">
+      <div class="series-card-header">
         <div>
           <div class="series-card-name">${ser.name}</div>
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
@@ -4859,22 +4804,39 @@ function renderPathsList(){
     const usedIds = new Set((path.steps||[]).map(s=>s.seriesId));
     const availableSeries = Object.values(allSeries).filter(s=>!usedIds.has(s.id));
 
-    const stepsHtml = steps.map((st,i)=>`
+    const stepsHtml = steps.map((st,i)=>{
+      const booksHtml = st.ser ? (st.ser.books||[]).map(bk=>{
+        const title = bk.manualTitle || (myBooksList.find(b=>b.id===bk.bookId)||{}).title || '?';
+        const status = bk.planned ? '⏳' : (()=>{
+          const lb = myBooksList.find(b=>b.id===bk.bookId);
+          if(!lb) return '⏳';
+          if(lb.readingStatus==='reading') return '📖';
+          if(lb.readingStatus==='paused') return '🚧';
+          if(lb.readingStatus==='wishlist'||lb.readingStatus==='planned') return '⏳';
+          return '✅';
+        })();
+        return `<div style="padding:.2rem .5rem .2rem 1.5rem;font-size:.8rem;color:var(--parchment);opacity:.85">${status} ${bk.num?'#'+bk.num+' ':''}<span>${title}</span></div>`;
+      }).join('') : '';
+      return `
       <div class="path-step" id="pathStep_${path.id}_${i}">
-        <span class="path-step-handle">⠿</span>
-        <div class="path-step-name">
-          <strong>${st.ser.name}</strong>
-          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
+        <div style="display:flex;align-items:center;width:100%;gap:.4rem;cursor:pointer" onclick="this.parentElement.querySelector('.path-step-books').classList.toggle('open')">
+          <span class="path-step-handle">⠿</span>
+          <div class="path-step-name" style="flex:1">
+            <strong>${st.ser.name}</strong>
+            <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
+          </div>
+          <div style="display:flex;gap:.25rem" onclick="event.stopPropagation()">
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+              onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+              onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
+            <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
+              onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+          </div>
         </div>
-        <div style="display:flex;gap:.25rem">
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-            onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-            onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
-            onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
-        </div>
-      </div>`).join('');
+        <div class="path-step-books" style="display:none;width:100%;border-top:1px solid rgba(201,162,39,.1);margin-top:.3rem;padding-top:.3rem">${booksHtml||'<div style="padding:.2rem .5rem .2rem 1.5rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
+      </div>`;
+    }).join('');
 
     return `<div class="path-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
