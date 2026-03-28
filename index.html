@@ -3475,7 +3475,7 @@ function renderPrivateNotes(){
         ${b.author?`<span style="font-size:.75rem;color:var(--rust);font-style:italic;flex-shrink:0">${b.author}</span>`:''}
         <span style="font-size:.7rem;color:var(--gold);opacity:.7;flex-shrink:0">${note?'✏️ not var':'+ ekle'}</span>
       </div>
-      <div id="${sid}" style="display:${note?'':'none'};margin-top:.35rem">
+      <div id="${sid}" style="display:none;margin-top:.35rem">
         <textarea class="book-input" style="width:100%;min-height:90px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem;box-sizing:border-box"
           placeholder="Kişisel notun... (sadece sen görebilirsin)"
           onchange="savePrivateNote(${b.id},this.value)">${note}</textarea>
