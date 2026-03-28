@@ -4564,8 +4564,6 @@ function renderSeriesList(){
         ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveSeriesBook('${ser.id}',${books.indexOf(bk)},-1)" ${books.indexOf(bk)===0?'disabled':''}>▲</button>
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveSeriesBook('${ser.id}',${books.indexOf(bk)},1)" ${books.indexOf(bk)===books.length-1?'disabled':''}>▼</button>
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
           <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
@@ -4732,22 +4730,13 @@ function removeStepFromPath(pathId, seriesId){
   renderPathsList();
 }
 
-function moveSeriesBook(seriesId, visIdx, dir){
-  const data = mySeriesData();
-  const ser = data.series[seriesId];
-  if(!ser||!ser.books) return;
-  const bkRef = seriesBkMap[seriesId+'_'+visIdx];
-  if(!bkRef) return;
-  const rawIdx = ser.books.findIndex(b=>bkRef.bookId ? b.bookId===bkRef.bookId : b.manualTitle===bkRef.manualTitle);
-  if(rawIdx<0) return;
-  const targetIdx = rawIdx+dir;
-  if(targetIdx<0||targetIdx>=ser.books.length) return;
-  [ser.books[rawIdx], ser.books[targetIdx]] = [ser.books[targetIdx], ser.books[rawIdx]];
-  // num değerlerini de güncelle
-  ser.books[rawIdx].num = rawIdx+1;
-  ser.books[targetIdx].num = targetIdx+1;
-  saveDb();
-  renderSeriesList();
+function togglePathStep(key){
+  const books = document.getElementById('pathStepBooks_'+key);
+  const arrow = document.getElementById('pathStepArrow_'+key);
+  if(!books) return;
+  const open = books.style.display==='none';
+  books.style.display = open ? 'block' : 'none';
+  if(arrow) arrow.textContent = open ? '▲' : '▼';
 }
 
 function moveStep(pathId, idx, dir){
@@ -4828,22 +4817,52 @@ function renderPathsList(){
     const usedIds = new Set((path.steps||[]).map(s=>s.seriesId));
     const availableSeries = Object.values(allSeries).filter(s=>!usedIds.has(s.id));
 
-    const stepsHtml = steps.map((st,i)=>`
-      <div class="path-step" id="pathStep_${path.id}_${i}">
-        <span class="path-step-handle">⠿</span>
-        <div class="path-step-name">
-          <strong>${st.ser.name}</strong>
-          <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
+    const stepsHtml = steps.map((st,i)=>{
+      const booksHtml = (st.ser.books||[]).map(bk=>{
+        let title='', author='', statusIcon='⏳', isRead=false;
+        if(bk.planned||bk.manualTitle){
+          const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
+          title=bk.manualTitle||'';
+          author=bk.manualAuthor||'';
+          if(linked){ statusIcon=linked.readingStatus==='reading'?'📖':linked.readingStatus==='paused'?'🚧':linked.readingStatus==='planned'?'📋':'✅'; isRead=linked.readingStatus!=='planned'&&linked.readingStatus!=='reading'&&linked.readingStatus!=='paused'&&linked.readingStatus!=='wishlist'; }
+          else { statusIcon='📋'; }
+        } else {
+          const book=myBooksList.find(b=>b.id===bk.bookId);
+          if(!book) return '';
+          title=book.title||''; author=book.author||'';
+          isRead=book.readingStatus!=='planned'&&book.readingStatus!=='reading'&&book.readingStatus!=='paused'&&book.readingStatus!=='wishlist';
+          statusIcon=book.readingStatus==='reading'?'📖':book.readingStatus==='paused'?'🚧':book.readingStatus==='planned'?'📋':isRead?'✅':'⏳';
+        }
+        return `<div style="display:flex;align-items:center;gap:.4rem;padding:.2rem .5rem;font-size:.8rem;${isRead?'opacity:.6':''}">
+          <span style="font-size:.65rem">${bk.num?'<span style=\"font-family:Space Mono,monospace;font-size:.6rem;color:var(--rust)\">#'+bk.num+'</span> ':''}</span>
+          <span>${statusIcon}</span>
+          <span style="color:var(--parchment)">${title}</span>
+          ${author?`<span style="opacity:.45;font-size:.75rem">— ${author}</span>`:''}
+        </div>`;
+      }).filter(Boolean).join('');
+      return `
+      <div class="path-step" id="pathStep_${path.id}_${i}" style="flex-direction:column;align-items:stretch;padding:0;overflow:hidden">
+        <div style="display:flex;align-items:center;gap:.4rem;padding:.45rem .5rem;cursor:pointer" onclick="togglePathStep('${path.id}_${i}')">
+          <span class="path-step-handle" onclick="event.stopPropagation()">⠿</span>
+          <div class="path-step-name" style="flex:1">
+            <strong>${st.ser.name}</strong>
+            <div class="path-step-progress">${st.readCount}/${st.total} kitap · %${st.pct}${st.allHavePages?' · '+st.serReadPages.toLocaleString('tr')+'/'+st.serTotalPages.toLocaleString('tr')+'s':''}</div>
+          </div>
+          <div style="display:flex;gap:.25rem" onclick="event.stopPropagation()">
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+              onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
+              onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
+            <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
+              onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+          </div>
+          <span style="font-size:.6rem;opacity:.4" id="pathStepArrow_${path.id}_${i}">▼</span>
         </div>
-        <div style="display:flex;gap:.25rem">
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-            onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
-          <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
-            onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
-            onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+        <div id="pathStepBooks_${path.id}_${i}" style="display:none;border-top:1px solid rgba(201,162,39,.1);background:rgba(0,0,0,.15);padding:.3rem 0">
+          ${booksHtml||'<div style="font-size:.78rem;opacity:.4;padding:.3rem .8rem;font-style:italic">Kitap bulunamadı.</div>'}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
 
     return `<div class="path-card">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;flex-wrap:wrap;gap:.4rem">
