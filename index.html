@@ -4260,6 +4260,11 @@ function cancelDeleteSeries(id){
 }
 function deleteSeries(id){
   const data = mySeriesData();
+  const ser = data.series[id];
+  // Akıştan ilgili seri eventlerini temizle
+  if(ser && db.seriesEvents && db.seriesEvents[me]){
+    db.seriesEvents[me] = db.seriesEvents[me].filter(ev=>ev.seriesId!==id&&ev.seriesName!==ser.name);
+  }
   delete data.series[id];
   // Okuma yollarından da temizle
   Object.values(data.paths||{}).forEach(p=>{
