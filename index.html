@@ -3797,7 +3797,7 @@ function renderBookList(){
   const reading=allBooks.filter(b=>b.readingStatus==='reading');
   const paused=allBooks.filter(b=>b.readingStatus==='paused');
   const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
-  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
+  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='planned');
 
   // — Şu an okunanlar —
   const crCard=document.getElementById('currentlyReadingCard');
