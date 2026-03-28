@@ -2101,10 +2101,10 @@ async function addBook(){
   const halloween = now.getMonth()===9&&(info.genres||[]).some(g=>['korku','gotik'].some(k=>g.includes(k)));
 
   // series completion
-  const prevBooks=myBooks(),sn=info.series||manualSeries||null;
+  const prevBooksAll=myBooks(),prevBooksValid=validBooks(),sn=info.series||manualSeries||null;
   let seriesComplete=false,miniSeriesComplete=false,bigSeriesComplete=false;
   if(sn){
-    const cnt=prevBooks.filter(b=>b.series===sn).length+1,tot=info.series_total;
+    const cnt=prevBooksAll.filter(b=>b.series===sn).length+1,tot=info.series_total;
     if(tot&&cnt>=tot){seriesComplete=true;if(tot<=3)miniSeriesComplete=true;if(tot>=7)bigSeriesComplete=true;}
   }
 
@@ -2161,7 +2161,7 @@ async function addBook(){
   const newBooks=validBooks();
   const newlyEarned=[];
   BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
-    if(!bstat(b,prevBooks).earned&&bstat(b,newBooks).earned){
+    if(!bstat(b,prevBooksValid).earned&&bstat(b,newBooks).earned){
       notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
       newlyEarned.push(b.id);
     }
