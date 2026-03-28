@@ -4580,9 +4580,9 @@ function renderSeriesList(){
       const pageInfo = isReading && b.currentPage && b.pages 
         ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
       const removeKey = bk.planned ? `'${ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' ` : `'${ser.id}',${b.id},false`;
-      const canStartReading = !isReading && b.id;
+      const canStartReading = !isReading && b.id && !viewing;
       const isOwn = !viewing;
-      const plannedStartBtn = (!isReading&&bk.planned)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
+      const plannedStartBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
         <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
         <span class="series-book-status">${statusIcon}</span>
         <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>
@@ -4778,7 +4778,7 @@ function renderGroupCards(seriesContainer){
             const lb=bk.book;
             const ico=lb.readingStatus==='reading'?'📖':lb.readingStatus==='paused'?'🚧':(lb.readingStatus==='planned'||lb.readingStatus==='wishlist')?'⏳':'✅';
             const isRead=ico==='✅';
-            const canStart=lb.readingStatus!=='reading';
+            const canStart=lb.readingStatus!=='reading'&&!viewing;
             const startBtn=canStart?(lb.id
               ?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${lb.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`
               :`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${st.ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`):'';
