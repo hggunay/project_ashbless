@@ -4707,6 +4707,7 @@ function renderGroupCards(seriesContainer){
   });
   seriesContainer.querySelectorAll('.series-card[data-sid]').forEach(card=>{
     const sid = card.dataset.sid;
+    if(card.dataset.manualShow) return;
     card.style.display = groupedSeriesIds.has(sid) ? 'none' : '';
   });
 
@@ -4802,6 +4803,20 @@ function toggleSeriesInGroup(seriesId, headerEl){
   body.style.display=isOpen?'none':'block';
   if(arrow) arrow.textContent=isOpen?'▼':'▲';
   sessionStorage.setItem('serInGrp_'+seriesId, isOpen?'0':'1');
+  // Tam seri kartına scroll et ve vurgula
+  if(isOpen) return;
+  setTimeout(()=>{
+    const card=document.querySelector('.series-card[data-sid="'+seriesId+'"]');
+    if(!card) return;
+    card.style.display='';
+    card.dataset.manualShow='1';
+    const booksEl=document.getElementById('seriesBooks_'+seriesId);
+    const btn=document.getElementById('seriesToggleBtn_'+seriesId);
+    if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.style.outline='2px solid var(--moss)';
+    setTimeout(()=>{ card.style.outline=''; },1800);
+  },200);
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
