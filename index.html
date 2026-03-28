@@ -4666,11 +4666,11 @@ function renderSeriesList(){
             ${progressMode==='pages'?'📖 Sayfa modu':'📚 Kitap modu'}
           </button>` : ''}
           ${pageModeWarning && progressMode==='pages' ? `<span style="font-size:.6rem;color:var(--rust);opacity:.7">⚠️ Sayfa bilgisi eksik</span>` : ''}
-          <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">Toplam:</div>
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem" onclick="copySeriesToMyList('${ser.id}')">📚 Ekle</button>`:`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">Toplam:</div>
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>`}
         </div>
       </div>
       <div class="series-progress-wrap">
@@ -4767,7 +4767,7 @@ function renderGroupCards(seriesContainer){
         <span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
         <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
         </div>
         <span style="color:var(--moss);font-size:.8rem">${isOpen?'▲':'▼'}</span>
       </div>
@@ -4852,6 +4852,59 @@ function goToFullSeriesCard(seriesId){
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
+
+function copySeriesToMyList(seriesId){
+  const srcData = viewSeriesData();
+  const ser = srcData.series[seriesId];
+  if(!ser){ notify('⚠️','Seri bulunamadı.'); return; }
+  const myData = mySeriesData();
+  // Aynı isimde seri var mı?
+  const exists = Object.values(myData.series||{}).find(s=>s.name.toLowerCase()===ser.name.toLowerCase());
+  if(exists){ notify('⚠️',ser.name+' zaten serilerinizde var.'); return; }
+  const newId = 'ser_'+Date.now();
+  // Kitapları planned olarak kopyala (bookId'ler başkasına ait)
+  const books = (ser.books||[]).map((bk,i)=>({
+    manualTitle: bk.manualTitle || bk.bookId ? (myBooks().find(b=>b.id===bk.bookId)||{title:bk.manualTitle||''}).title || '' : '',
+    manualAuthor: bk.manualAuthor||'',
+    num: bk.num||null,
+    pages: bk.pages||null,
+    planned: true
+  })).filter(b=>b.manualTitle);
+  myData.series[newId] = { id:newId, name:ser.name, total:ser.total||null, books, createdAt:new Date().toISOString() };
+  saveDb();
+  renderSeriesList();
+  notify('✅ Eklendi', ser.name+' serilerinize eklendi.');
+}
+
+function copyGroupToMyList(pathId){
+  const srcData = viewSeriesData();
+  const path = srcData.paths[pathId];
+  if(!path){ notify('⚠️','Grup bulunamadı.'); return; }
+  const myData = mySeriesData();
+  const exists = Object.values(myData.paths||{}).find(p=>p.name.toLowerCase()===path.name.toLowerCase());
+  if(exists){ notify('⚠️',path.name+' zaten gruplarınızda var.'); return; }
+  // Önce serileri kopyala, sonra grubu oluştur
+  const newSteps = [];
+  (path.steps||[]).forEach(s=>{
+    const ser = srcData.series[s.seriesId];
+    if(!ser) return;
+    const alreadyExists = Object.values(myData.series||{}).find(ms=>ms.name.toLowerCase()===ser.name.toLowerCase());
+    if(alreadyExists){ newSteps.push({seriesId:alreadyExists.id}); return; }
+    const newId = 'ser_'+(Date.now()+Math.random()*1000|0);
+    const books = (ser.books||[]).map(bk=>({
+      manualTitle: bk.manualTitle||(myBooks().find(b=>b.id===bk.bookId)||{}).title||'',
+      manualAuthor: bk.manualAuthor||'',
+      num: bk.num||null, pages: bk.pages||null, planned:true
+    })).filter(b=>b.manualTitle);
+    myData.series[newId] = {id:newId, name:ser.name, total:ser.total||null, books, createdAt:new Date().toISOString()};
+    newSteps.push({seriesId:newId});
+  });
+  const newPathId = 'path_'+Date.now();
+  myData.paths[newPathId] = {id:newPathId, name:path.name, steps:newSteps, createdAt:new Date().toISOString()};
+  saveDb();
+  renderSeriesList();
+  notify('✅ Eklendi', path.name+' grubu ve serileri listenize eklendi.');
+}
 
 function createPath(){
   const name = document.getElementById('newPathName').value.trim();
