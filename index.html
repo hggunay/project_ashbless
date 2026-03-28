@@ -2394,16 +2394,32 @@ function openBook(bookId){
 }
 
 
+function goToSeries(seriesName){
+  const data = mySeriesData();
+  const ser = Object.values(data.series||{}).find(s=>(s.name||'').toLowerCase()===seriesName.toLowerCase());
+  const t = [...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'series'"));
+  showPanel('series', t||null);
+  if(ser){
+    setTimeout(()=>{
+      switchSeriesTab('series', document.getElementById('seriesTabBtn'));
+      const card = document.getElementById('seriesBooks_'+ser.id);
+      if(card){ card.classList.add('open'); card.style.display=''; }
+      const header = document.querySelector('[data-series-id="'+ser.id+'"]');
+      if(header){ header.scrollIntoView({behavior:'smooth',block:'center'}); header.style.outline='2px solid var(--gold)'; setTimeout(()=>header.style.outline='',1500); }
+    }, 150);
+  }
+}
 function dFieldSeries(label,field,val,editable,bookId){
   const display = val||'—';
-  if(!editable) return '<div class="detail-field"><span class="detail-field-label">'+label+'</span><span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">'+display+'</span></div>';
+  const linkBtn = val ? '<button onclick="goToSeries(\''+val.replace(/'/g,"\\'")+'\')" style="background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);padding:0 .25rem;opacity:.8" title="Seriye git">📚</button>' : '';
+  if(!editable) return '<div class="detail-field"><span class="detail-field-label">'+label+'</span><span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">'+display+linkBtn+'</span></div>';
   const allSeries=[...new Set((db.books[me]||[]).filter(b=>b.series&&b.id!==bookId).map(b=>b.series))];
   const dlId='dl_series_'+bookId;
   let html='<div class="detail-field"><span class="detail-field-label">'+label+'</span>';
   html+='<datalist id="'+dlId+'">';
   allSeries.forEach(function(s){html+='<option value="'+s.replace(/"/g,'&quot;')+'">'+s+'</option>';});
   html+='</datalist>';
-  html+='<input class="detail-input" type="text" list="'+dlId+'" value="'+(val||'')+'" placeholder="Seri adı..." onchange="saveField('+bookId+',\'series\',this.value)"/>';
+  html+='<div style="display:flex;align-items:center;gap:.25rem"><input class="detail-input" type="text" list="'+dlId+'" value="'+(val||'')+'" placeholder="Seri adı..." onchange="saveField('+bookId+',\'series\',this.value)" style="flex:1"/>'+linkBtn+'</div>';
   html+='</div>';
   return html;
 }
@@ -4316,6 +4332,39 @@ function updateSeriesTotal(seriesId, val){
   saveDb();
 }
 
+function startPlannedBook(seriesId, manualTitle, manualAuthor){
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  const bkIdx = (ser.books||[]).findIndex(b=>b.planned&&(b.manualTitle||'').toLowerCase()===manualTitle.toLowerCase());
+  if(bkIdx===-1){ notify('⚠️','Kitap bulunamadı.'); return; }
+  const bk = ser.books[bkIdx];
+  const now = new Date();
+  const newBook = {
+    id: Date.now(),
+    title: manualTitle,
+    author: manualAuthor||bk.manualAuthor||'',
+    pages: bk.pages||null,
+    pubYear: null, genres:[], country:null, femaleAuthor:false, youngAuthor:false,
+    formats:[], series: ser.name||null, seriesNum: bk.num||null, seriesTotal: ser.total||null,
+    readingStatus:'reading',
+    publisher: bk.publisher||null,
+    month: now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0'),
+    addedAt: now.toISOString(),
+    startDate: now.toISOString().split('T')[0],
+    endDate: null, currentPage: null,
+    retroactive:false, seriesComplete:false, miniSeriesComplete:false, bigSeriesComplete:false,
+    pre1900:false, pre1980comic:false, halloween:false
+  };
+  db.books[me].push(newBook);
+  ser.books[bkIdx] = { bookId: newBook.id, num: bk.num||null, pages: bk.pages||null, publisher: bk.publisher||null };
+  addSeriesEvent(seriesId, ser.name, manualTitle, 'series_start');
+  saveDb();
+  renderSeriesList();
+  notify('📖 Okumaya Başlandı', manualTitle+' kitaplığına eklendi ve okumaya başlandı.');
+  var _t=[...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'myBooks'"));
+  showPanel('myBooks',_t||null);
+}
 function startReadingSeriesBook(bookId){
   const book = myBooks().find(b=>b.id===bookId);
   if(!book) return;
@@ -4566,7 +4615,7 @@ function renderSeriesList(){
         ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
-          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:''}
+          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 Başla</button>`:((!isReading&&!isRead&&bk.planned)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'')} 
           <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>
         </div>
@@ -4633,7 +4682,7 @@ function renderSeriesList(){
 
 
     return `<div class="series-card">
-      <div class="series-card-header">
+      <div class="series-card-header" data-series-id="${ser.id}">
         <div>
           <div class="series-card-name">${ser.name}</div>
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
