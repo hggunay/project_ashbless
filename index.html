@@ -4451,6 +4451,49 @@ function addSeriesEvent(seriesId, seriesName, bookTitle, type){
   });
 }
 
+function startPlannedBook(seriesId, manualTitle, manualAuthor){
+  // Planned kitabı kitaplığa 'reading' olarak ekle
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser) return;
+  const title = manualTitle.trim();
+  if(!title){ notify('⚠️ Hata','Kitap adı bulunamadı.'); return; }
+  // Kitaplıkta zaten var mı?
+  const existing = myBooks().find(b=>b.title.toLowerCase()===title.toLowerCase());
+  if(existing){
+    existing.readingStatus='reading';
+    // Seri kaydındaki planned girişini bookId ile güncelle
+    const bkEntry = (ser.books||[]).find(b=>b.planned&&(b.manualTitle||'').toLowerCase()===title.toLowerCase());
+    if(bkEntry){ delete bkEntry.planned; delete bkEntry.manualTitle; delete bkEntry.manualAuthor; bkEntry.bookId=existing.id; }
+    saveDb(); render();
+    notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
+    return;
+  }
+  // Yeni kitap olarak ekle
+  const now = new Date();
+  const book = {
+    id: Date.now(),
+    title, author: manualAuthor||'',
+    readingStatus: 'reading',
+    genres:[], formats:['kitap'],
+    series: ser.name||null,
+    month: now.toISOString().substring(0,7),
+    addedAt: now.toISOString(),
+    startDate: now.toISOString().split('T')[0],
+    endDate: null, currentPage: null,
+    retroactive:false, nightReading:false, reread:false, challenging:false,
+    funniest:false, saddest:false, indie:false, hundredPages:false,
+    sameUniverse:false, comment:null,
+  };
+  if(!db.books[me]) db.books[me]=[];
+  db.books[me].push(book);
+  // Seri kaydındaki planned girişini bookId ile güncelle
+  const bkEntry = (ser.books||[]).find(b=>b.planned&&(b.manualTitle||'').toLowerCase()===title.toLowerCase());
+  if(bkEntry){ delete bkEntry.planned; delete bkEntry.manualTitle; delete bkEntry.manualAuthor; bkEntry.bookId=book.id; }
+  saveDb(); render();
+  notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
+}
+
 function checkSeriesComplete(seriesId){
   const data = mySeriesData();
   const ser = data.series[seriesId];
