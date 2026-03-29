@@ -1758,7 +1758,7 @@ function _showPanelNoHistory(id, el){
   else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
-  else if(id==='series'){renderSeriesList();}
+  else if(id==='series'){seriesPage=1;renderSeriesList();}
   else render();
 }
 
@@ -1777,7 +1777,7 @@ function showPanel(id,el){
   else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
-  else if(id==='series'){renderSeriesList();}
+  else if(id==='series'){seriesPage=1;renderSeriesList();}
   else render();
 }
 function viewMember(u){
@@ -3191,8 +3191,8 @@ function storyItemHtml(s, ownerId, srcMap){
 // ── ANA SAYFA (FEED) ─────────────────────────────────────────
 let feedFilter='all';
 let lastFeedVisit=0;
-const PAGE_SIZE=20;
-let feedPage=1, storiesPage=1, booksPage=1, journalPage=1;
+const PAGE_SIZE=10;
+let feedPage=1, storiesPage=1, booksPage=1, journalPage=1, seriesPage=1, privateNotesPage=1;
 
 function filterFeed(f,el){
   feedFilter=f; feedPage=1;
@@ -3578,7 +3578,7 @@ function switchJournalTab(tab){
   document.getElementById('jPanel-private').style.display = tab==='private' ? '' : 'none';
   document.getElementById('jTab-public').classList.toggle('active', tab==='public');
   document.getElementById('jTab-private').classList.toggle('active', tab==='private');
-  if(tab==='private') renderPrivateNotes();
+  if(tab==='private'){privateNotesPage=1;renderPrivateNotes();}
 }
 
 function renderPrivateNotes(){
@@ -3628,7 +3628,10 @@ function renderPrivateNotes(){
 
   const statusIcon = s => s==='reading'?'📖':s==='paused'?'🚧':s==='planned'?'⏳':'✅';
 
-  container.innerHTML = filtered.map(b=>{
+  const visible = filtered.slice(0, privateNotesPage * PAGE_SIZE);
+  const hasMore = filtered.length > privateNotesPage * PAGE_SIZE;
+
+  container.innerHTML = visible.map(b=>{
     const note = b.comment||'';
     const sid = `pnote-${b.id}`;
     return `<div style="border-bottom:1px solid rgba(201,162,39,.1);padding:.75rem 0">
@@ -3645,7 +3648,8 @@ function renderPrivateNotes(){
           onchange="savePrivateNote(${b.id},this.value)">${note}</textarea>
       </div>
     </div>`;
-  }).join('');
+  }).join('')
+  +(hasMore?`<button class="load-more-btn" onclick="privateNotesPage++;renderPrivateNotes()">↓ Daha fazla yükle (${filtered.length-privateNotesPage*PAGE_SIZE} kaldı)</button>`:'');
 }
 
 function deletePrivateNote(bookId, btn){
@@ -5039,7 +5043,14 @@ function renderSeriesList(){
   });
 
   try {
-  container.innerHTML = allSeries.map(ser=>{
+  // Grup kartlarını önce render et
+  renderGroupCards(container);
+
+  // Tekil serileri paginate et
+  const visibleSeries = allSeries.slice(0, seriesPage * PAGE_SIZE);
+  const hasMoreSeries = allSeries.length > seriesPage * PAGE_SIZE;
+
+  container.innerHTML = visibleSeries.map(ser=>{
     const books = (ser.books||[]).map(bk=>{
       if(bk.planned){
         // Planlanan kitap — kitaplarımda yok, ama title eşleşirse bağla
@@ -5232,7 +5243,7 @@ function renderSeriesList(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join('')+(hasMoreSeries?`<button class="load-more-btn" onclick="seriesPage++;renderSeriesList()">↓ Daha fazla yükle (${allSeries.length-seriesPage*PAGE_SIZE} kaldı)</button>`:'');
   } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--rust)">Render hatası: '+e.message+'</div>'; }
   // Açık kartları geri aç
   openIds.forEach(id=>{
