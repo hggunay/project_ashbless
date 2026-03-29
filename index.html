@@ -2879,18 +2879,31 @@ function finishReading(bookId){
 function markAsUnread(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
-  book.readingStatus='planned';
+  // Modal footer'da seçenek sun
+  const footer=document.getElementById('modalFooter');
+  footer.innerHTML=`
+    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Kitap nereye gitsin?</span>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="confirmMarkAsUnread(${bookId},'wishlist')">📋 Okuma Listesi</button>
+      <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="confirmMarkAsUnread(${bookId},'planned')">⏳ Planlanıyor</button>
+      <button class="btn btn-sm btn-danger" onclick="openBook(${bookId})">İptal</button>
+    </div>`;
+}
+
+function confirmMarkAsUnread(bookId, status){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.readingStatus=status;
   book.endDate=null;
   book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
-  // Bu kitaba ait seri eventlerini temizle
   if(db.seriesEvents&&db.seriesEvents[me]){
     db.seriesEvents[me]=db.seriesEvents[me].filter(ev=>ev.bookTitle!==book.title);
   }
-  // Review ve quote'ları koru — sadece status'u geri al
   saveDb();
   closeModal();
   render();
-  notify('↩️ Geri Alındı',`"${book.title}" okunmadı olarak işaretlendi.`);
+  const label=status==='wishlist'?'Okuma listesine eklendi':'Planlananlara eklendi';
+  notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
