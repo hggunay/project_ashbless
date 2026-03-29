@@ -882,7 +882,17 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         <span id="statsViewingText"></span>
         <button class="btn btn-danger btn-sm" onclick="stopViewing()">← Kendi profilime dön</button>
       </div>
-      <div id="statsContainer"></div>
+      <!-- Alt sekmeler -->
+      <div style="display:flex;gap:.4rem;margin-bottom:1rem;border-bottom:1px solid rgba(201,162,39,.15);padding-bottom:.5rem">
+        <button id="sTab-stats" class="filter-tab active" onclick="switchStatsTab('stats')">📊 İstatistikler</button>
+        <button id="sTab-map" class="filter-tab" onclick="switchStatsTab('map')">🗺️ Harita</button>
+      </div>
+      <div id="sPanel-stats">
+        <div id="statsContainer"></div>
+      </div>
+      <div id="sPanel-map" style="display:none">
+        <div id="mapContainer"></div>
+      </div>
     </div>
 
     <!-- MEMBERS PANEL -->
@@ -1043,6 +1053,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   <div class="notif-body" id="notifBody"></div>
 </div>
 
+<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/map.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
+<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 (function(){emailjs.init({publicKey:'nUPA309NC_qlxeVQn'});})();
@@ -3991,6 +4005,205 @@ function copyCardQuote(bookOwner,bookId,quoteIdx){
 }
 
 // ── İSTATİSTİKLER ────────────────────────────────────────────
+function switchStatsTab(tab){
+  document.getElementById('sPanel-stats').style.display = tab==='stats'?'':'none';
+  document.getElementById('sPanel-map').style.display = tab==='map'?'':'none';
+  document.getElementById('sTab-stats').classList.toggle('active', tab==='stats');
+  document.getElementById('sTab-map').classList.toggle('active', tab==='map');
+  if(tab==='map') renderMap();
+}
+
+// ── DÜNYA HARİTASI ────────────────────────────────────────────
+const COUNTRY_ISO = {
+  'türkiye':'TR','turkey':'TR','almanya':'DE','germany':'DE','fransa':'FR','france':'FR',
+  'ingiltere':'GB','birleşik krallık':'GB','united kingdom':'GB','uk':'GB','england':'GB',
+  'abd':'US','amerika':'US','usa':'US','united states':'US','united states of america':'US',
+  'rusya':'RU','russia':'RU','çin':'CN','china':'CN','japonya':'JP','japan':'JP',
+  'brezilya':'BR','brazil':'BR','arjantin':'AR','argentina':'AR','hindistan':'IN','india':'IN',
+  'avustralya':'AU','australia':'AU','kanada':'CA','canada':'CA','meksika':'MX','mexico':'MX',
+  'ispanya':'ES','spain':'ES','italya':'IT','italy':'IT','portekiz':'PT','portugal':'PT',
+  'hollanda':'NL','netherlands':'NL','belçika':'BE','belgium':'BE','isveç':'SE','sweden':'SE',
+  'norveç':'NO','norway':'NO','danimarka':'DK','denmark':'DK','finlandiya':'FI','finland':'FI',
+  'polonya':'PL','poland':'PL','çekya':'CZ','czech republic':'CZ','czechia':'CZ',
+  'avusturya':'AT','austria':'AT','isviçre':'CH','İsviçre':'CH','switzerland':'CH',
+  'yunanistan':'GR','greece':'GR','macaristan':'HU','hungary':'HU','romanya':'RO','romania':'RO',
+  'bulgaristan':'BG','bulgaria':'BG','sırbistan':'RS','serbia':'RS','hırvatistan':'HR','croatia':'HR',
+  'ukrayna':'UA','ukraine':'UA','mısır':'EG','egypt':'EG','güney afrika':'ZA','south africa':'ZA',
+  'nijerya':'NG','nigeria':'NG','etiyopya':'ET','ethiopia':'ET','kenya':'KE',
+  'fas':'MA','morocco':'MA','cezayir':'DZ','algeria':'DZ','tunus':'TN','tunisia':'TN',
+  'iran':'IR','irak':'IQ','iraq':'IQ','suriye':'SY','syria':'SY','lübnan':'LB','lebanon':'LB',
+  'israel':'IL','İsrail':'IL','isreil':'IL','suudi arabistan':'SA','saudi arabia':'SA',
+  'birleşik arap emirlikleri':'AE','uae':'AE','pakistan':'PK','bangladeş':'BD','bangladesh':'BD',
+  'endonezya':'ID','indonesia':'ID','filipinler':'PH','philippines':'PH','vietnam':'VN',
+  'tayland':'TH','thailand':'TH','malezya':'MY','malaysia':'MY',
+  'güney kore':'KR','south korea':'KR','kore':'KR','kuzey kore':'KP','north korea':'KP',
+  'tayvan':'TW','taiwan':'TW','kolombiya':'CO','colombia':'CO','şili':'CL','chile':'CL',
+  'peru':'PE','venezuela':'VE','küba':'CU','cuba':'CU','yeni zelanda':'NZ','new zealand':'NZ',
+  'arnavutluk':'AL','albania':'AL','bosna hersek':'BA','bosnia':'BA','makedonya':'MK',
+  'north macedonia':'MK','slovenya':'SI','slovenia':'SI','slovakya':'SK','slovakia':'SK',
+  'litvanya':'LT','lithuania':'LT','letonya':'LV','latvia':'LV','estonya':'EE','estonia':'EE',
+  'beyaz rusya':'BY','belarus':'BY','moldova':'MD','gürcistan':'GE','georgia':'GE',
+  'ermenistan':'AM','armenia':'AM','azerbaycan':'AZ','azerbaijan':'AZ',
+  'kazakistan':'KZ','kazakhstan':'KZ','özbekistan':'UZ','uzbekistan':'UZ',
+  'afganistan':'AF','afghanistan':'AF','angola':'AO','kamerun':'CM','cameroon':'CM',
+  'senegal':'SN','gana':'GH','ghana':'GH','tanzanya':'TZ','tanzania':'TZ','uganda':'UG',
+  'mozambik':'MZ','mozambique':'MZ','madagaskar':'MG','madagascar':'MG','sri lanka':'LK',
+  'myanmar':'MM','kamboçya':'KH','cambodia':'KH','nepal':'NP','uruguay':'UY','paraguay':'PY',
+  'bolivya':'BO','bolivia':'BO','ekvador':'EC','ecuador':'EC','panama':'PA','guatemala':'GT',
+  'honduras':'HN','nikaragua':'NI','nicaragua':'NI','el salvador':'SV',
+  'kosta rika':'CR','costa rica':'CR','dominik cumhuriyeti':'DO','dominican republic':'DO',
+  'haiti':'HT','jamaika':'JM','jamaica':'JM','trinidad':'TT','trinidad and tobago':'TT',
+  'zimbabve':'ZW','zimbabwe':'ZW','zambia':'ZM','demokratik kongo cumhuriyeti':'CD','dr congo':'CD',
+  'kongo':'CG','fildişi sahili':'CI',"cote d'ivoire":'CI','ivory coast':'CI',
+  'mali':'ML','burkina faso':'BF','nijer':'NE','niger':'NE','çad':'TD','chad':'TD',
+  'sudan':'SD','güney sudan':'SS','south sudan':'SS','somali':'SO','somalia':'SO',
+  'eritre':'ER','eritrea':'ER','libya':'LY','lüksemburg':'LU','luxembourg':'LU',
+  'irlanda':'IE','ireland':'IE','izlanda':'IS','İzlanda':'IS','iceland':'IS',
+  'kibris':'CY','kıbrıs':'CY','cyprus':'CY','malta':'MT','kosova':'XK','kosovo':'XK',
+  'karadağ':'ME','montenegro':'ME','isvicre':'CH',
+};
+
+const ISO_CONTINENT = {
+  AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'americas',AT:'europe',AU:'oceania',AZ:'asia',
+  BA:'europe',BD:'asia',BE:'europe',BF:'africa',BG:'europe',BH:'asia',BI:'africa',BJ:'africa',BN:'asia',BO:'americas',BR:'americas',BT:'asia',BW:'africa',BY:'europe',BZ:'americas',
+  CA:'americas',CD:'africa',CF:'africa',CG:'africa',CH:'europe',CI:'africa',CL:'americas',CM:'africa',CN:'asia',CO:'americas',CR:'americas',CU:'americas',CY:'europe',CZ:'europe',
+  DE:'europe',DJ:'africa',DK:'europe',DO:'americas',DZ:'africa',
+  EC:'americas',EE:'europe',EG:'africa',ER:'africa',ES:'europe',ET:'africa',
+  FI:'europe',FJ:'oceania',FR:'europe',
+  GA:'africa',GB:'europe',GE:'asia',GH:'africa',GM:'africa',GN:'africa',GR:'europe',GT:'americas',GW:'africa',GY:'americas',
+  HN:'americas',HR:'europe',HT:'americas',HU:'europe',
+  ID:'asia',IE:'europe',IL:'asia',IN:'asia',IQ:'asia',IR:'asia',IS:'europe',IT:'europe',
+  JM:'americas',JO:'asia',JP:'asia',
+  KE:'africa',KG:'asia',KH:'asia',KP:'asia',KR:'asia',KW:'asia',KZ:'asia',
+  LA:'asia',LB:'asia',LI:'europe',LK:'asia',LR:'africa',LS:'africa',LT:'europe',LU:'europe',LV:'europe',LY:'africa',
+  MA:'africa',MC:'europe',MD:'europe',ME:'europe',MG:'africa',MK:'europe',ML:'africa',MM:'asia',MN:'asia',MR:'africa',MT:'europe',MW:'africa',MX:'americas',MY:'asia',MZ:'africa',
+  NA:'africa',NE:'africa',NG:'africa',NI:'americas',NL:'europe',NO:'europe',NP:'asia',NZ:'oceania',
+  OM:'asia',PA:'americas',PE:'americas',PG:'oceania',PH:'asia',PK:'asia',PL:'europe',PT:'europe',PY:'americas',
+  QA:'asia',RO:'europe',RS:'europe',RU:'europe',RW:'africa',
+  SA:'asia',SD:'africa',SE:'europe',SG:'asia',SI:'europe',SK:'europe',SL:'africa',SN:'africa',SO:'africa',SR:'americas',SS:'africa',SV:'americas',SY:'asia',SZ:'africa',
+  TD:'africa',TG:'africa',TH:'asia',TJ:'asia',TM:'asia',TN:'africa',TR:'asia',TT:'americas',TZ:'africa',
+  UA:'europe',UG:'africa',US:'americas',UY:'americas',UZ:'asia',
+  VA:'europe',VE:'americas',VN:'asia',
+  XK:'europe',YE:'asia',ZA:'africa',ZM:'africa',ZW:'africa',
+};
+
+const CONTINENT_COLORS = {
+  europe:   ['#f5e070','#c9a227','#a07818','#705010','#402800'],
+  asia:     ['#e8a070','#c06030','#904020','#602010','#380808'],
+  americas: ['#90d890','#508850','#306030','#184018','#0a2008'],
+  africa:   ['#f0c060','#c08030','#905020','#602808','#381808'],
+  oceania:  ['#c0a0c0','#906090','#604060','#402840','#281828'],
+};
+
+function countryToISO(name){
+  if(!name) return null;
+  return COUNTRY_ISO[name.trim().toLowerCase()]||null;
+}
+
+function getCountryColor(iso, count){
+  const cont = ISO_CONTINENT[iso]||'europe';
+  const shades = CONTINENT_COLORS[cont];
+  if(count>=7) return shades[4];
+  if(count>=4) return shades[3];
+  if(count>=2) return shades[2];
+  return shades[1];
+}
+
+let _mapRoot=null;
+
+function renderMap(){
+  const container=document.getElementById('mapContainer');
+  if(!container) return;
+  if(typeof am5==='undefined'){
+    container.innerHTML=`<div class="empty-state" style="padding:2rem">🗺️ Harita yükleniyor... Lütfen bekle veya sayfayı yenile.</div>`;
+    setTimeout(()=>{if(typeof am5!=='undefined')renderMap();},2000);
+    return;
+  }
+  const target=viewing||me;
+  const books=(db.books[target]||[]).filter(b=>
+    b.country&&!b.retroactive&&b.readingStatus!=='wishlist'&&
+    b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
+    b.readingStatus!=='planned'&&b.title&&!b.title.startsWith('ISBN:')
+  );
+  const counts={};
+  books.forEach(b=>{const iso=countryToISO(b.country);if(iso)counts[iso]=(counts[iso]||0)+1;});
+  const lastBook=[...books].reverse().find(b=>countryToISO(b.country));
+  const avatarISO=lastBook?countryToISO(lastBook.country):null;
+  const countryCount=Object.keys(counts).length;
+
+  if(_mapRoot){_mapRoot.dispose();_mapRoot=null;}
+  container.innerHTML=`
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;margin-bottom:.5rem;display:flex;gap:1rem;flex-wrap:wrap;padding:.5rem 0">
+      <span>🌍 ${countryCount} ülke keşfedildi</span>
+      <span>📚 ${books.length} kitap</span>
+      ${avatarISO?`<span>📍 Son konum: ${lastBook.country}</span>`:''}
+    </div>
+    <div id="am-map-div" style="width:100%;height:460px;border-radius:8px;background:rgba(26,15,0,.4)"></div>
+    <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.4;text-align:right;margin-top:.3rem">Harita: amCharts</div>`;
+
+  const root=am5.Root.new('am-map-div');
+  _mapRoot=root;
+  root.setThemes([am5themes_Animated.new(root)]);
+  try{root._logo.dispose();}catch(e){}
+
+  const chart=root.container.children.push(am5map.MapChart.new(root,{
+    panX:'rotateX',panY:'none',
+    projection:am5map.geoNaturalEarth1(),
+    paddingBottom:20,paddingTop:10,paddingLeft:10,paddingRight:10,
+  }));
+
+  const polySeries=chart.series.push(am5map.MapPolygonSeries.new(root,{
+    geoJSON:am5geodata_worldLow,exclude:['AQ'],
+  }));
+
+  polySeries.mapPolygons.template.setAll({
+    tooltipText:'{name}',interactive:true,
+    fill:am5.color(0x2d1a08),
+    stroke:am5.color(0xc9a227),strokeWidth:0.3,strokeOpacity:0.5,
+  });
+  polySeries.mapPolygons.template.states.create('hover',{
+    fill:am5.color(0xc9a227),fillOpacity:0.6,
+  });
+
+  polySeries.events.on('datavalidated',()=>{
+    polySeries.mapPolygons.each(poly=>{
+      const id=poly.dataItem?.get('id');
+      if(id&&counts[id]){
+        poly.set('fill',am5.color(getCountryColor(id,counts[id])));
+        poly.set('fillOpacity',0.9);
+        const booksInCountry=(db.books[target]||[]).filter(b=>countryToISO(b.country)===id&&!b.retroactive&&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='planned').map(b=>b.title).join('\n• ');
+        poly.set('tooltipText',`{name} (${counts[id]} kitap)\n• ${booksInCountry}`);
+      }
+    });
+
+    if(avatarISO){
+      const ptSeries=chart.series.push(am5map.MapPointSeries.new(root,{}));
+      const userAv=db.users[me]?.avatar||'📚';
+      const isPhoto=userAv.startsWith('data:');
+      ptSeries.bullets.push(()=>{
+        const cont2=am5.Container.new(root,{centerX:am5.p50,centerY:am5.p50});
+        cont2.children.push(am5.Circle.new(root,{radius:16,fill:am5.color(0x1a0f00),fillOpacity:0.85,stroke:am5.color(0xc9a227),strokeWidth:2}));
+        if(isPhoto){
+          cont2.children.push(am5.Picture.new(root,{width:28,height:28,centerX:am5.p50,centerY:am5.p50,src:userAv}));
+        } else {
+          cont2.children.push(am5.Label.new(root,{text:userAv,fontSize:18,centerX:am5.p50,centerY:am5.p50}));
+        }
+        return am5.Bullet.new(root,{sprite:cont2});
+      });
+      polySeries.mapPolygons.each(poly=>{
+        const id=poly.dataItem?.get('id');
+        if(id===avatarISO){
+          const c=poly.geoCentroid();
+          if(c) ptSeries.data.push({geometry:{type:'Point',coordinates:[c.longitude,c.latitude]}});
+        }
+      });
+    }
+  });
+
+  chart.set('zoomControl',am5map.ZoomControl.new(root,{}));
+}
+// ─────────────────────────────────────────────────────────────
+
 function renderStatsPanel(){
   const target=viewing||me;
   const user=db.users[target];
