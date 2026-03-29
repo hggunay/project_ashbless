@@ -4226,36 +4226,55 @@ function setupMapEvents(){
   if(!wrap) return;
   let startDist=0,startZoom=1;
 
+  // Mouse pan — sadece zoom yapılmışsa
+  wrap.addEventListener('mousedown',e=>{
+    if(_mapZoom<=1) return;
+    _mapDrag={x:e.clientX-_mapX,y:e.clientY-_mapY};
+    wrap.style.cursor='grabbing';
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!_mapDrag) return;
+    _mapX=e.clientX-_mapDrag.x;
+    _mapY=e.clientY-_mapDrag.y;
+    applyMapTransform();
+  });
+  window.addEventListener('mouseup',()=>{_mapDrag=null;if(wrap)wrap.style.cursor='default';});
+
   // Mouse wheel zoom
   wrap.addEventListener('wheel',e=>{
     e.preventDefault();
     mapZoom(e.deltaY<0?1.15:0.87,e.clientX,e.clientY);
   },{passive:false});
 
-  // Touch pinch zoom (2 parmak)
+  // Touch — 1 parmak pan sadece zoom > 1 ise, 2 parmak pinch zoom
   wrap.addEventListener('touchstart',e=>{
-    if(e.touches.length===2){
+    if(e.touches.length===1&&_mapZoom>1){
+      _mapDrag={x:e.touches[0].clientX-_mapX,y:e.touches[0].clientY-_mapY};
+    } else if(e.touches.length===2){
+      _mapDrag=null;
       startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       startZoom=_mapZoom;
     }
-    // 1 parmak hareketi engelle
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
-    if(e.touches.length===2){
-      e.preventDefault();
+    e.preventDefault();
+    if(e.touches.length===1&&_mapDrag&&_mapZoom>1){
+      _mapX=e.touches[0].clientX-_mapDrag.x;
+      _mapY=e.touches[0].clientY-_mapDrag.y;
+      applyMapTransform();
+    } else if(e.touches.length===2){
       const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       _mapZoom=Math.max(0.5,Math.min(8,startZoom*(dist/startDist)));
       applyMapTransform();
-    } else if(e.touches.length===1){
-      e.preventDefault(); // 1 parmak scroll'u engelle
     }
   },{passive:false});
   wrap.style.cursor='default';
 }
 
 function applyMapTransform(){
+  if(_mapZoom<=1){_mapX=0;_mapY=0;}
   const vp=document.getElementById('map-viewport');
-  if(vp) vp.style.transform=`scale(${_mapZoom})`;
+  if(vp) vp.style.transform=`translate(${_mapX}px,${_mapY}px) scale(${_mapZoom})`;
 }
 
 function mapZoom(factor,cx,cy){
