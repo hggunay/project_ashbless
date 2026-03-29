@@ -2868,6 +2868,8 @@ function finishReading(bookId){
   }
   render();
   notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
+  // Harita sekmesi açıksa yenile
+  if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
   if(newlyEarned.length){
     launchConfetti('badge');
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
@@ -4111,6 +4113,27 @@ function getCountryColor(iso, count){
 
 let _mapRoot=null;
 
+function toggleMapFullscreen(){
+  const mapDiv=document.getElementById('am-map-div');
+  if(!mapDiv) return;
+  if(!document.fullscreenElement){
+    mapDiv.requestFullscreen().then(()=>{
+      mapDiv.style.height='100vh';
+      mapDiv.style.borderRadius='0';
+      // Tam ekranda haritayı yeniden render et (animasyonlu)
+      setTimeout(()=>renderMap(),300);
+    }).catch(()=>{
+      // Fullscreen API desteklenmiyorsa boyutu büyüt
+      mapDiv.style.height=mapDiv.style.height==='460px'?'80vh':'460px';
+      setTimeout(()=>renderMap(),300);
+    });
+  } else {
+    document.exitFullscreen();
+    mapDiv.style.height='460px';
+    mapDiv.style.borderRadius='8px';
+  }
+}
+
 function renderMap(){
   const container=document.getElementById('mapContainer');
   if(!container) return;
@@ -4133,10 +4156,11 @@ function renderMap(){
 
   if(_mapRoot){_mapRoot.dispose();_mapRoot=null;}
   container.innerHTML=`
-    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;margin-bottom:.5rem;display:flex;gap:1rem;flex-wrap:wrap;padding:.5rem 0">
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;margin-bottom:.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;padding:.5rem 0">
       <span>🌍 ${countryCount} ülke keşfedildi</span>
       <span>📚 ${books.length} kitap</span>
-      ${avatarISO?`<span>📍 Son konum: ${lastBook.country}</span>`:''}
+      ${avatarISO?`<span>📍 Son: ${lastBook.country}</span>`:''}
+      <button onclick="toggleMapFullscreen()" style="margin-left:auto;background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.65rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">⛶ Tam Ekran</button>
     </div>
     <div id="am-map-div" style="width:100%;height:460px;border-radius:8px;background:rgba(26,15,0,.4)"></div>
     <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.4;text-align:right;margin-top:.3rem">Harita: amCharts</div>`;
@@ -4147,9 +4171,12 @@ function renderMap(){
   try{root._logo.dispose();}catch(e){}
 
   const chart=root.container.children.push(am5map.MapChart.new(root,{
-    panX:'rotateX',panY:'none',
+    panX:'rotateX',panY:'translateY',
+    wheelY:'zoom',
     projection:am5map.geoNaturalEarth1(),
     paddingBottom:20,paddingTop:10,paddingLeft:10,paddingRight:10,
+    minZoomLevel:0.8,
+    maxZoomLevel:8,
   }));
 
   const polySeries=chart.series.push(am5map.MapPolygonSeries.new(root,{
