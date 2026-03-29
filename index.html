@@ -402,9 +402,18 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
       <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
       <div id="forgotBox" style="display:none;background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.3);border-radius:2px;padding:.75rem;margin-bottom:.5rem">
-        <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">Şifreni hâlâ hatırlamıyor musun?</div>
-        <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="sendForgotRequest()">📨 Admin'e Şifre Sıfırlama İsteği Gönder</button>
-        <div id="forgotSentMsg" style="display:none;font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--moss);font-style:italic;margin-top:.5rem">✅ İsteğin admin'e iletildi. Admin şifreni sıfırlayacak.</div>
+        <div id="forgotStep1">
+          <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">Kullanıcı adını gir, e-postana sıfırlama kodu gönderelim.</div>
+          <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="sendResetCode()">📨 Sıfırlama Kodu Gönder</button>
+          <div id="forgotSentMsg" style="display:none;font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--moss);font-style:italic;margin-top:.5rem"></div>
+        </div>
+        <div id="forgotStep2" style="display:none">
+          <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">E-postana gönderilen 6 haneli kodu gir.</div>
+          <input class="auth-input" id="resetCodeInput" type="text" placeholder="123456" maxlength="6" style="margin-bottom:.5rem;letter-spacing:.2em;text-align:center;font-size:1.2rem"/>
+          <input class="auth-input" id="resetNewPw" type="password" placeholder="Yeni şifre" style="margin-bottom:.5rem"/>
+          <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="confirmResetCode()">✅ Şifreyi Sıfırla</button>
+          <div id="resetError" style="display:none;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-top:.4rem"></div>
+        </div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:.3rem 0;flex-wrap:wrap;gap:.3rem">
         <div style="display:flex;align-items:center;gap:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--parchment);opacity:.7">
@@ -421,6 +430,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     <div id="registerForm" style="display:none">
       <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="regUsername" type="text" placeholder="ornek: kitapkurt42"/></div>
       <div class="auth-field"><label class="auth-label">Görünen İsim</label><input class="auth-input" id="regDisplayName" type="text" placeholder="ornek: Ahmet"/></div>
+      <div class="auth-field"><label class="auth-label">E-posta <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(şifre sıfırlama için)</span></label><input class="auth-input" id="regEmail" type="email" placeholder="ornek@gmail.com"/></div>
       <div class="auth-field"><label class="auth-label">Avatar Emoji</label><input class="auth-input" id="regAvatar" type="text" placeholder="🧙‍♂️" maxlength="4"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="regPassword" type="password" placeholder="şifre belirle..." onkeydown="if(event.key==='Enter')register()"/><button class="pw-toggle" type="button" onclick="togglePw('regPassword',this)">👁</button></div></div>
       <div class="auth-field"><label class="auth-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı — şifreni unutursan hatırlatır)</span></label><input class="auth-input" id="regHint" type="text" placeholder="örn: evcil hayvanımın adı"/></div>
@@ -910,6 +920,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                 <input class="detail-input" id="settingName" type="text" placeholder="Görünen ismin"/>
               </div>
               <div class="detail-field">
+                <label class="detail-field-label">E-posta <span style="font-size:.65rem;opacity:.6">(şifre sıfırlama için)</span></label>
+                <input class="detail-input" id="settingEmail" type="email" placeholder="ornek@gmail.com"/>
+              </div>
+              <div class="detail-field">
                 <label class="detail-field-label">Avatar Emoji <span style="font-size:.65rem;opacity:.6">(fotoğraf yoksa)</span></label>
                 <div style="display:flex;gap:.4rem;align-items:center">
                   <input class="detail-input" id="settingAvatar" type="text" placeholder="🧙‍♂️" maxlength="4" style="flex:1"/>
@@ -1029,7 +1043,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   <div class="notif-body" id="notifBody"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
+(function(){emailjs.init({publicKey:'nUPA309NC_qlxeVQn'});})();
 // ══════════════════════════════════════════════════════════════
 // BADGE DEFINITIONS
 // ══════════════════════════════════════════════════════════════
@@ -1283,10 +1299,10 @@ function login(){
   enterApp();
 }
 function register(){
-  const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),err=document.getElementById('registerError');
+  const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null};db.books[u]=[];
+  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null,email:email||null};db.books[u]=[];
   saveDb();err.style.display='none';me=u;viewing=null;enterApp();
 }
 
@@ -1303,17 +1319,65 @@ function showForgotFlow(){
   document.getElementById('forgotSentMsg').style.display='none';
 }
 
-function sendForgotRequest(){
+// ── ŞİFRE SIFIRLAMA ──────────────────────────────────────────
+let _resetCode=null, _resetUser=null, _resetExpiry=null;
+
+function sendResetCode(){
   const u=document.getElementById('loginUsername').value.trim();
   if(!u){alert('Önce kullanıcı adını gir.');return;}
-  // Admin'e şifre sıfırlama isteği kaydet
-  if(!db.forgotRequests) db.forgotRequests=[];
-  // Aynı kullanıcıdan tekrar istek gelmesin
-  db.forgotRequests=db.forgotRequests.filter(r=>r.u!==u);
-  db.forgotRequests.push({u, ts:new Date().toISOString()});
-  saveDb();
-  document.getElementById('forgotSentMsg').style.display='block';
+  if(!db.users[u]){alert('Böyle bir kullanıcı bulunamadı.');return;}
+  const email=db.users[u].email;
+  if(!email){
+    const msg=document.getElementById('forgotSentMsg');
+    msg.style.display='block';
+    msg.style.color='var(--rust)';
+    msg.textContent='Bu hesaba kayıtlı e-posta adresi yok. Ayarlar bölümünden e-posta ekle.';
+    return;
+  }
+  // 6 haneli kod üret
+  _resetCode=Math.floor(100000+Math.random()*900000).toString();
+  _resetUser=u;
+  _resetExpiry=Date.now()+10*60*1000; // 10 dakika
+
+  const msg=document.getElementById('forgotSentMsg');
+  msg.style.display='block';
+  msg.style.color='var(--moss)';
+  msg.textContent='📨 Gönderiliyor...';
+
+  emailjs.send('service_ev5ah4m','template_uh643gl',{
+    to_name: db.users[u].displayName||u,
+    to_email: email,
+    reset_code: _resetCode,
+  }).then(()=>{
+    msg.textContent='✅ Kod gönderildi! E-postanı kontrol et.';
+    document.getElementById('forgotStep1').style.display='none';
+    document.getElementById('forgotStep2').style.display='';
+  }).catch(err=>{
+    msg.style.color='var(--rust)';
+    msg.textContent='❌ Gönderilemedi: '+err.text;
+  });
 }
+
+function confirmResetCode(){
+  const code=document.getElementById('resetCodeInput').value.trim();
+  const pw=document.getElementById('resetNewPw').value;
+  const errEl=document.getElementById('resetError');
+  if(!code||!pw){errEl.style.display='block';errEl.textContent='Kod ve yeni şifre boş olamaz.';return;}
+  if(!_resetCode||!_resetUser){errEl.style.display='block';errEl.textContent='Önce kod gönder.';return;}
+  if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
+  if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
+  // Şifreyi güncelle
+  db.users[_resetUser].password=pw;
+  saveDb();
+  _resetCode=null;_resetUser=null;_resetExpiry=null;
+  document.getElementById('forgotBox').style.display='none';
+  document.getElementById('forgotStep1').style.display='';
+  document.getElementById('forgotStep2').style.display='none';
+  document.getElementById('resetCodeInput').value='';
+  document.getElementById('resetNewPw').value='';
+  notify('✅ Şifre Sıfırlandı','Yeni şifrenle giriş yapabilirsin.');
+}
+// ─────────────────────────────────────────────────────────────
 
 function checkHintAvailable(){
   const u=document.getElementById('loginUsername').value.trim();
@@ -1437,6 +1501,8 @@ function renderSettings(){
   const avatarEl=document.getElementById('settingAvatar');
   if(nameEl) nameEl.value=user.displayName||'';
   if(avatarEl) avatarEl.value=(user.avatar||'').startsWith('data:')?'📚':user.avatar||'📚';
+  const emailEl=document.getElementById('settingEmail');
+  if(emailEl) emailEl.value=user.email||'';
   const removeBtn=document.getElementById('removeAvatarBtn');
   if(removeBtn) removeBtn.style.display=(user.avatar||'').startsWith('data:')?'':'none';
   document.getElementById('settingPw').value='';
@@ -1584,9 +1650,11 @@ function togglePublicProfile(val){
 function saveProfile(){
   const name=document.getElementById('settingName').value.trim();
   const avatar=document.getElementById('settingAvatar').value.trim();
+  const email=document.getElementById('settingEmail')?.value.trim()||'';
   if(!name){alert('Görünen isim boş olamaz.');return;}
   if(name) updateProfile('displayName',name);
   if(avatar) updateProfile('avatar',avatar);
+  if(email!==undefined) updateProfile('email',email||null);
   document.getElementById('settingsAvatar').textContent=avatar||db.users[me].avatar;
   document.getElementById('settingsDisplayName').textContent=name||db.users[me].displayName;
   alert('Profil güncellendi! ✅');
