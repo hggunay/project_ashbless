@@ -4181,7 +4181,7 @@ function renderMap(){
         <button onclick="mapReset()" style="width:28px;height:28px;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:4px;color:var(--gold);font-size:.6rem;cursor:pointer;line-height:1">⌂</button>
       </div>
       <div id="map-tooltip" style="display:none;position:absolute;background:rgba(26,15,0,.95);border:1px solid rgba(201,162,39,.4);border-radius:4px;padding:.3rem .6rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);pointer-events:none;z-index:20;max-width:200px"></div>
-      <div id="map-viewport" style="transform-origin:0 0;will-change:transform">
+      <div id="map-viewport" style="transform-origin:center center;will-change:transform;width:100%">
         <div id="map-loading" style="color:var(--rust);font-family:'Space Mono',monospace;font-size:.7rem;padding:2rem;text-align:center;opacity:.6">🗺️ Harita yükleniyor...</div>
       </div>
     </div>`;
@@ -4205,20 +4205,7 @@ function renderMap(){
 function setupMapEvents(){
   const wrap=document.getElementById('map-wrap');
   if(!wrap) return;
-  let startX,startY,startTx,startTy,startDist=0,startZoom=1;
-
-  // Mouse pan
-  wrap.addEventListener('mousedown',e=>{
-    _mapDrag={x:e.clientX-_mapX,y:e.clientY-_mapY};
-    wrap.style.cursor='grabbing';
-  });
-  window.addEventListener('mousemove',e=>{
-    if(!_mapDrag) return;
-    _mapX=e.clientX-_mapDrag.x;
-    _mapY=e.clientY-_mapDrag.y;
-    applyMapTransform();
-  });
-  window.addEventListener('mouseup',()=>{_mapDrag=null;if(wrap)wrap.style.cursor='grab';});
+  let startDist=0,startZoom=1;
 
   // Mouse wheel zoom
   wrap.addEventListener('wheel',e=>{
@@ -4226,37 +4213,27 @@ function setupMapEvents(){
     mapZoom(e.deltaY<0?1.15:0.87,e.clientX,e.clientY);
   },{passive:false});
 
-  // Touch pan & pinch
+  // Touch pinch zoom (2 parmak)
   wrap.addEventListener('touchstart',e=>{
-    if(e.touches.length===1){
-      _mapDrag={x:e.touches[0].clientX-_mapX,y:e.touches[0].clientY-_mapY};
-    } else if(e.touches.length===2){
-      _mapDrag=null;
+    if(e.touches.length===2){
       startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       startZoom=_mapZoom;
-      startTx=_mapX;startTy=_mapY;
     }
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
-    e.preventDefault();
-    if(e.touches.length===1&&_mapDrag){
-      _mapX=e.touches[0].clientX-_mapDrag.x;
-      _mapY=e.touches[0].clientY-_mapDrag.y;
-      applyMapTransform();
-    } else if(e.touches.length===2){
+    if(e.touches.length===2){
+      e.preventDefault();
       const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
-      const scale=dist/startDist;
-      _mapZoom=Math.max(0.5,Math.min(8,startZoom*scale));
+      _mapZoom=Math.max(0.5,Math.min(8,startZoom*(dist/startDist)));
       applyMapTransform();
     }
   },{passive:false});
-  wrap.addEventListener('touchend',()=>{_mapDrag=null;});
-  wrap.style.cursor='grab';
+  wrap.style.cursor='default';
 }
 
 function applyMapTransform(){
   const vp=document.getElementById('map-viewport');
-  if(vp) vp.style.transform=`translate(${_mapX}px,${_mapY}px) scale(${_mapZoom})`;
+  if(vp) vp.style.transform=`scale(${_mapZoom})`;
 }
 
 function mapZoom(factor,cx,cy){
