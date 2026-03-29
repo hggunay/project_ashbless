@@ -533,7 +533,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
               <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
               <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
-              <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okuma listeme ekle</span>
+              <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okumak İstiyorum</span>
             </div>
           </div>
         </div>
@@ -596,7 +596,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       </div>
       <div class="card" id="wishlistCard" style="display:none">
         <div class="card-header acc-header" onclick="toggleSection('wishlist')">
-          <span>🔖 Okuma Listesi <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
+          <span>🔖 Okumak İstiyorum <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
           <span class="acc-arrow open" id="arr-wishlist">▶</span>
         </div>
         <div class="acc-body open" id="body-wishlist">
@@ -2645,9 +2645,13 @@ function openBook(bookId){
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="resumeReading(${book.id});closeModal()">📖 Devam et</button>
           <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
+        ${book.readingStatus==='wishlist'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>`:''}
         ${book.readingStatus==='planned'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
         ${book.readingStatus==='new'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
@@ -2873,17 +2877,7 @@ function finishReading(bookId){
 }
 
 function markAsUnread(bookId){
-  const book=(db.books[me]||[]).find(b=>b.id===bookId);
-  if(!book) return;
-  // Modal footer'da seçenek sun
-  const footer=document.getElementById('modalFooter');
-  footer.innerHTML=`
-    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Kitap nereye gitsin?</span>
-    <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="confirmMarkAsUnread(${bookId},'wishlist')">📋 Okuma Listesi</button>
-      <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="confirmMarkAsUnread(${bookId},'planned')">⏳ Planlanıyor</button>
-      <button class="btn btn-sm btn-danger" onclick="openBook(${bookId})">İptal</button>
-    </div>`;
+  confirmMarkAsUnread(bookId,'wishlist');
 }
 
 function confirmMarkAsUnread(bookId, status){
@@ -2898,7 +2892,7 @@ function confirmMarkAsUnread(bookId, status){
   saveDb();
   closeModal();
   render();
-  const label=status==='wishlist'?'Okuma listesine eklendi':'Planlananlara eklendi';
+  const label=status==='wishlist'?'Okumak İstiyorum listesine eklendi':'Planlananlara eklendi';
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
