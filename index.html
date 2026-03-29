@@ -1053,10 +1053,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   <div class="notif-body" id="notifBody"></div>
 </div>
 
-<script src="https://cdn.amcharts.com/lib/5/index.js"></script>
-<script src="https://cdn.amcharts.com/lib/5/map.js"></script>
-<script src="https://cdn.amcharts.com/lib/5/geodata/worldLow.js"></script>
-<script src="https://cdn.amcharts.com/lib/5/themes/Animated.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script>
 (function(){emailjs.init({publicKey:'nUPA309NC_qlxeVQn'});})();
@@ -4124,37 +4120,41 @@ function getCountryColor(iso, count){
   return shades[1];
 }
 
-let _mapRoot=null;
-
 function toggleMapFullscreen(){
-  const mapDiv=document.getElementById('am-map-div');
-  if(!mapDiv) return;
+  const wrap=document.getElementById('map-wrap');
+  if(!wrap) return;
   if(!document.fullscreenElement){
-    mapDiv.requestFullscreen().then(()=>{
-      mapDiv.style.height='100vh';
-      mapDiv.style.borderRadius='0';
-      // Tam ekranda haritayı yeniden render et (animasyonlu)
-      setTimeout(()=>renderMap(),300);
-    }).catch(()=>{
-      // Fullscreen API desteklenmiyorsa boyutu büyüt
-      mapDiv.style.height=mapDiv.style.height==='460px'?'80vh':'460px';
-      setTimeout(()=>renderMap(),300);
+    wrap.requestFullscreen().catch(()=>{
+      wrap.style.position='fixed';wrap.style.top='0';wrap.style.left='0';
+      wrap.style.width='100vw';wrap.style.height='100vh';wrap.style.zIndex='9999';
+      wrap.style.background='#1a0f00';
+      document.getElementById('map-exit-fs').style.display='block';
+      resizeMap();
     });
   } else {
     document.exitFullscreen();
-    mapDiv.style.height='460px';
-    mapDiv.style.borderRadius='8px';
   }
+  document.addEventListener('fullscreenchange',()=>{
+    if(!document.fullscreenElement){
+      wrap.style.cssText='';
+      document.getElementById('map-exit-fs').style.display='none';
+      resizeMap();
+    }
+  },{once:true});
 }
+
+function resizeMap(){
+  const svg=document.getElementById('world-svg');
+  if(!svg) return;
+  const wrap=document.getElementById('map-wrap');
+  if(wrap){svg.style.width=wrap.offsetWidth+'px';}
+}
+
+let _mapZoom=1, _mapX=0, _mapY=0, _mapDrag=null;
 
 function renderMap(){
   const container=document.getElementById('mapContainer');
   if(!container) return;
-  if(typeof am5==='undefined'){
-    container.innerHTML=`<div class="empty-state" style="padding:2rem">🗺️ Harita yükleniyor... Lütfen bekle veya sayfayı yenile.</div>`;
-    setTimeout(()=>{if(typeof am5!=='undefined')renderMap();},2000);
-    return;
-  }
   const target=viewing||me;
   const books=(db.books[target]||[]).filter(b=>
     b.country&&!b.retroactive&&b.readingStatus!=='wishlist'&&
@@ -4167,80 +4167,239 @@ function renderMap(){
   const avatarISO=lastBook?countryToISO(lastBook.country):null;
   const countryCount=Object.keys(counts).length;
 
-  if(_mapRoot){_mapRoot.dispose();_mapRoot=null;}
   container.innerHTML=`
-    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;margin-bottom:.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center;padding:.5rem 0">
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;margin-bottom:.5rem;display:flex;gap:1rem;flex-wrap:wrap;align-items:center">
       <span>🌍 ${countryCount} ülke keşfedildi</span>
       <span>📚 ${books.length} kitap</span>
-      ${avatarISO?`<span>📍 Son: ${lastBook.country}</span>`:''}
+      ${avatarISO?`<span>📍 ${lastBook.country}</span>`:''}
       <button onclick="toggleMapFullscreen()" style="margin-left:auto;background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.65rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">⛶ Tam Ekran</button>
     </div>
-    <div id="am-map-div" style="width:100%;height:460px;border-radius:8px;background:rgba(26,15,0,.4)"></div>
-    <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.4;text-align:right;margin-top:.3rem">Harita: amCharts</div>`;
+    <div id="map-wrap" style="position:relative;width:100%;overflow:hidden;border-radius:8px;background:#1a0f00;touch-action:none;user-select:none">
+      <button id="map-exit-fs" onclick="document.exitFullscreen()" style="display:none;position:absolute;top:8px;right:8px;z-index:10;background:rgba(201,162,39,.3);border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-size:.7rem;padding:.2rem .5rem;cursor:pointer">✕ Çıkış</button>
+      <div style="position:absolute;top:8px;left:8px;z-index:10;display:flex;flex-direction:column;gap:4px">
+        <button onclick="mapZoom(1.3)" style="width:28px;height:28px;background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.4);border-radius:4px;color:var(--gold);font-size:1rem;cursor:pointer;line-height:1">+</button>
+        <button onclick="mapZoom(0.77)" style="width:28px;height:28px;background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.4);border-radius:4px;color:var(--gold);font-size:1rem;cursor:pointer;line-height:1">−</button>
+        <button onclick="mapReset()" style="width:28px;height:28px;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:4px;color:var(--gold);font-size:.6rem;cursor:pointer;line-height:1">⌂</button>
+      </div>
+      <div id="map-tooltip" style="display:none;position:absolute;background:rgba(26,15,0,.95);border:1px solid rgba(201,162,39,.4);border-radius:4px;padding:.3rem .6rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);pointer-events:none;z-index:20;max-width:200px"></div>
+      <div id="map-viewport" style="transform-origin:0 0;will-change:transform">
+        <div id="map-loading" style="color:var(--rust);font-family:'Space Mono',monospace;font-size:.7rem;padding:2rem;text-align:center;opacity:.6">🗺️ Harita yükleniyor...</div>
+      </div>
+    </div>`;
 
-  const root=am5.Root.new('am-map-div');
-  _mapRoot=root;
-  root.setThemes([am5themes_Animated.new(root)]);
-  try{root._logo.dispose();}catch(e){}
-
-  const chart=root.container.children.push(am5map.MapChart.new(root,{
-    panX:'rotateX',panY:'translateY',
-    wheelY:'zoom',
-    projection:am5map.geoNaturalEarth1(),
-    paddingBottom:20,paddingTop:10,paddingLeft:10,paddingRight:10,
-    minZoomLevel:0.8,
-    maxZoomLevel:8,
-  }));
-
-  const polySeries=chart.series.push(am5map.MapPolygonSeries.new(root,{
-    geoJSON:am5geodata_worldLow,exclude:['AQ'],
-  }));
-
-  polySeries.mapPolygons.template.setAll({
-    tooltipText:'{name}',interactive:true,
-    fill:am5.color(0x2d1a08),
-    stroke:am5.color(0xc9a227),strokeWidth:0.3,strokeOpacity:0.5,
-  });
-  polySeries.mapPolygons.template.states.create('hover',{
-    fill:am5.color(0xc9a227),fillOpacity:0.6,
-  });
-
-  polySeries.events.on('datavalidated',()=>{
-    polySeries.mapPolygons.each(poly=>{
-      const id=poly.dataItem?.get('id');
-      if(id&&counts[id]){
-        poly.set('fill',am5.color(getCountryColor(id,counts[id])));
-        poly.set('fillOpacity',0.9);
-        const booksInCountry=(db.books[target]||[]).filter(b=>countryToISO(b.country)===id&&!b.retroactive&&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='planned').map(b=>b.title).join('\n• ');
-        poly.set('tooltipText',`{name} (${counts[id]} kitap)\n• ${booksInCountry}`);
-      }
+  // SVG haritayı CDN'den yükle
+  _mapZoom=1;_mapX=0;_mapY=0;
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(r=>r.json())
+    .then(topo=>{
+      renderTopoMap(topo, counts, avatarISO, target, books);
+    })
+    .catch(()=>{
+      document.getElementById('map-loading').textContent='❌ Harita yüklenemedi. İnternet bağlantını kontrol et.';
     });
 
-    if(avatarISO){
-      const ptSeries=chart.series.push(am5map.MapPointSeries.new(root,{}));
-      const userAv=db.users[me]?.avatar||'📚';
-      const isPhoto=userAv.startsWith('data:');
-      ptSeries.bullets.push(()=>{
-        const cont2=am5.Container.new(root,{centerX:am5.p50,centerY:am5.p50});
-        cont2.children.push(am5.Circle.new(root,{radius:16,fill:am5.color(0x1a0f00),fillOpacity:0.85,stroke:am5.color(0xc9a227),strokeWidth:2}));
-        if(isPhoto){
-          cont2.children.push(am5.Picture.new(root,{width:28,height:28,centerX:am5.p50,centerY:am5.p50,src:userAv}));
-        } else {
-          cont2.children.push(am5.Label.new(root,{text:userAv,fontSize:18,centerX:am5.p50,centerY:am5.p50}));
-        }
-        return am5.Bullet.new(root,{sprite:cont2});
-      });
-      polySeries.mapPolygons.each(poly=>{
-        const id=poly.dataItem?.get('id');
-        if(id===avatarISO){
-          const c=poly.geoCentroid();
-          if(c) ptSeries.data.push({geometry:{type:'Point',coordinates:[c.longitude,c.latitude]}});
-        }
-      });
-    }
-  });
+  // Pan & zoom event'leri
+  setupMapEvents();
+}
 
-  chart.set('zoomControl',am5map.ZoomControl.new(root,{}));
+function setupMapEvents(){
+  const wrap=document.getElementById('map-wrap');
+  if(!wrap) return;
+  let startX,startY,startTx,startTy,startDist=0,startZoom=1;
+
+  // Mouse pan
+  wrap.addEventListener('mousedown',e=>{
+    _mapDrag={x:e.clientX-_mapX,y:e.clientY-_mapY};
+    wrap.style.cursor='grabbing';
+  });
+  window.addEventListener('mousemove',e=>{
+    if(!_mapDrag) return;
+    _mapX=e.clientX-_mapDrag.x;
+    _mapY=e.clientY-_mapDrag.y;
+    applyMapTransform();
+  });
+  window.addEventListener('mouseup',()=>{_mapDrag=null;if(wrap)wrap.style.cursor='grab';});
+
+  // Mouse wheel zoom
+  wrap.addEventListener('wheel',e=>{
+    e.preventDefault();
+    mapZoom(e.deltaY<0?1.15:0.87,e.clientX,e.clientY);
+  },{passive:false});
+
+  // Touch pan & pinch
+  wrap.addEventListener('touchstart',e=>{
+    if(e.touches.length===1){
+      _mapDrag={x:e.touches[0].clientX-_mapX,y:e.touches[0].clientY-_mapY};
+    } else if(e.touches.length===2){
+      _mapDrag=null;
+      startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      startZoom=_mapZoom;
+      startTx=_mapX;startTy=_mapY;
+    }
+  },{passive:true});
+  wrap.addEventListener('touchmove',e=>{
+    e.preventDefault();
+    if(e.touches.length===1&&_mapDrag){
+      _mapX=e.touches[0].clientX-_mapDrag.x;
+      _mapY=e.touches[0].clientY-_mapDrag.y;
+      applyMapTransform();
+    } else if(e.touches.length===2){
+      const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
+      const scale=dist/startDist;
+      _mapZoom=Math.max(0.5,Math.min(8,startZoom*scale));
+      applyMapTransform();
+    }
+  },{passive:false});
+  wrap.addEventListener('touchend',()=>{_mapDrag=null;});
+  wrap.style.cursor='grab';
+}
+
+function applyMapTransform(){
+  const vp=document.getElementById('map-viewport');
+  if(vp) vp.style.transform=`translate(${_mapX}px,${_mapY}px) scale(${_mapZoom})`;
+}
+
+function mapZoom(factor,cx,cy){
+  const wrap=document.getElementById('map-wrap');
+  if(!wrap) return;
+  const rect=wrap.getBoundingClientRect();
+  const px=cx!==undefined?cx-rect.left:rect.width/2;
+  const py=cy!==undefined?cy-rect.top:rect.height/2;
+  const newZoom=Math.max(0.5,Math.min(8,_mapZoom*factor));
+  _mapX=px-(px-_mapX)*newZoom/_mapZoom;
+  _mapY=py-(py-_mapY)*newZoom/_mapZoom;
+  _mapZoom=newZoom;
+  applyMapTransform();
+}
+
+function mapReset(){
+  _mapZoom=1;_mapX=0;_mapY=0;
+  applyMapTransform();
+}
+
+function renderTopoMap(topo, counts, avatarISO, target, books){
+  // topojson → SVG path'leri
+  if(typeof topojson==='undefined'){
+    // topojson kütüphanesi yükle
+    const s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js';
+    s.onload=()=>renderTopoMap(topo,counts,avatarISO,target,books);
+    document.head.appendChild(s);
+    return;
+  }
+
+  const countries=topojson.feature(topo,topo.objects.countries);
+  const W=960,H=500;
+
+  // Basit equirectangular projeksiyon
+  function project(lon,lat){
+    const x=(lon+180)/360*W;
+    const y=(90-lat)/180*H;
+    return[x,y];
+  }
+
+  function coordsToPath(coords){
+    return coords.map((ring,ri)=>
+      ring.map((pt,i)=>{
+        const[x,y]=project(pt[0],pt[1]);
+        return(i===0?`M${x.toFixed(1)},${y.toFixed(1)}`:`L${x.toFixed(1)},${y.toFixed(1)}`);
+      }).join(' ')+'Z'
+    ).join(' ');
+  }
+
+  function geomToPath(geom){
+    if(!geom) return '';
+    if(geom.type==='Polygon') return coordsToPath(geom.coordinates);
+    if(geom.type==='MultiPolygon') return geom.coordinates.map(coordsToPath).join(' ');
+    return '';
+  }
+
+  // ISO numeric → ISO2 eşleştirmesi (topojson numeric id kullanıyor)
+  const NUM_TO_ISO2={4:'AF',8:'AL',12:'DZ',24:'AO',32:'AR',36:'AU',40:'AT',50:'BD',56:'BE',64:'BT',68:'BO',76:'BR',100:'BG',116:'KH',120:'CM',124:'CA',152:'CL',156:'CN',170:'CO',180:'CD',188:'CR',192:'CU',196:'CY',203:'CZ',208:'DK',218:'EC',818:'EG',231:'ET',246:'FI',250:'FR',276:'DE',288:'GH',300:'GR',320:'GT',324:'GN',340:'HN',348:'HU',356:'IN',360:'ID',364:'IR',368:'IQ',372:'IE',376:'IL',380:'IT',392:'JP',400:'JO',398:'KZ',404:'KE',408:'KP',410:'KR',414:'KW',418:'LA',422:'LB',430:'LR',434:'LY',440:'LT',442:'LU',450:'MG',454:'MW',458:'MY',466:'ML',484:'MX',504:'MA',508:'MZ',516:'NA',524:'NP',528:'NL',558:'NI',562:'NE',566:'NG',578:'NO',586:'PK',591:'PA',598:'PG',600:'PY',604:'PE',608:'PH',616:'PL',620:'PT',630:'PR',634:'QA',642:'RO',643:'RU',646:'RW',682:'SA',686:'SN',694:'SL',706:'SO',710:'ZA',724:'ES',740:'SR',752:'SE',756:'CH',760:'SY',762:'TJ',764:'TH',768:'TG',788:'TN',792:'TR',800:'UG',804:'UA',784:'AE',826:'GB',840:'US',858:'UY',860:'UZ',862:'VE',704:'VN',887:'YE',894:'ZM',716:'ZW',32:'AR',76:'BR',124:'CA',144:'LK',191:'HR',208:'DK',214:'DO',222:'SV',232:'ER',233:'EE',246:'FI',288:'GH',328:'GY',332:'HT',388:'JM',426:'LS',428:'LV',496:'MN',498:'MD',499:'ME',512:'OM',531:'CW',535:'BQ',585:'PW',624:'GW',630:'PR',659:'KN',670:'VC',780:'TT',882:'WS',887:'YE',895:'XK'};
+
+  const avatarUser=db.users[me]?.avatar||'📚';
+  let avatarX=null,avatarY=null;
+
+  const paths=countries.features.map(f=>{
+    const numId=parseInt(f.id);
+    const iso2=NUM_TO_ISO2[numId];
+    const count=iso2?counts[iso2]:0;
+    const continent=iso2?ISO_CONTINENT[iso2]:'europe';
+    let fill='#2d1a08';
+    let stroke='rgba(201,162,39,0.4)';
+    if(count){
+      fill=getCountryColor(iso2,count);
+      stroke='rgba(201,162,39,0.7)';
+    }
+
+    // Avatar pozisyonu
+    if(iso2&&iso2===avatarISO&&f.geometry){
+      try{
+        const coords=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
+        let sx=0,sy=0,n=0;
+        coords.forEach(pt=>{const[x,y]=project(pt[0],pt[1]);sx+=x;sy+=y;n++;});
+        avatarX=sx/n;avatarY=sy/n;
+      }catch(e){}
+    }
+
+    const d=geomToPath(f.geometry);
+    if(!d) return '';
+
+    // Tooltip bilgisi
+    const name=f.properties?.name||iso2||'';
+    const bookList=count?(db.books[target]||[]).filter(b=>countryToISO(b.country)===iso2&&!b.retroactive&&b.readingStatus==='new').map(b=>b.title).slice(0,5).join(', '):'';
+    const tip=count?`${name}: ${count} kitap${bookList?'\n'+bookList:''}`:'';
+
+    return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}" data-tip="${tip.replace(/"/g,'&quot;')}"
+      onmouseenter="showMapTip(event,'${tip.replace(/'/g,'\\\'')}')" onmouseleave="hideMapTip()"
+      style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
+  }).join('');
+
+  // Avatar HTML
+  let avatarHtmlStr='';
+  if(avatarX&&avatarY){
+    const isPhoto=avatarUser.startsWith('data:');
+    if(isPhoto){
+      avatarHtmlStr=`<image href="${avatarUser}" x="${avatarX-14}" y="${avatarY-14}" width="28" height="28" style="border-radius:50%;clip-path:circle(14px at 14px 14px)"/>`;
+    } else {
+      avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
+        <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
+    }
+    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1" opacity="0.6">
+      <animate attributeName="r" values="12;18;12" dur="2s" repeatCount="indefinite"/>
+      <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+    </circle>`;
+  }
+
+  const wrap=document.getElementById('map-wrap');
+  const wrapW=wrap?wrap.offsetWidth:360;
+  const scale=wrapW/W;
+  const svgH=Math.round(H*scale);
+
+  document.getElementById('map-loading').outerHTML=`
+    <svg id="world-svg" viewBox="0 0 ${W} ${H}" width="${wrapW}" height="${svgH}"
+      style="display:block;max-width:100%">
+      <rect width="${W}" height="${H}" fill="#1a0f00"/>
+      ${paths}
+      ${avatarHtmlStr}
+    </svg>`;
+}
+
+function showMapTip(e,tip){
+  if(!tip) return;
+  const tt=document.getElementById('map-tooltip');
+  if(!tt) return;
+  tt.style.display='block';
+  tt.textContent=tip;
+  const wrap=document.getElementById('map-wrap');
+  const rect=wrap.getBoundingClientRect();
+  tt.style.left=Math.min(e.clientX-rect.left+10,rect.width-210)+'px';
+  tt.style.top=Math.max(e.clientY-rect.top-40,5)+'px';
+}
+
+function hideMapTip(){
+  const tt=document.getElementById('map-tooltip');
+  if(tt) tt.style.display='none';
 }
 // ─────────────────────────────────────────────────────────────
 
