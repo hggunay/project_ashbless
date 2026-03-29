@@ -4365,7 +4365,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     const tipData=count?JSON.stringify({name,count,books:tipBooks}):'';
 
     return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}" data-tip="${tipData.replace(/"/g,'&quot;')}"
-      onmouseenter="showMapTip(event,this)" onmouseleave="hideMapTip()" onclick="showMapTip(event,this)"
+      onmouseenter="showMapTip(event,this)" onmouseleave="hideMapTip()" onclick="showMapTip(event,this)" ontouchstart="showMapTip(event,this)"
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
@@ -4419,6 +4419,12 @@ function hideMapTip(){
   const tt=document.getElementById('map-tooltip');
   if(tt) tt.style.display='none';
 }
+document.addEventListener('touchstart',e=>{
+  const tt=document.getElementById('map-tooltip');
+  if(tt&&tt.style.display!=='none'&&!e.target.closest('#map-tooltip')&&!e.target.closest('path')){
+    tt.style.display='none';
+  }
+});
 // ─────────────────────────────────────────────────────────────
 
 function renderStatsPanel(){
