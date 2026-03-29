@@ -702,6 +702,26 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         </div>
         <div id="journalContainer" style="padding:.5rem"></div>
       </div>
+      </div> <!-- /jPanel-public -->
+<div id="jPanel-private" style="display:none">
+        <div class="card">
+          <div class="card-header">📓 Kişisel Notlar <span style="font-size:.6rem;font-family:'Space Mono',monospace;opacity:.5;font-weight:400">— sadece sana görünür</span></div>
+          <div style="padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <input class="book-input" id="privateNotesSearch" type="text" placeholder="🔍 Kitap ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.35rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" oninput="renderPrivateNotes()"/>
+            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="privateNotesOnlyNoted" onchange="renderPrivateNotes()" checked style="accent-color:var(--gold)"/> Sadece notlu
+            </label>
+            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
+              <input type="checkbox" id="privateNotesShowArchive" onchange="renderPrivateNotes()" style="accent-color:var(--gold)"/> 📦 Arşiv
+            </label>
+          </div>
+          <div id="privateNotesContainer" style="padding:.75rem"></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- SERIES PANEL -->
     </div>
 
     <!-- STORIES PANEL -->
@@ -790,28 +810,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         </div>
         <div id="storiesContainer" style="padding:.5rem"></div>
       </div>
-      </div> <!-- /jPanel-public -->
-
-      <!-- KİŞİSEL NOTLAR sekmesi -->
-      <div id="jPanel-private" style="display:none">
-        <div class="card">
-          <div class="card-header">📓 Kişisel Notlar <span style="font-size:.6rem;font-family:'Space Mono',monospace;opacity:.5;font-weight:400">— sadece sana görünür</span></div>
-          <div style="padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
-            <input class="book-input" id="privateNotesSearch" type="text" placeholder="🔍 Kitap ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.35rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" oninput="renderPrivateNotes()"/>
-            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
-              <input type="checkbox" id="privateNotesOnlyNoted" onchange="renderPrivateNotes()" checked style="accent-color:var(--gold)"/> Sadece notlu
-            </label>
-            <label style="display:flex;align-items:center;gap:.3rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer;white-space:nowrap">
-              <input type="checkbox" id="privateNotesShowArchive" onchange="renderPrivateNotes()" style="accent-color:var(--gold)"/> 📦 Arşiv
-            </label>
-          </div>
-          <div id="privateNotesContainer" style="padding:.75rem"></div>
-        </div>
-      </div>
     </div>
 
+      <!-- KİŞİSEL NOTLAR sekmesi -->
+    </div>
 
-    <!-- SERIES PANEL -->
     <div id="series" class="panel">
       <div id="seriesViewingBanner" class="viewing-banner" style="display:none">
         <span id="seriesViewingText"></span>
