@@ -381,8 +381,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .series-ac-item:hover{background:rgba(201,162,39,.15);}
 .series-ac-item:last-child{border-bottom:none;}
 @keyframes mapPulse{
-  0%,100%{r:12;opacity:.6;}
-  50%{r:18;opacity:0;}
+  0%,100%{transform:scale(1);opacity:.7;}
+  50%{transform:scale(1.6);opacity:0;}
 }
 
 </style>
@@ -4219,6 +4219,7 @@ function setupMapEvents(){
       startDist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       startZoom=_mapZoom;
     }
+    // 1 parmak hareketi engelle
   },{passive:true});
   wrap.addEventListener('touchmove',e=>{
     if(e.touches.length===2){
@@ -4226,6 +4227,8 @@ function setupMapEvents(){
       const dist=Math.hypot(e.touches[0].clientX-e.touches[1].clientX,e.touches[0].clientY-e.touches[1].clientY);
       _mapZoom=Math.max(0.5,Math.min(8,startZoom*(dist/startDist)));
       applyMapTransform();
+    } else if(e.touches.length===1){
+      e.preventDefault(); // 1 parmak scroll'u engelle
     }
   },{passive:false});
   wrap.style.cursor='default';
@@ -4320,11 +4323,11 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
 
     // Tooltip bilgisi
     const name=f.properties?.name||iso2||'';
-    const bookList=count?(db.books[target]||[]).filter(b=>countryToISO(b.country)===iso2&&!b.retroactive&&b.readingStatus==='new').map(b=>b.title).slice(0,5).join(', '):'';
-    const tip=count?`${name}: ${count} kitap${bookList?'\n'+bookList:''}`:'';
+    const tipBooks=count?(db.books[target]||[]).filter(b=>countryToISO(b.country)===iso2&&!b.retroactive&&b.readingStatus==='new').map(b=>b.title).slice(0,5):[];
+    const tipData=count?JSON.stringify({name,count,books:tipBooks}):'';
 
-    return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}" data-tip="${tip.replace(/"/g,'&quot;')}"
-      onmouseenter="showMapTip(event,'${tip.replace(/'/g,'\\\'')}')" onmouseleave="hideMapTip()"
+    return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}"
+      onmouseenter="showMapTip(event,${count?`'${tipData.replace(/'/g,"\\'")}'`:'null'})" onmouseleave="hideMapTip()"
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
@@ -4338,7 +4341,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
         <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
     }
-    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1" style="animation:mapPulse 2s ease-in-out infinite"/>`;
+    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" style="transform-origin:${avatarX}px ${avatarY}px;animation:mapPulse 2s ease-in-out infinite"/>`;
   }
 
   const wrap=document.getElementById('map-wrap');
@@ -4355,12 +4358,16 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     </svg>`;
 }
 
-function showMapTip(e,tip){
-  if(!tip) return;
+function showMapTip(e,tipJson){
+  if(!tipJson) return;
   const tt=document.getElementById('map-tooltip');
   if(!tt) return;
+  try{
+    const d=JSON.parse(tipJson);
+    tt.innerHTML=`<div style="font-weight:700;margin-bottom:.2rem">${d.name}: ${d.count} kitap</div>`+
+      d.books.map(b=>`<div>• ${b}</div>`).join('');
+  }catch(err){tt.textContent=tipJson;}
   tt.style.display='block';
-  tt.textContent=tip;
   const wrap=document.getElementById('map-wrap');
   const rect=wrap.getBoundingClientRect();
   tt.style.left=Math.min(e.clientX-rect.left+10,rect.width-210)+'px';
