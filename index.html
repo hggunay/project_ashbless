@@ -4364,8 +4364,8 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     const tipBooks=count?(db.books[target]||[]).filter(b=>countryToISO(b.country)===iso2&&!b.retroactive&&b.readingStatus==='new').map(b=>b.title).slice(0,5):[];
     const tipData=count?JSON.stringify({name,count,books:tipBooks}):'';
 
-    return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}"
-      onmouseenter="showMapTip(event,${count?`'${tipData.replace(/'/g,"\\'")}'`:'null'})" onmouseleave="hideMapTip()"
+    return `<path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="0.5" data-iso="${iso2||''}" data-tip="${tipData.replace(/"/g,'&quot;')}"
+      onmouseenter="showMapTip(event,this)" onmouseleave="hideMapTip()" onclick="showMapTip(event,this)"
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
@@ -4396,7 +4396,8 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     </svg>`;
 }
 
-function showMapTip(e,tipJson){
+function showMapTip(e,el){
+  const tipJson=el.dataset?.tip;
   if(!tipJson) return;
   const tt=document.getElementById('map-tooltip');
   if(!tt) return;
@@ -4404,12 +4405,14 @@ function showMapTip(e,tipJson){
     const d=JSON.parse(tipJson);
     tt.innerHTML=`<div style="font-weight:700;margin-bottom:.2rem">${d.name}: ${d.count} kitap</div>`+
       d.books.map(b=>`<div>• ${b}</div>`).join('');
-  }catch(err){tt.textContent=tipJson;}
+  }catch(err){return;}
   tt.style.display='block';
   const wrap=document.getElementById('map-wrap');
   const rect=wrap.getBoundingClientRect();
-  tt.style.left=Math.min(e.clientX-rect.left+10,rect.width-210)+'px';
-  tt.style.top=Math.max(e.clientY-rect.top-40,5)+'px';
+  const clientX=e.touches?e.touches[0].clientX:e.clientX;
+  const clientY=e.touches?e.touches[0].clientY:e.clientY;
+  tt.style.left=Math.min(clientX-rect.left+10,rect.width-210)+'px';
+  tt.style.top=Math.max(clientY-rect.top-40,5)+'px';
 }
 
 function hideMapTip(){
