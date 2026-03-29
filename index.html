@@ -4570,8 +4570,8 @@ function render(){
 function renderSafe(){
   const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
   if(modalOpen){
-    // Sadece arka plandaki listeleri güncelle
     renderStats();renderBookList();renderBadges();renderMembers();
+    if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
   } else {
     render();
   }
