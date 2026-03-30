@@ -4207,7 +4207,7 @@ function renderMap(){
   const books=(db.books[target]||[]).filter(b=>
     b.country&&b.readingStatus==='new'&&!b.retroactive&&
     b.title&&!b.title.startsWith('ISBN:')&&
-    (!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
+    (!mapResetDate||!b.endDate||new Date(b.endDate)>=mapResetDate)
   );
   const counts={};
   books.forEach(b=>{const iso=countryToISO(b.country);if(iso)counts[iso]=(counts[iso]||0)+1;});
