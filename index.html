@@ -4198,11 +4198,9 @@ function renderMap(){
   const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
   if(!db.mapReset) db.mapReset={};
-  if(!db.mapReset[target]){
-    db.mapReset[target]=new Date().toISOString();
-    saveDb();
-  }
-  const mapResetDate=new Date(db.mapReset[target]);
+  // mapReset tarihi varsa o tarihten sonraki kitapları göster,
+  // yoksa tüm kitapları göster (hiç sıfırlanmamış = filtre yok)
+  const mapResetDate=db.mapReset[target]?new Date(db.mapReset[target]):null;
   const books=(db.books[target]||[]).filter(b=>
     b.country&&b.readingStatus==='new'&&!b.retroactive&&
     b.title&&!b.title.startsWith('ISBN:')&&
