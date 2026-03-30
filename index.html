@@ -1810,6 +1810,7 @@ function enterApp(){
   updateAdminBadge();
   render();setTodayDate();
   showSpecialDayBanner();
+  setTimeout(()=>checkNotifications(),1200);
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
@@ -2405,6 +2406,28 @@ async function addBook(){
       newlyEarned.push(b.id);
     }
   }));
+
+  // Yeni ülke tespiti — bu kitapla ilk kez bu ülkeye gidiliyorsa akışa ekle
+  if(book.country&&book.readingStatus==='new'&&!book.retroactive){
+    const prevCountries=new Set(
+      prevBooksAll.filter(b=>b.country&&b.readingStatus==='new'&&!b.retroactive).map(b=>b.country.toLowerCase())
+    );
+    if(!prevCountries.has(book.country.toLowerCase())){
+      if(!db.countryEvents) db.countryEvents={};
+      if(!db.countryEvents[me]) db.countryEvents[me]=[];
+      db.countryEvents[me].push({
+        id:Date.now(),
+        country:book.country,
+        bookTitle:book.title,
+        author:book.author||null,
+        ts:new Date().toISOString(),
+        reactions:{},
+      });
+      saveDb();
+      notify(`🌍 Yeni Ülke!`,`${book.country} haritana eklendi — ${book.title}`);
+    }
+  }
+
   render();
   if(newlyEarned.length){
     launchConfetti('badge');
@@ -3353,6 +3376,14 @@ function getFeedCards(){
         eventType:ev.type, ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
+    const countryEvs=(db.countryEvents&&db.countryEvents[u])||[];
+    countryEvs.forEach(ev=>{
+      cards.push({
+        type:'country_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        countryEventId:ev.id, country:ev.country, bookTitle:ev.bookTitle, author:ev.author,
+        ts:ev.ts||0, reactions:ev.reactions||{},
+      });
+    });
   });
   return cards;
 }
@@ -3414,9 +3445,11 @@ function renderFeed(append=false){
       ?`story_${card.u}_${card.storyId}`
       :card.type==='series_event'
         ?`seriesev_${card.u}_${card.seriesEventId}`
-        :card.type==='quote'
-          ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-          :`review_${card.u}_${card.bookId}`;
+        :card.type==='country_event'
+          ?`countryev_${card.u}_${card.countryEventId}`
+          :card.type==='quote'
+            ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+            :`review_${card.u}_${card.bookId}`;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
@@ -3433,6 +3466,11 @@ function renderFeed(append=false){
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
+      if(card.type==='country_event'){
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCountryEventReaction('${card.u}',${card.countryEventId},'${rEsc}')">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
       const qi=card.type==='quote'?card.quoteIdx:-1;
       return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}${names}`:''}
@@ -3446,18 +3484,25 @@ function renderFeed(append=false){
     const isNewCard=ts>lastFeedVisit&&card.u!==me;
     const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
-      :card.type==='quote'
-        ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-        :`review_${card.u}_${card.bookId}`;
+      :card.type==='country_event'
+        ?`countryev_${card.u}_${card.countryEventId}`
+        :card.type==='quote'
+          ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+          :`review_${card.u}_${card.bookId}`;
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':(card.type==='series_event'||card.type==='country_event')?'journal-type-series':'journal-type-quote';
+    const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':'💬 alıntı';
+    const headerBook=card.type==='country_event'
+      ?`<span class="journal-entry-book">${card.country||'—'}</span>`
+      :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem;display:inline-flex;align-items:center">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
           <span class="journal-entry-user">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
-          <span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>
+          ${headerBook}
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
-        <span class="journal-entry-type-badge ${card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='series_event'?'journal-type-series':'journal-type-quote'}">${card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':'💬 alıntı'}</span>
+        <span class="journal-entry-type-badge ${typeBadgeClass}">${typeBadgeLabel}</span>
       </div>
       ${card.type==='review'?`
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
@@ -3478,6 +3523,11 @@ function renderFeed(append=false){
             :card.eventType==='series_continue'
             ?`📖 <strong>${card.seriesName}</strong> serisine devam ediyor${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
             :`✅ <strong>${card.seriesName}</strong> serisini bitirdi 🎉`}
+        </div>
+      `:card.type==='country_event'?`
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
+          🌍 <strong>${card.country}</strong> haritaya eklendi!
+          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.2rem;opacity:.8">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''}</div>`:''}
         </div>
       `:`
         <div class="journal-quote">
@@ -3560,7 +3610,10 @@ function toggleSeriesEventReaction(owner,eventId,reaction){
   if(!ev.reactions[me]) ev.reactions[me]=[];
   const idx=ev.reactions[me].indexOf(reaction);
   if(idx>-1) ev.reactions[me].splice(idx,1);
-  else ev.reactions[me].push(reaction);
+  else{
+    ev.reactions[me].push(reaction);
+    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.seriesName||'seri');
+  }
   saveDb();renderFeed();
 }
 
@@ -3572,7 +3625,25 @@ function toggleStoryReaction(storyOwner,storyId,reaction){
   if(!story.reactions[me]) story.reactions[me]=[];
   const idx=story.reactions[me].indexOf(reaction);
   if(idx>-1) story.reactions[me].splice(idx,1);
-  else story.reactions[me].push(reaction);
+  else{
+    story.reactions[me].push(reaction);
+    if(storyOwner!==me) pushReactionNotif(storyOwner,me,reaction,story.title||'hikâye');
+  }
+  saveDb();renderFeed();
+}
+
+function toggleCountryEventReaction(owner,eventId,reaction){
+  if(!db.countryEvents||!db.countryEvents[owner]) return;
+  const ev=db.countryEvents[owner].find(e=>e.id===eventId);
+  if(!ev) return;
+  if(!ev.reactions) ev.reactions={};
+  if(!ev.reactions[me]) ev.reactions[me]=[];
+  const idx=ev.reactions[me].indexOf(reaction);
+  if(idx>-1) ev.reactions[me].splice(idx,1);
+  else{
+    ev.reactions[me].push(reaction);
+    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
+  }
   saveDb();renderFeed();
 }
 
@@ -4021,7 +4092,10 @@ function toggleCardReaction(type,bookOwner,bookId,quoteIdx,reaction,btnEl){
   if(!reactObj[me]) reactObj[me]=[];
   const idx=reactObj[me].indexOf(reaction);
   if(idx>-1) reactObj[me].splice(idx,1);
-  else reactObj[me].push(reaction);
+  else{
+    reactObj[me].push(reaction);
+    if(bookOwner!==me) pushReactionNotif(bookOwner,me,reaction,book.title||'kitap');
+  }
   saveDb();renderJournal();renderFeed();
 }
 
@@ -4032,6 +4106,30 @@ function copyCardQuote(bookOwner,bookId,quoteIdx){
   if(!q) return;
   const text=`"${q.text}"${q.page?' (s. '+q.page+')':''}\n— ${book.title}, ${book.author||''}`;
   navigator.clipboard.writeText(text).then(()=>notify('📋 Kopyalandı','Alıntı panoya kopyalandı.'));
+}
+
+// ── BİLDİRİMLER ──────────────────────────────────────────────
+function pushReactionNotif(toUser,fromUser,reaction,context){
+  if(!db.notifications) db.notifications={};
+  if(!db.notifications[toUser]) db.notifications[toUser]=[];
+  const fromName=(db.users[fromUser]&&db.users[fromUser].displayName)||fromUser;
+  db.notifications[toUser].push({
+    id:Date.now(), type:'reaction', from:fromUser, fromName,
+    reaction, context, ts:new Date().toISOString(), seen:false,
+  });
+  saveDb();
+}
+
+function checkNotifications(){
+  if(!db.notifications||!db.notifications[me]) return;
+  const unseen=db.notifications[me].filter(n=>!n.seen);
+  if(!unseen.length) return;
+  const n=unseen[unseen.length-1];
+  const extra=unseen.length>1?` (+${unseen.length-1} daha)`:'';
+  notify(`${n.reaction} Reaksiyon`,`${n.fromName} — "${n.context}"${extra}`);
+  db.notifications[me].forEach(n=>n.seen=true);
+  if(db.notifications[me].length>30) db.notifications[me]=db.notifications[me].slice(-30);
+  saveDb();
 }
 
 // ── İSTATİSTİKLER ────────────────────────────────────────────
