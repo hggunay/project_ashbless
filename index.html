@@ -4183,6 +4183,9 @@ function renderMap(){
   const container=document.getElementById('mapContainer');
   if(!container) return;
   const target=viewing||me;
+  // Gizli profilde harita gösterme
+  const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
+  if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
   const books=(db.books[target]||[]).filter(b=>
     b.country&&!b.retroactive&&b.readingStatus!=='wishlist'&&
     b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
