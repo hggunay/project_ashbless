@@ -1267,7 +1267,14 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};return;}
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};
+      // Avatar'ları ayrı node'dan yükle
+      try{
+        const avatars=await fbGet('aa-avatars');
+        if(avatars){Object.keys(avatars).forEach(u=>{if(db.users[u]&&avatars[u].startsWith('data:'))db.users[u].avatar=avatars[u];});}
+      }catch(e){}
+      return;
+    }
   }catch(e){}
   // localStorage'a düş
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
@@ -1448,6 +1455,8 @@ function handleAvatarUpload(input){
       ctx.drawImage(img,ox,oy,s,s,0,0,size,size);
       const b64=canvas.toDataURL('image/jpeg',0.7);
       db.users[me].avatar=b64;
+      // Avatar'ı ayrı node'a kaydet (büyük veri)
+      try{await fbSet('aa-avatars/'+me, b64);}catch(e){}
       saveDb();
       setAvatarEl(document.getElementById('settingsAvatar'),b64);
       setAvatarEl(document.getElementById('headerAvatar'),b64);
