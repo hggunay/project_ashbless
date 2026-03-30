@@ -4199,9 +4199,8 @@ function renderMap(){
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
   const mapResetDate=db.mapReset&&db.mapReset[target]?new Date(db.mapReset[target]):null;
   const books=(db.books[target]||[]).filter(b=>
-    b.country&&!b.retroactive&&b.readingStatus!=='wishlist'&&
-    b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
-    b.readingStatus!=='planned'&&b.title&&!b.title.startsWith('ISBN:')&&
+    b.country&&b.readingStatus==='new'&&!b.retroactive&&
+    b.title&&!b.title.startsWith('ISBN:')&&
     (!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
   );
   const counts={};
