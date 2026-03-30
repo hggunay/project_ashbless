@@ -2882,6 +2882,7 @@ function applyToWholeSeries(bookId){
 function startReadingFromWishlist(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  book.previousStatus=book.readingStatus||'wishlist';
   book.readingStatus='reading';
   book.startDate=book.startDate||new Date().toISOString().split('T')[0];
   saveDb();renderSafe();
@@ -2891,6 +2892,7 @@ function startReadingFromWishlist(bookId){
 function resumeReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  book.previousStatus=book.readingStatus||'paused';
   book.readingStatus='reading';
   saveDb();renderSafe();
   notify('📖 Devam ediliyor',`"${book.title}" şu an okunanlar listesine taşındı.`);
@@ -2899,6 +2901,7 @@ function resumeReading(bookId){
 function pauseReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  book.previousStatus=book.readingStatus||'reading';
   book.readingStatus='paused';
   saveDb();closeModal();renderSafe();
   notify('🚧 Yarım bırakıldı',`"${book.title}" yarım bırakılanlar listesine taşındı.`);
@@ -2957,16 +2960,23 @@ function markAsUnread(bookId){
 function confirmMarkAsUnread(bookId, status){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
-  book.readingStatus=status;
-  book.endDate=null;
-  book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
+  // Önceki konuma dön — previousStatus varsa oraya, yoksa wishlist
+  const targetStatus = book.previousStatus && book.previousStatus!=='reading' ? book.previousStatus : status;
+  book.readingStatus=targetStatus;
+  book.previousStatus=null;
+  // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle
+  if(targetStatus==='wishlist'||targetStatus==='planned'){
+    book.endDate=null;
+    book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
+  }
   if(db.seriesEvents&&db.seriesEvents[me]){
     db.seriesEvents[me]=db.seriesEvents[me].filter(ev=>ev.bookTitle!==book.title);
   }
   saveDb();
   closeModal();
   render();
-  const label=status==='wishlist'?'Okumak İstiyorum listesine eklendi':'Planlananlara eklendi';
+  const statusLabels={wishlist:'Okumak İstiyorum listesine eklendi',new:'Okundu listesine geri döndü',paused:'Yarım bırakılanlar listesine geri döndü'};
+  const label=statusLabels[targetStatus]||'eski konumuna döndü';
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
@@ -5463,6 +5473,7 @@ function updateSeriesTotal(seriesId, val){
 function startReadingSeriesBook(bookId){
   const book = myBooks().find(b=>b.id===bookId);
   if(!book) return;
+  book.previousStatus = book.readingStatus||'wishlist';
   book.readingStatus = 'reading';
   book.startDate = book.startDate || new Date().toISOString().split('T')[0];
   // Hangi seriye ait — seri event'i kaydet
