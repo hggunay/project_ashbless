@@ -4197,13 +4197,12 @@ function renderMap(){
   // Gizli profilde harita gösterme
   const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
-  const mapResetDate=db.mapReset&&db.mapReset[target]?new Date(db.mapReset[target]):null;
-  // Hiç reset tarihi yoksa bugünü kaydet — eski kitaplar görünmesin
   if(!db.mapReset) db.mapReset={};
   if(!db.mapReset[target]){
     db.mapReset[target]=new Date().toISOString();
     saveDb();
   }
+  const mapResetDate=new Date(db.mapReset[target]);
   const books=(db.books[target]||[]).filter(b=>
     b.country&&b.readingStatus==='new'&&!b.retroactive&&
     b.title&&!b.title.startsWith('ISBN:')&&
@@ -4351,7 +4350,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
         if(i>0){
           const prev=ring[i-1];
           // 180° meridyen kesimi — longitude farkı 180'den büyükse yeni segment başlat
-          if(Math.abs(pt[0]-prev[0])>180){
+          if(Math.abs(pt[0]-prev[0])>170){
             if(current.length>1) segments.push(current);
             current=[];
           }
