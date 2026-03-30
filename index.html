@@ -4501,27 +4501,25 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
 
   function coordsToPath(coords){
     return coords.map((ring)=>{
-      const segments=[];
-      let current=[];
-      for(let i=0;i<ring.length;i++){
-        const pt=ring[i];
-        if(i>0){
-          const prev=ring[i-1];
-          // 180° meridyen kesimi — longitude farkı 180'den büyükse yeni segment başlat
-          if(Math.abs(pt[0]-prev[0])>170){
-            if(current.length>1) segments.push(current);
-            current=[];
-          }
+      // Longitude'u önceki noktaya göre normalize et (180° sıçramayı önle)
+      const normalized=[];
+      let prevLon=null;
+      for(const pt of ring){
+        let lon=pt[0];
+        if(prevLon!==null){
+          // Önceki noktadan farkı -180..+180 aralığına çek
+          let diff=lon-prevLon;
+          if(diff>180) lon-=360;
+          else if(diff<-180) lon+=360;
         }
-        current.push(pt);
+        normalized.push([lon,pt[1]]);
+        prevLon=lon;
       }
-      if(current.length>1) segments.push(current);
-      return segments.map(seg=>
-        seg.map((pt,i)=>{
-          const[x,y]=project(pt[0],pt[1]);
-          return(i===0?`M${x.toFixed(1)},${y.toFixed(1)}`:`L${x.toFixed(1)},${y.toFixed(1)}`);
-        }).join(' ')+'Z'
-      ).join(' ');
+      const d=normalized.map((pt,i)=>{
+        const[x,y]=project(pt[0],pt[1]);
+        return(i===0?`M${x.toFixed(1)},${y.toFixed(1)}`:`L${x.toFixed(1)},${y.toFixed(1)}`);
+      }).join(' ')+'Z';
+      return d;
     }).join(' ');
   }
 
