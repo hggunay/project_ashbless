@@ -4198,6 +4198,12 @@ function renderMap(){
   const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
   const mapResetDate=db.mapReset&&db.mapReset[target]?new Date(db.mapReset[target]):null;
+  // Hiç reset tarihi yoksa bugünü kaydet — eski kitaplar görünmesin
+  if(!db.mapReset) db.mapReset={};
+  if(!db.mapReset[target]){
+    db.mapReset[target]=new Date().toISOString();
+    saveDb();
+  }
   const books=(db.books[target]||[]).filter(b=>
     b.country&&b.readingStatus==='new'&&!b.retroactive&&
     b.title&&!b.title.startsWith('ISBN:')&&
