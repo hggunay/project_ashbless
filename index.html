@@ -1456,7 +1456,7 @@ function handleAvatarUpload(input){
       const b64=canvas.toDataURL('image/jpeg',0.7);
       db.users[me].avatar=b64;
       // Avatar'ı ayrı node'a kaydet (büyük veri)
-      try{await fbSet('aa-avatars/'+me, b64);}catch(e){}
+      fbSet('aa-avatars/'+me, b64).catch(e=>{});
       saveDb();
       setAvatarEl(document.getElementById('settingsAvatar'),b64);
       setAvatarEl(document.getElementById('headerAvatar'),b64);
