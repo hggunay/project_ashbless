@@ -384,6 +384,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   0%,100%{transform:scale(1);opacity:.7;}
   50%{transform:scale(1.6);opacity:0;}
 }
+.map-pulse-ring{
+  transform-box:fill-box;
+  transform-origin:center;
+  animation:mapPulse 2s ease-in-out infinite;
+}
 
 </style>
 </head>
@@ -4192,10 +4197,12 @@ function renderMap(){
   // Gizli profilde harita gösterme
   const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
+  const mapResetDate=db.mapReset&&db.mapReset[target]?new Date(db.mapReset[target]):null;
   const books=(db.books[target]||[]).filter(b=>
     b.country&&!b.retroactive&&b.readingStatus!=='wishlist'&&
     b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
-    b.readingStatus!=='planned'&&b.title&&!b.title.startsWith('ISBN:')
+    b.readingStatus!=='planned'&&b.title&&!b.title.startsWith('ISBN:')&&
+    (!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
   );
   const counts={};
   books.forEach(b=>{const iso=countryToISO(b.country);if(iso)counts[iso]=(counts[iso]||0)+1;});
@@ -4414,7 +4421,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
         <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
     }
-    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" style="transform-origin:${avatarX}px ${avatarY}px;animation:mapPulse 2s ease-in-out infinite"/>`;
+    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring"/>`;
   }
 
   const wrap=document.getElementById('map-wrap');
@@ -4624,11 +4631,12 @@ function renderSafe(){
 function confirmResetMap(){
   const btn=document.querySelector('[onclick="confirmResetMap()"]');
   if(btn.dataset.confirming==='1'){
-    (db.books[me]||[]).forEach(b=>delete b.country);
+    if(!db.mapReset) db.mapReset={};
+    db.mapReset[me]=new Date().toISOString();
     saveDb();renderSafe();
     btn.textContent='🗺️ Haritayı Sıfırla';
     btn.dataset.confirming='';
-    notify('🗺️ Harita Sıfırlandı','Tüm ülke bilgileri silindi.');
+    notify('🗺️ Harita Sıfırlandı','Harita yeni kitaplarla dolmaya başlayacak.');
     return;
   }
   btn.dataset.confirming='1';
