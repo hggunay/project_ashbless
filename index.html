@@ -1278,7 +1278,7 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};
       // Avatar'ları ayrı node'dan yükle
       try{
         const avatars=await fbGet('aa-avatars');
@@ -1292,6 +1292,8 @@ async function loadDb(){
   if(!db.stories)db.stories={};
   if(!db.seriesData)db.seriesData={};
   if(!db.seriesEvents)db.seriesEvents={};
+  if(!db.countryEvents)db.countryEvents={};
+  if(!db.notifications)db.notifications={};
 }
 
 async function saveDb(){
