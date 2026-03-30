@@ -2776,8 +2776,6 @@ function saveField(bookId,field,value){
   if(field==='review'&&!value) book.reviewTs=null;
   // Seri bilgisi değişince diğer kitaplara yay
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
-  // Ülke girilince ve kitap okunmuşsa yeni ülke kontrolü yap
-  if(field==='country'&&value&&book.readingStatus==='new'&&!book.retroactive) checkAndAddCountryEvent(book);
   saveDb();renderSafe();
 }
 
@@ -2900,10 +2898,19 @@ function finishReading(bookId){
     const matchedSer=Object.values(data.series||{}).find(s=>s.name===book.series);
     if(matchedSer) checkSeriesComplete(matchedSer.id);
   }
-  // Yeni ülke kontrolü
+  // Yeni ülke kontrolü — önce ülke bildirimi, sonra tamamlandı
+  const _otherCountries=new Set(
+    (db.books[me]||[]).filter(b=>b.id!==book.id&&b.country&&b.readingStatus==='new'&&!b.retroactive)
+      .map(b=>b.country.toLowerCase())
+  );
+  const _isNewCountry=book.country&&!_otherCountries.has(book.country.toLowerCase());
   checkAndAddCountryEvent(book);
   render();
-  notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
+  if(_isNewCountry){
+    setTimeout(()=>notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`),2200);
+  } else {
+    notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
+  }
   // Harita sekmesi açıksa yenile
   if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
   if(newlyEarned.length){
@@ -3514,8 +3521,8 @@ function renderFeed(append=false){
         </div>
       `:card.type==='country_event'?`
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
-          🌍 <strong>${card.country}</strong> haritaya eklendi!
-          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.2rem;opacity:.8">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''}</div>`:''}
+          🌍 <strong>${card.userName}</strong>, <strong>${card.country}</strong>'yı haritasına ekledi!
+          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;opacity:.85">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
         </div>
       `:`
         <div class="journal-quote">
@@ -4120,7 +4127,7 @@ function checkAndAddCountryEvent(book){
     reactions:{},
   });
   saveDb();
-  notify('🌍 Yeni Ülke!',`${book.country} haritana eklendi — ${book.title}`);
+  notify('🌍 Yeni Ülke!',`${book.country} keşfedildi! ${book.title} ile haritana girdi`);
 }
 
 function pushReactionNotif(toUser,fromUser,reaction,context){
