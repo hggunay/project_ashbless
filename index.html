@@ -2409,30 +2409,8 @@ async function addBook(){
     }
   }));
 
-  // Yeni ülke tespiti — DEBUG versiyonu
-  try{
-    notify('🔍 DEBUG',`ülke:${book.country||'YOK'} | status:${book.readingStatus} | retro:${book.retroactive}`);
-    if(book.country&&book.readingStatus==='new'&&!book.retroactive){
-      const prevCountries=new Set(
-        prevBooksAll.filter(b=>b.country&&b.readingStatus==='new'&&!b.retroactive).map(b=>b.country.toLowerCase())
-      );
-      notify('🔍 DEBUG2',`prevCountries:[${[...prevCountries].join(',')}] | yeni:${book.country.toLowerCase()} | ilkMi:${!prevCountries.has(book.country.toLowerCase())}`);
-      if(!prevCountries.has(book.country.toLowerCase())){
-        if(!db.countryEvents) db.countryEvents={};
-        if(!db.countryEvents[me]) db.countryEvents[me]=[];
-        db.countryEvents[me].push({
-          id:Date.now(),
-          country:book.country,
-          bookTitle:book.title,
-          author:book.author||null,
-          ts:new Date().toISOString(),
-          reactions:{},
-        });
-        await saveDb();
-        notify(`🌍 Yeni Ülke!`,`${book.country} haritana eklendi — ${book.title}`);
-      }
-    }
-  }catch(err){notify('❌ HATA',err.message||String(err));}
+  // Yeni ülke tespiti — kitap eklenirken ülke zaten gelmişse kontrol et
+  checkAndAddCountryEvent(book);
 
   render();
   if(newlyEarned.length){
@@ -2798,6 +2776,8 @@ function saveField(bookId,field,value){
   if(field==='review'&&!value) book.reviewTs=null;
   // Seri bilgisi değişince diğer kitaplara yay
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
+  // Ülke girilince ve kitap okunmuşsa yeni ülke kontrolü yap
+  if(field==='country'&&value&&book.readingStatus==='new'&&!book.retroactive) checkAndAddCountryEvent(book);
   saveDb();renderSafe();
 }
 
@@ -2920,6 +2900,8 @@ function finishReading(bookId){
     const matchedSer=Object.values(data.series||{}).find(s=>s.name===book.series);
     if(matchedSer) checkSeriesComplete(matchedSer.id);
   }
+  // Yeni ülke kontrolü
+  checkAndAddCountryEvent(book);
   render();
   notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
   // Harita sekmesi açıksa yenile
@@ -4115,6 +4097,32 @@ function copyCardQuote(bookOwner,bookId,quoteIdx){
 }
 
 // ── BİLDİRİMLER ──────────────────────────────────────────────
+function checkAndAddCountryEvent(book){
+  if(!book.country||book.readingStatus!=='new'||book.retroactive) return;
+  // Bu ülke daha önce hiç kaydedilmiş mi?
+  const allBooks=(db.books[me]||[]);
+  const existingCountries=new Set(
+    allBooks.filter(b=>b.id!==book.id&&b.country&&b.readingStatus==='new'&&!b.retroactive)
+      .map(b=>b.country.toLowerCase())
+  );
+  if(existingCountries.has(book.country.toLowerCase())) return;
+  // countryEvents'te daha önce bu ülke için kayıt var mı?
+  if(!db.countryEvents) db.countryEvents={};
+  if(!db.countryEvents[me]) db.countryEvents[me]=[];
+  const alreadyLogged=db.countryEvents[me].some(e=>e.country.toLowerCase()===book.country.toLowerCase());
+  if(alreadyLogged) return;
+  db.countryEvents[me].push({
+    id:Date.now(),
+    country:book.country,
+    bookTitle:book.title,
+    author:book.author||null,
+    ts:new Date().toISOString(),
+    reactions:{},
+  });
+  saveDb();
+  notify('🌍 Yeni Ülke!',`${book.country} haritana eklendi — ${book.title}`);
+}
+
 function pushReactionNotif(toUser,fromUser,reaction,context){
   if(!db.notifications) db.notifications={};
   if(!db.notifications[toUser]) db.notifications[toUser]=[];
