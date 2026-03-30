@@ -4313,12 +4313,29 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   }
 
   function coordsToPath(coords){
-    return coords.map((ring,ri)=>
-      ring.map((pt,i)=>{
-        const[x,y]=project(pt[0],pt[1]);
-        return(i===0?`M${x.toFixed(1)},${y.toFixed(1)}`:`L${x.toFixed(1)},${y.toFixed(1)}`);
-      }).join(' ')+'Z'
-    ).join(' ');
+    return coords.map((ring)=>{
+      const segments=[];
+      let current=[];
+      for(let i=0;i<ring.length;i++){
+        const pt=ring[i];
+        if(i>0){
+          const prev=ring[i-1];
+          // 180° meridyen kesimi — longitude farkı 180'den büyükse yeni segment başlat
+          if(Math.abs(pt[0]-prev[0])>180){
+            if(current.length>1) segments.push(current);
+            current=[];
+          }
+        }
+        current.push(pt);
+      }
+      if(current.length>1) segments.push(current);
+      return segments.map(seg=>
+        seg.map((pt,i)=>{
+          const[x,y]=project(pt[0],pt[1]);
+          return(i===0?`M${x.toFixed(1)},${y.toFixed(1)}`:`L${x.toFixed(1)},${y.toFixed(1)}`);
+        }).join(' ')+'Z'
+      ).join(' ');
+    }).join(' ');
   }
 
   function geomToPath(geom){
