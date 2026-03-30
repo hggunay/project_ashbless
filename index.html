@@ -4198,22 +4198,14 @@ function renderMap(){
   const isPrivate=viewing&&db.users[viewing]&&db.users[viewing].publicProfile===false;
   if(isPrivate){container.innerHTML='<div style="padding:2rem;text-align:center;font-family:\'Space Mono\',monospace;font-size:.7rem;color:var(--rust);opacity:.6">🔒 Bu profil gizli.</div>';return;}
   if(!db.mapReset) db.mapReset={};
-  // mapReset tarihi varsa o tarihten sonraki kitapları göster,
+  // mapReset tarihi varsa o tarihten SONRA eklenen kitapları göster (addedAt bazlı),
   // yoksa tüm kitapları göster (hiç sıfırlanmamış = filtre yok)
   const mapResetDate=db.mapReset[target]?new Date(db.mapReset[target]):null;
-  const allBooks=(db.books[target]||[]);
-  const books=allBooks.filter(b=>
+  const books=(db.books[target]||[]).filter(b=>
     b.country&&b.readingStatus==='new'&&!b.retroactive&&
     b.title&&!b.title.startsWith('ISBN:')&&
-    (!mapResetDate||!b.endDate||new Date(b.endDate)>=mapResetDate)
+    (!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
   );
-  // DEBUG — geçici bilgi kutusu, sorun çözülünce kaldırılacak
-  {
-    const resetStr=db.mapReset[target]||'(yok)';
-    const allWithCountry=allBooks.filter(b=>b.country&&b.readingStatus==='new'&&!b.retroactive&&b.title&&!b.title.startsWith('ISBN:'));
-    const debugLines=allWithCountry.map(b=>`• ${b.title} | endDate:${b.endDate||'—'} | geçti:${mapResetDate&&b.endDate?new Date(b.endDate)>=mapResetDate?'✅':'❌':'—'}`).join('\n');
-    alert(`🗺️ DEBUG\n\nmapReset tarihi: ${resetStr}\nToplam ülkeli kitap: ${allWithCountry.length}\nFiltreden geçen: ${books.length}\n\n${debugLines||'(kitap yok)'}`);
-  }
   const counts={};
   books.forEach(b=>{const iso=countryToISO(b.country);if(iso)counts[iso]=(counts[iso]||0)+1;});
   const lastBook=[...books].reverse().find(b=>countryToISO(b.country));
