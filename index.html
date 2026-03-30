@@ -3520,9 +3520,9 @@ function renderFeed(append=false){
             :`✅ <strong>${card.seriesName}</strong> serisini bitirdi 🎉`}
         </div>
       `:card.type==='country_event'?`
-        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           🌍 <strong>${card.userName}</strong>, <strong>${card.country}</strong>'yı haritasına ekledi!
-          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;opacity:.85">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
+          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
         </div>
       `:`
         <div class="journal-quote">
