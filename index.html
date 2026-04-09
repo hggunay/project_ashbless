@@ -217,25 +217,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.badge-shine{animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;}
 .badge-new-tag{position:absolute;top:.35rem;right:.35rem;font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;background:linear-gradient(135deg,var(--gold),#e8c840);color:var(--ink);padding:.15rem .4rem;border-radius:20px;letter-spacing:.05em;animation:badgeGlow .8s ease infinite;}
 .badge-new-dot{position:absolute;top:.4rem;left:.4rem;width:7px;height:7px;background:var(--rust);border-radius:50%;animation:badgeGlow .8s ease infinite;}
-/* Chain rozet satırları */
-.badge-chain-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;padding:.3rem .5rem;background:rgba(201,162,39,.06);border-radius:4px;}
-.badge-chain-label{font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--rust);opacity:.8;}
+/* Chain rozet grupları */
+.badge-chain{border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;background:rgba(201,162,39,.03);}
+.badge-chain-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
+.badge-chain-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--rust);opacity:.8;}
 .badge-chain-count{font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;}
-.badge-chain-rows{display:flex;flex-direction:column;gap:.3rem;}
-.chain-badge-row{display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-radius:4px;border:1px solid rgba(201,162,39,.15);background:var(--parchment);cursor:pointer;transition:all .15s;}
-.chain-badge-row:hover{border-color:rgba(201,162,39,.4);background:var(--cream);}
-.chain-badge-row.earned{border-color:var(--gold);background:linear-gradient(90deg,#fdf8e8,#fffbe8);}
-.chain-badge-row.locked{opacity:.45;filter:grayscale(.3);}
-.chain-tier-label{font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;padding:.1rem .3rem;border-radius:10px;white-space:nowrap;flex-shrink:0;}
-.chain-tier-label.bronze{background:rgba(205,127,50,.15);color:#9b6020;}
-.chain-tier-label.silver{background:rgba(170,170,170,.15);color:#666;}
-.chain-tier-label.gold{background:rgba(201,162,39,.15);color:#8a6f0f;}
-.chain-tier-label.diamond{background:rgba(100,200,255,.15);color:#0080a0;}
-.chain-badge-icon{font-size:1.2rem;flex-shrink:0;}
-.chain-badge-info{flex:1;min-width:0;}
-.chain-badge-name{font-family:'Playfair Display',serif;font-size:.85rem;font-weight:700;color:var(--ink);line-height:1.2;}
-.chain-badge-desc{font-size:.72rem;color:var(--rust);font-style:italic;line-height:1.4;margin-top:.1rem;}
-.chain-earned-check{font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;color:var(--gold);flex-shrink:0;}
+.badge-chain-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;}
 /* Tier renkleri */
 .badge-card.tier-bronze.earned{border-color:#cd7f32;background:linear-gradient(135deg,#fdf0e0,#fff4ea);box-shadow:0 0 10px rgba(205,127,50,.2);}
 .badge-card.tier-bronze.earned::before{background:linear-gradient(90deg,transparent,#cd7f32,transparent);}
@@ -5720,25 +5707,36 @@ function renderBadges(){
   if(totalEl) totalEl.textContent=`${totalEarned} / ${totalAll} rozet kazanıldı`;
 
   const tierLabels={bronze:'🥉 Bronz',silver:'🥈 Gümüş',gold:'🥇 Altın',diamond:'💎 Elmas'};
-  const tierOrder={bronze:0,silver:1,gold:2,diamond:3};
 
-  function badgeRowHtml(b){
+  function badgeCardHtml(b){
     const s=bstat(b,books);
     const tier=b.tier||'gold';
     const isSecret=b.id.startsWith('secret_');
     const isNew=pendingShimmerBadges.has(b.id);
-    const cls=(s.earned?'earned':'')+(s.cur===0&&!s.earned?' locked':'');
-    return`<div class="chain-badge-row ${cls} tier-${tier} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
-      ${isNew?'<span class="badge-new-dot" style="position:static;display:inline-block;margin-right:.3rem"></span>':''}
-      <span class="chain-tier-label ${tier}">${tierLabels[tier]}</span>
-      <span class="chain-badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
-      <div class="chain-badge-info">
-        <div class="chain-badge-name">${isSecret&&!s.earned?'???':b.name}</div>
-        <div class="chain-badge-desc">${isSecret&&!s.earned?'Gizli rozet — keşfet!':b.desc}</div>
-        <div class="progress-wrap" style="margin-top:.3rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
-        <div class="progress-text">${s.cur} / ${s.max}</div>
-      </div>
-      ${s.earned?'<span class="chain-earned-check">✓</span>':''}
+    const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier;
+    const isOpen2=openBadgeId===b.id;
+    const relBooks=booksForBadge(b,books);
+    const bookListHtml=relBooks.length===0
+      ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
+      :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
+          +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
+          +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
+          +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
+        +'</div>').join('');
+    return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
+      ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
+      ${isNew?'<span class="badge-new-dot"></span>':''}
+      ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
+      <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
+      <span class="badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
+      <div class="badge-name">${isSecret&&!s.earned?'???':b.name}</div>
+      <div class="badge-desc">${isSecret&&!s.earned?'Bu gizli bir rozet. Nasıl kazanılacağını keşfet!':b.desc}</div>
+      <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+      <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+      ${isOpen2&&!isSecret?`<div class="badge-book-list" onclick="event.stopPropagation()">
+        <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
+        ${bookListHtml}
+      </div>`:(isOpen2?'':`<div class="badge-card-hint">&#128070; detay</div>`)}
     </div>`;
   }
 
@@ -5750,7 +5748,6 @@ function renderBadges(){
     const key='badgeCat-'+ci;
     const isOpen=prefs[key]!==undefined?prefs[key]:false;
 
-    // Filtre uygula
     const chains=(cat.chains||[]).map(chain=>{
       const filtered=chain.badges.filter(b=>{
         const s=bstat(b,books);
@@ -5768,12 +5765,12 @@ function renderBadges(){
       const chainEarned=chain.badges.filter(b=>bstat(b,books).earned).length;
       const chainTotal=chain.badges.length;
       const chainComplete=chainEarned===chainTotal;
-      return`<div class="badge-chain" style="margin-bottom:1rem">
+      return`<div class="badge-chain">
         <div class="badge-chain-header">
           <span class="badge-chain-label">${chain.label}</span>
           <span class="badge-chain-count" style="color:${chainComplete?'var(--gold)':'var(--rust)'}">${chainEarned}/${chainTotal}${chainComplete?' ✦':''}</span>
         </div>
-        <div class="badge-chain-rows">${chain.badges.map(b=>badgeRowHtml(b)).join('')}</div>
+        <div class="badge-chain-cards">${chain.badges.map(b=>badgeCardHtml(b)).join('')}</div>
       </div>`;
     }).join('');
 
