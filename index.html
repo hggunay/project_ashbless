@@ -2585,9 +2585,9 @@ function openBook(bookId){
     <div class="detail-section">
       <div class="detail-acc-header" onclick="toggleModalSec('mSec-info-${book.id}')">
         <div class="detail-section-title" style="margin-bottom:0">📊 Kitap Bilgileri <span class="auto-badge">OTOMATİK</span></div>
-        <span class="acc-arrow open" id="arr-mSec-info-${book.id}">▶</span>
+        <span class="acc-arrow" id="arr-mSec-info-${book.id}">▶</span>
       </div>
-      <div class="detail-acc-body open" id="mSec-info-${book.id}">
+      <div class="detail-acc-body" id="mSec-info-${book.id}">
         <div class="detail-grid" style="margin-top:.5rem">
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
           ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'YYYY-AA-GG veya sadece YYYY')}
@@ -2595,16 +2595,28 @@ function openBook(bookId){
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
           ${dField('Ülke','country',book.country,'text',isMe)}
-          ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
-          ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
-          ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
-          ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
         </div>
         <div style="margin-top:.6rem">
           <div class="detail-field-label" style="margin-bottom:.3rem">Türler (virgülle ayır)</div>
           ${isMe
             ?`<input class="detail-input" style="max-width:100%;width:100%" value="${(book.genres||[]).join(', ')}" placeholder="kurgu, fantastik..." onchange="saveField(${book.id},'genres',this.value.split(',').map(s=>s.trim()).filter(Boolean))"/>`
             :`<div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${(book.genres||[]).map(g=>`<span class="tag genre-tag">${g}</span>`).join('')||'—'}</div>`}
+        </div>
+      </div>
+    </div>
+
+    <!-- SERİ BİLGİLERİ accordion -->
+    <div class="detail-section">
+      <div class="detail-acc-header" onclick="toggleModalSec('mSec-series-${book.id}')">
+        <div class="detail-section-title" style="margin-bottom:0">📚 Seri Bilgileri${book.series?` <span style="font-size:.7rem;color:var(--gold);opacity:.8">· ${book.series}</span>`:''}</div>
+        <span class="acc-arrow" id="arr-mSec-series-${book.id}">▶</span>
+      </div>
+      <div class="detail-acc-body" id="mSec-series-${book.id}">
+        <div class="detail-grid" style="margin-top:.5rem">
+          ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
+          ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
+          ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
+          ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
         </div>
       </div>
     </div>
@@ -2691,9 +2703,9 @@ function openBook(bookId){
     <div class="detail-section" style="border:1px solid rgba(201,162,39,.2);border-radius:4px;padding:1rem;background:rgba(201,162,39,.03)">
       <div class="detail-acc-header" onclick="toggleModalSec('mSec-journal-${book.id}')">
         <div class="detail-section-title" style="margin-bottom:0">📒 Okuma Defteri <span style="font-size:.6rem;opacity:.6">(herkese görünür)</span></div>
-        <span class="acc-arrow open" id="arr-mSec-journal-${book.id}">▶</span>
+        <span class="acc-arrow" id="arr-mSec-journal-${book.id}">▶</span>
       </div>
-      <div class="detail-acc-body open" id="mSec-journal-${book.id}">
+      <div class="detail-acc-body" id="mSec-journal-${book.id}">
         <!-- Puan -->
         <div style="margin-bottom:.75rem;margin-top:.5rem">
           <div class="detail-field-label" style="margin-bottom:.4rem">⭐ Puan</div>
