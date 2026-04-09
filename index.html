@@ -217,6 +217,25 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.badge-shine{animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;}
 .badge-new-tag{position:absolute;top:.35rem;right:.35rem;font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;background:linear-gradient(135deg,var(--gold),#e8c840);color:var(--ink);padding:.15rem .4rem;border-radius:20px;letter-spacing:.05em;animation:badgeGlow .8s ease infinite;}
 .badge-new-dot{position:absolute;top:.4rem;left:.4rem;width:7px;height:7px;background:var(--rust);border-radius:50%;animation:badgeGlow .8s ease infinite;}
+/* Chain rozet satırları */
+.badge-chain-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;padding:.3rem .5rem;background:rgba(201,162,39,.06);border-radius:4px;}
+.badge-chain-label{font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:var(--rust);opacity:.8;}
+.badge-chain-count{font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;}
+.badge-chain-rows{display:flex;flex-direction:column;gap:.3rem;}
+.chain-badge-row{display:flex;align-items:center;gap:.5rem;padding:.45rem .6rem;border-radius:4px;border:1px solid rgba(201,162,39,.15);background:var(--parchment);cursor:pointer;transition:all .15s;}
+.chain-badge-row:hover{border-color:rgba(201,162,39,.4);background:var(--cream);}
+.chain-badge-row.earned{border-color:var(--gold);background:linear-gradient(90deg,#fdf8e8,#fffbe8);}
+.chain-badge-row.locked{opacity:.45;filter:grayscale(.3);}
+.chain-tier-label{font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;padding:.1rem .3rem;border-radius:10px;white-space:nowrap;flex-shrink:0;}
+.chain-tier-label.bronze{background:rgba(205,127,50,.15);color:#9b6020;}
+.chain-tier-label.silver{background:rgba(170,170,170,.15);color:#666;}
+.chain-tier-label.gold{background:rgba(201,162,39,.15);color:#8a6f0f;}
+.chain-tier-label.diamond{background:rgba(100,200,255,.15);color:#0080a0;}
+.chain-badge-icon{font-size:1.2rem;flex-shrink:0;}
+.chain-badge-info{flex:1;min-width:0;}
+.chain-badge-name{font-family:'Playfair Display',serif;font-size:.85rem;font-weight:700;color:var(--ink);line-height:1.2;}
+.chain-badge-desc{font-size:.72rem;color:var(--rust);font-style:italic;line-height:1.4;margin-top:.1rem;}
+.chain-earned-check{font-family:'Space Mono',monospace;font-size:.7rem;font-weight:700;color:var(--gold);flex-shrink:0;}
 /* Tier renkleri */
 .badge-card.tier-bronze.earned{border-color:#cd7f32;background:linear-gradient(135deg,#fdf0e0,#fff4ea);box-shadow:0 0 10px rgba(205,127,50,.2);}
 .badge-card.tier-bronze.earned::before{background:linear-gradient(90deg,transparent,#cd7f32,transparent);}
@@ -1150,182 +1169,219 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 // ══════════════════════════════════════════════════════════════
 const BADGE_CATS = [
   // ── 1. OKUMA MİKTARI ──────────────────────────────────────────
-  {label:'📚 Okuma Miktarı', badges:[
-    // Toplam Kitap Zinciri
-    {id:'b5',   tier:'bronze', icon:'📖', name:'İlk Adım',          desc:'5 kitap oku.',            check:b=>cap(b.length,5)},
-    {id:'b10',  tier:'bronze', icon:'📚', name:'Okuma Alışkanlığı', desc:'10 kitap oku.',           check:b=>cap(b.length,10)},
-    {id:'b25',  tier:'silver', icon:'🥈', name:'Kitap Kurdu',       desc:'25 kitap oku.',           check:b=>cap(b.length,25)},
-    {id:'b50',  tier:'silver', icon:'🏅', name:'Kütüphane Dostu',   desc:'50 kitap oku.',           check:b=>cap(b.length,50)},
-    {id:'b100', tier:'gold',   icon:'🥇', name:'Yüzler Kulübü',     desc:'100 kitap oku.',          check:b=>cap(b.length,100)},
-    {id:'b250', tier:'diamond',icon:'💎', name:'Efsanevi Okuyucu',  desc:'250 kitap oku.',          check:b=>cap(b.length,250)},
-    // Sayfa Okuma Zinciri
-    {id:'p1k',  tier:'bronze', icon:'📄', name:'Sayfa Avcısı',       desc:'1.000 sayfa oku.',       check:b=>cap(totalPages(b),1000)},
-    {id:'p5k',  tier:'silver', icon:'📑', name:'Maraton Okuyucu',    desc:'5.000 sayfa oku.',       check:b=>cap(totalPages(b),5000)},
-    {id:'p10k', tier:'gold',   icon:'📋', name:'Sayfa Deryası',      desc:'10.000 sayfa oku.',      check:b=>cap(totalPages(b),10000)},
-    {id:'p25k', tier:'diamond',icon:'🌊', name:'Kelime Okyanusçusu', desc:'25.000 sayfa oku.',      check:b=>cap(totalPages(b),25000)},
-    // Uzun Kitap Zinciri (500+ sayfa)
-    {id:'long1',tier:'bronze', icon:'📕', name:'Dev Kitap Cesuru',   desc:'500+ sayfalık 1 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,1)},
-    {id:'long2',tier:'silver', icon:'📗', name:'Kalın Kitap Dostu',  desc:'500+ sayfalık 3 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,3)},
-    {id:'long3',tier:'gold',   icon:'📘', name:'Epik Okuyucu',       desc:'500+ sayfalık 10 kitap oku.',check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,10)},
-    // Kısa Kitap Zinciri (150- sayfa)
-    {id:'short1',tier:'bronze',icon:'📒', name:'Hızlı Okuyucu',              desc:'150 sayfa altında 5 kitap oku.',  check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,5)},
-    {id:'short2',tier:'silver',icon:'📓', name:'Mini Kitap Koleksiyoncusu',  desc:'150 sayfa altında 10 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,10)},
-    {id:'short3',tier:'gold',  icon:'🗒️', name:'Küçük Ama Güçlü',           desc:'150 sayfa altında 20 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,20)},
-    // Çizgi Roman/Manga Zinciri
-    {id:'comic1',tier:'bronze',icon:'🎨', name:'Panel Meraklısı',    desc:'3 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,3)},
-    {id:'comic2',tier:'bronze',icon:'🦸', name:'Çizgi Roman Dostu',  desc:'5 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,5)},
-    {id:'comic3',tier:'silver',icon:'🐉', name:'Manga Kâşifi',       desc:'10 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,10)},
-    {id:'comic4',tier:'gold',  icon:'⚡', name:'Çizgi Ustası',        desc:'20 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,20)},
-    {id:'comic5',tier:'diamond',icon:'👑', name:'Çizgi Efsanesi',    desc:'50 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,50)},
-  ]},
+  {label:'📚 Okuma Miktarı', chains:[
+    {id:'toplam_kitap', label:'📖 Toplam Kitap', badges:[
+      {id:'b5',   tier:'bronze', icon:'📖', name:'İlk Adım',          desc:'5 kitap oku.',            check:b=>cap(b.length,5)},
+      {id:'b10',  tier:'bronze', icon:'📚', name:'Okuma Alışkanlığı', desc:'10 kitap oku.',           check:b=>cap(b.length,10)},
+      {id:'b25',  tier:'silver', icon:'🥈', name:'Kitap Kurdu',       desc:'25 kitap oku.',           check:b=>cap(b.length,25)},
+      {id:'b50',  tier:'silver', icon:'🏅', name:'Kütüphane Dostu',   desc:'50 kitap oku.',           check:b=>cap(b.length,50)},
+      {id:'b100', tier:'gold',   icon:'🥇', name:'Yüzler Kulübü',     desc:'100 kitap oku.',          check:b=>cap(b.length,100)},
+      {id:'b250', tier:'diamond',icon:'💎', name:'Efsanevi Okuyucu',  desc:'250 kitap oku.',          check:b=>cap(b.length,250)},
+    ]},
+    {id:'sayfa_okuma', label:'📄 Sayfa Okuma', badges:[
+      {id:'p1k',  tier:'bronze', icon:'📄', name:'Sayfa Avcısı',       desc:'1.000 sayfa oku.',       check:b=>cap(totalPages(b),1000)},
+      {id:'p5k',  tier:'silver', icon:'📑', name:'Maraton Okuyucu',    desc:'5.000 sayfa oku.',       check:b=>cap(totalPages(b),5000)},
+      {id:'p10k', tier:'gold',   icon:'📋', name:'Sayfa Deryası',      desc:'10.000 sayfa oku.',      check:b=>cap(totalPages(b),10000)},
+      {id:'p25k', tier:'diamond',icon:'🌊', name:'Kelime Okyanusçusu', desc:'25.000 sayfa oku.',      check:b=>cap(totalPages(b),25000)},
+    ]},
+    {id:'uzun_kitap', label:'📕 Uzun Kitap (500+ sayfa)', badges:[
+      {id:'long1',tier:'bronze', icon:'📕', name:'Dev Kitap Cesuru',   desc:'500+ sayfalık 1 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,1)},
+      {id:'long2',tier:'silver', icon:'📗', name:'Kalın Kitap Dostu',  desc:'500+ sayfalık 3 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,3)},
+      {id:'long3',tier:'gold',   icon:'📘', name:'Epik Okuyucu',       desc:'500+ sayfalık 10 kitap oku.',check:b=>cap(b.filter(x=>x.pages&&x.pages>=500).length,10)},
+    ]},
+    {id:'kisa_kitap', label:'📒 Kısa Kitap (150- sayfa)', badges:[
+      {id:'short1',tier:'bronze',icon:'📒', name:'Hızlı Okuyucu',             desc:'150 sayfa altında 5 kitap oku.',  check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,5)},
+      {id:'short2',tier:'silver',icon:'📓', name:'Mini Kitap Koleksiyoncusu', desc:'150 sayfa altında 10 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,10)},
+      {id:'short3',tier:'gold',  icon:'🗒️', name:'Küçük Ama Güçlü',          desc:'150 sayfa altında 20 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,20)},
+    ]},
+    {id:'cizgi_roman', label:'🎨 Çizgi Roman / Manga', badges:[
+      {id:'comic1',tier:'bronze', icon:'🎨', name:'Panel Meraklısı',   desc:'3 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,3)},
+      {id:'comic2',tier:'bronze', icon:'🦸', name:'Çizgi Roman Dostu', desc:'5 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,5)},
+      {id:'comic3',tier:'silver', icon:'🐉', name:'Manga Kâşifi',      desc:'10 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,10)},
+      {id:'comic4',tier:'gold',   icon:'⚡', name:'Çizgi Ustası',       desc:'20 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,20)},
+      {id:'comic5',tier:'diamond',icon:'👑', name:'Çizgi Efsanesi',    desc:'50 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,50)},
+    ]},
+  ], badges:[]},
   // ── 2. TÜR KEŞFİ ──────────────────────────────────────────────
-  {label:'🎭 Tür Keşfi', badges:[
-    // Keşif Rozeti Zinciri
-    {id:'genre1',tier:'bronze',icon:'🔍', name:'Meraklı Gezgin',   desc:'1 yeni türden kitap oku.',  check:b=>cap(uniqueGenres(b),1)},
-    {id:'genre2',tier:'silver',icon:'🗺️', name:'Tür Kâşifi',       desc:'3 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),3)},
-    {id:'genre3',tier:'gold',  icon:'🌟', name:'Ufuk Açıcı',        desc:'5 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),5)},
-    {id:'genre4',tier:'diamond',icon:'🌈', name:'Sınırsız Okuyucu',desc:'10 farklı tür keşfet.',    check:b=>cap(uniqueGenres(b),10)},
-    // Fantastik Zinciri
-    {id:'fan1',tier:'bronze',icon:'🧙', name:'Büyü Çırağı',       desc:'2 fantastik kitap oku.',  check:b=>genre(b,'fantastik',2)},
-    {id:'fan2',tier:'silver',icon:'🐉', name:'Ejderha Dostu',     desc:'5 fantastik kitap oku.',  check:b=>genre(b,'fantastik',5)},
-    {id:'fan3',tier:'gold',  icon:'🗡️', name:'Fantastik Kâşif',   desc:'10 fantastik kitap oku.', check:b=>genre(b,'fantastik',10)},
-    {id:'fan4',tier:'diamond',icon:'👁️', name:'Fantastik Ustası', desc:'20 fantastik kitap oku.', check:b=>genre(b,'fantastik',20)},
-    // Bilim Kurgu Zinciri
-    {id:'sf1',tier:'bronze',icon:'🚀', name:'Uzay Yolcusu',       desc:'2 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',2)},
-    {id:'sf2',tier:'silver',icon:'🛸', name:'Galaksi Kâşifi',     desc:'5 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',5)},
-    {id:'sf3',tier:'gold',  icon:'🌌', name:'Bilimkurgu Kaptanı', desc:'10 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',10)},
-    {id:'sf4',tier:'diamond',icon:'⭐', name:'Evrenin Efendisi',  desc:'20 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',20)},
-    // Polisiye Zinciri
-    {id:'det1',tier:'bronze',icon:'🔎', name:'Çaylak Dedektif', desc:'2 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',2)},
-    {id:'det2',tier:'silver',icon:'🕵️', name:'İpucu Avcısı',    desc:'5 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',5)},
-    {id:'det3',tier:'gold',  icon:'⚖️', name:'Sır Çözücü',       desc:'10 polisiye kitabı oku.', check:b=>genre(b,'polisiye',10)},
-    {id:'det4',tier:'diamond',icon:'🎩', name:'Baş Dedektif',    desc:'20 polisiye kitabı oku.', check:b=>genre(b,'polisiye',20)},
-    // Korku Zinciri
-    {id:'hor1',tier:'bronze',icon:'👻', name:'Cesur Okuyucu',  desc:'2 korku kitabı oku.',  check:b=>genre(b,'korku',2)},
-    {id:'hor2',tier:'silver',icon:'🦇', name:'Karanlık Kâşif', desc:'5 korku kitabı oku.',  check:b=>genre(b,'korku',5)},
-    {id:'hor3',tier:'gold',  icon:'💀', name:'Korku Ustası',   desc:'10 korku kitabı oku.', check:b=>genre(b,'korku',10)},
-    {id:'hor4',tier:'diamond',icon:'🕷️', name:'Gece Bekçisi',  desc:'20 korku kitabı oku.', check:b=>genre(b,'korku',20)},
-    // Tarih Zinciri
-    {id:'his1',tier:'bronze',icon:'🏺', name:'Zaman Yolcusu',   desc:'2 tarih kitabı oku.',  check:b=>genre(b,'tarih',2)},
-    {id:'his2',tier:'silver',icon:'🏰', name:'Tarih Meraklısı', desc:'5 tarih kitabı oku.',  check:b=>genre(b,'tarih',5)},
-    {id:'his3',tier:'gold',  icon:'📜', name:'Geçmişin Tanığı', desc:'10 tarih kitabı oku.', check:b=>genre(b,'tarih',10)},
-    {id:'his4',tier:'diamond',icon:'🗿', name:'Tarih Bilgesi',  desc:'20 tarih kitabı oku.', check:b=>genre(b,'tarih',20)},
-    // Felsefe Zinciri
-    {id:'phi1',tier:'bronze',icon:'❓', name:'Soru İşareti',     desc:'2 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',2)},
-    {id:'phi2',tier:'silver',icon:'🤔', name:'Düşünür',          desc:'5 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',5)},
-    {id:'phi3',tier:'gold',  icon:'🦉', name:'Felsefe Yolcusu',  desc:'10 felsefe kitabı oku.', check:b=>genre(b,'felsefe',10)},
-    {id:'phi4',tier:'diamond',icon:'⚡', name:'Bilge',           desc:'20 felsefe kitabı oku.', check:b=>genre(b,'felsefe',20)},
-    // Psikoloji Zinciri
-    {id:'psy1',tier:'bronze',icon:'🧠', name:'Zihin Meraklısı',       desc:'2 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',2)},
-    {id:'psy2',tier:'silver',icon:'💭', name:'İç Dünya Kâşifi',       desc:'5 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',5)},
-    {id:'psy3',tier:'gold',  icon:'🔬', name:'Bilinç Araştırmacısı',  desc:'10 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',10)},
-    {id:'psy4',tier:'diamond',icon:'🌀', name:'Zihin Ustası',         desc:'20 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',20)},
-    // Deneme Zinciri
-    {id:'ess1',tier:'bronze',icon:'✒️', name:'Kalem Dostu',       desc:'2 deneme kitabı oku.',  check:b=>genre(b,'deneme',2)},
-    {id:'ess2',tier:'silver',icon:'📝', name:'Fikir Toplayıcı',   desc:'5 deneme kitabı oku.',  check:b=>genre(b,'deneme',5)},
-    {id:'ess3',tier:'gold',  icon:'🖋️', name:'Deneme Okuru',      desc:'10 deneme kitabı oku.', check:b=>genre(b,'deneme',10)},
-    {id:'ess4',tier:'diamond',icon:'📰', name:'Edebi Gezgin',     desc:'20 deneme kitabı oku.', check:b=>genre(b,'deneme',20)},
-    // Mitoloji Zinciri
-    {id:'myt1',tier:'bronze',icon:'⚡', name:'Efsane Takipçisi',    desc:'2 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',2)},
-    {id:'myt2',tier:'silver',icon:'🏛️', name:'Tanrı Kâşifi',        desc:'5 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',5)},
-    {id:'myt3',tier:'gold',  icon:'🐍', name:'Mit Koleksiyoncusu',   desc:'10 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',10)},
-    {id:'myt4',tier:'diamond',icon:'🔱', name:'Olympos Bilgesi',     desc:'20 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',20)},
-    // Popüler Bilim Zinciri
-    {id:'sci1',tier:'bronze',icon:'🔭', name:'Meraklı Zihin',  desc:'2 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',2)},
-    {id:'sci2',tier:'silver',icon:'⚗️', name:'Bilim Dostu',    desc:'5 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',5)},
-    {id:'sci3',tier:'gold',  icon:'🌍', name:'Evren Kâşifi',   desc:'10 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',10)},
-    {id:'sci4',tier:'diamond',icon:'🧬', name:'Bilim İnsanı', desc:'20 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',20)},
-  ]},
+  {label:'🎭 Tür Keşfi', chains:[
+    {id:'kc_genre',  label:'🔍 Tür Keşfi',    badges:[
+      {id:'genre1',tier:'bronze', icon:'🔍', name:'Meraklı Gezgin',  desc:'1 yeni türden kitap oku.',  check:b=>cap(uniqueGenres(b),1)},
+      {id:'genre2',tier:'silver', icon:'🗺️', name:'Tür Kâşifi',      desc:'3 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),3)},
+      {id:'genre3',tier:'gold',   icon:'🌟', name:'Ufuk Açıcı',       desc:'5 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),5)},
+      {id:'genre4',tier:'diamond',icon:'🌈', name:'Sınırsız Okuyucu',desc:'10 farklı tür keşfet.',    check:b=>cap(uniqueGenres(b),10)},
+    ]},
+    {id:'kc_fan',    label:'🧙 Fantastik',     badges:[
+      {id:'fan1',tier:'bronze', icon:'🧙', name:'Büyü Çırağı',      desc:'2 fantastik kitap oku.',  check:b=>genre(b,'fantastik',2)},
+      {id:'fan2',tier:'silver', icon:'🐉', name:'Ejderha Dostu',    desc:'5 fantastik kitap oku.',  check:b=>genre(b,'fantastik',5)},
+      {id:'fan3',tier:'gold',   icon:'🗡️', name:'Fantastik Kâşif',  desc:'10 fantastik kitap oku.', check:b=>genre(b,'fantastik',10)},
+      {id:'fan4',tier:'diamond',icon:'👁️', name:'Fantastik Ustası', desc:'20 fantastik kitap oku.', check:b=>genre(b,'fantastik',20)},
+    ]},
+    {id:'kc_sf',     label:'🚀 Bilim Kurgu',   badges:[
+      {id:'sf1',tier:'bronze', icon:'🚀', name:'Uzay Yolcusu',       desc:'2 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',2)},
+      {id:'sf2',tier:'silver', icon:'🛸', name:'Galaksi Kâşifi',     desc:'5 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',5)},
+      {id:'sf3',tier:'gold',   icon:'🌌', name:'Bilimkurgu Kaptanı', desc:'10 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',10)},
+      {id:'sf4',tier:'diamond',icon:'⭐', name:'Evrenin Efendisi',   desc:'20 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',20)},
+    ]},
+    {id:'kc_det',    label:'🔎 Polisiye',       badges:[
+      {id:'det1',tier:'bronze', icon:'🔎', name:'Çaylak Dedektif', desc:'2 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',2)},
+      {id:'det2',tier:'silver', icon:'🕵️', name:'İpucu Avcısı',   desc:'5 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',5)},
+      {id:'det3',tier:'gold',   icon:'⚖️', name:'Sır Çözücü',      desc:'10 polisiye kitabı oku.', check:b=>genre(b,'polisiye',10)},
+      {id:'det4',tier:'diamond',icon:'🎩', name:'Baş Dedektif',    desc:'20 polisiye kitabı oku.', check:b=>genre(b,'polisiye',20)},
+    ]},
+    {id:'kc_hor',    label:'👻 Korku',          badges:[
+      {id:'hor1',tier:'bronze', icon:'👻', name:'Cesur Okuyucu',  desc:'2 korku kitabı oku.',  check:b=>genre(b,'korku',2)},
+      {id:'hor2',tier:'silver', icon:'🦇', name:'Karanlık Kâşif', desc:'5 korku kitabı oku.',  check:b=>genre(b,'korku',5)},
+      {id:'hor3',tier:'gold',   icon:'💀', name:'Korku Ustası',   desc:'10 korku kitabı oku.', check:b=>genre(b,'korku',10)},
+      {id:'hor4',tier:'diamond',icon:'🕷️', name:'Gece Bekçisi',   desc:'20 korku kitabı oku.', check:b=>genre(b,'korku',20)},
+    ]},
+    {id:'kc_his',    label:'🏺 Tarih',          badges:[
+      {id:'his1',tier:'bronze', icon:'🏺', name:'Zaman Yolcusu',   desc:'2 tarih kitabı oku.',  check:b=>genre(b,'tarih',2)},
+      {id:'his2',tier:'silver', icon:'🏰', name:'Tarih Meraklısı', desc:'5 tarih kitabı oku.',  check:b=>genre(b,'tarih',5)},
+      {id:'his3',tier:'gold',   icon:'📜', name:'Geçmişin Tanığı', desc:'10 tarih kitabı oku.', check:b=>genre(b,'tarih',10)},
+      {id:'his4',tier:'diamond',icon:'🗿', name:'Tarih Bilgesi',   desc:'20 tarih kitabı oku.', check:b=>genre(b,'tarih',20)},
+    ]},
+    {id:'kc_phi',    label:'❓ Felsefe',         badges:[
+      {id:'phi1',tier:'bronze', icon:'❓', name:'Soru İşareti',    desc:'2 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',2)},
+      {id:'phi2',tier:'silver', icon:'🤔', name:'Düşünür',         desc:'5 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',5)},
+      {id:'phi3',tier:'gold',   icon:'🦉', name:'Felsefe Yolcusu', desc:'10 felsefe kitabı oku.', check:b=>genre(b,'felsefe',10)},
+      {id:'phi4',tier:'diamond',icon:'⚡', name:'Bilge',            desc:'20 felsefe kitabı oku.', check:b=>genre(b,'felsefe',20)},
+    ]},
+    {id:'kc_psy',    label:'🧠 Psikoloji',       badges:[
+      {id:'psy1',tier:'bronze', icon:'🧠', name:'Zihin Meraklısı',      desc:'2 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',2)},
+      {id:'psy2',tier:'silver', icon:'💭', name:'İç Dünya Kâşifi',      desc:'5 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',5)},
+      {id:'psy3',tier:'gold',   icon:'🔬', name:'Bilinç Araştırmacısı', desc:'10 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',10)},
+      {id:'psy4',tier:'diamond',icon:'🌀', name:'Zihin Ustası',          desc:'20 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',20)},
+    ]},
+    {id:'kc_ess',    label:'✒️ Deneme',          badges:[
+      {id:'ess1',tier:'bronze', icon:'✒️', name:'Kalem Dostu',     desc:'2 deneme kitabı oku.',  check:b=>genre(b,'deneme',2)},
+      {id:'ess2',tier:'silver', icon:'📝', name:'Fikir Toplayıcı', desc:'5 deneme kitabı oku.',  check:b=>genre(b,'deneme',5)},
+      {id:'ess3',tier:'gold',   icon:'🖋️', name:'Deneme Okuru',    desc:'10 deneme kitabı oku.', check:b=>genre(b,'deneme',10)},
+      {id:'ess4',tier:'diamond',icon:'📰', name:'Edebi Gezgin',    desc:'20 deneme kitabı oku.', check:b=>genre(b,'deneme',20)},
+    ]},
+    {id:'kc_myt',    label:'⚡ Mitoloji',         badges:[
+      {id:'myt1',tier:'bronze', icon:'⚡', name:'Efsane Takipçisi',   desc:'2 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',2)},
+      {id:'myt2',tier:'silver', icon:'🏛️', name:'Tanrı Kâşifi',       desc:'5 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',5)},
+      {id:'myt3',tier:'gold',   icon:'🐍', name:'Mit Koleksiyoncusu',  desc:'10 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',10)},
+      {id:'myt4',tier:'diamond',icon:'🔱', name:'Olympos Bilgesi',     desc:'20 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',20)},
+    ]},
+    {id:'kc_sci',    label:'🔭 Popüler Bilim',   badges:[
+      {id:'sci1',tier:'bronze', icon:'🔭', name:'Meraklı Zihin', desc:'2 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',2)},
+      {id:'sci2',tier:'silver', icon:'⚗️', name:'Bilim Dostu',   desc:'5 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',5)},
+      {id:'sci3',tier:'gold',   icon:'🌍', name:'Evren Kâşifi',  desc:'10 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',10)},
+      {id:'sci4',tier:'diamond',icon:'🧬', name:'Bilim İnsanı',  desc:'20 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',20)},
+    ]},
+  ], badges:[]},
   // ── 3. COĞRAFYA ───────────────────────────────────────────────
-  {label:'🌍 Coğrafya', badges:[
-    // Dünya Gezgini Zinciri
-    {id:'geo1',tier:'bronze',icon:'🗺️', name:'Pasaport Sahibi',  desc:'3 farklı ülkeden kitap oku.',              check:b=>cap(uniqueCountries(b),3)},
-    {id:'geo2',tier:'bronze',icon:'✈️', name:'Dünya Okuru',       desc:'5 farklı ülkeden kitap oku.',              check:b=>cap(uniqueCountries(b),5)},
-    {id:'geo3',tier:'silver',icon:'🌐', name:'Kıta Gezgini',      desc:'10 farklı ülkeden kitap oku.',             check:b=>cap(uniqueCountries(b),10)},
-    {id:'geo4',tier:'gold',  icon:'🏆', name:'Küresel Kütüphane', desc:'20 farklı ülkeden kitap oku.',             check:b=>cap(uniqueCountries(b),20)},
-    {id:'geo5',tier:'diamond',icon:'🌟', name:'Dünyayı Dolaşan', desc:'6 kıtanın tümünden kitap oku.',            check:b=>cap(allContinents(b),1)},
-    // Bölge Rozetleri
-    {id:'reg_med',tier:'gold',icon:'🌊', name:'Akdeniz Kâşifi',       desc:'Akdeniz ülkelerinden (TR, GR, IT, ES, FR...) en az 3 farklı ülkeden kitap oku.', check:b=>cap(booksInRegion(b,REGIONS.mediterranean),3)},
-    {id:'reg_nor',tier:'gold',icon:'🧊', name:'Kuzey Rüzgarı',         desc:'Kuzey Avrupa ülkelerinden (NO, SE, DK, FI, IS) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.nordic.has(iso))).size,3)},
-    {id:'reg_lat',tier:'gold',icon:'🌿', name:'Latin Amerika Sesi',    desc:'Latin Amerika ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.latin.has(iso))).size,3)},
-    {id:'reg_eas',tier:'gold',icon:'🌸', name:"Doğu'nun Sesi",         desc:'Doğu Asya ülkelerinden (JP, CN, KR...) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.eastasia.has(iso))).size,3)},
-    {id:'reg_sas',tier:'gold',icon:'🐘', name:'Güney Asya Kâşifi',     desc:'Güney Asya ülkelerinden (IN, PK, BD...) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.southasia.has(iso))).size,3)},
-    {id:'reg_afr',tier:'gold',icon:'🌍', name:"Afrika'nın Sesi",        desc:'Afrika ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.africa.has(iso))).size,3)},
-    {id:'reg_mid',tier:'gold',icon:'🕌', name:'Orta Doğu Kâşifi',      desc:'Orta Doğu ülkelerinden (IR, IQ, SA...) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.middleeast.has(iso))).size,3)},
-  ]},
+  {label:'🌍 Coğrafya', chains:[
+    {id:'dunya_gezgini', label:'🗺️ Dünya Gezgini', badges:[
+      {id:'geo1',tier:'bronze', icon:'🗺️', name:'Pasaport Sahibi',  desc:'3 farklı ülkeden kitap oku.',   check:b=>cap(uniqueCountries(b),3)},
+      {id:'geo2',tier:'bronze', icon:'✈️', name:'Dünya Okuru',       desc:'5 farklı ülkeden kitap oku.',   check:b=>cap(uniqueCountries(b),5)},
+      {id:'geo3',tier:'silver', icon:'🌐', name:'Kıta Gezgini',      desc:'10 farklı ülkeden kitap oku.',  check:b=>cap(uniqueCountries(b),10)},
+      {id:'geo4',tier:'gold',   icon:'🏆', name:'Küresel Kütüphane', desc:'20 farklı ülkeden kitap oku.',  check:b=>cap(uniqueCountries(b),20)},
+      {id:'geo5',tier:'diamond',icon:'🌟', name:'Dünyayı Dolaşan',   desc:'6 kıtanın tümünden kitap oku.', check:b=>cap(allContinents(b),1)},
+    ]},
+    {id:'bolge_rozetleri', label:'📍 Bölge Rozetleri', badges:[
+      {id:'reg_med',tier:'gold',icon:'🌊', name:'Akdeniz Kâşifi',    desc:'Akdeniz ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.mediterranean.has(iso))).size,3)},
+      {id:'reg_nor',tier:'gold',icon:'🧊', name:'Kuzey Rüzgarı',     desc:'Kuzey Avrupa ülkelerinden (NO, SE, DK, FI, IS) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.nordic.has(iso))).size,3)},
+      {id:'reg_lat',tier:'gold',icon:'🌿', name:'Latin Amerika Sesi', desc:'Latin Amerika ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.latin.has(iso))).size,3)},
+      {id:'reg_eas',tier:'gold',icon:'🌸', name:"Doğu'nun Sesi",     desc:'Doğu Asya ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.eastasia.has(iso))).size,3)},
+      {id:'reg_sas',tier:'gold',icon:'🐘', name:'Güney Asya Kâşifi', desc:'Güney Asya ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.southasia.has(iso))).size,3)},
+      {id:'reg_afr',tier:'gold',icon:'🌍', name:"Afrika'nın Sesi",   desc:'Afrika ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.africa.has(iso))).size,3)},
+      {id:'reg_mid',tier:'gold',icon:'🕌', name:'Orta Doğu Kâşifi',  desc:'Orta Doğu ülkelerinden en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.middleeast.has(iso))).size,3)},
+    ]},
+  ], badges:[]},
   // ── 4. OKUMA ALIŞKANLIĞI ──────────────────────────────────────
-  {label:'🌙 Okuma Alışkanlığı', badges:[
-    // Gece Okuru Zinciri
-    {id:'night1',tier:'bronze',icon:'🌙', name:'Gece Kuşu',              desc:'3 kitabı "çoğunlukla gece okudum" olarak işaretle.',  check:b=>cap(b.filter(x=>x.nightReading).length,3)},
-    {id:'night2',tier:'silver',icon:'🦉', name:'Gece Bekçisi',           desc:'7 kitabı "çoğunlukla gece okudum" olarak işaretle.',  check:b=>cap(b.filter(x=>x.nightReading).length,7)},
-    {id:'night3',tier:'gold',  icon:'⭐', name:"Karanlığın Okuyucusu",   desc:'15 kitabı "çoğunlukla gece okudum" olarak işaretle.', check:b=>cap(b.filter(x=>x.nightReading).length,15)},
-    // Zorluk Rozetleri
-    {id:'hard1',tier:'bronze',icon:'🧩', name:'Cesur Okuyucu',    desc:'1 zorlu kitabı bitir ("Zorlandım" olarak işaretle).',  check:b=>cap(b.filter(x=>x.challenging).length,1)},
-    {id:'hard2',tier:'silver',icon:'⚔️', name:'Zorlukla Dans Eden',desc:'3 zorlu kitabı bitir.',                               check:b=>cap(b.filter(x=>x.challenging).length,3)},
-    {id:'hard3',tier:'gold',  icon:'🏋️', name:'Demir İrade',       desc:'5 zorlu kitabı bitir.',                               check:b=>cap(b.filter(x=>x.challenging).length,5)},
-    // Streak Zinciri
-    {id:'streak3', tier:'bronze',icon:'📅', name:'Düzenli Okuyucu',  desc:'3 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),3)},
-    {id:'streak6', tier:'silver',icon:'🗓️', name:'Okuma Alışkanlığı',desc:'6 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),6)},
-    {id:'streak12',tier:'gold',  icon:'🏅', name:'Yılın Okuyucusu',  desc:'12 ay üst üste en az 1 kitap bitir.', check:b=>cap(streakMonths(b),12)},
-    // Yeniden Okuma Zinciri
-    {id:'reread1',tier:'bronze',icon:'🔄', name:'Nostaljik',            desc:'1 kitabı yeniden oku ("Yeniden okuma" olarak işaretle).', check:b=>cap(b.filter(x=>x.reread).length,1)},
-    {id:'reread2',tier:'silver',icon:'💫', name:'Favori Avcısı',        desc:'3 kitabı yeniden oku.',                                  check:b=>cap(b.filter(x=>x.reread).length,3)},
-    {id:'reread3',tier:'gold',  icon:'♾️', name:'Zamansız Okuyucu',     desc:'5 kitabı yeniden oku.',                                  check:b=>cap(b.filter(x=>x.reread).length,5)},
-    // Klasik Edebiyat Zinciri (1950 öncesi)
-    {id:'clas1',tier:'bronze',icon:'📜', name:'Geçmişe Yolculuk',      desc:'1950 öncesi yayımlanmış 2 klasik eser oku.',  check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,2)},
-    {id:'clas2',tier:'silver',icon:'🏛️', name:'Klasik Dost',           desc:'1950 öncesi yayımlanmış 5 klasik eser oku.',  check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,5)},
-    {id:'clas3',tier:'gold',  icon:'🗿', name:'Edebiyat Mirasyedisi',  desc:'1950 öncesi yayımlanmış 10 klasik eser oku.', check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,10)},
-  ]},
+  {label:'🌙 Okuma Alışkanlığı', chains:[
+    {id:'gece_okuru', label:'🌙 Gece Okuru', badges:[
+      {id:'night1',tier:'bronze',icon:'🌙', name:'Gece Kuşu',            desc:'3 kitabı "çoğunlukla gece okudum" olarak işaretle.',  check:b=>cap(b.filter(x=>x.nightReading).length,3)},
+      {id:'night2',tier:'silver',icon:'🦉', name:'Gece Bekçisi',         desc:'7 kitabı "çoğunlukla gece okudum" olarak işaretle.',  check:b=>cap(b.filter(x=>x.nightReading).length,7)},
+      {id:'night3',tier:'gold',  icon:'⭐', name:'Karanlığın Okuyucusu', desc:'15 kitabı "çoğunlukla gece okudum" olarak işaretle.', check:b=>cap(b.filter(x=>x.nightReading).length,15)},
+    ]},
+    {id:'zorluk', label:'🧩 Zorluk', badges:[
+      {id:'hard1',tier:'bronze',icon:'🧩', name:'Cesur Okuyucu',     desc:'1 zorlu kitabı bitir ("Zorlandım" olarak işaretle).', check:b=>cap(b.filter(x=>x.challenging).length,1)},
+      {id:'hard2',tier:'silver',icon:'⚔️', name:'Zorlukla Dans Eden', desc:'3 zorlu kitabı bitir.',                              check:b=>cap(b.filter(x=>x.challenging).length,3)},
+      {id:'hard3',tier:'gold',  icon:'🏋️', name:'Demir İrade',        desc:'5 zorlu kitabı bitir.',                              check:b=>cap(b.filter(x=>x.challenging).length,5)},
+    ]},
+    {id:'streak', label:'📅 Okuma Serisi', badges:[
+      {id:'streak3', tier:'bronze',icon:'📅', name:'Düzenli Okuyucu',   desc:'3 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),3)},
+      {id:'streak6', tier:'silver',icon:'🗓️', name:'Okuma Alışkanlığı', desc:'6 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),6)},
+      {id:'streak12',tier:'gold',  icon:'🏅', name:'Yılın Okuyucusu',   desc:'12 ay üst üste en az 1 kitap bitir.', check:b=>cap(streakMonths(b),12)},
+    ]},
+    {id:'yeniden_okuma', label:'🔄 Yeniden Okuma', badges:[
+      {id:'reread1',tier:'bronze',icon:'🔄', name:'Nostaljik',        desc:'1 kitabı yeniden oku ("Yeniden okuma" olarak işaretle).', check:b=>cap(b.filter(x=>x.reread).length,1)},
+      {id:'reread2',tier:'silver',icon:'💫', name:'Favori Avcısı',    desc:'3 kitabı yeniden oku.',                                  check:b=>cap(b.filter(x=>x.reread).length,3)},
+      {id:'reread3',tier:'gold',  icon:'♾️', name:'Zamansız Okuyucu', desc:'5 kitabı yeniden oku.',                                  check:b=>cap(b.filter(x=>x.reread).length,5)},
+    ]},
+    {id:'klasik', label:'📜 Klasik Edebiyat (1950 öncesi)', badges:[
+      {id:'clas1',tier:'bronze',icon:'📜', name:'Geçmişe Yolculuk',    desc:'1950 öncesi yayımlanmış 2 klasik eser oku.',  check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,2)},
+      {id:'clas2',tier:'silver',icon:'🏛️', name:'Klasik Dost',         desc:'1950 öncesi yayımlanmış 5 klasik eser oku.',  check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,5)},
+      {id:'clas3',tier:'gold',  icon:'🗿', name:'Edebiyat Mirasyedisi',desc:'1950 öncesi yayımlanmış 10 klasik eser oku.', check:b=>cap(b.filter(x=>x.pubYear&&x.pubYear<1950).length,10)},
+    ]},
+  ], badges:[]},
   // ── 5. SERİ & ÖZEL ────────────────────────────────────────────
-  {label:'📚 Seri & Özel', badges:[
-    // Seri Okuma Ustalığı
-    {id:'ser1',tier:'bronze',icon:'📖', name:'Seri Başlangıcı', desc:'1 seriyi baştan sona bitir.',                                check:b=>cap(completedSeriesCount(),1)},
-    {id:'ser2',tier:'silver',icon:'📚', name:'Seri Tutkunu',    desc:'3 farklı seriyi baştan sona bitir.',                         check:b=>cap(completedSeriesCount(),3)},
-    {id:'ser3',tier:'gold',  icon:'🏆', name:'Seri Ustası',     desc:'5 farklı seriyi baştan sona bitir.',                         check:b=>cap(completedSeriesCount(),5)},
-    {id:'ser4',tier:'diamond',icon:'💎', name:'Seri Takıntılısı',desc:'Bir seriden 10+ kitap oku.',                               check:b=>cap(maxSeriesBooks(),10)},
-    // Aynı Evren Zinciri
-    {id:'univ1',tier:'bronze',icon:'🔮', name:'Evren Kâşifi',       desc:'Bir grupta 2+ farklı seriden kitap oku (Seriler sekmesinden grup oluştur).', check:b=>cap(sameUniverseFromGroups(),1)},
-    {id:'univ2',tier:'silver',icon:'🌌', name:'Paralel Gezgin',     desc:'Farklı gruplarda 3 evren keşfet.',                       check:b=>cap(sameUniverseFromGroups(),3)},
-    {id:'univ3',tier:'gold',  icon:'✨', name:'Çoklu Evren Ustası', desc:'Farklı gruplarda 5 evren keşfet.',                       check:b=>cap(sameUniverseFromGroups(),5)},
-    // Bağımsız Yayınevi Zinciri
-    {id:'ind1',tier:'bronze',icon:'🌱', name:'Bağımsız Ruh',              desc:'1 bağımsız yayınevi kitabı oku ("Bağımsız yayınevi" işaretle).', check:b=>cap(b.filter(x=>x.indie).length,1)},
-    {id:'ind2',tier:'silver',icon:'🎵', name:'Alternatif Ses',            desc:'3 bağımsız yayınevi kitabı oku.',                              check:b=>cap(b.filter(x=>x.indie).length,3)},
-    {id:'ind3',tier:'gold',  icon:'🦋', name:'Bağımsız Yayın Destekçisi',desc:'10 bağımsız yayınevi kitabı oku.',                             check:b=>cap(b.filter(x=>x.indie).length,10)},
-    // Kadın Yazar Zinciri
-    {id:'fem1',tier:'bronze',icon:'👩', name:'Kadın Sesi',             desc:'1 kadın yazar kitabı oku.',  check:b=>cap(b.filter(x=>x.femaleAuthor).length,1)},
-    {id:'fem2',tier:'silver',icon:'💜', name:'Kadın Kalemleri',        desc:'5 kadın yazar kitabı oku.',  check:b=>cap(b.filter(x=>x.femaleAuthor).length,5)},
-    {id:'fem3',tier:'gold',  icon:'🌸', name:'Kadın Edebiyatı Dostu', desc:'10 kadın yazar kitabı oku.', check:b=>cap(b.filter(x=>x.femaleAuthor).length,10)},
-    // Genç Yazar Zinciri
-    {id:'yng1',tier:'bronze',icon:'🌱', name:'Genç Yeteneğe Destek',  desc:'1 genç yazar kitabı oku (yazıldığında 30 yaş altı).',  check:b=>cap(b.filter(x=>x.youngAuthor).length,1)},
-    {id:'yng2',tier:'silver',icon:'⚡', name:'Genç Kalemlerin Dostu', desc:'3 genç yazar kitabı oku.',                              check:b=>cap(b.filter(x=>x.youngAuthor).length,3)},
-    {id:'yng3',tier:'gold',  icon:'🚀', name:'Yeni Nesil Okuyucu',   desc:'5 genç yazar kitabı oku.',                              check:b=>cap(b.filter(x=>x.youngAuthor).length,5)},
-    // Sesli Kitap Zinciri
-    {id:'aud1',tier:'bronze',icon:'🎧', name:'Dinleyici',          desc:'1 sesli kitap dinle.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,1)},
-    {id:'aud2',tier:'silver',icon:'🎵', name:'Sesli Kitap Dostu', desc:'3 sesli kitap dinle.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,3)},
-    {id:'aud3',tier:'gold',  icon:'🎼', name:'Kulak Okuyucu',     desc:'10 sesli kitap dinle.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,10)},
-  ]},
+  {label:'📚 Seri & Özel', chains:[
+    {id:'seri_ustaligi', label:'📖 Seri Okuma', badges:[
+      {id:'ser1',tier:'bronze', icon:'📖', name:'Seri Başlangıcı',  desc:'1 seriyi baştan sona bitir.',        check:b=>cap(completedSeriesCount(),1)},
+      {id:'ser2',tier:'silver', icon:'📚', name:'Seri Tutkunu',     desc:'3 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(),3)},
+      {id:'ser3',tier:'gold',   icon:'🏆', name:'Seri Ustası',      desc:'5 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(),5)},
+      {id:'ser4',tier:'diamond',icon:'💎', name:'Seri Takıntılısı', desc:'Bir seriden 10+ kitap oku.',         check:b=>cap(maxSeriesBooks(),10)},
+    ]},
+    {id:'ayni_evren', label:'🔮 Aynı Evren', badges:[
+      {id:'univ1',tier:'bronze',icon:'🔮', name:'Evren Kâşifi',       desc:'Seriler sekmesinden bir grup oluştur ve 2+ farklı seriden kitap oku.', check:b=>cap(sameUniverseFromGroups(),1)},
+      {id:'univ2',tier:'silver',icon:'🌌', name:'Paralel Gezgin',     desc:'Farklı gruplarda 3 evren keşfet.',  check:b=>cap(sameUniverseFromGroups(),3)},
+      {id:'univ3',tier:'gold',  icon:'✨', name:'Çoklu Evren Ustası', desc:'Farklı gruplarda 5 evren keşfet.', check:b=>cap(sameUniverseFromGroups(),5)},
+    ]},
+    {id:'bagimsiz', label:'🌱 Bağımsız Yayınevi', badges:[
+      {id:'ind1',tier:'bronze',icon:'🌱', name:'Bağımsız Ruh',              desc:'1 bağımsız yayınevi kitabı oku ("Bağımsız yayınevi" işaretle).', check:b=>cap(b.filter(x=>x.indie).length,1)},
+      {id:'ind2',tier:'silver',icon:'🎵', name:'Alternatif Ses',            desc:'3 bağımsız yayınevi kitabı oku.', check:b=>cap(b.filter(x=>x.indie).length,3)},
+      {id:'ind3',tier:'gold',  icon:'🦋', name:'Bağımsız Yayın Destekçisi',desc:'10 bağımsız yayınevi kitabı oku.', check:b=>cap(b.filter(x=>x.indie).length,10)},
+    ]},
+    {id:'kadin_yazar', label:'👩 Kadın Yazar', badges:[
+      {id:'fem1',tier:'bronze',icon:'👩', name:'Kadın Sesi',            desc:'1 kadın yazar kitabı oku.',  check:b=>cap(b.filter(x=>x.femaleAuthor).length,1)},
+      {id:'fem2',tier:'silver',icon:'💜', name:'Kadın Kalemleri',       desc:'5 kadın yazar kitabı oku.',  check:b=>cap(b.filter(x=>x.femaleAuthor).length,5)},
+      {id:'fem3',tier:'gold',  icon:'🌸', name:'Kadın Edebiyatı Dostu',desc:'10 kadın yazar kitabı oku.', check:b=>cap(b.filter(x=>x.femaleAuthor).length,10)},
+    ]},
+    {id:'genc_yazar', label:'🌱 Genç Yazar', badges:[
+      {id:'yng1',tier:'bronze',icon:'🌱', name:'Genç Yeteneğe Destek', desc:'1 genç yazar kitabı oku (yazıldığında 30 yaş altı).', check:b=>cap(b.filter(x=>x.youngAuthor).length,1)},
+      {id:'yng2',tier:'silver',icon:'⚡', name:'Genç Kalemlerin Dostu',desc:'3 genç yazar kitabı oku.', check:b=>cap(b.filter(x=>x.youngAuthor).length,3)},
+      {id:'yng3',tier:'gold',  icon:'🚀', name:'Yeni Nesil Okuyucu',  desc:'5 genç yazar kitabı oku.', check:b=>cap(b.filter(x=>x.youngAuthor).length,5)},
+    ]},
+    {id:'sesli_kitap', label:'🎧 Sesli Kitap', badges:[
+      {id:'aud1',tier:'bronze',icon:'🎧', name:'Dinleyici',         desc:'1 sesli kitap dinle.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,1)},
+      {id:'aud2',tier:'silver',icon:'🎵', name:'Sesli Kitap Dostu',desc:'3 sesli kitap dinle.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,3)},
+      {id:'aud3',tier:'gold',  icon:'🎼', name:'Kulak Okuyucu',    desc:'10 sesli kitap dinle.', check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,10)},
+    ]},
+  ], badges:[]},
   // ── 6. SOSYAL ETKİLEŞİM ───────────────────────────────────────
-  {label:'👥 Sosyal Etkileşim', badges:[
-    {id:'soc1',tier:'bronze',icon:'✏️', name:'Kalem Dostu',       desc:'3 alıntı veya değerlendirme paylaş (Defterim sekmesinden).',  check:b=>cap(countReviews(b),3)},
-    {id:'soc2',tier:'silver',icon:'💬', name:'Aktif Paylaşımcı',  desc:'10 alıntı veya değerlendirme paylaş.',                       check:b=>cap(countReviews(b),10)},
-    {id:'soc3',tier:'gold',  icon:'🌟', name:'Kulüp Ruhu',        desc:'30 alıntı veya değerlendirme paylaş.',                       check:b=>cap(countReviews(b),30)},
-  ]},
+  {label:'👥 Sosyal Etkileşim', chains:[
+    {id:'paylasim', label:'💬 Paylaşım', badges:[
+      {id:'soc1',tier:'bronze',icon:'✏️', name:'Kalem Dostu',      desc:'3 alıntı veya değerlendirme paylaş (Defterim sekmesinden).', check:b=>cap(countReviews(b),3)},
+      {id:'soc2',tier:'silver',icon:'💬', name:'Aktif Paylaşımcı', desc:'10 alıntı veya değerlendirme paylaş.',                      check:b=>cap(countReviews(b),10)},
+      {id:'soc3',tier:'gold',  icon:'🌟', name:'Kulüp Ruhu',       desc:'30 alıntı veya değerlendirme paylaş.',                      check:b=>cap(countReviews(b),30)},
+    ]},
+  ], badges:[]},
   // ── 7. KADİM METİNLER ─────────────────────────────────────────
-  {label:'📿 Kadim Metinler', badges:[
-    {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',         desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerimi oku ("kutsal" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
-    {id:'kadim1',tier:'bronze',icon:'🌿', name:'Kadim Yolcu',               desc:'Dünya dinlerine ait 2 kutsal metin oku ("kutsal meta" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,2)},
-    {id:'kadim2',tier:'silver',icon:'🌸', name:'Bilgelik Arayıcısı',        desc:'Dünya dinlerine ait 4 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,4)},
-    {id:'kadim3',tier:'gold',  icon:'🌟', name:'Kadim Metinler Kâşifi',     desc:'Dünya dinlerine ait 7 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,7)},
-  ]},
+  {label:'📿 Kadim Metinler', chains:[
+    {id:'semavi_kitaplar', label:'✨ Semavi Kitaplar', badges:[
+      {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',     desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerimi oku ("kutsal" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
+    ]},
+    {id:'dunya_dinleri', label:'🌿 Dünya Dinleri Metinleri', badges:[
+      {id:'kadim1',tier:'bronze',icon:'🌿', name:'Kadim Yolcu',           desc:'Dünya dinlerine ait 2 kutsal metin oku ("kutsal meta" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,2)},
+      {id:'kadim2',tier:'silver',icon:'🌸', name:'Bilgelik Arayıcısı',    desc:'Dünya dinlerine ait 4 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,4)},
+      {id:'kadim3',tier:'gold',  icon:'🌟', name:'Kadim Metinler Kâşifi', desc:'Dünya dinlerine ait 7 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,7)},
+    ]},
+  ], badges:[]},
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
-  {label:'🔮 Gizli Rozetler', badges:[
-    {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',     desc:'???', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
-    {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',        desc:'???', check:b=>cap(maxMonth(b),3)},
-    {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',            desc:'???', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
-    {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',       desc:'???', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
-    {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu',   desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
-    {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',      desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
-  ]},
+  {label:'🔮 Gizli Rozetler', chains:[
+    {id:'gizli', label:'🔮 Gizli', badges:[
+      {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'???', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
+      {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'???', check:b=>cap(maxMonth(b),3)},
+      {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'???', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
+      {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'???', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
+      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
+      {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
+    ]},
+  ], badges:[]},
 ]
 
 
@@ -1427,11 +1483,11 @@ const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','u
 
 function bstat(badge,books){
   const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
-    ? books  // seri rozetleri: tüm kitaplar
-    : books.filter(b=>!b.retroactive);  // diğerleri: sadece yeni okunanlar
+    ? books
+    : books.filter(b=>!b.retroactive);
   const{cur,max}=badge.check(filteredBooks);
   const pct=max>0?Math.round(cur/max*100):0;
-  return{cur,max,pct,earned:pct>=100};
+  return{cur,max,pct,earned:cur>=max};
 }
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
@@ -2673,12 +2729,15 @@ async function addBook(){
   const newBooks=validBooks();
   const newlyEarned=[];
   const newlyEarnedBadges=[];
-  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
-    if(!bstat(b,prevBooksValid).earned&&bstat(b,newBooks).earned){
-      newlyEarned.push(b.id);
-      newlyEarnedBadges.push(b);
-    }
-  }));
+  BADGE_CATS.forEach(cat=>{
+    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
+    allB.forEach(b=>{
+      if(!bstat(b,prevBooksValid).earned&&bstat(b,newBooks).earned){
+        newlyEarned.push(b.id);
+        newlyEarnedBadges.push(b);
+      }
+    });
+  });
 
   // Yeni ülke tespiti — kitap eklenirken ülke zaten gelmişse kontrol et
   checkAndAddCountryEvent(book);
@@ -3173,13 +3232,17 @@ function finishReading(bookId){
   const prev=myBooks().map(b=>({...b}));
   const newlyEarned=[];
   const newlyEarnedBadges=[];
-  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
-    if(!bstat(b,prev.filter(x=>x.readingStatus!=='wishlist'&&x.readingStatus!=='reading')).earned
-      &&bstat(b,validBooks()).earned){
-      newlyEarned.push(b.id);
-      newlyEarnedBadges.push(b);
-    }
-  }));
+  const _prevValid=prev.filter(x=>x.readingStatus!=='wishlist'&&x.readingStatus!=='reading'&&!x.title?.startsWith('ISBN:'));
+  const _newValid=validBooks();
+  BADGE_CATS.forEach(cat=>{
+    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
+    allB.forEach(b=>{
+      if(!bstat(b,_prevValid).earned&&bstat(b,_newValid).earned){
+        newlyEarned.push(b.id);
+        newlyEarnedBadges.push(b);
+      }
+    });
+  });
   // Seri tamamlanma kontrolü
   if(book.series){
     const data=mySeriesData();
@@ -5644,28 +5707,76 @@ function renderBadges(){
   let prefs={};
   try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
 
+  // Tüm rozetleri düz listede topla
+  function allBadgesOf(cat){
+    if(cat.chains) return cat.chains.flatMap(c=>c.badges);
+    return cat.badges||[];
+  }
+
   // Toplam rozet sayısı
   let totalEarned=0,totalAll=0;
-  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{totalAll++;if(bstat(b,books).earned)totalEarned++;}));
+  BADGE_CATS.forEach(cat=>{allBadgesOf(cat).forEach(b=>{totalAll++;if(bstat(b,books).earned)totalEarned++;});});
   const totalEl=document.getElementById('badgeTotalInfo');
   if(totalEl) totalEl.textContent=`${totalEarned} / ${totalAll} rozet kazanıldı`;
 
   const tierLabels={bronze:'🥉 Bronz',silver:'🥈 Gümüş',gold:'🥇 Altın',diamond:'💎 Elmas'};
+  const tierOrder={bronze:0,silver:1,gold:2,diamond:3};
+
+  function badgeRowHtml(b){
+    const s=bstat(b,books);
+    const tier=b.tier||'gold';
+    const isSecret=b.id.startsWith('secret_');
+    const isNew=pendingShimmerBadges.has(b.id);
+    const cls=(s.earned?'earned':'')+(s.cur===0&&!s.earned?' locked':'');
+    return`<div class="chain-badge-row ${cls} tier-${tier} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
+      ${isNew?'<span class="badge-new-dot" style="position:static;display:inline-block;margin-right:.3rem"></span>':''}
+      <span class="chain-tier-label ${tier}">${tierLabels[tier]}</span>
+      <span class="chain-badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
+      <div class="chain-badge-info">
+        <div class="chain-badge-name">${isSecret&&!s.earned?'???':b.name}</div>
+        <div class="chain-badge-desc">${isSecret&&!s.earned?'Gizli rozet — keşfet!':b.desc}</div>
+        <div class="progress-wrap" style="margin-top:.3rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+        <div class="progress-text">${s.cur} / ${s.max}</div>
+      </div>
+      ${s.earned?'<span class="chain-earned-check">✓</span>':''}
+    </div>`;
+  }
 
   document.getElementById('badgeContainer').innerHTML=BADGE_CATS.map((cat,ci)=>{
-    const filtered=cat.badges.filter(b=>{
-      const s=bstat(b,books);
-      if(badgeFilter==='earned')return s.earned;
-      if(badgeFilter==='progress')return !s.earned&&s.cur>0;
-      if(badgeFilter==='locked')return s.cur===0&&!s.earned;
-      return true;
-    });
-    if(!filtered.length)return'';
+    const allBadges=allBadgesOf(cat);
+    const catEarned=allBadges.filter(b=>bstat(b,books).earned).length;
+    const catTotal=allBadges.length;
+    const hasNew=allBadges.some(b=>pendingShimmerBadges.has(b.id));
     const key='badgeCat-'+ci;
-    const isOpen=prefs[key]!==undefined?prefs[key]:true;
-    const catEarned=cat.badges.filter(b=>bstat(b,books).earned).length;
-    const catTotal=cat.badges.length;
-    const hasNew=cat.badges.some(b=>pendingShimmerBadges.has(b.id));
+    const isOpen=prefs[key]!==undefined?prefs[key]:false;
+
+    // Filtre uygula
+    const chains=(cat.chains||[]).map(chain=>{
+      const filtered=chain.badges.filter(b=>{
+        const s=bstat(b,books);
+        if(badgeFilter==='earned') return s.earned;
+        if(badgeFilter==='progress') return !s.earned&&s.cur>0;
+        if(badgeFilter==='locked') return s.cur===0&&!s.earned;
+        return true;
+      });
+      return {...chain, badges:filtered};
+    }).filter(c=>c.badges.length>0);
+
+    if(!chains.length) return'';
+
+    const chainsHtml=chains.map(chain=>{
+      const chainEarned=chain.badges.filter(b=>bstat(b,books).earned).length;
+      const chainTotal=chain.badges.length;
+      const chainComplete=chainEarned===chainTotal;
+      return`<div class="badge-chain" style="margin-bottom:1rem">
+        <div class="badge-chain-header">
+          <span class="badge-chain-label">${chain.label}</span>
+          <span class="badge-chain-count" style="color:${chainComplete?'var(--gold)':'var(--rust)'}">${chainEarned}/${chainTotal}${chainComplete?' ✦':''}</span>
+        </div>
+        <div class="badge-chain-rows">${chain.badges.map(b=>badgeRowHtml(b)).join('')}</div>
+      </div>`;
+    }).join('');
+
     return`<div class="badge-category">
       <div class="category-label acc-header" onclick="toggleSection('${key}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
         <span>${cat.label}${hasNew?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
@@ -5675,37 +5786,7 @@ function renderBadges(){
         </span>
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${key}">
-        <div class="badge-grid">${filtered.map(b=>{
-          const s=bstat(b,books);
-          const tier=b.tier||'gold';
-          const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier;
-          const isOpen2=openBadgeId===b.id;
-          const relBooks=booksForBadge(b,books);
-          const isSecret=b.id.startsWith('secret_');
-          const bookListHtml=relBooks.length===0
-            ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
-            :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
-                +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
-                +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
-                +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
-              +'</div>').join('');
-          const isNew=pendingShimmerBadges.has(b.id);
-          return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
-            ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
-            ${isNew?'<span class="badge-new-dot"></span>':''}
-            ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
-            <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-            <span class="badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
-            <div class="badge-name">${isSecret&&!s.earned?'???':b.name}</div>
-            <div class="badge-desc">${isSecret&&!s.earned?'Bu gizli bir rozet. Nasıl kazanılacağını keşfet!':b.desc}</div>
-            <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
-            <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
-            ${isOpen2&&!isSecret?`<div class="badge-book-list" onclick="event.stopPropagation()">
-              <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
-              ${bookListHtml}
-            </div>`:(isOpen2?'':`<div class="badge-card-hint">&#128070; detay</div>`)}
-          </div>`;
-        }).join('')}</div>
+        <div style="padding:.5rem">${chainsHtml}</div>
       </div>
     </div>`;
   }).join('');
@@ -5713,7 +5794,7 @@ function renderBadges(){
 
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
-  openBadgeId=(openBadgeId===badgeId)?null:badgeId;
+  // Chain rozet satırlarında detay yok - sadece pendingShimmer temizle
   renderBadges();
 }
 
