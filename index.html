@@ -4583,8 +4583,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   // ISO numeric → ISO2 eşleştirmesi (topojson numeric id kullanıyor)
   const NUM_TO_ISO2={4:'AF',8:'AL',12:'DZ',24:'AO',32:'AR',36:'AU',40:'AT',50:'BD',56:'BE',64:'BT',68:'BO',76:'BR',100:'BG',116:'KH',120:'CM',124:'CA',152:'CL',156:'CN',170:'CO',180:'CD',188:'CR',192:'CU',196:'CY',203:'CZ',208:'DK',218:'EC',818:'EG',231:'ET',246:'FI',250:'FR',276:'DE',288:'GH',300:'GR',320:'GT',324:'GN',340:'HN',348:'HU',356:'IN',360:'ID',364:'IR',368:'IQ',372:'IE',376:'IL',380:'IT',392:'JP',400:'JO',398:'KZ',404:'KE',408:'KP',410:'KR',414:'KW',418:'LA',422:'LB',430:'LR',434:'LY',440:'LT',442:'LU',450:'MG',454:'MW',458:'MY',466:'ML',484:'MX',504:'MA',508:'MZ',516:'NA',524:'NP',528:'NL',558:'NI',562:'NE',566:'NG',578:'NO',586:'PK',591:'PA',598:'PG',600:'PY',604:'PE',608:'PH',616:'PL',620:'PT',630:'PR',634:'QA',642:'RO',643:'RU',646:'RW',682:'SA',686:'SN',694:'SL',706:'SO',710:'ZA',724:'ES',740:'SR',752:'SE',756:'CH',760:'SY',762:'TJ',764:'TH',768:'TG',788:'TN',792:'TR',800:'UG',804:'UA',784:'AE',826:'GB',840:'US',858:'UY',860:'UZ',862:'VE',704:'VN',887:'YE',894:'ZM',716:'ZW',32:'AR',76:'BR',124:'CA',144:'LK',191:'HR',208:'DK',214:'DO',222:'SV',232:'ER',233:'EE',246:'FI',288:'GH',328:'GY',332:'HT',388:'JM',426:'LS',428:'LV',496:'MN',498:'MD',499:'ME',512:'OM',531:'CW',535:'BQ',585:'PW',624:'GW',630:'PR',659:'KN',670:'VC',780:'TT',882:'WS',887:'YE',895:'XK'};
 
-  const avatarUser=db.users[me]?.avatar||'📚';
-  let avatarX=null,avatarY=null;
+  const avatarUser=db.users[target]?.avatar||'📚';
 
   const paths=countries.features.map(f=>{
     const numId=parseInt(f.id);
@@ -4596,16 +4595,6 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     if(count){
       fill=getCountryColor(iso2,count);
       stroke='rgba(201,162,39,0.7)';
-    }
-
-    // Avatar pozisyonu
-    if(iso2&&iso2===avatarISO&&f.geometry){
-      try{
-        const coords=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
-        let sx=0,sy=0,n=0;
-        coords.forEach(pt=>{const[x,y]=project(pt[0],pt[1]);sx+=x;sy+=y;n++;});
-        avatarX=sx/n;avatarY=sy/n;
-      }catch(e){}
     }
 
     const d=geomToPath(f.geometry);
@@ -4621,24 +4610,9 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
-  // Avatar HTML — mapAvatar seçilmişse onu kullan, yoksa profil fotosu/emojisi
+  // Avatar ayarları
   const mapAvatarFile=(db.users[target]&&db.users[target].mapAvatar)||null;
   const mapAvatarUrl=mapAvatarFile?`https://hggunay.github.io/project_ashbless/avatars/${mapAvatarFile}`:null;
-  let avatarHtmlStr='';
-  if(avatarX&&avatarY){
-    if(mapAvatarUrl){
-      avatarHtmlStr=`<image href="${mapAvatarUrl}" x="${avatarX-20}" y="${avatarY-20}" width="40" height="40" style="object-fit:contain"/>`;
-    } else {
-      const isPhoto=avatarUser.startsWith('data:');
-      if(isPhoto){
-        avatarHtmlStr=`<image href="${avatarUser}" x="${avatarX-14}" y="${avatarY-14}" width="28" height="28" style="border-radius:50%;clip-path:circle(14px at 14px 14px)"/>`;
-      } else {
-        avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
-          <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
-      }
-    }
-    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="${mapAvatarUrl?22:12}" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring"/>`;
-  }
 
   // Ülke koordinat haritası — animasyon için
   const countryCoords={};
@@ -4676,7 +4650,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       <rect width="${W}" height="${H}" fill="#1a0f00"/>
       ${paths}
       <g id="map-trail-layer"></g>
-      <g id="map-avatar-layer">${avatarHtmlStr}</g>
+      <g id="map-avatar-layer"></g>
     </svg>`;
 
   // Animasyon butonlarını ekle
@@ -4704,6 +4678,9 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   });
   if(newEvents.length>0){
     setTimeout(()=>playMapAnimation('new',newEvents),800);
+  } else {
+    // Yeni event yok — avatarı son konumda sabit göster
+    setTimeout(()=>_placeAvatarStatic(),300);
   }
   try{localStorage.setItem('aa-map-visit-'+target,String(Date.now()));}catch(e){}
 }
@@ -4711,13 +4688,52 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
 // ── HARİTA ANİMASYONU ────────────────────────────────────────
 let _mapAnimRunning=false;
 
+function _placeAvatarStatic(){
+  // Animasyon olmadan avatarı son konuma koy
+  const svg=document.getElementById('world-svg');
+  if(!svg) return;
+  const coords=window._mapCountryCoords||{};
+  const target=window._mapTarget||me;
+  const allEvents=(db.countryEvents&&db.countryEvents[target])||[];
+  let lastISO='TR';
+  if(allEvents.length>0){
+    const last=allEvents[allEvents.length-1];
+    const iso=countryToISO(last.country);
+    if(iso&&coords[iso]) lastISO=iso;
+  }
+  const pos=coords[lastISO]||coords['TR'];
+  if(!pos) return;
+  const avatarLayer=document.getElementById('map-avatar-layer');
+  if(!avatarLayer) return;
+  _drawStaticAvatar(avatarLayer, pos[0], pos[1]);
+}
+
+function _drawStaticAvatar(layer, x, y){
+  const mapAvatarUrl=window._mapAvatarUrl;
+  const avatarUser=window._mapAvatarUser||'📚';
+  const isPhoto=!mapAvatarUrl&&avatarUser.startsWith('data:');
+  let html='';
+  if(mapAvatarUrl){
+    html=`<image href="${mapAvatarUrl}" x="${x-20}" y="${y-20}" width="40" height="40" pointer-events="none"/>
+      <circle cx="${x}" cy="${y}" r="22" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring" pointer-events="none"/>`;
+  } else if(isPhoto){
+    html=`<image href="${avatarUser}" x="${x-14}" y="${y-14}" width="28" height="28" clip-path="circle(14px at 14px 14px)" pointer-events="none"/>
+      <circle cx="${x}" cy="${y}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring" pointer-events="none"/>`;
+  } else {
+    html=`<circle cx="${x}" cy="${y}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5" pointer-events="none"/>
+      <text x="${x}" y="${y+5}" text-anchor="middle" font-size="12" pointer-events="none">${avatarUser}</text>
+      <circle cx="${x}" cy="${y}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring" pointer-events="none"/>`;
+  }
+  layer.innerHTML=`<g class="map-anim-avatar">${html}</g>`;
+}
+
 function playMapAnimation(mode, eventsOverride){
   if(_mapAnimRunning) return;
   const svg=document.getElementById('world-svg');
   if(!svg) return;
   const coords=window._mapCountryCoords||{};
   const target=window._mapTarget||me;
-  const allEvents=eventsOverride||(db.countryEvents&&db.countryEvents[target])||[];
+  const allEvents=(db.countryEvents&&db.countryEvents[target])||[];
   if(!allEvents.length) return;
 
   let sequence=[];
@@ -4730,11 +4746,24 @@ function playMapAnimation(mode, eventsOverride){
     if(startISO&&endISO&&coords[startISO]&&coords[endISO]){
       sequence=[{from:coords[startISO],to:coords[endISO],country:last.country}];
     }
-  } else if(mode==='all'||mode==='new'){
-    // Tüm veya yeni ülkeler sırayla
+  } else if(mode==='all'){
+    // Tüm ülkeler baştan sırayla
     let fromISO='TR';
-    const evList=mode==='all'?[...allEvents]:eventsOverride||[];
-    evList.forEach(ev=>{
+    allEvents.forEach(ev=>{
+      const toISO=countryToISO(ev.country);
+      if(toISO&&coords[toISO]){
+        const fromCoord=coords[fromISO]||coords['TR'];
+        if(fromCoord) sequence.push({from:fromCoord,to:coords[toISO],country:ev.country});
+        fromISO=toISO;
+      }
+    });
+  } else if(mode==='new'){
+    // Sadece yeni eventler — başlangıç noktası son eski event'in ülkesi
+    const newEvs=eventsOverride||[];
+    const oldEvents=allEvents.filter(ev=>!newEvs.includes(ev));
+    let fromISO=oldEvents.length>0?countryToISO(oldEvents[oldEvents.length-1].country):'TR';
+    if(!fromISO||!coords[fromISO]) fromISO='TR';
+    newEvs.forEach(ev=>{
       const toISO=countryToISO(ev.country);
       if(toISO&&coords[toISO]){
         const fromCoord=coords[fromISO]||coords['TR'];
@@ -4743,13 +4772,22 @@ function playMapAnimation(mode, eventsOverride){
       }
     });
   }
-  if(!sequence.length) return;
+  if(!sequence.length){_placeAvatarStatic();return;}
   _mapAnimRunning=true;
   _runAnimSequence(svg,sequence,0);
 }
 
 function _runAnimSequence(svg,sequence,idx){
-  if(idx>=sequence.length){_mapAnimRunning=false;return;}
+  if(idx>=sequence.length){
+    _mapAnimRunning=false;
+    // Animasyon bitti — avatarı son konumda sabit bırak
+    const lastStep=sequence[sequence.length-1];
+    if(lastStep){
+      const avatarLayer=document.getElementById('map-avatar-layer');
+      if(avatarLayer) _drawStaticAvatar(avatarLayer,lastStep.to[0],lastStep.to[1]);
+    }
+    return;
+  }
   const step=sequence[idx];
   _animateAvatarMove(svg,step.from,step.to,()=>{
     setTimeout(()=>_runAnimSequence(svg,sequence,idx+1),600);
@@ -4763,13 +4801,11 @@ function _animateAvatarMove(svg,from,to,onDone){
   const avatarLayer=document.getElementById('map-avatar-layer');
   if(!trailLayer||!avatarLayer) {onDone&&onDone();return;}
 
-  // Avatar elementi oluştur veya taşı
-  let avatarEl=avatarLayer.querySelector('.map-anim-avatar');
-  if(!avatarEl){
-    avatarEl=document.createElementNS('http://www.w3.org/2000/svg','g');
-    avatarEl.classList.add('map-anim-avatar');
-    avatarLayer.appendChild(avatarEl);
-  }
+  // Statik avatarı temizle, animasyon avatarı oluştur
+  avatarLayer.innerHTML='';
+  const avatarEl=document.createElementNS('http://www.w3.org/2000/svg','g');
+  avatarEl.classList.add('map-anim-avatar');
+  avatarLayer.appendChild(avatarEl);
 
   const mapAvatarUrl=window._mapAvatarUrl;
   const avatarUser=window._mapAvatarUser||'📚';
