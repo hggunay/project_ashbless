@@ -4743,6 +4743,7 @@ function playMapAnimation(mode, eventsOverride){
     const prev=allEvents.length>1?allEvents[allEvents.length-2]:null;
     const startISO=prev?countryToISO(prev.country):'TR';
     const endISO=countryToISO(last.country);
+    alert('DEBUG\nevents:'+allEvents.length+'\nlast:'+last.country+' iso:'+endISO+'\nprev:'+(prev?prev.country:'yok')+' iso:'+startISO+'\ncoords[start]:'+!!coords[startISO]+'\ncoords[end]:'+!!coords[endISO]);
     if(startISO&&endISO&&coords[startISO]&&coords[endISO]){
       sequence=[{from:coords[startISO],to:coords[endISO],country:last.country}];
     }
