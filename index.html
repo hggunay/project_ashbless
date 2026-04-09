@@ -1422,13 +1422,13 @@ const REGIONS={
   middleeast:new Set(['IR','IQ','SA','SY','LB','JO','AE','KW','QA','BH','OM','YE','PS']),
 };
 
-const PROGRESS_BADGE_IDS = new Set(['streak3','streak6','streak12','nightowl1','nightowl2','nightowl3']);
+// Seri rozetleri retroactive kitapları da sayar, diğerleri saymaz
+const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3']);
 
 function bstat(badge,books){
-  // İlerleme rozetlerinde retroactive kitaplar sayılmaz
-  const filteredBooks = PROGRESS_BADGE_IDS.has(badge.id)
-    ? books.filter(b=>!b.retroactive)
-    : books;
+  const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
+    ? books  // seri rozetleri: tüm kitaplar
+    : books.filter(b=>!b.retroactive);  // diğerleri: sadece yeni okunanlar
   const{cur,max}=badge.check(filteredBooks);
   const pct=max>0?Math.round(cur/max*100):0;
   return{cur,max,pct,earned:pct>=100};
@@ -1436,7 +1436,7 @@ function bstat(badge,books){
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
 function booksForBadge(badge,books){
-  const filtered=PROGRESS_BADGE_IDS.has(badge.id)?books.filter(b=>!b.retroactive):books;
+  const filtered=SERIES_BADGE_IDS.has(badge.id)?books:books.filter(b=>!b.retroactive);
   const id=badge.id;
   // Okuma Miktarı
   if(['b5','b10','b25','b50','b100','b250'].includes(id)) return filtered;
