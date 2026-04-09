@@ -4489,9 +4489,9 @@ function renderMap(){
       <div id="map-viewport" style="transform-origin:center center;will-change:transform;width:100%">
         <div id="map-loading" style="color:var(--rust);font-family:'Space Mono',monospace;font-size:.7rem;padding:2rem;text-align:center;opacity:.6">🗺️ Harita yükleniyor...</div>
       </div>
-      <div id="map-anim-btns" style="position:absolute;bottom:8px;left:8px;z-index:10;display:flex;gap:4px;flex-wrap:wrap">
-        <button onclick="playMapAnimation('last')" style="background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.4);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">▶ Tekrar</button>
-        <button onclick="playMapAnimation('all')" style="background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">⏮ Baştan</button>
+      <div id="map-anim-btns" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:10;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">
+        <button onclick="playMapAnimation('last')" style="background:rgba(26,15,0,.75);border:1px solid rgba(201,162,39,.6);border-radius:6px;cursor:pointer;font-size:.72rem;color:var(--gold);padding:.35rem .8rem;font-family:'Space Mono',monospace;backdrop-filter:blur(4px)">▶ Tekrar Oynat</button>
+        <button onclick="playMapAnimation('all')" style="background:rgba(26,15,0,.75);border:1px solid rgba(201,162,39,.4);border-radius:6px;cursor:pointer;font-size:.72rem;color:var(--gold);padding:.35rem .8rem;font-family:'Space Mono',monospace;backdrop-filter:blur(4px)">⏮ Baştan Oynat</button>
       </div>
     </div>`;
 
