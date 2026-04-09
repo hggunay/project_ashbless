@@ -5114,6 +5114,11 @@ function confirmResetMap(){
   if(btn.dataset.confirming==='1'){
     if(!db.mapReset) db.mapReset={};
     db.mapReset[me]=new Date().toISOString();
+    // countryEvents'i de sıfırla
+    if(!db.countryEvents) db.countryEvents={};
+    db.countryEvents[me]=[];
+    // map-visit timestamp'i sıfırla
+    try{localStorage.removeItem('aa-map-visit-'+me);}catch(e){}
     saveDb();renderSafe();
     btn.textContent='🗺️ Haritayı Sıfırla';
     btn.dataset.confirming='';
