@@ -1170,13 +1170,13 @@ const BADGE_CATS = [
     // Kısa Kitap Zinciri (150- sayfa)
     {id:'short1',tier:'bronze',icon:'📒', name:'Hızlı Okuyucu',              desc:'150 sayfa altında 5 kitap oku.',  check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,5)},
     {id:'short2',tier:'silver',icon:'📓', name:'Mini Kitap Koleksiyoncusu',  desc:'150 sayfa altında 10 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,10)},
-    {id:'short3',tier:'gold',  icon:'🗒️','name':'Küçük Ama Güçlü',          desc:'150 sayfa altında 20 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,20)},
+    {id:'short3',tier:'gold',  icon:'🗒️', name:'Küçük Ama Güçlü',           desc:'150 sayfa altında 20 kitap oku.', check:b=>cap(b.filter(x=>x.pages&&x.pages<=150).length,20)},
     // Çizgi Roman/Manga Zinciri
     {id:'comic1',tier:'bronze',icon:'🎨', name:'Panel Meraklısı',    desc:'3 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,3)},
     {id:'comic2',tier:'bronze',icon:'🦸', name:'Çizgi Roman Dostu',  desc:'5 çizgi roman/manga oku.',   check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,5)},
     {id:'comic3',tier:'silver',icon:'🐉', name:'Manga Kâşifi',       desc:'10 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,10)},
     {id:'comic4',tier:'gold',  icon:'⚡', name:'Çizgi Ustası',        desc:'20 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,20)},
-    {id:'comic5',tier:'diamond',icon:'👑','name':'Çizgi Efsanesi',    desc:'50 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,50)},
+    {id:'comic5',tier:'diamond',icon:'👑', name:'Çizgi Efsanesi',    desc:'50 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,50)},
   ]},
   // ── 2. TÜR KEŞFİ ──────────────────────────────────────────────
   {label:'🎭 Tür Keşfi', badges:[
@@ -1184,57 +1184,57 @@ const BADGE_CATS = [
     {id:'genre1',tier:'bronze',icon:'🔍', name:'Meraklı Gezgin',   desc:'1 yeni türden kitap oku.',  check:b=>cap(uniqueGenres(b),1)},
     {id:'genre2',tier:'silver',icon:'🗺️', name:'Tür Kâşifi',       desc:'3 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),3)},
     {id:'genre3',tier:'gold',  icon:'🌟', name:'Ufuk Açıcı',        desc:'5 farklı türden kitap oku.',check:b=>cap(uniqueGenres(b),5)},
-    {id:'genre4',tier:'diamond',icon:'🌈','name':'Sınırsız Okuyucu',desc:'10 farklı tür keşfet.',    check:b=>cap(uniqueGenres(b),10)},
+    {id:'genre4',tier:'diamond',icon:'🌈', name:'Sınırsız Okuyucu',desc:'10 farklı tür keşfet.',    check:b=>cap(uniqueGenres(b),10)},
     // Fantastik Zinciri
     {id:'fan1',tier:'bronze',icon:'🧙', name:'Büyü Çırağı',       desc:'2 fantastik kitap oku.',  check:b=>genre(b,'fantastik',2)},
     {id:'fan2',tier:'silver',icon:'🐉', name:'Ejderha Dostu',     desc:'5 fantastik kitap oku.',  check:b=>genre(b,'fantastik',5)},
     {id:'fan3',tier:'gold',  icon:'🗡️', name:'Fantastik Kâşif',   desc:'10 fantastik kitap oku.', check:b=>genre(b,'fantastik',10)},
-    {id:'fan4',tier:'diamond',icon:'👁️','name':'Fantastik Ustası', desc:'20 fantastik kitap oku.', check:b=>genre(b,'fantastik',20)},
+    {id:'fan4',tier:'diamond',icon:'👁️', name:'Fantastik Ustası', desc:'20 fantastik kitap oku.', check:b=>genre(b,'fantastik',20)},
     // Bilim Kurgu Zinciri
     {id:'sf1',tier:'bronze',icon:'🚀', name:'Uzay Yolcusu',       desc:'2 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',2)},
     {id:'sf2',tier:'silver',icon:'🛸', name:'Galaksi Kâşifi',     desc:'5 bilim kurgu kitabı oku.',  check:b=>genre(b,'bilimkurgu',5)},
     {id:'sf3',tier:'gold',  icon:'🌌', name:'Bilimkurgu Kaptanı', desc:'10 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',10)},
-    {id:'sf4',tier:'diamond',icon:'⭐','name':'Evrenin Efendisi',  desc:'20 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',20)},
+    {id:'sf4',tier:'diamond',icon:'⭐', name:'Evrenin Efendisi',  desc:'20 bilim kurgu kitabı oku.', check:b=>genre(b,'bilimkurgu',20)},
     // Polisiye Zinciri
     {id:'det1',tier:'bronze',icon:'🔎', name:'Çaylak Dedektif', desc:'2 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',2)},
     {id:'det2',tier:'silver',icon:'🕵️', name:'İpucu Avcısı',    desc:'5 polisiye kitabı oku.',  check:b=>genre(b,'polisiye',5)},
     {id:'det3',tier:'gold',  icon:'⚖️', name:'Sır Çözücü',       desc:'10 polisiye kitabı oku.', check:b=>genre(b,'polisiye',10)},
-    {id:'det4',tier:'diamond',icon:'🎩','name':'Baş Dedektif',    desc:'20 polisiye kitabı oku.', check:b=>genre(b,'polisiye',20)},
+    {id:'det4',tier:'diamond',icon:'🎩', name:'Baş Dedektif',    desc:'20 polisiye kitabı oku.', check:b=>genre(b,'polisiye',20)},
     // Korku Zinciri
     {id:'hor1',tier:'bronze',icon:'👻', name:'Cesur Okuyucu',  desc:'2 korku kitabı oku.',  check:b=>genre(b,'korku',2)},
     {id:'hor2',tier:'silver',icon:'🦇', name:'Karanlık Kâşif', desc:'5 korku kitabı oku.',  check:b=>genre(b,'korku',5)},
     {id:'hor3',tier:'gold',  icon:'💀', name:'Korku Ustası',   desc:'10 korku kitabı oku.', check:b=>genre(b,'korku',10)},
-    {id:'hor4',tier:'diamond',icon:'🕷️','name':'Gece Bekçisi',  desc:'20 korku kitabı oku.', check:b=>genre(b,'korku',20)},
+    {id:'hor4',tier:'diamond',icon:'🕷️', name:'Gece Bekçisi',  desc:'20 korku kitabı oku.', check:b=>genre(b,'korku',20)},
     // Tarih Zinciri
     {id:'his1',tier:'bronze',icon:'🏺', name:'Zaman Yolcusu',   desc:'2 tarih kitabı oku.',  check:b=>genre(b,'tarih',2)},
     {id:'his2',tier:'silver',icon:'🏰', name:'Tarih Meraklısı', desc:'5 tarih kitabı oku.',  check:b=>genre(b,'tarih',5)},
     {id:'his3',tier:'gold',  icon:'📜', name:'Geçmişin Tanığı', desc:'10 tarih kitabı oku.', check:b=>genre(b,'tarih',10)},
-    {id:'his4',tier:'diamond',icon:'🗿','name':'Tarih Bilgesi',  desc:'20 tarih kitabı oku.', check:b=>genre(b,'tarih',20)},
+    {id:'his4',tier:'diamond',icon:'🗿', name:'Tarih Bilgesi',  desc:'20 tarih kitabı oku.', check:b=>genre(b,'tarih',20)},
     // Felsefe Zinciri
     {id:'phi1',tier:'bronze',icon:'❓', name:'Soru İşareti',     desc:'2 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',2)},
     {id:'phi2',tier:'silver',icon:'🤔', name:'Düşünür',          desc:'5 felsefe kitabı oku.',  check:b=>genre(b,'felsefe',5)},
     {id:'phi3',tier:'gold',  icon:'🦉', name:'Felsefe Yolcusu',  desc:'10 felsefe kitabı oku.', check:b=>genre(b,'felsefe',10)},
-    {id:'phi4',tier:'diamond',icon:'⚡','name':'Bilge',           desc:'20 felsefe kitabı oku.', check:b=>genre(b,'felsefe',20)},
+    {id:'phi4',tier:'diamond',icon:'⚡', name:'Bilge',           desc:'20 felsefe kitabı oku.', check:b=>genre(b,'felsefe',20)},
     // Psikoloji Zinciri
     {id:'psy1',tier:'bronze',icon:'🧠', name:'Zihin Meraklısı',       desc:'2 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',2)},
     {id:'psy2',tier:'silver',icon:'💭', name:'İç Dünya Kâşifi',       desc:'5 psikoloji kitabı oku.',  check:b=>genre(b,'psikoloji',5)},
     {id:'psy3',tier:'gold',  icon:'🔬', name:'Bilinç Araştırmacısı',  desc:'10 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',10)},
-    {id:'psy4',tier:'diamond',icon:'🌀','name':'Zihin Ustası',         desc:'20 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',20)},
+    {id:'psy4',tier:'diamond',icon:'🌀', name:'Zihin Ustası',         desc:'20 psikoloji kitabı oku.', check:b=>genre(b,'psikoloji',20)},
     // Deneme Zinciri
     {id:'ess1',tier:'bronze',icon:'✒️', name:'Kalem Dostu',       desc:'2 deneme kitabı oku.',  check:b=>genre(b,'deneme',2)},
     {id:'ess2',tier:'silver',icon:'📝', name:'Fikir Toplayıcı',   desc:'5 deneme kitabı oku.',  check:b=>genre(b,'deneme',5)},
     {id:'ess3',tier:'gold',  icon:'🖋️', name:'Deneme Okuru',      desc:'10 deneme kitabı oku.', check:b=>genre(b,'deneme',10)},
-    {id:'ess4',tier:'diamond',icon:'📰','name':'Edebi Gezgin',     desc:'20 deneme kitabı oku.', check:b=>genre(b,'deneme',20)},
+    {id:'ess4',tier:'diamond',icon:'📰', name:'Edebi Gezgin',     desc:'20 deneme kitabı oku.', check:b=>genre(b,'deneme',20)},
     // Mitoloji Zinciri
     {id:'myt1',tier:'bronze',icon:'⚡', name:'Efsane Takipçisi',    desc:'2 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',2)},
     {id:'myt2',tier:'silver',icon:'🏛️', name:'Tanrı Kâşifi',        desc:'5 mitoloji kitabı oku.',  check:b=>genre(b,'mitoloji',5)},
     {id:'myt3',tier:'gold',  icon:'🐍', name:'Mit Koleksiyoncusu',   desc:'10 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',10)},
-    {id:'myt4',tier:'diamond',icon:'🔱','name':'Olympos Bilgesi',     desc:'20 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',20)},
+    {id:'myt4',tier:'diamond',icon:'🔱', name:'Olympos Bilgesi',     desc:'20 mitoloji kitabı oku.', check:b=>genre(b,'mitoloji',20)},
     // Popüler Bilim Zinciri
     {id:'sci1',tier:'bronze',icon:'🔭', name:'Meraklı Zihin',  desc:'2 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',2)},
     {id:'sci2',tier:'silver',icon:'⚗️', name:'Bilim Dostu',    desc:'5 popüler bilim kitabı oku.',  check:b=>genre(b,'bilim',5)},
     {id:'sci3',tier:'gold',  icon:'🌍', name:'Evren Kâşifi',   desc:'10 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',10)},
-    {id:'sci4',tier:'diamond',icon:'🧬','name':'Bilim İnsanı', desc:'20 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',20)},
+    {id:'sci4',tier:'diamond',icon:'🧬', name:'Bilim İnsanı', desc:'20 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',20)},
   ]},
   // ── 3. COĞRAFYA ───────────────────────────────────────────────
   {label:'🌍 Coğrafya', badges:[
@@ -1243,7 +1243,7 @@ const BADGE_CATS = [
     {id:'geo2',tier:'bronze',icon:'✈️', name:'Dünya Okuru',       desc:'5 farklı ülkeden kitap oku.',              check:b=>cap(uniqueCountries(b),5)},
     {id:'geo3',tier:'silver',icon:'🌐', name:'Kıta Gezgini',      desc:'10 farklı ülkeden kitap oku.',             check:b=>cap(uniqueCountries(b),10)},
     {id:'geo4',tier:'gold',  icon:'🏆', name:'Küresel Kütüphane', desc:'20 farklı ülkeden kitap oku.',             check:b=>cap(uniqueCountries(b),20)},
-    {id:'geo5',tier:'diamond',icon:'🌟','name':'Dünyayı Dolaşan', desc:'6 kıtanın tümünden kitap oku.',            check:b=>cap(allContinents(b),1)},
+    {id:'geo5',tier:'diamond',icon:'🌟', name:'Dünyayı Dolaşan', desc:'6 kıtanın tümünden kitap oku.',            check:b=>cap(allContinents(b),1)},
     // Bölge Rozetleri
     {id:'reg_med',tier:'gold',icon:'🌊', name:'Akdeniz Kâşifi',       desc:'Akdeniz ülkelerinden (TR, GR, IT, ES, FR...) en az 3 farklı ülkeden kitap oku.', check:b=>cap(booksInRegion(b,REGIONS.mediterranean),3)},
     {id:'reg_nor',tier:'gold',icon:'🧊', name:'Kuzey Rüzgarı',         desc:'Kuzey Avrupa ülkelerinden (NO, SE, DK, FI, IS) en az 3 farklı ülkeden kitap oku.', check:b=>cap(new Set([...b.filter(x=>x.country).map(x=>countryToISO(x.country))].filter(iso=>iso&&REGIONS.nordic.has(iso))).size,3)},
@@ -1282,7 +1282,7 @@ const BADGE_CATS = [
     {id:'ser1',tier:'bronze',icon:'📖', name:'Seri Başlangıcı', desc:'1 seriyi baştan sona bitir.',                                check:b=>cap(completedSeriesCount(),1)},
     {id:'ser2',tier:'silver',icon:'📚', name:'Seri Tutkunu',    desc:'3 farklı seriyi baştan sona bitir.',                         check:b=>cap(completedSeriesCount(),3)},
     {id:'ser3',tier:'gold',  icon:'🏆', name:'Seri Ustası',     desc:'5 farklı seriyi baştan sona bitir.',                         check:b=>cap(completedSeriesCount(),5)},
-    {id:'ser4',tier:'diamond',icon:'💎','name':'Seri Takıntılısı',desc:'Bir seriden 10+ kitap oku.',                               check:b=>cap(maxSeriesBooks(),10)},
+    {id:'ser4',tier:'diamond',icon:'💎', name:'Seri Takıntılısı',desc:'Bir seriden 10+ kitap oku.',                               check:b=>cap(maxSeriesBooks(),10)},
     // Aynı Evren Zinciri
     {id:'univ1',tier:'bronze',icon:'🔮', name:'Evren Kâşifi',       desc:'Bir grupta 2+ farklı seriden kitap oku (Seriler sekmesinden grup oluştur).', check:b=>cap(sameUniverseFromGroups(),1)},
     {id:'univ2',tier:'silver',icon:'🌌', name:'Paralel Gezgin',     desc:'Farklı gruplarda 3 evren keşfet.',                       check:b=>cap(sameUniverseFromGroups(),3)},
@@ -1312,7 +1312,7 @@ const BADGE_CATS = [
   ]},
   // ── 7. KADİM METİNLER ─────────────────────────────────────────
   {label:'📿 Kadim Metinler', badges:[
-    {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',         desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerim'in dördünü de oku ("kutsal" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
+    {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',         desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerimi oku ("kutsal" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
     {id:'kadim1',tier:'bronze',icon:'🌿', name:'Kadim Yolcu',               desc:'Dünya dinlerine ait 2 kutsal metin oku ("kutsal meta" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,2)},
     {id:'kadim2',tier:'silver',icon:'🌸', name:'Bilgelik Arayıcısı',        desc:'Dünya dinlerine ait 4 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,4)},
     {id:'kadim3',tier:'gold',  icon:'🌟', name:'Kadim Metinler Kâşifi',     desc:'Dünya dinlerine ait 7 kutsal metin oku.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,7)},
