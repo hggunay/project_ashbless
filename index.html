@@ -4401,13 +4401,18 @@ function toggleMapFullscreen(){
       setTimeout(()=>{
         const svg=document.getElementById('world-svg');
         if(!svg) return;
-        const W=wrap.offsetWidth||screen.width;
-        const H=wrap.offsetHeight||screen.height;
+        // Ekran boyutunu al — mobilde yatay mod için her iki boyutu karşılaştır
+        const sw=screen.width,sh=screen.height;
+        const W=Math.max(sw,sh); // yatay boyut her zaman büyük olan
+        const H=Math.min(sw,sh); // dikey boyut her zaman küçük olan
         svg.setAttribute('width',W);
         svg.setAttribute('height',H);
         svg.setAttribute('viewBox','0 0 960 500');
         svg.style.width='100%';
         svg.style.height='100%';
+        // wrap'i de yatay doldur
+        wrap.style.width='100vw';
+        wrap.style.height='100vh';
         _mapZoom=1;applyMapTransform();
       },100);
     };
@@ -4483,6 +4488,10 @@ function renderMap(){
       <div id="map-tooltip" style="display:none;position:absolute;background:rgba(26,15,0,.95);border:1px solid rgba(201,162,39,.4);border-radius:4px;padding:.3rem .6rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);pointer-events:none;z-index:20;max-width:200px"></div>
       <div id="map-viewport" style="transform-origin:center center;will-change:transform;width:100%">
         <div id="map-loading" style="color:var(--rust);font-family:'Space Mono',monospace;font-size:.7rem;padding:2rem;text-align:center;opacity:.6">🗺️ Harita yükleniyor...</div>
+      </div>
+      <div id="map-anim-btns" style="position:absolute;bottom:8px;left:8px;z-index:10;display:flex;gap:4px;flex-wrap:wrap">
+        <button onclick="playMapAnimation('last')" style="background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.4);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">▶ Tekrar</button>
+        <button onclick="playMapAnimation('all')" style="background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">⏮ Baştan</button>
       </div>
     </div>`;
 
@@ -4697,16 +4706,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       <g id="map-avatar-layer"></g>
     </svg>`;
 
-  // Animasyon butonlarını ekle
-  const mapInfoBar=document.querySelector('#mapContainer>div');
-  if(mapInfoBar&&target===me){
-    const btnWrap=document.createElement('div');
-    btnWrap.style.cssText='display:flex;gap:.4rem;margin-top:.4rem;flex-wrap:wrap;';
-    btnWrap.innerHTML=`
-      <button onclick="playMapAnimation('last')" style="background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">▶ Tekrar Oynat</button>
-      <button onclick="playMapAnimation('all')" style="background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:4px;cursor:pointer;font-size:.6rem;color:var(--gold);padding:.2rem .5rem;font-family:'Space Mono',monospace">⏮ Baştan Oynat</button>`;
-    mapInfoBar.appendChild(btnWrap);
-  }
+  // Animasyon butonları artık map-wrap içinde (tam ekranda da görünür)
 
   // Koordinat haritasını global'e kaydet — animasyon fonksiyonları kullanacak
   window._mapCountryCoords=countryCoords;
