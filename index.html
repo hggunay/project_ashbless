@@ -232,16 +232,27 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.tier-gold.earned::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
 .badge-card.tier-diamond.earned{border-color:#b9f2ff;background:linear-gradient(135deg,#e8f8ff,#f0faff);box-shadow:0 0 14px rgba(100,200,255,.3);}
 .badge-card.tier-diamond.earned::before{background:linear-gradient(90deg,transparent,#b9f2ff,transparent);}
-/* Tier renkleri — ilerlemede (soluk ama ayırt edilebilir) */
-.badge-card.tier-bronze:not(.earned):not(.locked){border-color:rgba(205,127,50,.5);border-width:1.5px;background:linear-gradient(135deg,#fdf0e0,#fff4ea);}
-.badge-card.tier-silver:not(.earned):not(.locked){border-color:rgba(150,150,150,.5);border-width:1.5px;background:linear-gradient(135deg,#f0f0f0,#f8f8f8);}
-.badge-card.tier-gold:not(.earned):not(.locked){border-color:rgba(201,162,39,.5);border-width:1.5px;background:linear-gradient(135deg,#fdf5e0,#fff8e8);}
-.badge-card.tier-diamond:not(.earned):not(.locked){border-color:rgba(100,200,255,.5);border-width:1.5px;background:linear-gradient(135deg,#e8f8ff,#f0faff);}
-/* Kazanılmış rozetler daha güçlü */
+/* İlerlemede — nötr, soluk */
+.badge-card:not(.earned):not(.locked){border-color:rgba(201,162,39,.15);background:var(--parchment);}
+.badge-card:not(.earned):not(.locked) .badge-name{color:#888;}
+.badge-card:not(.earned):not(.locked) .progress-fill:not(.done){background:#ccc;}
+/* Kazanılmış — tier renginde güçlü */
 .badge-card.tier-bronze.earned{border-color:#cd7f32;border-width:2px;background:linear-gradient(135deg,#ffe8c8,#fff0dc);box-shadow:0 0 12px rgba(205,127,50,.35);}
+.badge-card.tier-bronze.earned::before{background:linear-gradient(90deg,transparent,#cd7f32,transparent);}
+.badge-card.tier-bronze.earned .badge-name{color:#7a4010;}
+.badge-card.tier-bronze.earned .progress-fill{background:linear-gradient(90deg,#a0521a,#cd7f32);}
 .badge-card.tier-silver.earned{border-color:#999;border-width:2px;background:linear-gradient(135deg,#e8e8e8,#f5f5f5);box-shadow:0 0 12px rgba(150,150,150,.35);}
+.badge-card.tier-silver.earned::before{background:linear-gradient(90deg,transparent,#999,transparent);}
+.badge-card.tier-silver.earned .badge-name{color:#555;}
+.badge-card.tier-silver.earned .progress-fill{background:linear-gradient(90deg,#888,#bbb);}
 .badge-card.tier-gold.earned{border-color:var(--gold);border-width:2px;background:linear-gradient(135deg,#fdf0c0,#fff8d8);box-shadow:0 0 14px rgba(201,162,39,.4);}
+.badge-card.tier-gold.earned::before{background:linear-gradient(90deg,transparent,var(--gold),transparent);}
+.badge-card.tier-gold.earned .badge-name{color:#8a6f0f;}
+.badge-card.tier-gold.earned .progress-fill{background:linear-gradient(90deg,var(--leather),var(--gold));}
 .badge-card.tier-diamond.earned{border-color:#7de8ff;border-width:2px;background:linear-gradient(135deg,#d0f4ff,#e8f8ff);box-shadow:0 0 14px rgba(100,200,255,.4);}
+.badge-card.tier-diamond.earned::before{background:linear-gradient(90deg,transparent,#7de8ff,transparent);}
+.badge-card.tier-diamond.earned .badge-name{color:#006080;}
+.badge-card.tier-diamond.earned .progress-fill{background:linear-gradient(90deg,#0080a0,#7de8ff);}
 /* İlerleme barı tier renkleri */
 .badge-card.tier-bronze .progress-fill:not(.done){background:linear-gradient(90deg,#a0521a,#cd7f32);}
 .badge-card.tier-silver .progress-fill:not(.done){background:linear-gradient(90deg,#888,#bbb);}
