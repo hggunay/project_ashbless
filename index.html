@@ -1078,6 +1078,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitapların kalır ama tüm ülke bilgileri silinir. Haritaya sıfırdan başlamak istersen kullan.</div>
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
                 </div>
+                <div style="margin-bottom:1.2rem">
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Geçmiş ülkeleri akışa ekle</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Yeni ülke sistemi kurulmadan önce eklenen kitapların ülkelerini akışa ekler.</div>
+                  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Geçmiş Ülkeleri Ekle</button>
+                </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.</div>
@@ -4195,6 +4200,39 @@ function copyCardQuote(bookOwner,bookId,quoteIdx){
 }
 
 // ── BİLDİRİMLER ──────────────────────────────────────────────
+// Mevcut kitaplardan eksik countryEvent'leri bir kez oluştur
+function backfillCountryEvents(){
+  if(!db.books||!db.books[me]) return;
+  if(!db.countryEvents) db.countryEvents={};
+  if(!db.countryEvents[me]) db.countryEvents[me]=[];
+  const existing=new Set(db.countryEvents[me].map(e=>e.country.toLowerCase()));
+  const readBooks=(db.books[me]||[])
+    .filter(b=>b.country&&b.readingStatus==='new'&&!b.retroactive&&b.title&&!b.title.startsWith('ISBN:'))
+    .sort((a,b)=>new Date(a.addedAt||0)-new Date(b.addedAt||0));
+  const seen=new Set();
+  let added=0;
+  readBooks.forEach(b=>{
+    const key=b.country.toLowerCase();
+    if(!existing.has(key)&&!seen.has(key)){
+      seen.add(key);
+      db.countryEvents[me].push({
+        id:Date.now()+added,
+        country:b.country,
+        bookTitle:b.title,
+        author:b.author||null,
+        ts:b.addedAt||new Date().toISOString(),
+        reactions:{},
+      });
+      added++;
+    }
+  });
+  if(added>0){
+    db.countryEvents[me].sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+    saveDb();
+    notify('🌍 Geçmiş ülkeler eklendi',`${added} ülke akışa ve haritaya eklendi.`);
+  }
+}
+
 function checkAndAddCountryEvent(book){
   if(!book.country||book.readingStatus!=='new'||book.retroactive) return;
   // Bu ülke daha önce hiç kaydedilmiş mi?
@@ -4743,7 +4781,6 @@ function playMapAnimation(mode, eventsOverride){
     const prev=allEvents.length>1?allEvents[allEvents.length-2]:null;
     const startISO=prev?countryToISO(prev.country):'TR';
     const endISO=countryToISO(last.country);
-    alert('DEBUG\nevents:'+allEvents.length+'\nlast:'+last.country+' iso:'+endISO+'\nprev:'+(prev?prev.country:'yok')+' iso:'+startISO+'\ncoords[start]:'+!!coords[startISO]+'\ncoords[end]:'+!!coords[endISO]);
     if(startISO&&endISO&&coords[startISO]&&coords[endISO]){
       sequence=[{from:coords[startISO],to:coords[endISO],country:last.country}];
     }
