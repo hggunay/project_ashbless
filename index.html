@@ -539,8 +539,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             </div>
             <div class="chip-group-label" style="margin-top:.5rem">📖 Okuma durumu</div>
             <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
-              <span class="chip active" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
-              <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
+              <span class="chip active" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
+              <span class="chip" data-val="new" onclick="selectReadingTime(this)">✨ Yeni okudum</span>
               <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
               <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Geçmişte okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
               <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okumak İstiyorum</span>
@@ -2087,7 +2087,7 @@ function loadAccordionPrefs(keys,defaultOpen=true){
 function toggleChip(el){el.classList.toggle('active');}
 function getFormats(){return[...document.querySelectorAll('#formatChips .chip.active')].map(c=>c.dataset.val);}
 function selectReadingTime(el){document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
-function getReadingTime(){const a=document.querySelector('#readingTimeChips .chip.active');return a?a.dataset.val:'new';}
+function getReadingTime(){const a=document.querySelector('#readingTimeChips .chip.active');return a?a.dataset.val:'reading';}
 
 // ── SERİ HAFIZASI ─────────────────────────────────────────────
 function getKnownSeries(){
@@ -2484,7 +2484,7 @@ async function addBook(){
   setTodayDate();
   document.getElementById('bookEndDate').value='';
   document.querySelectorAll('#formatChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
-  document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='new'));
+  document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='reading'));
 
   const newBooks=validBooks();
   const newlyEarned=[];
