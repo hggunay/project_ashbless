@@ -955,6 +955,21 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <button class="btn btn-primary btn-sm" onclick="saveProfile()">💾 Profili Kaydet</button>
           </div>
 
+          <!-- Harita Avatarı — akordeon -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
+            <div class="detail-acc-header" onclick="toggleSection('set-mapavatar')">
+              <div class="detail-section-title" style="margin:0">🗺️ Harita Avatarı</div>
+              <span class="acc-arrow" id="arr-set-mapavatar">▶</span>
+            </div>
+            <div class="detail-acc-body" id="body-set-mapavatar">
+              <div style="padding-top:.75rem">
+                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Haritada seni temsil eden ikon. Seçilmezse profil fotoğrafın/emojin kullanılır.</div>
+                <div id="mapAvatarGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem"></div>
+                <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);font-size:.75rem" onclick="clearMapAvatar()">✕ Varsayılana dön</button>
+              </div>
+            </div>
+          </div>
+
           <!-- Şifre & İpucu — akordeon -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-password')">
@@ -1575,6 +1590,8 @@ function renderSettings(){
   document.getElementById('settingPw').value='';
   const hintEl=document.getElementById('settingHint');
   if(hintEl) hintEl.value=user.hint||'';
+  // Harita avatarı grid
+  setTimeout(()=>renderMapAvatarGrid(),50);
   // Public toggle
   const isPublic=user.publicProfile!==false;
   const cb=document.getElementById('settingPublic');
@@ -1619,6 +1636,39 @@ function renderSettings(){
         </div>
       </div>`).join('');
   }
+}
+
+function renderMapAvatarGrid(){
+  const grid=document.getElementById('mapAvatarGrid');
+  if(!grid) return;
+  const current=(db.users[me]&&db.users[me].mapAvatar)||null;
+  const base='https://hggunay.github.io/project_ashbless/avatars/';
+  let html='';
+  for(let i=1;i<=36;i++){
+    const name=`avatar_${String(i).padStart(2,'0')}.png`;
+    const url=base+name;
+    const selected=current===name;
+    html+=`<div onclick="selectMapAvatar('${name}')" title="${name}" style="width:52px;height:52px;border:2px solid ${selected?'var(--gold)':'rgba(201,162,39,.25)'};border-radius:6px;cursor:pointer;background:${selected?'rgba(201,162,39,.15)':'rgba(201,162,39,.05)'};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:all .15s">
+      <img src="${url}" style="max-width:48px;max-height:48px;object-fit:contain" loading="lazy"/>
+    </div>`;
+  }
+  grid.innerHTML=html;
+}
+
+function selectMapAvatar(name){
+  if(!db.users[me]) return;
+  db.users[me].mapAvatar=name;
+  saveDb();
+  renderMapAvatarGrid();
+  notify('🗺️ Harita Avatarı','Yeni avatar seçildi.');
+}
+
+function clearMapAvatar(){
+  if(!db.users[me]) return;
+  db.users[me].mapAvatar=null;
+  saveDb();
+  renderMapAvatarGrid();
+  notify('🗺️ Harita Avatarı','Profil fotoğrafına döndü.');
 }
 
 function saveHint(){
@@ -1865,7 +1915,7 @@ function enterApp(){
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist'],true),50);
-  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger'],false),50);
+  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-mapavatar'],false),50);
   // İlk state'i kaydet
   history.replaceState({panel:targetPanel},'',location.pathname+(targetPanel!=='myBooks'?'#'+targetPanel:''));
   // Geri tuşu dinleyicisi — sadece bir kez ekle
@@ -4571,17 +4621,23 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
-  // Avatar HTML
+  // Avatar HTML — mapAvatar seçilmişse onu kullan, yoksa profil fotosu/emojisi
+  const mapAvatarFile=(db.users[target]&&db.users[target].mapAvatar)||null;
+  const mapAvatarUrl=mapAvatarFile?`https://hggunay.github.io/project_ashbless/avatars/${mapAvatarFile}`:null;
   let avatarHtmlStr='';
   if(avatarX&&avatarY){
-    const isPhoto=avatarUser.startsWith('data:');
-    if(isPhoto){
-      avatarHtmlStr=`<image href="${avatarUser}" x="${avatarX-14}" y="${avatarY-14}" width="28" height="28" style="border-radius:50%;clip-path:circle(14px at 14px 14px)"/>`;
+    if(mapAvatarUrl){
+      avatarHtmlStr=`<image href="${mapAvatarUrl}" x="${avatarX-20}" y="${avatarY-20}" width="40" height="40" style="object-fit:contain"/>`;
     } else {
-      avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
-        <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
+      const isPhoto=avatarUser.startsWith('data:');
+      if(isPhoto){
+        avatarHtmlStr=`<image href="${avatarUser}" x="${avatarX-14}" y="${avatarY-14}" width="28" height="28" style="border-radius:50%;clip-path:circle(14px at 14px 14px)"/>`;
+      } else {
+        avatarHtmlStr=`<circle cx="${avatarX}" cy="${avatarY}" r="10" fill="rgba(26,15,0,0.85)" stroke="#c9a227" stroke-width="1.5"/>
+          <text x="${avatarX}" y="${avatarY+5}" text-anchor="middle" font-size="12">${avatarUser}</text>`;
+      }
     }
-    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="12" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring"/>`;
+    avatarHtmlStr+=`<circle cx="${avatarX}" cy="${avatarY}" r="${mapAvatarUrl?22:12}" fill="none" stroke="#c9a227" stroke-width="1.5" class="map-pulse-ring"/>`;
   }
 
   const wrap=document.getElementById('map-wrap');
