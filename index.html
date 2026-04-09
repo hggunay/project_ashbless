@@ -4228,8 +4228,14 @@ function backfillCountryEvents(){
   });
   if(added>0){
     db.countryEvents[me].sort((a,b)=>new Date(a.ts)-new Date(b.ts));
+    // mapReset'i kaldır — geçmiş kitaplar da haritada görünsün
+    if(db.mapReset) db.mapReset[me]=null;
+    try{localStorage.removeItem('aa-map-visit-'+me);}catch(e){}
     saveDb();
+    renderSafe();
     notify('🌍 Geçmiş ülkeler eklendi',`${added} ülke akışa ve haritaya eklendi.`);
+  } else {
+    notify('🌍 Geçmiş ülkeler','Eklenecek yeni ülke bulunamadı.');
   }
 }
 
