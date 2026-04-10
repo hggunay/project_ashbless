@@ -329,11 +329,19 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .notif-body{font-size:.85rem;font-style:italic;}
 
 .badge-card{cursor:pointer;}
-.badge-card-open{border-color:var(--gold);box-shadow:0 0 18px rgba(201,162,39,.2);grid-column:span 2;}
+.badge-card-open{border-color:var(--gold);box-shadow:0 0 18px rgba(201,162,39,.2);}
 .badge-card-hint{font-size:.58rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.35;margin-top:.4rem;letter-spacing:.05em;}
 .badge-card:hover .badge-card-hint{opacity:.65;}
-.badge-book-list{margin-top:.75rem;border-top:1px solid rgba(201,162,39,.2);padding-top:.6rem;text-align:left;}
-.badge-book-list-title{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.6;margin-bottom:.4rem;}
+/* Rozet tooltip popup */
+.badge-tooltip-wrap{position:relative;}
+.badge-tooltip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:200;background:rgba(26,15,0,.97);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:180px;max-width:260px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.5);}
+.badge-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(201,162,39,.5);}
+.badge-tooltip.open{display:block;}
+.badge-tooltip-title{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);opacity:.8;margin-bottom:.4rem;}
+.badge-tooltip-book{font-family:'Crimson Pro',serif;font-size:.82rem;color:var(--parchment);padding:.15rem 0;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.1);}
+.badge-tooltip-book:last-child{border-bottom:none;}
+.badge-tooltip-book:hover{color:var(--gold);}
+.badge-tooltip-more{font-size:.72rem;color:var(--rust);font-style:italic;margin-top:.3rem;opacity:.7;}
 .badge-book-item{padding:.35rem .4rem;border-radius:2px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(201,162,39,.08);line-height:1.4;}
 .badge-book-item:hover{background:rgba(201,162,39,.1);}
 .badge-book-item:last-child{border-bottom:none;}
@@ -5755,20 +5763,25 @@ function renderBadges(){
           +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
         +'</div>').join('')
       +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'');
-    return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
-      ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
-      ${isNew?'<span class="badge-new-dot"></span>':''}
-      ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
-      <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-      <span class="badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
-      <div class="badge-name">${isSecret&&!s.earned?'???':b.name}</div>
-      <div class="badge-desc">${isSecret&&!s.earned?'Bu gizli bir rozet. Nasıl kazanılacağını keşfet!':b.desc}</div>
-      <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
-      <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
-      ${isOpen2&&!isSecret?`<div class="badge-book-list" onclick="event.stopPropagation()">
-        <div class="badge-book-list-title">&#128218; İlgili Kitaplar (${relBooks.length})</div>
-        ${bookListHtml}
-      </div>`:(isOpen2?'':`<div class="badge-card-hint">&#128070; detay</div>`)}
+    const tooltipHtml=isOpen2&&!isSecret?`
+      <div class="badge-tooltip open" onclick="event.stopPropagation()">
+        <div class="badge-tooltip-title">📚 İlgili Kitaplar (${relBooks.length})</div>
+        ${bookListHtml.replace(/onclick="openBook\((\d+)\)/g,'onclick="openBook($1);closeBadgeTooltip()"')}
+      </div>`:'';
+    return`<div class="badge-tooltip-wrap">
+      ${tooltipHtml}
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
+        ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
+        ${isNew?'<span class="badge-new-dot"></span>':''}
+        ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
+        <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
+        <span class="badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
+        <div class="badge-name">${isSecret&&!s.earned?'???':b.name}</div>
+        <div class="badge-desc">${isSecret&&!s.earned?'Bu gizli bir rozet. Nasıl kazanılacağını keşfet!':b.desc}</div>
+        <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+        <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+        ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}
+      </div>
     </div>`;
   }
 
@@ -5838,6 +5851,11 @@ function toggleBadgeDetail(badgeId){
       },50);
     }
   }
+}
+
+function closeBadgeTooltip(){
+  openBadgeId=null;
+  renderBadges();
 }
 
 function shimmerEarnedBadges(){
