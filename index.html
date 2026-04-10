@@ -334,8 +334,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card:hover .badge-card-hint{opacity:.65;}
 /* Rozet tooltip popup */
 .badge-tooltip-wrap{position:relative;}
-.badge-tooltip{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:200;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:200px;max-width:280px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.3);}
-.badge-tooltip::before{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:rgba(201,162,39,.5);}
+.badge-tooltip{display:none;position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:200px;max-width:280px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.3);}
 .badge-tooltip.open{display:block;}
 .badge-tooltip-title{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem;}
 .badge-tooltip-book{font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--ink);padding:.2rem 0;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.15);}
@@ -5848,24 +5847,26 @@ function toggleBadgeDetail(badgeId){
       const tooltip=document.getElementById('tooltip-'+badgeId);
       const wrap=document.getElementById('twrap-'+badgeId);
       if(tooltip&&wrap){
+        tooltip.style.display='block';
         const wrapRect=wrap.getBoundingClientRect();
+        const tooltipW=Math.min(280,window.innerWidth-16);
         const tooltipH=tooltip.offsetHeight||150;
-        const spaceAbove=wrapRect.top;
+        // Yatay konum — ortala, taşma varsa düzelt
+        let left=wrapRect.left+wrapRect.width/2-tooltipW/2;
+        if(left<8) left=8;
+        if(left+tooltipW>window.innerWidth-8) left=window.innerWidth-tooltipW-8;
+        tooltip.style.left=left+'px';
+        tooltip.style.width=tooltipW+'px';
+        // Dikey konum — alan varsa altına, yoksa üstüne
         const spaceBelow=window.innerHeight-wrapRect.bottom;
-        if(spaceBelow<tooltipH+10&&spaceAbove>tooltipH+10){
-          // Yukarı aç
-          tooltip.style.top='auto';
-          tooltip.style.bottom='calc(100% + 6px)';
+        const spaceAbove=wrapRect.top;
+        if(spaceBelow>=tooltipH+10||spaceBelow>=spaceAbove){
+          tooltip.style.top=(wrapRect.bottom+6)+'px';
+          tooltip.style.bottom='auto';
         } else {
-          // Aşağı aç (default)
-          tooltip.style.top='calc(100% + 6px)';
+          tooltip.style.top=(wrapRect.top-tooltipH-6)+'px';
           tooltip.style.bottom='auto';
         }
-        // Sağa/sola taşma kontrolü
-        const tRect=tooltip.getBoundingClientRect();
-        if(tRect.left<8) tooltip.style.left='0';
-        else if(tRect.right>window.innerWidth-8) tooltip.style.left='auto';
-        else tooltip.style.left='50%';
       }
       // Açılan kazanılmış rozet parıldasın
       const books=validBooks();
