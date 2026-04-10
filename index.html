@@ -2206,6 +2206,7 @@ function _showPanelNoHistory(id, el){
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
   else if(id==='series'){seriesPage=1;renderSeriesList();}
+  else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
   else render();
 }
 
@@ -2225,6 +2226,7 @@ function showPanel(id,el){
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
   else if(id==='series'){seriesPage=1;renderSeriesList();}
+  else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
   else render();
 }
 function viewMember(u){
@@ -5821,8 +5823,31 @@ function renderBadges(){
 
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
-  openBadgeId=(openBadgeId===badgeId)?null:badgeId;
+  const wasOpen=openBadgeId===badgeId;
+  openBadgeId=wasOpen?null:badgeId;
   renderBadges();
+  // Açılan kazanılmış rozet parıldasın
+  if(!wasOpen){
+    const books=validBooks();
+    const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+    const badge=allB.find(b=>b.id===badgeId);
+    if(badge&&bstat(badge,books).earned){
+      setTimeout(()=>{
+        const card=document.querySelector(`[onclick="toggleBadgeDetail('${badgeId}')"]`);
+        if(card){card.classList.add('badge-shine-new');setTimeout(()=>card.classList.remove('badge-shine-new'),1500);}
+      },50);
+    }
+  }
+}
+
+function shimmerEarnedBadges(){
+  const cards=document.querySelectorAll('.badge-card.earned');
+  cards.forEach((card,i)=>{
+    setTimeout(()=>{
+      card.classList.add('badge-shine');
+      setTimeout(()=>card.classList.remove('badge-shine'),1200);
+    }, i*80);
+  });
 }
 
 function renderMembers(){
