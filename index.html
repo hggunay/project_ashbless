@@ -5763,21 +5763,21 @@ function renderBadges(){
           +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
         +'</div>').join('')
       +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'');
-    const tooltipHtml=isOpen2&&!isSecret?`
-      <div class="badge-tooltip open" onclick="event.stopPropagation()">
+    const tooltipHtml=isOpen2?`
+      <div class="badge-tooltip open" id="tooltip-${b.id}" onclick="event.stopPropagation()">
         <div class="badge-tooltip-title">📚 İlgili Kitaplar (${relBooks.length})</div>
-        ${bookListHtml.replace(/onclick="openBook\((\d+)\)/g,'onclick="openBook($1);closeBadgeTooltip()"')}
+        ${bookListHtml}
       </div>`:'';
-    return`<div class="badge-tooltip-wrap">
+    return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
       ${tooltipHtml}
       <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-        <span class="badge-icon">${isSecret&&!s.earned?'🔮':b.icon}</span>
-        <div class="badge-name">${isSecret&&!s.earned?'???':b.name}</div>
-        <div class="badge-desc">${isSecret&&!s.earned?'Bu gizli bir rozet. Nasıl kazanılacağını keşfet!':b.desc}</div>
+        <span class="badge-icon">${b.icon}</span>
+        <div class="badge-name">${b.name}</div>
+        <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
         ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}
@@ -5796,6 +5796,9 @@ function renderBadges(){
     const chains=(cat.chains||[]).map(chain=>{
       const filtered=chain.badges.filter(b=>{
         const s=bstat(b,books);
+        const isSecret=b.id.startsWith('secret_');
+        // Gizli rozetler kazanılmamışsa hiç gösterme
+        if(isSecret&&!s.earned) return false;
         if(badgeFilter==='earned') return s.earned;
         if(badgeFilter==='progress') return !s.earned&&s.cur>0;
         if(badgeFilter==='locked') return s.cur===0&&!s.earned;
@@ -5839,17 +5842,40 @@ function toggleBadgeDetail(badgeId){
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
-  // Açılan kazanılmış rozet parıldasın
   if(!wasOpen){
-    const books=validBooks();
-    const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
-    const badge=allB.find(b=>b.id===badgeId);
-    if(badge&&bstat(badge,books).earned){
-      setTimeout(()=>{
-        const card=document.querySelector(`[onclick="toggleBadgeDetail('${badgeId}')"]`);
+    // Tooltip konumunu ayarla — sayfanın üstüne taşıyorsa aşağı, altına taşıyorsa yukarı aç
+    setTimeout(()=>{
+      const tooltip=document.getElementById('tooltip-'+badgeId);
+      const wrap=document.getElementById('twrap-'+badgeId);
+      if(tooltip&&wrap){
+        const wrapRect=wrap.getBoundingClientRect();
+        const tooltipH=tooltip.offsetHeight||150;
+        const spaceAbove=wrapRect.top;
+        const spaceBelow=window.innerHeight-wrapRect.bottom;
+        if(spaceBelow<tooltipH+10&&spaceAbove>tooltipH+10){
+          // Yukarı aç
+          tooltip.style.top='auto';
+          tooltip.style.bottom='calc(100% + 6px)';
+        } else {
+          // Aşağı aç (default)
+          tooltip.style.top='calc(100% + 6px)';
+          tooltip.style.bottom='auto';
+        }
+        // Sağa/sola taşma kontrolü
+        const tRect=tooltip.getBoundingClientRect();
+        if(tRect.left<8) tooltip.style.left='0';
+        else if(tRect.right>window.innerWidth-8) tooltip.style.left='auto';
+        else tooltip.style.left='50%';
+      }
+      // Açılan kazanılmış rozet parıldasın
+      const books=validBooks();
+      const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+      const badge=allB.find(b=>b.id===badgeId);
+      if(badge&&bstat(badge,books).earned){
+        const card=wrap?.querySelector('.badge-card');
         if(card){card.classList.add('badge-shine-new');setTimeout(()=>card.classList.remove('badge-shine-new'),1500);}
-      },50);
-    }
+      }
+    },50);
   }
 }
 
