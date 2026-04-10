@@ -5744,13 +5744,15 @@ function renderBadges(){
     const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier;
     const isOpen2=openBadgeId===b.id;
     const relBooks=booksForBadge(b,books);
+    const MAX_BOOKS=5;
     const bookListHtml=relBooks.length===0
       ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
-      :relBooks.map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
+      :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
           +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
           +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
           +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
-        +'</div>').join('');
+        +'</div>').join('')
+      +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'');
     return`<div class="badge-card ${cls} ${isOpen2?'badge-card-open':''} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
       ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
       ${isNew?'<span class="badge-new-dot"></span>':''}
