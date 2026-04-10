@@ -211,7 +211,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card:hover{transform:translateY(-2px);box-shadow:0 4px 15px var(--shadow);}
 .badge-card.earned{border-color:var(--gold);background:linear-gradient(135deg,#fdf5e0,#fff8e8);box-shadow:0 0 12px rgba(201,162,39,.15);}
 .badge-card.earned::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
-.badge-card.locked{opacity:.45;filter:grayscale(.4);}
+.badge-card.locked{opacity:.4;filter:grayscale(1) brightness(.9);}
+.badge-card.locked .badge-icon{opacity:.3;}
 @keyframes badgeShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
 @keyframes badgeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 22px rgba(201,162,39,.7),0 0 40px rgba(201,162,39,.35)}}
 .badge-card.badge-shine{animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;}
