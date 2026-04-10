@@ -1389,12 +1389,12 @@ const BADGE_CATS = [
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
   {label:'🔮 Gizli Rozetler', chains:[
     {id:'gizli', label:'🔮 Gizli', badges:[
-      {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'???', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
-      {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'???', check:b=>cap(maxMonth(b),3)},
-      {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'???', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
-      {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'???', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
-      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
-      {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'???', check:b=>flag(b.some(x=>x.hundredPages))},
+      {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
+      {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
+      {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
+      {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
+      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag(b.some(x=>x.hundredPages))},
+      {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
     ]},
   ], badges:[]},
 ]
