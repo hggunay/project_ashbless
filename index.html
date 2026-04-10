@@ -334,8 +334,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card:hover .badge-card-hint{opacity:.65;}
 /* Rozet tooltip popup */
 .badge-tooltip-wrap{position:relative;}
-.badge-tooltip{display:none;position:absolute;bottom:calc(100% + 8px);left:50%;transform:translateX(-50%);z-index:200;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:200px;max-width:280px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.3);}
-.badge-tooltip::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-top-color:rgba(201,162,39,.5);}
+.badge-tooltip{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:200;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:200px;max-width:280px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.3);}
+.badge-tooltip::before{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border:6px solid transparent;border-bottom-color:rgba(201,162,39,.5);}
 .badge-tooltip.open{display:block;}
 .badge-tooltip-title{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem;}
 .badge-tooltip-book{font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--ink);padding:.2rem 0;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.15);}
