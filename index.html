@@ -1630,6 +1630,16 @@ const BADGE_CATS = [
       {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag(b.some(x=>x.hundredPages))},
       {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
     ]},
+    {id:'kombinasyon', label:'🌟 Kombinasyon', badges:[
+      {id:'comb_dark',   tier:'diamond',icon:'🌑', name:'Karanlık Okuyucu',      desc:'???', check:b=>flag(genre(b,'korku',3).cur>=3&&genre(b,'distopya',3).cur>=3&&genre(b,'gerilim',3).cur>=3)},
+      {id:'comb_spec',   tier:'diamond',icon:'🌌', name:'Spekülatif Kurgu Ustası',desc:'???', check:b=>flag(genre(b,'fantastik',3).cur>=3&&genre(b,'bilimkurgu',3).cur>=3)},
+      {id:'comb_world',  tier:'diamond',icon:'🧭', name:'Dünya Kâşifi',           desc:'???', check:b=>flag(genre(b,'gezi',3).cur>=3&&uniqueCountries(b)>=5)},
+      {id:'comb_intel',  tier:'diamond',icon:'🎓', name:'Entelektüel',            desc:'???', check:b=>flag(genre(b,'felsefe',3).cur>=3&&genre(b,'psikoloji',3).cur>=3&&genre(b,'tarih',3).cur>=3)},
+      {id:'comb_multi',  tier:'diamond',icon:'📖', name:'Çok Yönlü Okuyucu',     desc:'???', check:b=>{const cats=[genre(b,'fantastik',3),genre(b,'bilimkurgu',3),genre(b,'polisiye',3),genre(b,'tarih',3),genre(b,'felsefe',3),genre(b,'psikoloji',3),genre(b,'romantik',3),genre(b,'korku',3)];return flag(cats.filter(c=>c.cur>=3).length>=5);}},
+      {id:'comb_all',    tier:'diamond',icon:'🌈', name:'Sınır Tanımaz',          desc:'???', check:b=>{const cats=[genre(b,'fantastik',3),genre(b,'bilimkurgu',3),genre(b,'polisiye',3),genre(b,'tarih',3),genre(b,'felsefe',3),genre(b,'psikoloji',3),genre(b,'romantik',3),genre(b,'korku',3),genre(b,'deneme',3),genre(b,'mitoloji',3)];return flag(cats.filter(c=>c.cur>=3).length>=10);}},
+      {id:'comb_classic',tier:'diamond',icon:'🏛️', name:'Klasik ile Modern',      desc:'???', check:b=>flag(b.filter(x=>x.pubYear&&x.pubYear<1950).length>=3&&b.filter(x=>x.pubYear&&x.pubYear>=2000).length>=3)},
+      {id:'comb_ser_geo',tier:'diamond',icon:'🗺️', name:'Seyahat Eden Seri Okuru',desc:'???', check:b=>flag(completedSeriesCount()>=1&&uniqueCountries(b)>=5)},
+    ]},
   ], badges:[]},
 ]
 
