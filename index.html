@@ -6132,29 +6132,39 @@ function closeBadgeTooltip(){
 // ── TÜR DROPDOWN FONKSİYONLARI ─────────────────────────────
 function showGenreDropdown(bookId){
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
-  // Dışarı tıklayınca kapat - null kontrolü ekle
   setTimeout(()=>{
     document.addEventListener('click', function handler(e){
-      const dd=document.getElementById('gd-'+bookId);
-      if(!e.target.closest('#gca-'+bookId)){
-        if(dd) dd.style.display='none';
+      if(!e.target.closest('#gca-'+bookId)&&!e.target.closest('.genre-dropdown')){
+        getGenreDropdown().style.display='none';
         document.removeEventListener('click',handler);
       }
     });
   },100);
 }
 
+// Global genre dropdown - body'de tek bir dropdown
+let _genreDropdown=null;
+function getGenreDropdown(){
+  if(!_genreDropdown){
+    _genreDropdown=document.createElement('div');
+    _genreDropdown.className='genre-dropdown';
+    _genreDropdown.style.cssText='position:fixed;display:none;z-index:99999;max-height:220px;overflow-y:auto;';
+    document.body.appendChild(_genreDropdown);
+  }
+  return _genreDropdown;
+}
+
 function filterGenreDropdown(bookId, query){
-  const dd=document.getElementById('gd-'+bookId);
-  if(!dd) return;
+  const dd=getGenreDropdown();
+  const inp=document.getElementById('gs-'+bookId);
+  if(!inp) return;
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   const selected=new Set((book?.genres||[]).map(g=>normalizeGenre(g)));
   const q=query.toLowerCase().trim();
+  dd.dataset.bookId=bookId;
 
   let html='';
   for(const cat of GENRE_TREE){
-    const catItems=[];
-    // Ana kategori dahil edilmez, sadece başlık olarak gösterilir
     const allChildren=flatChildren(cat);
     const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
     if(!filtered.length) continue;
@@ -6166,6 +6176,12 @@ function filterGenreDropdown(bookId, query){
     }
   }
   dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
+
+  // Input konumuna göre yerleştir
+  const r=inp.getBoundingClientRect();
+  dd.style.left=r.left+'px';
+  dd.style.top=(r.bottom+2)+'px';
+  dd.style.width=r.width+'px';
   dd.style.display='block';
 }
 
@@ -6191,9 +6207,8 @@ function addGenre(bookId, genreId){
   }
   // Input temizle, dropdown kapat
   const inp=document.getElementById('gs-'+bookId);
-  if(inp) inp.value='';
-  const dd=document.getElementById('gd-'+bookId);
-  if(dd) dd.style.display='none';
+  if(inp){inp.value='';inp.focus();}
+  getGenreDropdown().style.display='none';
 }
 
 function removeGenre(bookId, genreId){
