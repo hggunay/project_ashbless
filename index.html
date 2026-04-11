@@ -1502,10 +1502,10 @@ const BADGE_CATS = [
       {id:'siir4',tier:'diamond',icon:'🌙', name:'Şiir Ustası',        desc:'20 şiir kitabı oku.', check:b=>genre(b,'siir',20)},
     ]},
     {id:'kc_oyku',   label:'📖 Öykü',             badges:[
-      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'5 öykü/kısa hikaye oku. Kitaplığındaki öykü kitapları ve Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),5)},
-      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'15 öykü/kısa hikaye oku.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),15)},
-      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'30 öykü/kısa hikaye oku.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),30)},
-      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'50 öykü/kısa hikaye oku.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),50)},
+      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),5)},
+      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları + Hikayelerim birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),15)},
+      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları + Hikayelerim birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),30)},
+      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları + Hikayelerim birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),50)},
     ]},
     {id:'kc_dis',    label:'🔥 Distopya',          badges:[
       {id:'dis1',tier:'bronze', icon:'🔥', name:'Distopya Kaçkını',   desc:'3 distopya/cyberpunk kitabı oku.',  check:b=>genre(b,'distopya',3)},
@@ -1777,7 +1777,12 @@ function booksForBadge(badge,books){
   if(['gez1','gez2','gez3','gez4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='gezi'));
   if(['kis1','kis2','kis3','kis4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='kisisel_gelisim'));
   if(['siir1','siir2','siir3','siir4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='siir'));
-  if(['oyk1','oyk2','oyk3','oyk4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='oyku'));
+  if(['oyk1','oyk2','oyk3','oyk4'].includes(id)){
+    const bookList=filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='oyku'));
+    const storyCount=db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0;
+    if(storyCount>0) bookList._storyCount=storyCount;
+    return bookList;
+  }
   if(['dis1','dis2','dis3','dis4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>['distopya','cyberpunk','steampunk'].includes(normalizeGenre(g))));
   if(['gen1','gen2','gen3','gen4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>['genclik','cocuk'].includes(normalizeGenre(g))));
   // Coğrafya
@@ -6009,14 +6014,17 @@ function renderBadges(){
     const isOpen2=openBadgeId===b.id;
     const relBooks=booksForBadge(b,books);
     const MAX_BOOKS=5;
-    const bookListHtml=relBooks.length===0
+    const storyCount=relBooks._storyCount||0;
+    const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
+    const bookListHtml=relBooks.length===0&&!storyCount
       ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
       :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
           +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
           +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
           +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
         +'</div>').join('')
-      +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'');
+      +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'')
+      +storyNote;
     const tooltipHtml=isOpen2?`
       <div class="badge-tooltip open" id="tooltip-${b.id}" onclick="event.stopPropagation()">
         <div class="badge-tooltip-title">📚 İlgili Kitaplar (${relBooks.length})</div>
