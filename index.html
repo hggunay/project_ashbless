@@ -2479,7 +2479,7 @@ function viewMember(u){
   if(user&&user.publicProfile===false){
     const books=(db.books[u]||[]).filter(b=>b.readingStatus!=='wishlist'&&b.title&&!b.title.startsWith('ISBN:'));
     let badgeCount=0;
-    BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badgeCount++;}));
+    BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books).earned)badgeCount++;});});
     notify('🔒 Gizli Profil',`${user.displayName} · ${books.length} kitap · ${badgeCount} rozet`);
     return;
   }
@@ -5550,7 +5550,7 @@ function renderStatsPanel(){
   // Özet sayılar
   let badgeCount=0;
   let badgeTotal=0;
-  BADGE_CATS.forEach(c=>c.badges.forEach(b=>{badgeTotal++;if(bstat(b,books).earned)badgeCount++;}));
+  BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{badgeTotal++;if(bstat(b,books).earned)badgeCount++;});});
   const totalPages=books.reduce((s,b)=>s+(b.pages||0),0);
   const countries=new Set(books.filter(b=>b.country).map(b=>b.country.trim().toLowerCase()));
   const series=new Set(books.filter(b=>b.series).map(b=>b.series));
@@ -5780,7 +5780,7 @@ function renderBanners(){
 
 function renderStats(){
   const books=validBooks();let earned=0,inprog=0;
-  BADGE_CATS.forEach(c=>c.badges.forEach(b=>{const s=bstat(b,books);if(s.earned)earned++;else if(s.cur>0)inprog++;}));
+  BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{const s=bstat(b,books);if(s.earned)earned++;else if(s.cur>0)inprog++;});});
   document.getElementById('statsRow').innerHTML=`
     <div class="stat-card"><div class="stat-number">${books.length}</div><div class="stat-label">Kitap</div></div>
     <div class="stat-card"><div class="stat-number">${earned}</div><div class="stat-label">Rozet</div></div>
@@ -6215,7 +6215,7 @@ function shimmerEarnedBadges(){
 
 function renderMembers(){
   const all=Object.keys(db.users);
-  const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;BADGE_CATS.forEach(c=>c.badges.forEach(b=>{if(bstat(b,books).earned)badges++;}));return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
+  const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books).earned)badges++;});});return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
   document.getElementById('leaderboardGrid').innerHTML=sorted.map((m,i)=>`
     <div class="leader-card ${m.u===me?'me':''}" onclick="viewMember('${m.u}')">
       <span class="leader-rank">#${i+1}</span><span class="leader-avatar">${avatarHtml(m.avatar,"2rem")}</span>
