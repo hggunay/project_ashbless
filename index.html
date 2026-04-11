@@ -6165,16 +6165,13 @@ function filterGenreDropdown(bookId, query){
     }
   }
   dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
-  // Her zaman inputun hemen altına, fixed pozisyon
+  // Inputun tam altına, input genişliğinde aç
   const inp=document.getElementById('gs-'+bookId);
   if(inp){
     const r=inp.getBoundingClientRect();
-    const ddW=Math.min(300,window.innerWidth-16);
-    let left=r.left;
-    if(left+ddW>window.innerWidth-8) left=window.innerWidth-ddW-8;
-    dd.style.left=left+'px';
+    dd.style.left=r.left+'px';
     dd.style.top=(r.bottom+2)+'px';
-    dd.style.width=ddW+'px';
+    dd.style.width=r.width+'px';
   }
   dd.style.display='block';
 }
