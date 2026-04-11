@@ -1415,7 +1415,7 @@ const BADGE_CATS = [
 
 function cap(cur,max){return{cur:Math.min(cur,max),max};}
 function flag(bool){return{cur:bool?1:0,max:1};}
-function genre(books,kw,max){const n=books.filter(b=>(b.genres||[]).some(g=>g.toLowerCase().includes(kw.toLowerCase()))).length;return{cur:Math.min(n,max),max};}
+function genre(books,kw,max){const n=books.filter(b=>(b.genres||[]).some(g=>g.toLowerCase()===kw.toLowerCase()||g.toLowerCase().startsWith(kw.toLowerCase()+' ')||g.toLowerCase().endsWith(' '+kw.toLowerCase()))).length;return{cur:Math.min(n,max),max};}
 function monthCount(books){return new Set(books.map(b=>b.month).filter(Boolean)).size;}
 function maxMonth(books){const c={};books.forEach(b=>{if(b.month)c[b.month]=(c[b.month]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxSeries(books){const c={};books.filter(b=>b.series).forEach(b=>{c[b.series]=(c[b.series]||0)+1;});return Math.max(0,...Object.values(c));}
@@ -2913,15 +2913,14 @@ function openBook(bookId){
     <!-- OTOMATİK BAYRAKLAR accordion -->
     <div class="detail-section">
       <div class="detail-acc-header" onclick="toggleModalSec('mSec-auto-${book.id}')">
-        <div class="detail-section-title" style="margin-bottom:0">🤖 Otomatik Hesaplanan <span class="auto-badge">OTOMATİK</span></div>
+        <div class="detail-section-title" style="margin-bottom:0">👤 Yazar Bilgileri <span class="auto-badge">OTOMATİK</span></div>
         <span class="acc-arrow" id="arr-mSec-auto-${book.id}">▶</span>
       </div>
       <div class="detail-acc-body" id="mSec-auto-${book.id}">
         <div class="check-chips" style="margin-top:.5rem">
           ${flagChip(book,'femaleAuthor','👩‍💻 Kadın yazar',isMe)}
           ${flagChip(book,'youngAuthor',`🌱 Genç yazar (yazıldığında <30${book.pubYear&&book.authorBirthYear?' · '+(book.pubYear-book.authorBirthYear)+' yaşında':''})`,isMe)}
-          ${flagChip(book,'pre1900',`📜 1900 öncesi eser${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
-          ${flagChip(book,'pre1980comic',`🖋️ 1980 öncesi çizgi roman${book.pubYear?' ('+book.pubYear+')':''}`,isMe)}
+
         </div>
       </div>
     </div>
