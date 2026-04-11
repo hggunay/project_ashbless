@@ -171,7 +171,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,8,5,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .25s;}
 .modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--parchment);border:1px solid var(--gold);border-radius:4px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .25s;}
+.modal{background:var(--parchment);border:1px solid var(--gold);border-radius:4px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;overflow-x:visible;box-shadow:0 24px 80px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .25s;}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-header{background:linear-gradient(180deg,var(--parchment-dark),var(--parchment));padding:1rem 1.25rem;border-bottom:1px solid rgba(201,162,39,.3);display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;position:sticky;top:0;z-index:1;}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--ink);line-height:1.2;}
@@ -224,8 +224,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .genre-chip-x{background:none;border:none;cursor:pointer;color:var(--rust);font-size:.65rem;padding:0;line-height:1;opacity:.7;}
 .genre-chip-x:hover{opacity:1;}
 .genre-search-input{margin-top:.2rem;}
-.genre-dropdown{position:fixed;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.25);}
+.genre-dropdown{position:absolute;top:calc(100% + 2px);left:0;right:0;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;z-index:9999;max-height:200px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.25);}
 .genre-chip-area{position:relative;}
+.genre-search-wrap{position:relative;}
 .genre-dd-group{padding:.3rem .5rem .1rem;font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;border-top:1px solid rgba(201,162,39,.1);}
 .genre-dd-group:first-child{border-top:none;}
 .genre-dd-item{padding:.35rem .75rem;font-size:.82rem;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:.4rem;}
@@ -3105,7 +3106,7 @@ function openBook(bookId){
           ${isMe
             ?`<div class="genre-chip-area" id="gca-${book.id}">
                 <div class="genre-chips" id="gc-${book.id}">${(book.genres||[]).map(g=>`<span class="genre-chip">${genreLabel(normalizeGenre(g))}<button onclick="removeGenre(${book.id},'${normalizeGenre(g)}')" class="genre-chip-x">✕</button></span>`).join('')}</div>
-                <div style="position:relative;margin-top:.35rem">
+                <div class="genre-search-wrap" style="margin-top:.35rem">
                   <input class="detail-input genre-search-input" id="gs-${book.id}" placeholder="Tür ara veya seç..." autocomplete="off"
                     oninput="filterGenreDropdown(${book.id},this.value)"
                     onfocus="showGenreDropdown(${book.id})"
@@ -6165,14 +6166,6 @@ function filterGenreDropdown(bookId, query){
     }
   }
   dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
-  // Inputun tam altına, input genişliğinde aç
-  const inp=document.getElementById('gs-'+bookId);
-  if(inp){
-    const r=inp.getBoundingClientRect();
-    dd.style.left=r.left+'px';
-    dd.style.top=(r.bottom+2)+'px';
-    dd.style.width=r.width+'px';
-  }
   dd.style.display='block';
 }
 
