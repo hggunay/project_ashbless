@@ -224,7 +224,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .genre-chip-x{background:none;border:none;cursor:pointer;color:var(--rust);font-size:.65rem;padding:0;line-height:1;opacity:.7;}
 .genre-chip-x:hover{opacity:1;}
 .genre-search-input{margin-top:.2rem;}
-.genre-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;z-index:500;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+.genre-dropdown{position:fixed;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.25);}
 .genre-dd-group{padding:.3rem .5rem .1rem;font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;border-top:1px solid rgba(201,162,39,.1);}
 .genre-dd-group:first-child{border-top:none;}
 .genre-dd-item{padding:.35rem .75rem;font-size:.82rem;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:.4rem;}
@@ -6130,11 +6130,12 @@ function closeBadgeTooltip(){
 // ── TÜR DROPDOWN FONKSİYONLARI ─────────────────────────────
 function showGenreDropdown(bookId){
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
-  // Dışarı tıklayınca kapat
+  // Dışarı tıklayınca kapat - null kontrolü ekle
   setTimeout(()=>{
     document.addEventListener('click', function handler(e){
+      const dd=document.getElementById('gd-'+bookId);
       if(!e.target.closest('#gca-'+bookId)){
-        document.getElementById('gd-'+bookId).style.display='none';
+        if(dd) dd.style.display='none';
         document.removeEventListener('click',handler);
       }
     });
@@ -6164,6 +6165,17 @@ function filterGenreDropdown(bookId, query){
   }
   dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
   dd.style.display='block';
+  // Fixed pozisyon için input konumunu hesapla
+  const inp=document.getElementById('gs-'+bookId);
+  if(inp){
+    const r=inp.getBoundingClientRect();
+    const ddW=Math.min(280,window.innerWidth-16);
+    let left=r.left;
+    if(left+ddW>window.innerWidth-8) left=window.innerWidth-ddW-8;
+    dd.style.left=left+'px';
+    dd.style.top=(r.bottom+2)+'px';
+    dd.style.width=ddW+'px';
+  }
 }
 
 function flatChildren(node){
