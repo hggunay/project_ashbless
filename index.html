@@ -225,6 +225,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .genre-chip-x:hover{opacity:1;}
 .genre-search-input{margin-top:.2rem;}
 .genre-dropdown{position:fixed;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;z-index:9999;max-height:220px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.25);}
+.genre-chip-area{position:relative;}
 .genre-dd-group{padding:.3rem .5rem .1rem;font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;border-top:1px solid rgba(201,162,39,.1);}
 .genre-dd-group:first-child{border-top:none;}
 .genre-dd-item{padding:.35rem .75rem;font-size:.82rem;color:var(--ink);cursor:pointer;display:flex;align-items:center;gap:.4rem;}
@@ -6164,18 +6165,18 @@ function filterGenreDropdown(bookId, query){
     }
   }
   dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
-  dd.style.display='block';
-  // Fixed pozisyon için input konumunu hesapla
+  // Her zaman inputun hemen altına, fixed pozisyon
   const inp=document.getElementById('gs-'+bookId);
   if(inp){
     const r=inp.getBoundingClientRect();
-    const ddW=Math.min(280,window.innerWidth-16);
+    const ddW=Math.min(300,window.innerWidth-16);
     let left=r.left;
     if(left+ddW>window.innerWidth-8) left=window.innerWidth-ddW-8;
     dd.style.left=left+'px';
     dd.style.top=(r.bottom+2)+'px';
     dd.style.width=ddW+'px';
   }
+  dd.style.display='block';
 }
 
 function flatChildren(node){
