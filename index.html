@@ -284,6 +284,13 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.badge-shine-new{animation:badgeGlow .6s ease 4,badgeShimmerNew 1s ease 4;background:linear-gradient(100deg,#fdf5e0 30%,#fff8b0 50%,#fdf5e0 70%) !important;background-size:200% 100% !important;}
 #confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;}
 .badge-icon{font-size:2rem;margin-bottom:.5rem;display:block;}
+.badge-png{width:48px;height:48px;margin:0 auto .5rem;display:block;object-fit:contain;}
+.badge-png.tier-bronze{filter:sepia(1) saturate(3) hue-rotate(5deg) brightness(.9);}
+.badge-png.tier-silver{filter:grayscale(1) brightness(1.3) contrast(1.1);}
+.badge-png.tier-gold{filter:sepia(1) saturate(4) brightness(1.1);}
+.badge-png.tier-diamond{filter:sepia(1) saturate(3) hue-rotate(220deg) brightness(1.2);}
+.badge-png.state-locked{filter:grayscale(1) opacity(.25) brightness(.8);}
+.badge-png.state-progress{filter:grayscale(1) opacity(.5);}
 .badge-name{font-family:'Playfair Display',serif;font-size:.9rem;font-weight:700;color:var(--ink);margin-bottom:.35rem;line-height:1.3;}
 .badge-desc{font-size:.8rem;color:var(--rust);font-style:italic;line-height:1.5;margin-bottom:.5rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;}
 .earned-stamp{position:absolute;top:5px;right:5px;background:var(--gold);color:var(--ink);font-size:.5rem;font-family:'Space Mono',monospace;font-weight:700;padding:.12rem .35rem;border-radius:20px;}
@@ -1365,12 +1372,12 @@ const BADGE_CATS = [
   // ── 1. OKUMA MİKTARI ──────────────────────────────────────────
   {label:'📚 Okuma Miktarı', chains:[
     {id:'toplam_kitap', label:'📖 Toplam Kitap', badges:[
-      {id:'b5',   tier:'bronze', icon:'📖', name:'İlk Adım',          desc:'5 kitap oku.',            check:b=>cap(b.length,5)},
-      {id:'b10',  tier:'bronze', icon:'📚', name:'Okuma Alışkanlığı', desc:'10 kitap oku.',           check:b=>cap(b.length,10)},
-      {id:'b25',  tier:'silver', icon:'🥈', name:'Kitap Kurdu',       desc:'25 kitap oku.',           check:b=>cap(b.length,25)},
-      {id:'b50',  tier:'silver', icon:'🏅', name:'Kütüphane Dostu',   desc:'50 kitap oku.',           check:b=>cap(b.length,50)},
-      {id:'b100', tier:'gold',   icon:'🥇', name:'Yüzler Kulübü',     desc:'100 kitap oku.',          check:b=>cap(b.length,100)},
-      {id:'b250', tier:'diamond',icon:'💎', name:'Efsanevi Okuyucu',  desc:'250 kitap oku.',          check:b=>cap(b.length,250)},
+      {id:'b5',   tier:'bronze', icon:'📖', badgeIcon:'badges/kitap.png', name:'İlk Adım',          desc:'5 kitap oku.',            check:b=>cap(b.length,5)},
+      {id:'b10',  tier:'bronze', icon:'📚', badgeIcon:'badges/kitap.png', name:'Okuma Alışkanlığı', desc:'10 kitap oku.',           check:b=>cap(b.length,10)},
+      {id:'b25',  tier:'silver', icon:'🥈', badgeIcon:'badges/kitap.png', name:'Kitap Kurdu',       desc:'25 kitap oku.',           check:b=>cap(b.length,25)},
+      {id:'b50',  tier:'silver', icon:'🏅', badgeIcon:'badges/kitap.png', name:'Kütüphane Dostu',   desc:'50 kitap oku.',           check:b=>cap(b.length,50)},
+      {id:'b100', tier:'gold',   icon:'🥇', badgeIcon:'badges/kitap.png', name:'Yüzler Kulübü',     desc:'100 kitap oku.',          check:b=>cap(b.length,100)},
+      {id:'b250', tier:'diamond',icon:'💎', badgeIcon:'badges/kitap.png', name:'Efsanevi Okuyucu',  desc:'250 kitap oku.',          check:b=>cap(b.length,250)},
     ]},
     {id:'sayfa_okuma', label:'📄 Sayfa Okuma', badges:[
       {id:'p1k',  tier:'bronze', icon:'📄', name:'Sayfa Avcısı',       desc:'1.000 sayfa oku.',       check:b=>cap(totalPages(b),1000)},
@@ -6037,7 +6044,9 @@ function renderBadges(){
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-        <span class="badge-icon">${b.icon}</span>
+        ${b.badgeIcon
+          ?`<img class="badge-png tier-${tier} ${s.cur===0?'state-locked':(!s.earned?'state-progress':'')}" src="${b.badgeIcon}" alt="${b.name}"/>`
+          :`<span class="badge-icon">${b.icon}</span>`}
         <div class="badge-name">${b.name}</div>
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
