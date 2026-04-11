@@ -5689,6 +5689,7 @@ function renderSafe(){
   if(modalOpen){
     renderStats();renderBookList();renderBadges();renderMembers();
     if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
+    if(modalBookId) openBook(modalBookId);
   } else {
     render();
   }
