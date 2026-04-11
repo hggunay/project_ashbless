@@ -1292,6 +1292,12 @@ const BADGE_CATS = [
       {id:'sci3',tier:'gold',   icon:'🌍', name:'Evren Kâşifi',  desc:'10 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',10)},
       {id:'sci4',tier:'diamond',icon:'🧬', name:'Bilim İnsanı',  desc:'20 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',20)},
     ]},
+    {id:'kc_rom',    label:'💕 Romantik',          badges:[
+      {id:'rom1',tier:'bronze', icon:'💘', name:'Romantik Ruh',         desc:'2 romantik kitap oku.',  check:b=>genre(b,'romantik',2)},
+      {id:'rom2',tier:'silver', icon:'💝', name:'Aşk Hikayeleri Dostu', desc:'5 romantik kitap oku.',  check:b=>genre(b,'romantik',5)},
+      {id:'rom3',tier:'gold',   icon:'💖', name:'Kalp Koleksiyoncusu',  desc:'10 romantik kitap oku.', check:b=>genre(b,'romantik',10)},
+      {id:'rom4',tier:'diamond',icon:'💜', name:'Romantizm Ustası',     desc:'20 romantik kitap oku.', check:b=>genre(b,'romantik',20)},
+    ]},
   ], badges:[]},
   // ── 3. COĞRAFYA ───────────────────────────────────────────────
   {label:'🌍 Coğrafya', chains:[
@@ -1534,6 +1540,7 @@ function booksForBadge(badge,books){
   if(['ess1','ess2','ess3','ess4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('deneme')));
   if(['myt1','myt2','myt3','myt4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('mitoloji')));
   if(['sci1','sci2','sci3','sci4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('bilim')));
+  if(['rom1','rom2','rom3','rom4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('romantik')));
   // Coğrafya
   if(['geo1','geo2','geo3','geo4','geo5'].includes(id)) return filtered.filter(b=>b.country&&b.country.trim());
   if(id.startsWith('reg_')) return filtered.filter(b=>b.country&&b.country.trim());
