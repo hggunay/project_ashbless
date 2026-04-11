@@ -5689,7 +5689,7 @@ function renderSafe(){
   if(modalOpen){
     renderStats();renderBookList();renderBadges();renderMembers();
     if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
-    if(modalBookId) openBook(modalBookId);
+
   } else {
     render();
   }
@@ -6204,9 +6204,11 @@ function addGenre(bookId, genreId){
   const norm=normalizeGenre(genreId);
   if(!genres.map(g=>normalizeGenre(g)).includes(norm)){
     genres.push(genreId);
-    saveField(bookId,'genres',genres);
+    book.genres=genres;
+    saveDb();
+    renderGenreChips(bookId);
+    renderSafeNoModal();
   }
-  // Input temizle, dropdown kapat
   const inp=document.getElementById('gs-'+bookId);
   if(inp){inp.value='';inp.focus();}
   getGenreDropdown().style.display='none';
@@ -6215,8 +6217,22 @@ function addGenre(bookId, genreId){
 function removeGenre(bookId, genreId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
-  const genres=(book.genres||[]).filter(g=>normalizeGenre(g)!==genreId);
-  saveField(bookId,'genres',genres);
+  book.genres=(book.genres||[]).filter(g=>normalizeGenre(g)!==genreId);
+  saveDb();
+  renderGenreChips(bookId);
+  renderSafeNoModal();
+}
+
+function renderGenreChips(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  const gc=document.getElementById('gc-'+bookId);
+  if(!gc||!book) return;
+  gc.innerHTML=(book.genres||[]).map(g=>`<span class="genre-chip">${genreLabel(normalizeGenre(g))}<button onclick="removeGenre(${bookId},'${normalizeGenre(g)}')" class="genre-chip-x">✕</button></span>`).join('');
+}
+
+function renderSafeNoModal(){
+  renderStats();renderBookList();renderBadges();renderMembers();
+  if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
 }
 
 function shimmerEarnedBadges(){
