@@ -6000,7 +6000,7 @@ function renderStats(){
     <div class="stat-card"><div class="stat-number">${books.length}</div><div class="stat-label">Kitap</div></div>
     <div class="stat-card"><div class="stat-number">${earned}</div><div class="stat-label">Rozet</div></div>
     <div class="stat-card"><div class="stat-number">${inprog}</div><div class="stat-label">Devam Eden</div></div>`;
-  document.getElementById('bookCount')?.textContent=`${books.length} kitap`;
+  const _bc=document.getElementById('bookCount');if(_bc)_bc.textContent=`${books.length} kitap`;
 }
 
 function renderBookList(){
@@ -6209,7 +6209,7 @@ function renderBookList(){
     }
   }
 
-  document.getElementById('bookCount')?.textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
+  const _bc=document.getElementById('bookCount');if(_bc)_bc.textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
 }
 
 let openBadgeId=null;
