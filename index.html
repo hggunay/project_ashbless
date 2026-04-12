@@ -1114,6 +1114,27 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             </div>
           </div>
 
+          <!-- Google Books API Key — akordeon -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
+            <div class="detail-acc-header" onclick="toggleSection('set-gbooks')">
+              <div class="detail-section-title" style="margin:0">🔑 Google Books API</div>
+              <span class="acc-arrow" id="arr-set-gbooks">▶</span>
+            </div>
+            <div class="detail-acc-body" id="body-set-gbooks">
+              <div style="padding-top:.75rem">
+                <div style="font-size:.8rem;color:#555;font-style:italic;margin-bottom:.75rem">API key girilirse kitap aramaları Google Books üzerinden yapılır — Türkçe kitaplar için çok daha iyi sonuç verir. Girilmezse Open Library kullanılır.</div>
+                <div style="display:flex;gap:.5rem;align-items:center">
+                  <div class="pw-wrap" style="flex:1">
+                    <input class="detail-input" id="settingGBooksKey" type="password" placeholder="AIza..."/>
+                    <button class="pw-toggle" type="button" onclick="togglePw('settingGBooksKey',this)">👁</button>
+                  </div>
+                  <button class="btn btn-primary btn-sm" onclick="saveGBooksKey()">💾</button>
+                </div>
+                <div id="gBooksKeyStatus" style="font-size:.75rem;margin-top:.4rem;color:#555"></div>
+              </div>
+            </div>
+          </div>
+
           <!-- Veri Yedekleme — akordeon -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-backup')">
@@ -1854,7 +1875,7 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.settings)db.settings={};
       // Avatar'ları ayrı node'dan yükle
       try{
         const avatars=await fbGet('aa-avatars');
@@ -2128,6 +2149,11 @@ function renderSettings(){
   if(hintEl) hintEl.value=user.hint||'';
   // Harita avatarı grid
   setTimeout(()=>renderMapAvatarGrid(),50);
+  // Google Books API Key
+  const gkEl=document.getElementById('settingGBooksKey');
+  if(gkEl) gkEl.value=getGBooksKey();
+  const gkStatus=document.getElementById('gBooksKeyStatus');
+  if(gkStatus) gkStatus.textContent=getGBooksKey()?'✓ Google Books aktif':'Open Library kullanılıyor';
   // Public toggle
   const isPublic=user.publicProfile!==false;
   const cb=document.getElementById('settingPublic');
@@ -2213,7 +2239,19 @@ function clearMapAvatar(){
   notify('🖼️ Avatar','Emoji avatara döndü.');
 }
 
-function saveHint(){
+function getGBooksKey(){
+  return (db.settings&&db.settings.googleBooksKey)||'';
+}
+function saveGBooksKey(){
+  const key=document.getElementById('settingGBooksKey')?.value.trim()||'';
+  if(!db.settings) db.settings={};
+  db.settings.googleBooksKey=key;
+  saveDb();
+  const status=document.getElementById('gBooksKeyStatus');
+  if(status) status.textContent=key?'✓ API key kaydedildi — Google Books aktif':'API key kaldırıldı — Open Library kullanılacak';
+  notify('🔑 API Key',key?'Google Books API aktif.':'Open Library\'ye döndü.');
+}
+
   const hint=document.getElementById('settingHint').value.trim();
   if(!db.users[me]){notify('⚠️ Hata','Kullanıcı bulunamadı.');return;}
   db.users[me].hint=hint||null;
@@ -2457,7 +2495,7 @@ function enterApp(){
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
-  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger'],false),50);
+  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-gbooks'],false),50);
   // İlk state'i kaydet
   history.replaceState({panel:targetPanel},'',location.pathname+(targetPanel!=='myBooks'?'#'+targetPanel:''));
   // Geri tuşu dinleyicisi — sadece bir kez ekle
@@ -2817,8 +2855,44 @@ function mapOLSubjects(subjects){
 
 async function fetchBookInfo(title, author, isbn=''){
   const empty = {title_clean:title, author_clean:author, genres:[], pages:null, pub_year:null, author_birth_year:null, country:null, female_author:false, series:null, series_num:null, series_total:null, comic_series:null};
+  const gKey=getGBooksKey();
   try {
-    // Open Library search — no API key needed, completely free
+    // ── Google Books (key varsa) ──────────────────────────
+    if(gKey){
+      let gbUrl;
+      if(isbn) gbUrl=`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${gKey}`;
+      else {
+        const q=encodeURIComponent(isbn||(author?`intitle:${title}+inauthor:${author}`:`intitle:${title}`));
+        gbUrl=`https://www.googleapis.com/books/v1/volumes?q=${q}&langRestrict=tr&maxResults=5&key=${gKey}`;
+      }
+      try {
+        const gr=await fetch(gbUrl);
+        const gd=await gr.json();
+        if(gd.items&&gd.items.length){
+          const tLow=title.toLowerCase();
+          let best=gd.items[0];
+          for(const it of gd.items){
+            if((it.volumeInfo?.title||'').toLowerCase()===tLow){best=it;break;}
+          }
+          const vi=best.volumeInfo||{};
+          const title_clean=vi.title||title;
+          const author_clean=(vi.authors&&vi.authors[0])||author||'';
+          const pages=vi.pageCount||null;
+          const pub_year=vi.publishedDate?parseInt(vi.publishedDate.substring(0,4)):null;
+          const gbCats=(vi.categories||[]).join(' ').toLowerCase();
+          const genres=mapOLSubjects(vi.categories||[]);
+          const nameParts=author_clean.split(' ');
+          const firstName=nameParts[0].replace(/\.$/,'').toLowerCase();
+          const isInitial=firstName.length<=2;
+          const femaleEndings=['a','e','i','ü','ö','ş','ye','se'];
+          const female_author=!isInitial&&femaleEndings.some(e=>firstName.endsWith(e));
+          return {title_clean,author_clean,genres,pages,pub_year,author_birth_year:null,country:null,female_author,series:null,series_num:null,series_total:null,comic_series:null,_method:'google'};
+        }
+      } catch(e){}
+      // Google'da bulunamadı — Open Library'ye geç
+    }
+
+    // ── Open Library (fallback) ───────────────────────────
     let url;
     if(isbn){
       url = 'https://openlibrary.org/api/books?bibkeys=ISBN:'+isbn+'&format=json&jscmd=data';
@@ -2832,7 +2906,6 @@ async function fetchBookInfo(title, author, isbn=''){
     let title_clean=title, author_clean=author||'', pages=null, pub_year=null, genres=[], series=null, series_num=null;
 
     if(isbn){
-      // ISBN lookup via Books API
       const r = await fetch(url);
       const d = await r.json();
       const key = 'ISBN:'+isbn;
@@ -2846,13 +2919,11 @@ async function fetchBookInfo(title, author, isbn=''){
         genres = mapOLSubjects(subjects);
       }
     } else {
-      // Search API
       const r = await fetch(url);
       const d = await r.json();
       if(d.docs && d.docs.length){
         const tLow = title.toLowerCase();
         let best = d.docs[0];
-        // Try exact title match first
         for(const doc of d.docs){
           if((doc.title||'').toLowerCase() === tLow){ best = doc; break; }
         }
@@ -2866,7 +2937,6 @@ async function fetchBookInfo(title, author, isbn=''){
       }
     }
 
-    // Female author detection from first name
     const nameParts = author_clean.split(' ');
     const firstName = nameParts[0].replace(/\.$/,'').toLowerCase();
     const isInitial = firstName.length <= 2;
@@ -2882,7 +2952,7 @@ async function fetchBookInfo(title, author, isbn=''){
   } catch(e) { return empty; }
 }
 
-// ── AUTOCOMPLETE (Open Library) ──────────────────────────────
+// ── AUTOCOMPLETE ──────────────────────────────────────────────
 let acTimer=null;
 async function acSearch(q){
   clearTimeout(acTimer);
@@ -2890,13 +2960,32 @@ async function acSearch(q){
   if(!q||q.length<3){list.style.display='none';return;}
   acTimer=setTimeout(async()=>{
     try{
-      const r=await fetch('https://openlibrary.org/search.json?q='+encodeURIComponent(q)+'&fields=title,author_name,first_publish_year&limit=6');
-      const d=await r.json();
-      if(!d.docs||!d.docs.length){list.style.display='none';return;}
-      list.innerHTML=d.docs.map(doc=>{
-        const title=doc.title||'';
-        const author=(doc.author_name&&doc.author_name[0])||'';
-        const year=doc.first_publish_year||'';
+      const gKey=getGBooksKey();
+      let items=[];
+      if(gKey){
+        const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6&key=${gKey}`);
+        const d=await r.json();
+        if(d.items&&d.items.length){
+          items=d.items.map(it=>({
+            title:it.volumeInfo?.title||'',
+            author:(it.volumeInfo?.authors&&it.volumeInfo.authors[0])||'',
+            year:it.volumeInfo?.publishedDate?it.volumeInfo.publishedDate.substring(0,4):''
+          }));
+        }
+      }
+      if(!items.length){
+        const r=await fetch('https://openlibrary.org/search.json?q='+encodeURIComponent(q)+'&fields=title,author_name,first_publish_year&limit=6');
+        const d=await r.json();
+        if(d.docs&&d.docs.length){
+          items=d.docs.map(doc=>({
+            title:doc.title||'',
+            author:(doc.author_name&&doc.author_name[0])||'',
+            year:doc.first_publish_year||''
+          }));
+        }
+      }
+      if(!items.length){list.style.display='none';return;}
+      list.innerHTML=items.map(({title,author,year})=>{
         const ts=title.replace(/'/g,"\\'").replace(/"/g,'&quot;');
         const as=author.replace(/'/g,"\\'").replace(/"/g,'&quot;');
         return`<div class="autocomplete-item" onmousedown="acSelect('${ts}','${as}')">
