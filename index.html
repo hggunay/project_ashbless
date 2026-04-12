@@ -595,38 +595,41 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           </div>
           <div class="field-group" style="grid-column:1/-1"><span class="field-label">Yazar <span style="opacity:.5;font-weight:400">(girilirse eşleştirme daha doğru olur)</span></span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı — isteğe bağlı"/></div>
         </div>
-        <!-- Daha fazla accordion -->
-        <div>
-          <div class="acc-header" onclick="toggleAddMore()" id="addMoreHeader" style="margin-bottom:.5rem">
-            <span style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:rgba(245,237,214,.5);">⚙️ Daha Fazla Seçenek</span>
-            <span class="acc-arrow" id="addMoreArrow">▶</span>
+        <!-- Okuma durumu — her zaman görünür -->
+        <div class="chip-group-label" style="margin-bottom:.4rem">📖 Okuma durumu</div>
+        <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
+          <span class="chip active" data-val="reading" onclick="selectReadingTime(this)">📖 Okuyorum</span>
+          <span class="chip" data-val="new" onclick="selectReadingTime(this)">✅ Okudum</span>
+          <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım</span>
+          <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Eskiden okudum</span>
+          <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Listeye ekle</span>
+        </div>
+
+        <!-- Dinamik alanlar — okuma durumuna göre -->
+        <div id="addFormFields">
+          <!-- Başlama tarihi: okuyorum + yarım -->
+          <div class="input-grid" id="addFields-dates" style="margin-bottom:.75rem">
+            <div class="field-group" id="addField-startDate"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
+            <div class="field-group" id="addField-endDate"><span class="field-label">✅ Bitiş Tarihi</span><input class="book-input" id="bookEndDate" type="date"/></div>
           </div>
-          <div class="acc-body" id="addMoreBody">
-            <div class="input-grid" style="margin-bottom:.75rem">
-              <div class="field-group series-wrap" style="grid-column:1/-1">
-                <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(bir serinin parçasıysa)</span></span>
-                <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune — isteğe bağlı" autocomplete="off"
-                  oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>{seriesDropHide();applySeriesMemory(document.getElementById('bookSeries').value.trim());},250)"/>
-                <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
-              </div>
-              <div class="field-group"><span class="field-label">📅 Başlama Tarihi</span><input class="book-input" id="bookStartDate" type="date"/></div>
-              <div class="field-group"><span class="field-label">✅ Bitiş Tarihi</span><input class="book-input" id="bookEndDate" type="date"/></div>
-              <div class="field-group" style="grid-column:1/-1"><span class="field-label">🏢 Yayınevi</span><input class="book-input" id="bookPublisher" type="text" placeholder="örn: İthaki, Can, Metis..."/></div>
+          <!-- Seri + yayınevi -->
+          <div class="input-grid" id="addFields-extra" style="margin-bottom:.75rem">
+            <div class="field-group series-wrap" style="grid-column:1/-1" id="addField-series">
+              <span class="field-label">📚 Seri Adı <span style="opacity:.5;font-weight:400">(isteğe bağlı)</span></span>
+              <input class="book-input" id="bookSeries" type="text" placeholder="örn: Dune" autocomplete="off"
+                oninput="seriesInputChange(this.value)" onblur="setTimeout(()=>{seriesDropHide();applySeriesMemory(document.getElementById('bookSeries').value.trim());},250)"/>
+              <div class="series-dropdown" id="seriesDropList" style="display:none"></div>
             </div>
-            <div class="chip-group-label">📚 Format (birden fazla seçilebilir)</div>
+            <div class="field-group" id="addField-publisher" style="grid-column:1/-1"><span class="field-label">🏢 Yayınevi</span><input class="book-input" id="bookPublisher" type="text" placeholder="örn: İthaki, Can, Metis..."/></div>
+          </div>
+          <!-- Format -->
+          <div id="addFields-format">
+            <div class="chip-group-label">📚 Format</div>
             <div class="chip-group" id="formatChips">
-              <span class="chip active" data-val="kitap" onclick="toggleChip(this)">📖 Fiziksel Kitap</span>
+              <span class="chip active" data-val="kitap" onclick="toggleChip(this)">📖 Fiziksel</span>
               <span class="chip" data-val="ekitap" onclick="toggleChip(this)">📱 E-Kitap</span>
-              <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli Kitap</span>
-              <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi Roman / Manga</span>
-            </div>
-            <div class="chip-group-label" style="margin-top:.5rem">📖 Okuma durumu</div>
-            <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
-              <span class="chip active" data-val="reading" onclick="selectReadingTime(this)">📖 Şu an okuyorum</span>
-              <span class="chip" data-val="new" onclick="selectReadingTime(this)">✅ Okudum</span>
-              <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım bıraktım</span>
-              <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Eskiden okudum <span style="font-size:.72rem;opacity:.7">(sadece koleksiyon rozetlerine sayılır)</span></span>
-              <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Okumak İstiyorum</span>
+              <span class="chip" data-val="sesli" onclick="toggleChip(this)">🎧 Sesli</span>
+              <span class="chip" data-val="cizgi" onclick="toggleChip(this)">🎨 Çizgi/Manga</span>
             </div>
           </div>
         </div>
@@ -2454,7 +2457,7 @@ function enterApp(){
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
   updateAdminBadge();
-  render();setTodayDate();
+  render();setTodayDate();updateAddFormFields();
   showSpecialDayBanner();
   setTimeout(()=>checkNotifications(),1200);
   // Son açık sekmeye dön
@@ -2657,7 +2660,36 @@ function loadAccordionPrefs(keys,defaultOpen=true){
 
 function toggleChip(el){el.classList.toggle('active');}
 function getFormats(){return[...document.querySelectorAll('#formatChips .chip.active')].map(c=>c.dataset.val);}
-function selectReadingTime(el){document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');}
+function selectReadingTime(el){
+  document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');
+  updateAddFormFields();
+}
+function updateAddFormFields(){
+  const val=getReadingTime();
+  const isWishlist=val==='wishlist';
+  const isReading=val==='reading';
+  const isPaused=val==='paused';
+  const isDone=val==='new'||val==='past';
+
+  // Tarih alanları
+  const startDate=document.getElementById('addField-startDate');
+  const endDate=document.getElementById('addField-endDate');
+  const datesRow=document.getElementById('addFields-dates');
+  if(startDate) startDate.style.display=(isReading||isPaused)?'':'none';
+  if(endDate) endDate.style.display=isDone?'':'none';
+  if(datesRow) datesRow.style.display=isWishlist?'none':'';
+
+  // Seri + yayınevi + format
+  const extra=document.getElementById('addFields-extra');
+  const format=document.getElementById('addFields-format');
+  if(extra) extra.style.display=isWishlist?'none':'';
+  if(format) format.style.display=isWishlist?'none':'';
+
+  // Yayınevi sadece okudum/eskiden
+  const pub=document.getElementById('addField-publisher');
+  if(pub) pub.style.display=isDone?'':'none';
+}
 function getReadingTime(){const a=document.querySelector('#readingTimeChips .chip.active');return a?a.dataset.val:'reading';}
 
 // ── SERİ HAFIZASI ─────────────────────────────────────────────
@@ -3107,6 +3139,7 @@ async function addBook(){
   document.getElementById('bookEndDate').value='';
   document.querySelectorAll('#formatChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
   document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='reading'));
+  updateAddFormFields();
 
   const newBooks=validBooks();
   const newlyEarned=[];
