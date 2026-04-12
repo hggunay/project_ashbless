@@ -648,10 +648,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div class="card">
         <div class="card-body" style="padding:.75rem">
           <div class="book-subtabs">
-            <button class="book-subtab active" id="bst-okuyor" onclick="switchBookTab('okuyor')">📖 Okuyor <span id="bst-okuyor-count" style="opacity:.6;font-size:.6rem"></span></button>
-            <button class="book-subtab" id="bst-bitti" onclick="switchBookTab('bitti')">📚 Bitti <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
-            <button class="book-subtab" id="bst-yarim" onclick="switchBookTab('yarim')">🚧 Yarım <span id="bst-yarim-count" style="opacity:.6;font-size:.6rem"></span></button>
-            <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Liste <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab active" id="bst-okuyor" onclick="switchBookTab('okuyor')">📖 Okuyorum <span id="bst-okuyor-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-bitti" onclick="switchBookTab('bitti')">✅ Okudum <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-yarim" onclick="switchBookTab('yarim')">🚧 Yarım Bıraktım <span id="bst-yarim-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Okumak İstiyorum <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
 
           <!-- Bitti -->
@@ -3126,20 +3126,6 @@ async function addBook(){
   const formats=getFormats();
   if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
 
-  // Duplicate kontrol
-  const existingBooks=myBooks();
-  const dupTitle=(title||'').toLowerCase().trim();
-  const dupIsbn=isbn;
-  const dup=existingBooks.find(b=>{
-    if(dupIsbn&&b.isbn&&b.isbn===dupIsbn) return true;
-    if(dupTitle&&(b.title||'').toLowerCase().trim()===dupTitle) return true;
-    return false;
-  });
-  if(dup){
-    const confirm=window.confirm(`"${dup.title}" zaten listenizde var.\n\nYine de eklemek istiyor musunuz?`);
-    if(!confirm) return;
-  }
-
   const st=document.getElementById('addStatus');
   st.textContent='Kitap bilgileri alınıyor';st.className='status-msg loading';
 
@@ -3147,6 +3133,21 @@ async function addBook(){
 
   // Manuel girilen seri adı API'den gelenden öncelikli
   if(manualSeries && !info.series) info.series=manualSeries;
+
+  // Duplicate kontrol — başlık artık kesin belli
+  const finalTitle=(info.title_clean||title||'').toLowerCase().trim();
+  const finalIsbn=isbn||null;
+  const dup=myBooks().find(b=>{
+    if(finalIsbn&&b.isbn&&b.isbn===finalIsbn) return true;
+    if(finalTitle&&(b.title||'').toLowerCase().trim()===finalTitle) return true;
+    return false;
+  });
+  if(dup){
+    const statusLabels={new:'Okudum',reading:'Okuyorum',paused:'Yarım Bıraktım',wishlist:'Okumak İstiyorum',past:'Geçmiş'};
+    const dupStatus=statusLabels[dup.readingStatus]||dup.readingStatus;
+    const ok=window.confirm(`"${dup.title||finalTitle}" zaten listenizde var (${dupStatus}).\n\nYine de eklemek istiyor musunuz?`);
+    if(!ok){st.textContent='';return;}
+  }
 
   // Seri hafızası — en dolu bilgiye sahip kitaptan al
   const seriesName=info.series||manualSeries;
@@ -3716,7 +3717,7 @@ function applyToWholeSeries(bookId){
     if(best.bigSeriesComplete){b.bigSeriesComplete=true;}
   });
   saveDb();renderSafe();
-  if(count>0) notify('✅ Seri güncellendi',`${allSeriesBooks.length} kitaba en dolu bilgi aktarıldı`);
+  if(count>0) notify('✅ Seri güncellendi','Seri bilgileri tüm kitaplara aktarıldı.');
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
 
