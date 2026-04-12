@@ -593,8 +593,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <span class="field-label">Kitap Adı veya ISBN *</span>
             <div style="display:flex;gap:.4rem;align-items:flex-start">
               <div style="flex:1;position:relative">
-                <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value)" onblur="setTimeout(()=>acHide(),200)"/>
+                <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value);checkISBNInput(this.value)" onblur="setTimeout(()=>acHide(),200)" onkeydown="if(event.key==='Enter'&&isISBN(this.value)){event.preventDefault();fillFormFromISBN(this.value.replace(/[^0-9X]/gi,''))}"/>
                 <div class="autocomplete-list" id="acList" style="display:none"></div>
+                <div id="isbnHint" style="display:none;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);opacity:.7;margin-top:.2rem">↵ Enter — kitabı otomatik bul</div>
               </div>
               <button type="button" onclick="openBarcodeScanner()" title="Barkod tara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;white-space:nowrap;flex-shrink:0">📷</button>
             </div>
@@ -2984,6 +2985,13 @@ async function fetchBookInfo(title, author, isbn=''){
   } catch(e) { return empty; }
 }
 
+function isISBN(val){return /^[0-9]{9,13}[0-9X]?$/i.test((val||'').replace(/[-\s]/g,''));}
+function checkISBNInput(val){
+  // ISBN gibi görünüyorsa küçük ipucu göster
+  const hint=document.getElementById('isbnHint');
+  if(hint) hint.style.display=isISBN(val)?'':'none';
+}
+
 // ── BARKOD TARAYICI ───────────────────────────────────────────
 let _barcodeReader=null;
 function openBarcodeScanner(){
@@ -3002,9 +3010,7 @@ function openBarcodeScanner(){
       if(result){
         const isbn=result.getText();
         closeBarcodeScanner();
-        document.getElementById('bookTitle').value=isbn;
-        if(status) status.textContent='';
-        notify('📷 Barkod Okundu',`ISBN: ${isbn}`);
+        fillFormFromISBN(isbn);
       }
     });
     if(status) status.textContent='Barkodu kameraya göster';
@@ -3018,6 +3024,31 @@ function closeBarcodeScanner(){
   if(_barcodeReader){
     try{_barcodeReader.reset();}catch(e){}
     _barcodeReader=null;
+  }
+}
+async function fillFormFromISBN(isbn){
+  const titleEl=document.getElementById('bookTitle');
+  const authorEl=document.getElementById('bookAuthor');
+  const st=document.getElementById('addStatus');
+  if(titleEl) titleEl.value=isbn;
+  if(st){st.textContent='🔍 Kitap aranıyor...';st.className='status-msg';}
+  const info=await fetchBookInfo('',''  ,isbn);
+  if(info&&info.title_clean&&info.title_clean!==''){
+    if(titleEl) titleEl.value=info.title_clean;
+    if(authorEl&&info.author_clean) authorEl.value=info.author_clean;
+    // Seri
+    const seriesEl=document.getElementById('bookSeries');
+    if(seriesEl&&info.series) seriesEl.value=info.series;
+    // Tür chip'lerini form'da gösterme yok (modal sonrası eklenecek), addBook zaten info'yu yeniden çekiyor
+    if(st){
+      st.textContent=`✓ ${info.title_clean}${info.author_clean?' — '+info.author_clean:''}`;
+      st.className='status-msg';
+      setTimeout(()=>{if(st.textContent.startsWith('✓'))st.textContent='';},5000);
+    }
+    notify('📚 Kitap Bulundu',info.title_clean);
+  } else {
+    if(titleEl) titleEl.value=isbn;
+    if(st){st.textContent='⚠️ Kitap bulunamadı — bilgileri elle girin.';setTimeout(()=>{if(st)st.textContent='';},4000);}
   }
 }
 
