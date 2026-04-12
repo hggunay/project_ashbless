@@ -205,6 +205,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .filter-tabs{display:flex;gap:.3rem;flex-wrap:wrap;}
 .filter-tab{padding:.3rem .7rem;border:1px solid rgba(201,162,39,.3);border-radius:20px;background:transparent;font-size:.65rem;font-family:'Space Mono',monospace;cursor:pointer;color:var(--rust);transition:all .15s;}
 .filter-tab.active,.filter-tab:hover{background:var(--gold);color:var(--ink);border-color:var(--gold);}
+.book-subtabs{display:flex;border-bottom:1px solid rgba(201,162,39,.2);margin-bottom:1rem;gap:0;}
+.book-subtab{flex:1;padding:.55rem .3rem;border:none;background:transparent;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;text-align:center;white-space:nowrap;}
+.book-subtab:hover{color:var(--leather);}
+.book-subtab.active{color:var(--leather);border-bottom-color:var(--gold);font-weight:700;}
+.book-subpanel{display:none;}
+.book-subpanel.active{display:block;}
 .badge-categories{padding:1rem;}
 .badge-category{margin-bottom:1.5rem;}
 .category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.8;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
@@ -629,65 +635,68 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <div class="status-msg" id="addStatus"></div>
         </div>
       </div>
-      <div class="card" id="currentlyReadingCard" style="display:none">
-        <div class="card-header acc-header" onclick="toggleSection('currentlyReading')">
-          <span>📖 Şu An Okunanlar</span>
-          <span class="acc-arrow open" id="arr-currentlyReading">▶</span>
-        </div>
-        <div class="acc-body open" id="body-currentlyReading">
-          <div id="currentlyReadingList" style="padding:.5rem"></div>
-        </div>
-      </div>
-      <div class="card" id="pausedReadingCard" style="display:none">
-        <div class="card-header acc-header" onclick="toggleSection('pausedReading')">
-          <span>🚧 Yarım Bırakılanlar</span>
-          <span class="acc-arrow open" id="arr-pausedReading">▶</span>
-        </div>
-        <div class="acc-body open" id="body-pausedReading">
-          <div id="pausedReadingList" style="padding:.5rem"></div>
-        </div>
-      </div>
       <div class="card">
-        <div class="card-header acc-header" onclick="toggleSection('readBooks')" style="cursor:pointer">
-          <span>📚 Okunan Kitaplar <span id="bookCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
-          <div style="display:flex;align-items:center;gap:.5rem" onclick="event.stopPropagation()">
-            <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
-            <span class="acc-arrow open" id="arr-readBooks" onclick="event.stopPropagation();toggleSection('readBooks')" style="pointer-events:auto">▶</span>
+        <div class="card-body" style="padding:.75rem">
+          <div class="book-subtabs">
+            <button class="book-subtab active" id="bst-bitti" onclick="switchBookTab('bitti')">📚 Bitti <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-okuyor" onclick="switchBookTab('okuyor')">📖 Okuyor <span id="bst-okuyor-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-yarim" onclick="switchBookTab('yarim')">🚧 Yarım <span id="bst-yarim-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Liste <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
-        </div>
-        <div class="acc-body open" id="body-readBooks">
-          <div id="bookFilterBar" style="display:none;padding:.6rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem">
-            <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
-            <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-              <option value="">📚 Tür</option>
-            </select>
-            <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
-              <option value="">📖 Format</option>
-              <option value="kitap">📖 Fiziksel</option>
-              <option value="ekitap">📱 E-Kitap</option>
-              <option value="sesli">🎧 Sesli</option>
-              <option value="cizgi">🎨 Çizgi/Manga</option>
-            </select>
-            <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
-              <option value="">⭐ Puan</option>
-              <option value="5">⭐⭐⭐⭐⭐ 5</option>
-              <option value="4">⭐⭐⭐⭐ 4+</option>
-              <option value="3">⭐⭐⭐ 3+</option>
-            </select>
-            <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
-              <option value="">📅 Yıl</option>
-            </select>
+
+          <!-- Bitti -->
+          <div class="book-subpanel active" id="bsp-bitti">
+            <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
+              <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
+              <select class="book-input" id="bookSortSelect" onchange="booksPage=1;renderBookList()" style="font-size:.7rem;padding:.25rem .4rem;max-width:140px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)">
+                <option value="date_desc">📅 En yeni</option>
+                <option value="date_asc">📅 En eski</option>
+                <option value="alpha">🔤 Alfabetik</option>
+                <option value="rating">⭐ Puan</option>
+              </select>
+            </div>
+            <div id="bookFilterBar" style="display:none;padding:.5rem .25rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
+              <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
+              <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+                <option value="">📚 Tür</option>
+              </select>
+              <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+                <option value="">📖 Format</option>
+                <option value="kitap">📖 Fiziksel</option>
+                <option value="ekitap">📱 E-Kitap</option>
+                <option value="sesli">🎧 Sesli</option>
+                <option value="cizgi">🎨 Çizgi/Manga</option>
+              </select>
+              <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
+                <option value="">⭐ Puan</option>
+                <option value="5">⭐⭐⭐⭐⭐ 5</option>
+                <option value="4">⭐⭐⭐⭐ 4+</option>
+                <option value="3">⭐⭐⭐ 3+</option>
+              </select>
+              <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
+                <option value="">📅 Yıl</option>
+              </select>
+            </div>
+            <div id="bookList"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
           </div>
-          <div id="bookList" style="padding:.5rem"><div class="empty-state">Henüz kitap eklenmemiş.</div></div>
-        </div>
-      </div>
-      <div class="card" id="wishlistCard" style="display:none">
-        <div class="card-header acc-header" onclick="toggleSection('wishlist')">
-          <span>🔖 Okumak İstiyorum <span id="wishlistCount" style="font-family:'Space Mono',monospace;font-size:.7rem;opacity:.6;font-weight:400"></span></span>
-          <span class="acc-arrow open" id="arr-wishlist">▶</span>
-        </div>
-        <div class="acc-body open" id="body-wishlist">
-          <div id="wishlistList" style="padding:.5rem"></div>
+
+          <!-- Okuyor -->
+          <div class="book-subpanel" id="bsp-okuyor">
+            <div id="currentlyReadingList"></div>
+            <div id="bsp-okuyor-empty" class="empty-state" style="display:none">Şu an okunan kitap yok.</div>
+          </div>
+
+          <!-- Yarım -->
+          <div class="book-subpanel" id="bsp-yarim">
+            <div id="pausedReadingList"></div>
+            <div id="bsp-yarim-empty" class="empty-state" style="display:none">Yarım bırakılan kitap yok.</div>
+          </div>
+
+          <!-- Liste -->
+          <div class="book-subpanel" id="bsp-liste">
+            <div id="wishlistList"></div>
+            <div id="bsp-liste-empty" class="empty-state" style="display:none">Okuma listesi boş.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2581,6 +2590,16 @@ function toggleJournalFilter(){
   btn.classList.toggle('active',!isOpen);
 }
 
+function switchBookTab(tab){
+  try{localStorage.setItem('aa-booktab',tab);}catch(e){}
+  ['bitti','okuyor','yarim','liste'].forEach(t=>{
+    document.getElementById('bst-'+t)?.classList.toggle('active',t===tab);
+    document.getElementById('bsp-'+t)?.classList.toggle('active',t===tab);
+  });
+}
+function getBookTab(){
+  try{return localStorage.getItem('aa-booktab')||'bitti';}catch(e){return'bitti';}
+}
 function toggleBookFilter(){
   const bar=document.getElementById('bookFilterBar');
   const btn=document.getElementById('bookFilterToggle');
@@ -5948,7 +5967,7 @@ function renderStats(){
     <div class="stat-card"><div class="stat-number">${books.length}</div><div class="stat-label">Kitap</div></div>
     <div class="stat-card"><div class="stat-number">${earned}</div><div class="stat-label">Rozet</div></div>
     <div class="stat-card"><div class="stat-number">${inprog}</div><div class="stat-label">Devam Eden</div></div>`;
-  document.getElementById('bookCount').textContent=`${books.length} kitap`;
+  document.getElementById('bookCount')?.textContent=`${books.length} kitap`;
 }
 
 function renderBookList(){
@@ -5961,52 +5980,70 @@ function renderBookList(){
   const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
   const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='planned');
 
+  // Sekme sayaçları
+  const bc=document.getElementById('bst-bitti-count');
+  const oc=document.getElementById('bst-okuyor-count');
+  const yc=document.getElementById('bst-yarim-count');
+  const lc=document.getElementById('bst-liste-count');
+  if(bc) bc.textContent=readBooks.length?`(${readBooks.length})`:'';
+  if(oc) oc.textContent=reading.length?`(${reading.length})`:'';
+  if(yc) yc.textContent=paused.length?`(${paused.length})`:'';
+  if(lc) lc.textContent=wishlist.length?`(${wishlist.length})`:'';
+
+  // Aktif sekmeyi localStorage'dan yükle
+  const activeTab=getBookTab();
+  switchBookTab(activeTab);
+
   // — Şu an okunanlar —
-  const crCard=document.getElementById('currentlyReadingCard');
   const crList=document.getElementById('currentlyReadingList');
-  if(reading.length){
-    crCard.style.display='';
-    loadAccordionPrefs(['currentlyReading'],true);
-    crList.innerHTML=reading.map(b=>{
-      const noTitle=!b.title||b.title.startsWith('ISBN:');
-      const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
-      return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
-        <div class="book-info" style="flex:1">
-          <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':b.title}</span>
-          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-          ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
-          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
-          ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
-        </div>
-      </div>`;
-    }).join('');
-  } else {
-    crCard.style.display='none';
+  const crEmpty=document.getElementById('bsp-okuyor-empty');
+  if(crList){
+    if(reading.length){
+      if(crEmpty) crEmpty.style.display='none';
+      crList.innerHTML=reading.map(b=>{
+        const noTitle=!b.title||b.title.startsWith('ISBN:');
+        const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+        return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
+          <div class="book-info" style="flex:1">
+            <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':b.title}</span>
+            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+            ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+            ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
+          </div>
+        </div>`;
+      }).join('');
+    } else {
+      crList.innerHTML='';
+      if(crEmpty) crEmpty.style.display='';
+    }
   }
 
   // — Yarım bırakılanlar —
-  const prCard=document.getElementById('pausedReadingCard');
   const prList=document.getElementById('pausedReadingList');
-  if(paused.length){
-    prCard.style.display='';
-    loadAccordionPrefs(['pausedReading'],true);
-    prList.innerHTML=paused.map(b=>{
-      const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
-      return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
-        <div class="book-info" style="flex:1">
-          <span class="book-title-text">${b.title||'İsimsiz'}</span>
-          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-          ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
-          ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
-          ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
-        </div>
-        ${isMe?`<div onclick="event.stopPropagation()">
-          <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="resumeReading(${b.id})">📖 Devam et</button>
-        </div>`:''}
-      </div>`;
-    }).join('');
-  } else {
-    prCard.style.display='none';
+  const prEmpty=document.getElementById('bsp-yarim-empty');
+  if(prList){
+    if(paused.length){
+      if(prEmpty) prEmpty.style.display='none';
+      prList.innerHTML=paused.map(b=>{
+        const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+        return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
+          <div class="book-info" style="flex:1">
+            <span class="book-title-text">${b.title||'İsimsiz'}</span>
+            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+            ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+            ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
+          </div>
+          ${isMe?`<div onclick="event.stopPropagation()">
+            <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="resumeReading(${b.id})">📖 Devam et</button>
+          </div>`:''}
+        </div>`;
+      }).join('');
+    } else {
+      prList.innerHTML='';
+      if(prEmpty) prEmpty.style.display='';
+    }
   }
 
   // — Filtre dropdown'larını güncelle —
@@ -6033,6 +6070,7 @@ function renderBookList(){
   const filterFormat=document.getElementById('bookFilterFormat')?.value||'';
   const filterRating=document.getElementById('bookFilterRating')?.value||'';
   const filterYear=document.getElementById('bookFilterYear')?.value||'';
+  const sortMode=document.getElementById('bookSortSelect')?.value||'date_desc';
 
   let filteredBooks=[...readBooks];
   if(searchText) filteredBooks=filteredBooks.filter(b=>
@@ -6047,12 +6085,22 @@ function renderBookList(){
     return y===filterYear;
   });
 
-  // — Okuma tarihine göre sırala (yeniden eskiye), aynı tarihte alfabetik —
+  // Sıralama
   filteredBooks.sort((a,b)=>{
-    const da=a.endDate||a.yearOnly||(a.month?a.month+'-99':'0000');
-    const db_=b.endDate||b.yearOnly||(b.month?b.month+'-99':'0000');
-    if(da!==db_) return db_.localeCompare(da);
-    return (a.title||'').localeCompare(b.title||'','tr');
+    if(sortMode==='date_asc'){
+      const da=a.endDate||a.yearOnly||(a.month?a.month+'-01':'0000');
+      const db_=b.endDate||b.yearOnly||(b.month?b.month+'-01':'0000');
+      return da.localeCompare(db_);
+    } else if(sortMode==='alpha'){
+      return (a.title||'').localeCompare(b.title||'','tr');
+    } else if(sortMode==='rating'){
+      return (b.rating||0)-(a.rating||0);
+    } else { // date_desc
+      const da=a.endDate||a.yearOnly||(a.month?a.month+'-99':'0000');
+      const db_=b.endDate||b.yearOnly||(b.month?b.month+'-99':'0000');
+      if(da!==db_) return db_.localeCompare(da);
+      return (a.title||'').localeCompare(b.title||'','tr');
+    }
   });
 
   const newBooks=filteredBooks.filter(b=>!b.retroactive);
@@ -6097,7 +6145,7 @@ function renderBookList(){
     let html='';
     if(visibleNew.length) html+=visibleNew.map(bookItemHtml).join('');
     if(visiblePast.length){
-      html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.5;padding:.6rem .75rem .3rem;border-top:${visibleNew.length?'1px solid rgba(201,162,39,.1)':'none'}">📦 Geçmiş Okumalar (${pastBooksAll.length})</div>`;
+      html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .75rem .3rem;border-top:${visibleNew.length?'1px solid rgba(201,162,39,.1)':'none'}">📦 Geçmiş Okumalar (${pastBooksAll.length})</div>`;
       html+=visiblePast.map(bookItemHtml).join('');
     }
     if(hasMore) html+=`<button class="load-more-btn" onclick="booksPage++;renderBookList()">↓ Daha fazla yükle (${filteredBooks.length-totalVisible} kaldı)</button>`;
@@ -6105,30 +6153,30 @@ function renderBookList(){
   }
 
   // — Okuma listesi —
-  const wlCard=document.getElementById('wishlistCard');
   const wlList=document.getElementById('wishlistList');
-  const wlCount=document.getElementById('wishlistCount');
-  if(wishlist.length){
-    wlCard.style.display='';
-    loadAccordionPrefs(['wishlist'],true);
-    wlCount.textContent=`${wishlist.length} kitap`;
-    wlList.innerHTML=wishlist.map(b=>`
-      <div class="book-item book-item-wishlist">
-        <div class="book-info" style="flex:1">
-          <span class="book-title-text">${b.title||'İsimsiz'}</span>
-          ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-          ${b.series?`<span class="book-series-text">📚 ${b.series}</span>`:''}
-        </div>
-        ${isMe?`<div class="wishlist-actions" onclick="event.stopPropagation()">
-          <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="startReadingFromWishlist(${b.id})">📖 Okumaya başla</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="removeBook(${b.id})">✕</button>
-        </div>`:''}
-      </div>`).join('');
-  } else {
-    wlCard.style.display='none';
+  const wlEmpty=document.getElementById('bsp-liste-empty');
+  if(wlList){
+    if(wishlist.length){
+      if(wlEmpty) wlEmpty.style.display='none';
+      wlList.innerHTML=wishlist.map(b=>`
+        <div class="book-item book-item-wishlist">
+          <div class="book-info" style="flex:1">
+            <span class="book-title-text">${b.title||'İsimsiz'}</span>
+            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${b.series}</span>`:''}
+          </div>
+          ${isMe?`<div class="wishlist-actions" onclick="event.stopPropagation()">
+            <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="startReadingFromWishlist(${b.id})">📖 Okumaya başla</button>
+            <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="removeBook(${b.id})">✕</button>
+          </div>`:''}
+        </div>`).join('');
+    } else {
+      wlList.innerHTML='';
+      if(wlEmpty) wlEmpty.style.display='';
+    }
   }
 
-  document.getElementById('bookCount').textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
+  document.getElementById('bookCount')?.textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
 }
 
 let openBadgeId=null;
