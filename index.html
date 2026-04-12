@@ -1553,9 +1553,9 @@ const BADGE_CATS = [
       {id:'hard3',tier:'gold',  icon:'🏋️', name:'Demir İrade',        desc:'5 zorlu kitabı bitir.',                              check:b=>cap(b.filter(x=>x.challenging).length,5)},
     ]},
     {id:'streak', label:'📅 Okuma Serisi', badges:[
-      {id:'streak3', tier:'bronze',icon:'📅', name:'Düzenli Okuyucu',   desc:'3 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),3)},
-      {id:'streak6', tier:'silver',icon:'🗓️', name:'Okuma Alışkanlığı', desc:'6 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakMonths(b),6)},
-      {id:'streak12',tier:'gold',  icon:'🏅', name:'Yılın Okuyucusu',   desc:'12 ay üst üste en az 1 kitap bitir.', check:b=>cap(streakMonths(b),12)},
+      {id:'streak3', tier:'bronze',icon:'📅', name:'Düzenli Okuyucu',   desc:'Bu yıl içinde 3 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakBadgesForYear(b).length>=1?3:0,3)},
+      {id:'streak6', tier:'silver',icon:'🗓️', name:'Okuma Alışkanlığı', desc:'Bu yıl içinde 6 ay üst üste en az 1 kitap bitir.',  check:b=>cap(streakBadgesForYear(b).length>=2?6:0,6)},
+      {id:'streak12',tier:'gold',  icon:'🏅', name:'Yılın Okuyucusu',   desc:'Bu yıl içinde 12 ay üst üste en az 1 kitap bitir.', check:b=>cap(streakBadgesForYear(b).length>=3?12:0,12)},
     ]},
     {id:'yeniden_okuma', label:'🔄 Yeniden Okuma', badges:[
       {id:'reread1',tier:'bronze',icon:'🔄', name:'Nostaljik',        desc:'1 kitabı yeniden oku ("Yeniden okuma" olarak işaretle).', check:b=>cap(b.filter(x=>x.reread).length,1)},
@@ -1657,18 +1657,35 @@ function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.coun
 function uniqueISOs(books){return new Set(books.filter(b=>b.country).map(b=>countryToISO(b.country)).filter(Boolean));}
 function booksInRegion(books,isoSet){return books.filter(b=>{const iso=countryToISO(b.country);return iso&&isoSet.has(iso);}).length;}
 function allContinents(books){const isos=uniqueISOs(books);const conts=new Set([...isos].map(iso=>ISO_CONTINENT[iso]).filter(Boolean));return conts.size>=6?1:0;}
-function streakMonths(books){
-  // Arka arkaya kaç ay kitap bitirildi (endDate bazlı, geriye doğru bugünden)
-  const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
+function streakMonths(books,year){
   const now=new Date();
+  const yr=year||now.getFullYear();
+  const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
+  const maxMonth=yr===now.getFullYear()?now.getMonth():11;
   let streak=0;
-  for(let i=0;i<36;i++){
-    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
-    const key=d.toISOString().substring(0,7);
+  for(let m=0;m<=maxMonth;m++){
+    const key=`${yr}-${String(m+1).padStart(2,'0')}`;
     if(months.has(key)) streak++;
-    else if(i>0) break;
+    else streak=0;
   }
   return streak;
+}
+function streakBadgesForYear(books,year){
+  const now=new Date();
+  const yr=year||now.getFullYear();
+  const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
+  const maxMonth=yr===now.getFullYear()?now.getMonth():11;
+  let best=0,cur=0;
+  for(let m=0;m<=maxMonth;m++){
+    const key=`${yr}-${String(m+1).padStart(2,'0')}`;
+    if(months.has(key)){cur++;best=Math.max(best,cur);}
+    else cur=0;
+  }
+  const earned=[];
+  if(best>=3) earned.push({icon:'🥉',name:'Düzenli Okuyucu (3 ay)'});
+  if(best>=6) earned.push({icon:'🥈',name:'Okuma Alışkanlığı (6 ay)'});
+  if(best>=12) earned.push({icon:'🥇',name:'Yılın Okuyucusu (12 ay)'});
+  return earned;
 }
 function countReviews(books){
   // Tüm değerlendirme ve alıntı sayısı
@@ -5671,61 +5688,62 @@ function renderStatsPanel(){
           ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}`)}
 
         ${(()=>{
-          // Streak takvimi — son 12 ay, her ay dolu/boş
           const streakNow=new Date();
+          const curYear=streakNow.getFullYear();
+          // Son 12 ay takvimi
           const cal12=[];
           for(let i=11;i>=0;i--){
             const d=new Date(streakNow.getFullYear(),streakNow.getMonth()-i,1);
             const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-            const lbl=monthLabels[d.getMonth()];
-            const yr=d.getFullYear();
-            cal12.push({key,lbl,yr,has:!!(monthCounts[key]&&monthCounts[key]>0),n:monthCounts[key]||0});
+            cal12.push({key,lbl:monthLabels[d.getMonth()],yr:d.getFullYear(),has:!!(monthCounts[key]),n:monthCounts[key]||0});
           }
-          const curStreak=streakMonths(books);
-          // Uzun süreli geçmiş streak (tüm zamanlar)
-          const allMonths=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
-          let maxStreak=0,tmpStreak=0;
-          for(let i=0;i<120;i++){
-            const d=new Date(streakNow.getFullYear(),streakNow.getMonth()-i,1);
-            const key=d.toISOString().substring(0,7);
-            if(allMonths.has(key)){tmpStreak++;maxStreak=Math.max(maxStreak,tmpStreak);}
-            else tmpStreak=0;
-          }
+          const curStreak=streakMonths(books,curYear);
           const cellStyle=(has)=>has
             ?'background:linear-gradient(135deg,var(--gold),var(--leather));border-color:var(--gold);color:var(--ink);font-weight:700'
             :'background:rgba(138,69,19,.06);border-color:rgba(201,162,39,.15);color:var(--rust);opacity:.4';
           const cells=cal12.map((c,i)=>`
             <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem;position:relative;" title="${c.key}${c.has?' — '+c.n+' kitap':''}">
-              ${i===0||c.lbl==='Oca'?`<div style="position:absolute;top:-1.2rem;font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.5">${c.yr}</div>`:''}
-              <div style="width:36px;height:36px;border:1.5px solid;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:${c.has?'1rem':'.8rem'};transition:all .2s;${cellStyle(c.has)}">${c.has?'📚':'·'}</div>
-              <div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.7;text-align:center">${c.lbl}</div>
-              ${c.has?`<div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--leather);font-weight:700">${c.n}</div>`:'<div style="font-size:.45rem;opacity:0">0</div>'}
+              ${i===0||c.lbl==='Oca'?`<div style="position:absolute;top:-1.1rem;font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.5">${c.yr}</div>`:''}
+              <div style="width:34px;height:34px;border:1.5px solid;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:${c.has?'.95rem':'.75rem'};${cellStyle(c.has)}">${c.has?'📚':'·'}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.7">${c.lbl}</div>
+              ${c.has?`<div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--leather);font-weight:700">${c.n}</div>`:'<div style="font-size:.45rem;opacity:0">·</div>'}
             </div>`).join('');
+          // Yıllık streak geçmişi
+          const allYears=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,4)).filter(Boolean));
+          const yearRows=[...allYears].sort((a,b)=>b-a).map(yr=>{
+            const earned=streakBadgesForYear(books,parseInt(yr));
+            if(!earned.length) return'';
+            const icons=earned.map(e=>`<span title="${e.name}" style="font-size:1.1rem;cursor:default">${e.icon}</span>`).join('');
+            return`<div style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
+              <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);min-width:2.5rem">${yr}</span>
+              <div style="display:flex;gap:.3rem">${icons}</div>
+            </div>`;
+          }).filter(Boolean).join('');
           return statsSection('stats-streak','🔥 Okuma Serisi',`
-            <div style="display:flex;gap:.4rem;align-items:flex-start;justify-content:center;flex-wrap:nowrap;padding:.8rem 0 .4rem;overflow-x:auto;padding-top:1.4rem">
+            <div style="display:flex;gap:.35rem;align-items:flex-start;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding:1.2rem 0 .4rem">
               ${cells}
             </div>
-            <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:.75rem;padding:.6rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.1)">
+            <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:.6rem;padding:.5rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.1)">
               <div style="text-align:center">
-                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${curStreak}</div>
-                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">Mevcut Seri</div>
+                <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--leather)">${curStreak}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);text-transform:uppercase">Bu Yıl Seri</div>
               </div>
               <div style="width:1px;background:rgba(201,162,39,.2)"></div>
               <div style="text-align:center">
-                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${maxStreak}</div>
-                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">En Uzun Seri</div>
-              </div>
-              <div style="width:1px;background:rgba(201,162,39,.2)"></div>
-              <div style="text-align:center">
-                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${cal12.filter(c=>c.has).length}</div>
-                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">Son 12 Ayda</div>
+                <div style="font-family:'Playfair Display',serif;font-size:1.5rem;font-weight:900;color:var(--leather)">${cal12.filter(c=>c.has).length}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);text-transform:uppercase">Son 12 Ayda</div>
               </div>
             </div>
-            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">
-              <div style="width:12px;height:12px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
-              <div style="width:12px;height:12px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.5rem"></div><span>Kitap yok</span>
+            ${yearRows?`<div style="margin-top:.75rem">
+              <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em">Yıllık Rozet Geçmişi</div>
+              ${yearRows}
+              <div style="font-size:.6rem;color:var(--rust);opacity:.5;font-style:italic;margin-top:.4rem">🥉 3 ay · 🥈 6 ay · 🥇 12 ay — üzerine gel, rozet adını gör</div>
+            </div>`:''}
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.55">
+              <div style="width:10px;height:10px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
+              <div style="width:10px;height:10px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.4rem"></div><span>Kitap yok</span>
             </div>
-          `,true);
+          `,false);
         })()}
 
         ${topGenres.length?statsSection('stats-genres','📚 En Çok Okunan Türler',barRows(topGenres,topGenres[0][1])):''}
@@ -6101,7 +6119,7 @@ function renderBadges(){
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
-        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books)} ay seri</div>`:''}
+        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
         ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}
       </div>
     </div>`;
