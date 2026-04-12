@@ -648,8 +648,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div class="card">
         <div class="card-body" style="padding:.75rem">
           <div class="book-subtabs">
-            <button class="book-subtab active" id="bst-bitti" onclick="switchBookTab('bitti')">📚 Bitti <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
-            <button class="book-subtab" id="bst-okuyor" onclick="switchBookTab('okuyor')">📖 Okuyor <span id="bst-okuyor-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab active" id="bst-okuyor" onclick="switchBookTab('okuyor')">📖 Okuyor <span id="bst-okuyor-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-bitti" onclick="switchBookTab('bitti')">📚 Bitti <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-yarim" onclick="switchBookTab('yarim')">🚧 Yarım <span id="bst-yarim-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Liste <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
@@ -1055,10 +1055,16 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveProfile()">💾 Profili Kaydet</button>
-            <div style="margin-top:1rem;border-top:1px solid rgba(201,162,39,.15);padding-top:.75rem">
-              <div class="detail-field-label" style="margin-bottom:.5rem">🖼️ Hazır Avatar Görselleri <span style="font-size:.65rem;opacity:.6;font-style:italic">(profil ve haritada kullanılır)</span></div>
-              <div id="mapAvatarGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem"></div>
-              <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);font-size:.75rem" onclick="clearMapAvatar()">✕ Görseli kaldır</button>
+            <div style="margin-top:.75rem;border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem">
+              <div class="detail-acc-header" onclick="toggleSection('set-avatargrid')">
+                <div class="detail-section-title" style="margin:0">🖼️ Hazır Avatar Görselleri</div>
+                <span class="acc-arrow" id="arr-set-avatargrid">▶</span>
+              </div>
+              <div class="detail-acc-body" id="body-set-avatargrid">
+                <div style="padding-top:.6rem;font-size:.75rem;color:#555;font-style:italic;margin-bottom:.5rem">Profil ve haritada kullanılır.</div>
+                <div id="mapAvatarGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem"></div>
+                <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);font-size:.75rem" onclick="clearMapAvatar()">✕ Görseli kaldır</button>
+              </div>
             </div>
           </div>
 
@@ -2489,7 +2495,7 @@ function enterApp(){
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
-  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger'],false),50);
+  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
   // İlk state'i kaydet
   history.replaceState({panel:targetPanel},'',location.pathname+(targetPanel!=='myBooks'?'#'+targetPanel:''));
   // Geri tuşu dinleyicisi — sadece bir kez ekle
@@ -2608,7 +2614,7 @@ function switchBookTab(tab){
   });
 }
 function getBookTab(){
-  try{return localStorage.getItem('aa-booktab')||'bitti';}catch(e){return'bitti';}
+  try{return localStorage.getItem('aa-booktab')||'okuyor';}catch(e){return'okuyor';}
 }
 function toggleBookFilter(){
   const bar=document.getElementById('bookFilterBar');
@@ -3120,6 +3126,20 @@ async function addBook(){
   const formats=getFormats();
   if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
 
+  // Duplicate kontrol
+  const existingBooks=myBooks();
+  const dupTitle=(title||'').toLowerCase().trim();
+  const dupIsbn=isbn;
+  const dup=existingBooks.find(b=>{
+    if(dupIsbn&&b.isbn&&b.isbn===dupIsbn) return true;
+    if(dupTitle&&(b.title||'').toLowerCase().trim()===dupTitle) return true;
+    return false;
+  });
+  if(dup){
+    const confirm=window.confirm(`"${dup.title}" zaten listenizde var.\n\nYine de eklemek istiyor musunuz?`);
+    if(!confirm) return;
+  }
+
   const st=document.getElementById('addStatus');
   st.textContent='Kitap bilgileri alınıyor';st.className='status-msg loading';
 
@@ -3185,6 +3205,7 @@ async function addBook(){
     pre1900,pre1980comic,halloween,
     readingStatus:getReadingTime(), // 'new','past','reading','paused','wishlist'
     publisher:publisher||null,
+    isbn:isbn||null,
     retroactive:getReadingTime()==='past',
     month:endDate?endDate.substring(0,7):month,addedAt:now.toISOString(),startDate,endDate,
     currentPage:null, // şu an okunan sayfa
@@ -3692,8 +3713,9 @@ function startReadingFromWishlist(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
   book.previousStatus=book.readingStatus||'wishlist';
+  if(book.readingStatus==='new'||book.readingStatus==='past') book.rereadStarted=true;
   book.readingStatus='reading';
-  book.startDate=book.startDate||new Date().toISOString().split('T')[0];
+  book.startDate=new Date().toISOString().split('T')[0];
   saveDb();renderSafe();
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
@@ -3719,9 +3741,12 @@ function pauseReading(bookId){
 function finishReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  // Daha önce okunmuşsa yeniden okuma say
+  if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
   book.endDate=book.endDate||new Date().toISOString().split('T')[0];
   book.currentPage=null;
+  book.rereadStarted=false;
   const month=book.endDate.substring(0,7);
   book.month=month;
   saveDb();
