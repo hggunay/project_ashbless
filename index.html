@@ -2184,8 +2184,8 @@ function renderMapAvatarGrid(){
     const name=`avatar_${String(i).padStart(2,'0')}.png`;
     const url=base+name;
     const selected=current===name;
-    html+=`<div onclick="selectMapAvatar('${name}')" title="${name}" style="width:52px;height:52px;border:2px solid ${selected?'var(--gold)':'rgba(201,162,39,.25)'};border-radius:6px;cursor:pointer;background:${selected?'rgba(201,162,39,.15)':'rgba(201,162,39,.05)'};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:all .15s">
-      <img src="${url}" style="max-width:48px;max-height:48px;object-fit:contain" loading="lazy"/>
+    html+=`<div onclick="selectMapAvatar('${name}')" title="${name}" style="width:72px;height:72px;border:2px solid ${selected?'var(--gold)':'rgba(201,162,39,.25)'};border-radius:6px;cursor:pointer;background:${selected?'rgba(201,162,39,.15)':'rgba(201,162,39,.05)'};display:flex;align-items:center;justify-content:center;overflow:hidden;transition:all .15s">
+      <img src="${url}" style="max-width:68px;max-height:68px;object-fit:contain" loading="lazy"/>
     </div>`;
   }
   grid.innerHTML=html;
