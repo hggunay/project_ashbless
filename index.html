@@ -5670,6 +5670,64 @@ function renderStatsPanel(){
           </div>
           ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}`)}
 
+        ${(()=>{
+          // Streak takvimi — son 12 ay, her ay dolu/boş
+          const streakNow=new Date();
+          const cal12=[];
+          for(let i=11;i>=0;i--){
+            const d=new Date(streakNow.getFullYear(),streakNow.getMonth()-i,1);
+            const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+            const lbl=monthLabels[d.getMonth()];
+            const yr=d.getFullYear();
+            cal12.push({key,lbl,yr,has:!!(monthCounts[key]&&monthCounts[key]>0),n:monthCounts[key]||0});
+          }
+          const curStreak=streakMonths(books);
+          // Uzun süreli geçmiş streak (tüm zamanlar)
+          const allMonths=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
+          let maxStreak=0,tmpStreak=0;
+          for(let i=0;i<120;i++){
+            const d=new Date(streakNow.getFullYear(),streakNow.getMonth()-i,1);
+            const key=d.toISOString().substring(0,7);
+            if(allMonths.has(key)){tmpStreak++;maxStreak=Math.max(maxStreak,tmpStreak);}
+            else tmpStreak=0;
+          }
+          const cellStyle=(has)=>has
+            ?'background:linear-gradient(135deg,var(--gold),var(--leather));border-color:var(--gold);color:var(--ink);font-weight:700'
+            :'background:rgba(138,69,19,.06);border-color:rgba(201,162,39,.15);color:var(--rust);opacity:.4';
+          const cells=cal12.map((c,i)=>`
+            <div style="display:flex;flex-direction:column;align-items:center;gap:.25rem;position:relative;" title="${c.key}${c.has?' — '+c.n+' kitap':''}">
+              ${i===0||c.lbl==='Oca'?`<div style="position:absolute;top:-1.2rem;font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.5">${c.yr}</div>`:''}
+              <div style="width:36px;height:36px;border:1.5px solid;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:${c.has?'1rem':'.8rem'};transition:all .2s;${cellStyle(c.has)}">${c.has?'📚':'·'}</div>
+              <div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--rust);opacity:.7;text-align:center">${c.lbl}</div>
+              ${c.has?`<div style="font-family:'Space Mono',monospace;font-size:.45rem;color:var(--leather);font-weight:700">${c.n}</div>`:'<div style="font-size:.45rem;opacity:0">0</div>'}
+            </div>`).join('');
+          return statsSection('stats-streak','🔥 Okuma Serisi',`
+            <div style="display:flex;gap:.4rem;align-items:flex-start;justify-content:center;flex-wrap:nowrap;padding:.8rem 0 .4rem;overflow-x:auto;padding-top:1.4rem">
+              ${cells}
+            </div>
+            <div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;margin-top:.75rem;padding:.6rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.1)">
+              <div style="text-align:center">
+                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${curStreak}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">Mevcut Seri</div>
+              </div>
+              <div style="width:1px;background:rgba(201,162,39,.2)"></div>
+              <div style="text-align:center">
+                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${maxStreak}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">En Uzun Seri</div>
+              </div>
+              <div style="width:1px;background:rgba(201,162,39,.2)"></div>
+              <div style="text-align:center">
+                <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:900;color:var(--leather);line-height:1">${cal12.filter(c=>c.has).length}</div>
+                <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);text-transform:uppercase;letter-spacing:.05em;margin-top:.15rem">Son 12 Ayda</div>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">
+              <div style="width:12px;height:12px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
+              <div style="width:12px;height:12px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.5rem"></div><span>Kitap yok</span>
+            </div>
+          `,true);
+        })()}
+
         ${topGenres.length?statsSection('stats-genres','📚 En Çok Okunan Türler',barRows(topGenres,topGenres[0][1])):''}
         ${topAuthors.length?statsSection('stats-authors','✍️ En Çok Okunan Yazarlar',barRows(topAuthors,topAuthors[0][1])):''}
         ${topCountries.length?statsSection('stats-countries','🌍 En Çok Okunan Ülkeler',barRows(topCountries,topCountries[0][1])):''}
@@ -6043,6 +6101,7 @@ function renderBadges(){
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books)} ay seri</div>`:''}
         ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}
       </div>
     </div>`;
