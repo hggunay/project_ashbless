@@ -1036,22 +1036,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               </div>
             </div>
             <button class="btn btn-primary btn-sm" onclick="saveProfile()">💾 Profili Kaydet</button>
+            <div style="margin-top:1rem;border-top:1px solid rgba(201,162,39,.15);padding-top:.75rem">
+              <div class="detail-field-label" style="margin-bottom:.5rem">🖼️ Hazır Avatar Görselleri <span style="font-size:.65rem;opacity:.6;font-style:italic">(profil ve haritada kullanılır)</span></div>
+              <div id="mapAvatarGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem"></div>
+              <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);font-size:.75rem" onclick="clearMapAvatar()">✕ Görseli kaldır</button>
+            </div>
           </div>
 
-          <!-- Harita Avatarı — akordeon -->
-          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
-            <div class="detail-acc-header" onclick="toggleSection('set-mapavatar')">
-              <div class="detail-section-title" style="margin:0">🗺️ Harita Avatarı</div>
-              <span class="acc-arrow" id="arr-set-mapavatar">▶</span>
-            </div>
-            <div class="detail-acc-body" id="body-set-mapavatar">
-              <div style="padding-top:.75rem">
-                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Haritada seni temsil eden ikon. Seçilmezse profil fotoğrafın/emojin kullanılır.</div>
-                <div id="mapAvatarGrid" style="display:flex;flex-wrap:wrap;gap:.4rem;margin-bottom:.75rem"></div>
-                <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);font-size:.75rem" onclick="clearMapAvatar()">✕ Varsayılana dön</button>
-              </div>
-            </div>
-          </div>
+          <!-- Harita Avatarı kaldırıldı — avatar sistemi birleştirildi -->
 
           <!-- Şifre & İpucu — akordeon -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
@@ -2022,12 +2014,17 @@ function avatarHtml(av, size='2rem'){
   if(av&&av.startsWith('data:')){
     return `<img src="${av}" style="width:${size};height:${size};border-radius:50%;object-fit:cover;display:block;"/>`;
   }
+  if(av&&av.startsWith('avatar_')){
+    const url=`https://hggunay.github.io/project_ashbless/avatars/${av}`;
+    return `<img src="${url}" style="width:${size};height:${size};border-radius:50%;object-fit:cover;display:block;"/>`;
+  }
   return `<span style="font-size:${size};line-height:1">${av||'📚'}</span>`;
 }
 function setAvatarEl(el, av){
   if(!el) return;
-  if(av&&av.startsWith('data:')){
-    el.innerHTML=`<img src="${av}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
+  if(av&&(av.startsWith('data:')||av.startsWith('avatar_'))){
+    const src=av.startsWith('data:')?av:`https://hggunay.github.io/project_ashbless/avatars/${av}`;
+    el.innerHTML=`<img src="${src}" style="width:100%;height:100%;border-radius:50%;object-fit:cover;"/>`;
     el.style.fontSize='0';
   } else {
     el.innerHTML='';
@@ -2180,7 +2177,7 @@ function renderSettings(){
 function renderMapAvatarGrid(){
   const grid=document.getElementById('mapAvatarGrid');
   if(!grid) return;
-  const current=(db.users[me]&&db.users[me].mapAvatar)||null;
+  const current=(db.users[me]&&db.users[me].avatar)||null;
   const base='https://hggunay.github.io/project_ashbless/avatars/';
   let html='';
   for(let i=1;i<=36;i++){
@@ -2196,18 +2193,24 @@ function renderMapAvatarGrid(){
 
 function selectMapAvatar(name){
   if(!db.users[me]) return;
-  db.users[me].mapAvatar=name;
+  db.users[me].avatar=name;
   saveDb();
+  fbSet('aa-avatars/'+me, name).catch(e=>{});
+  setAvatarEl(document.getElementById('settingsAvatar'),name);
+  setAvatarEl(document.getElementById('headerAvatar'),name);
   renderMapAvatarGrid();
-  notify('🗺️ Harita Avatarı','Yeni avatar seçildi.');
+  notify('🖼️ Avatar','Yeni avatar seçildi.');
 }
 
 function clearMapAvatar(){
   if(!db.users[me]) return;
-  db.users[me].mapAvatar=null;
+  const emoji=document.getElementById('settingAvatar')?.value.trim()||'📚';
+  db.users[me].avatar=emoji;
   saveDb();
+  setAvatarEl(document.getElementById('settingsAvatar'),emoji);
+  setAvatarEl(document.getElementById('headerAvatar'),emoji);
   renderMapAvatarGrid();
-  notify('🗺️ Harita Avatarı','Profil fotoğrafına döndü.');
+  notify('🖼️ Avatar','Emoji avatara döndü.');
 }
 
 function saveHint(){
@@ -2454,7 +2457,7 @@ function enterApp(){
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
-  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-mapavatar'],false),50);
+  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger'],false),50);
   // İlk state'i kaydet
   history.replaceState({panel:targetPanel},'',location.pathname+(targetPanel!=='myBooks'?'#'+targetPanel:''));
   // Geri tuşu dinleyicisi — sadece bir kez ekle
@@ -5279,8 +5282,8 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   }).join('');
 
   // Avatar ayarları
-  const mapAvatarFile=(db.users[target]&&db.users[target].mapAvatar)||null;
-  const mapAvatarUrl=mapAvatarFile?`https://hggunay.github.io/project_ashbless/avatars/${mapAvatarFile}`:null;
+  const avatarVal=(db.users[target]&&db.users[target].avatar)||null;
+  const mapAvatarUrl=avatarVal&&avatarVal.startsWith('avatar_')?`https://hggunay.github.io/project_ashbless/avatars/${avatarVal}`:null;
 
   // Ülke koordinat haritası — animasyon için
   const countryCoords={};
