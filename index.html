@@ -15,10 +15,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <style>
-:root{--ink:#1a1208;--parchment:#f5edd6;--parchment-dark:#e8d9b5;--leather:#8b4513;--gold:#c9a227;--gold-light:#e8c85a;--moss:#4a6741;--rust:#a0522d;--cream:#fdf8ed;--shadow:rgba(26,18,8,.15);}
+:root{--ink:#1a1208;--parchment:#f5edd6;--parchment-dark:#e8d9b5;--leather:#8b4513;--gold:#c9a227;--gold-light:#e8c85a;--moss:#4a6741;--rust:#7a3a1e;--cream:#fdf8ed;--shadow:rgba(26,18,8,.15);}
 *{margin:0;padding:0;box-sizing:border-box;}
 .pw-wrap{position:relative;}
-.pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--rust);opacity:.5;font-size:.9rem;padding:.2rem;}
+.pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--rust);opacity:.7;font-size:.9rem;padding:.2rem;}
 .pw-toggle:hover{opacity:1;}
 
 html{overflow-x:hidden;max-width:100%;}
@@ -42,7 +42,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .auth-btn:hover{opacity:.9;transform:translateY(-1px);}
 .auth-error{color:#c0392b;font-size:.85rem;font-style:italic;margin-top:.5rem;display:none;}
 .members-list{margin-top:1.2rem;border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;}
-.members-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.6;margin-bottom:.5rem;}
+.members-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.8;margin-bottom:.5rem;}
 .member-pill{display:inline-block;background:rgba(138,69,19,.1);border:1px solid rgba(201,162,39,.3);border-radius:20px;padding:.2rem .7rem;font-size:.8rem;margin:.2rem;cursor:pointer;transition:all .15s;color:var(--rust);}
 .member-pill:hover{background:rgba(201,162,39,.2);}
 
@@ -57,6 +57,8 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .header-username{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
 .logout-btn{background:none;border:1px solid rgba(201,162,39,.3);color:var(--parchment-dark);font-size:.65rem;font-family:'Space Mono',monospace;padding:.3rem .6rem;border-radius:20px;cursor:pointer;transition:all .15s;}
 .logout-btn:hover{border-color:var(--gold);color:var(--gold);}
+#scrollTopBtn{position:fixed;bottom:1.5rem;right:1.2rem;width:38px;height:38px;background:linear-gradient(135deg,var(--leather),var(--rust));border:1px solid var(--gold);border-radius:50%;color:var(--gold);font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.4);z-index:999;transition:opacity .2s,transform .2s;}
+#scrollTopBtn:hover{transform:translateY(-2px);opacity:.9;}
 .app{max-width:1200px;margin:0 auto;padding:0 1.5rem 4rem;}
 .nav-tabs{display:flex;gap:.5rem;margin-bottom:1.5rem;border-bottom:1px solid rgba(201,162,39,.2);flex-wrap:wrap;}
 .nav-tab{padding:.6rem 1.2rem;border:none;background:transparent;font-family:'Playfair Display',serif;font-size:.95rem;color:rgba(245,237,214,.5);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;margin-bottom:-1px;}
@@ -127,7 +129,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .journal-type-story{background:rgba(74,103,65,.12);color:var(--moss);border:1px solid rgba(74,103,65,.2);}
 .acc-header{display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;gap:.5rem;}
 .acc-header:hover{opacity:.85;}
-.acc-arrow{font-size:.75rem;transition:transform .25s;display:inline-block;color:var(--rust);opacity:.6;flex-shrink:0;}
+.acc-arrow{font-size:.75rem;transition:transform .25s;display:inline-block;color:var(--rust);opacity:.8;flex-shrink:0;}
 .acc-arrow.open{transform:rotate(90deg);}
 .acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
 .acc-body.open{max-height:9999px;opacity:1;}
@@ -165,8 +167,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .tag{padding:.1rem .45rem;border-radius:20px;font-size:.62rem;font-family:'Space Mono',monospace;white-space:nowrap;}
 .genre-tag{background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(138,69,19,.2);}
 .format-tag{background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.25);}
-.book-pages{font-size:.7rem;color:var(--rust);font-family:'Space Mono',monospace;white-space:nowrap;opacity:.7;}
-.empty-state{text-align:center;padding:1.5rem;color:var(--rust);font-style:italic;font-size:.9rem;opacity:.5;}
+.book-pages{font-size:.7rem;color:var(--rust);font-family:'Space Mono',monospace;white-space:nowrap;opacity:.85;}
+.empty-state{text-align:center;padding:1.5rem;color:var(--rust);font-style:italic;font-size:.9rem;opacity:.7;}
 
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,8,5,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .25s;}
@@ -183,10 +185,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 /* detail sections */
 .detail-section{margin-bottom:1.25rem;}
-.detail-section-title{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.7;margin-bottom:.7rem;padding-bottom:.3rem;border-bottom:1px solid rgba(201,162,39,.15);}
+.detail-section-title{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.85;margin-bottom:.7rem;padding-bottom:.3rem;border-bottom:1px solid rgba(201,162,39,.15);}
 .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem .75rem;}
 .detail-field{display:flex;flex-direction:column;gap:.2rem;}
-.detail-field-label{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.65;}
+.detail-field-label{font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.8;}
 .detail-input{padding:.4rem .6rem;background:var(--cream);border:1px solid rgba(201,162,39,.3);border-radius:2px;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);outline:none;transition:border-color .2s;width:100%;}
 .detail-input:focus{border-color:var(--gold);}
 .detail-input[readonly]{background:rgba(201,162,39,.05);cursor:default;color:var(--rust);}
@@ -205,7 +207,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .filter-tab.active,.filter-tab:hover{background:var(--gold);color:var(--ink);border-color:var(--gold);}
 .badge-categories{padding:1rem;}
 .badge-category{margin-bottom:1.5rem;}
-.category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.6;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
+.category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.8;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.75rem;}
 .badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;}
 .badge-card:hover{transform:translateY(-2px);box-shadow:0 4px 15px var(--shadow);}
@@ -396,7 +398,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .journal-entry-user{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
 .journal-entry-book{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;color:var(--leather);cursor:pointer;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .journal-entry-book:hover{color:var(--gold);}
-.journal-entry-date{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.5;margin-top:.1rem;}
+.journal-entry-date{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.7;margin-top:.1rem;}
 .journal-review{font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink);line-height:1.7;white-space:pre-wrap;}
 .journal-quote{background:rgba(201,162,39,.06);border-left:3px solid var(--gold);padding:.6rem .9rem;margin:.4rem 0;font-family:'Crimson Pro',serif;font-style:italic;font-size:.93rem;color:var(--ink);line-height:1.6;border-radius:0 4px 4px 0;}
 .journal-quote-text{white-space:pre-wrap;word-break:break-word;}
@@ -526,6 +528,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 <!-- APP -->
 <div id="appScreen">
+<button id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Yukarı çık">▲</button>
   <div class="header">
     <div class="club-name">The Armchair Adventurers</div>
     <div class="club-subtitle">Too lazy for real adventure — too curious to stop reading</div>
@@ -7577,9 +7580,11 @@ function renderPathsList(){
 async function init(){
   await loadDb();
   renderPills();
-  // Tarayıcı otomatik doldurma varsa ipucu butonunu kontrol et
   setTimeout(checkHintAvailable, 500);
-  // Auto-login if session saved
+  window.addEventListener('scroll',()=>{
+    const btn=document.getElementById('scrollTopBtn');
+    if(btn) btn.style.display=window.scrollY>300?'flex':'none';
+  });
   try{
     const saved=localStorage.getItem('aa-session');
     if(saved&&db.users[saved]){
