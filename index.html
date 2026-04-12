@@ -3142,11 +3142,14 @@ async function addBook(){
   if(manualSeries && !info.series) info.series=manualSeries;
 
   // Duplicate kontrol — başlık artık kesin belli
-  const finalTitle=(info.title_clean||title||'').toLowerCase().trim();
+  const normalizeForDup=s=>(s||'').toLowerCase()
+    .replace(/[ğ]/g,'g').replace(/[üü]/g,'u').replace(/[şş]/g,'s').replace(/[ıi]/g,'i').replace(/[öo]/g,'o').replace(/[çc]/g,'c')
+    .replace(/[^a-z0-9]/g,'').trim();
+  const finalTitle=normalizeForDup(info.title_clean||title||'');
   const finalIsbn=isbn||null;
   const dup=myBooks().find(b=>{
     if(finalIsbn&&b.isbn&&b.isbn===finalIsbn) return true;
-    if(finalTitle&&(b.title||'').toLowerCase().trim()===finalTitle) return true;
+    if(finalTitle&&normalizeForDup(b.title)===finalTitle) return true;
     return false;
   });
   if(dup&&!window._skipDupCheck){
