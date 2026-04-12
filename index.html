@@ -14,6 +14,7 @@
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20fill%3D'%231a0f00'%2F%3E%3Ctext%20y%3D'.9em'%20font-size%3D'80'%20x%3D'10'%3E%F0%9F%93%9A%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
 <style>
 :root{--ink:#1a1208;--parchment:#f5edd6;--parchment-dark:#e8d9b5;--leather:#8b4513;--gold:#c9a227;--gold-light:#e8c85a;--moss:#4a6741;--rust:#7a3a1e;--cream:#fdf8ed;--shadow:rgba(26,18,8,.15);}
 *{margin:0;padding:0;box-sizing:border-box;}
@@ -590,8 +591,13 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         <div class="input-grid" style="margin-bottom:.75rem">
           <div class="field-group autocomplete-wrap" style="grid-column:1/-1">
             <span class="field-label">Kitap Adı veya ISBN *</span>
-            <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value)" onblur="setTimeout(()=>acHide(),200)"/>
-            <div class="autocomplete-list" id="acList" style="display:none"></div>
+            <div style="display:flex;gap:.4rem;align-items:flex-start">
+              <div style="flex:1;position:relative">
+                <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value)" onblur="setTimeout(()=>acHide(),200)"/>
+                <div class="autocomplete-list" id="acList" style="display:none"></div>
+              </div>
+              <button type="button" onclick="openBarcodeScanner()" title="Barkod tara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;white-space:nowrap;flex-shrink:0">📷</button>
+            </div>
           </div>
           <div class="field-group" style="grid-column:1/-1"><span class="field-label">Yazar <span style="opacity:.5;font-weight:400">(girilirse eşleştirme daha doğru olur)</span></span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı — isteğe bağlı"/></div>
         </div>
@@ -2976,6 +2982,43 @@ async function fetchBookInfo(title, author, isbn=''){
       _method: isbn ? 'isbn' : (title_clean!==title ? 'arama' : 'bulunamadı'),
     };
   } catch(e) { return empty; }
+}
+
+// ── BARKOD TARAYICI ───────────────────────────────────────────
+let _barcodeReader=null;
+function openBarcodeScanner(){
+  const modal=document.getElementById('barcodeModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  const status=document.getElementById('barcodeStatus');
+  if(status) status.textContent='Kamera başlatılıyor...';
+  if(typeof ZXing==='undefined'){
+    if(status) status.textContent='⚠️ Tarayıcı yüklenemedi. ISBN\'yi elle girin.';
+    return;
+  }
+  try{
+    _barcodeReader=new ZXing.BrowserMultiFormatReader();
+    _barcodeReader.decodeFromVideoDevice(null,'barcodeVideo',(result,err)=>{
+      if(result){
+        const isbn=result.getText();
+        closeBarcodeScanner();
+        document.getElementById('bookTitle').value=isbn;
+        if(status) status.textContent='';
+        notify('📷 Barkod Okundu',`ISBN: ${isbn}`);
+      }
+    });
+    if(status) status.textContent='Barkodu kameraya göster';
+  }catch(e){
+    if(status) status.textContent='⚠️ Kamera açılamadı. ISBN\'yi elle girin.';
+  }
+}
+function closeBarcodeScanner(){
+  const modal=document.getElementById('barcodeModal');
+  if(modal) modal.style.display='none';
+  if(_barcodeReader){
+    try{_barcodeReader.reset();}catch(e){}
+    _barcodeReader=null;
+  }
 }
 
 // ── AUTOCOMPLETE ──────────────────────────────────────────────
@@ -7744,5 +7787,21 @@ async function init(){
 }
 init();
 </script>
+<!-- Barkod Tarayıcı Modal -->
+<div id="barcodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center">
+  <div style="background:#1a0f00;border:1px solid var(--gold);border-radius:8px;padding:1.25rem;width:min(92vw,420px);max-height:90vh;overflow:hidden">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+      <div style="font-family:'Playfair Display',serif;color:var(--gold);font-size:1rem">📷 Barkod Tara</div>
+      <button onclick="closeBarcodeScanner()" style="background:none;border:none;color:var(--gold);font-size:1.2rem;cursor:pointer;padding:.2rem .4rem">✕</button>
+    </div>
+    <div style="position:relative;background:#000;border-radius:4px;overflow:hidden;aspect-ratio:4/3">
+      <video id="barcodeVideo" style="width:100%;height:100%;object-fit:cover" playsinline muted></video>
+      <div style="position:absolute;inset:0;border:2px solid rgba(201,162,39,.4);border-radius:4px;pointer-events:none">
+        <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;height:2px;background:rgba(201,162,39,.6);box-shadow:0 0 8px rgba(201,162,39,.4)"></div>
+      </div>
+    </div>
+    <div id="barcodeStatus" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);text-align:center;margin-top:.6rem;opacity:.7">Barkodu kameraya göster</div>
+  </div>
+</div>
 </body>
 </html>
