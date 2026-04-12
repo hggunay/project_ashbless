@@ -600,6 +600,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                 <div class="autocomplete-list" id="acList" style="display:none"></div>
                 <div id="isbnHint" style="display:none;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);opacity:.7;margin-top:.2rem">↵ Enter — kitabı otomatik bul</div>
               </div>
+              <button type="button" onclick="searchBookByTitle()" title="Ara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;white-space:nowrap;flex-shrink:0">🔍</button>
               <button type="button" onclick="openBarcodeScanner()" title="Barkod tara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;white-space:nowrap;flex-shrink:0">📷</button>
             </div>
           </div>
@@ -1031,8 +1032,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <div class="field-group" style="grid-column:1/-1">
               <div style="display:flex;gap:.4rem">
                 <input class="book-input" id="shelfBookTitle" type="text" placeholder="Kitap adı veya ISBN" style="flex:1"/>
+                <button type="button" onclick="searchShelfBook()" title="Ara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;flex-shrink:0">🔍</button>
                 <button type="button" onclick="openShelfBarcodeScanner()" title="Barkod tara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;flex-shrink:0">📷</button>
               </div>
+              <div id="shelfBookPreview" style="display:none;margin-top:.4rem;padding:.4rem .6rem;background:rgba(74,103,65,.1);border:1px solid rgba(74,103,65,.3);border-radius:4px;font-size:.82rem;color:var(--ink)"></div>
             </div>
             <div class="field-group"><input class="book-input" id="shelfBookAuthor" type="text" placeholder="Yazar"/></div>
             <div class="field-group"><input class="book-input" id="shelfBookPublisher" type="text" placeholder="Yayınevi"/></div>
@@ -1045,6 +1048,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
             <button class="btn btn-primary btn-sm" onclick="addShelfBook()">+ Ekle</button>
             <div class="status-msg" id="shelfStatus"></div>
+          </div>
+          <div class="confirm-bar" id="shelfDupBar">
+            <span id="shelfDupMsg" style="flex:1;color:var(--rust)"></span>
+            <button class="btn btn-sm btn-primary" onclick="shelfDupConfirmed()">Yine de Ekle</button>
+            <button class="btn btn-sm" onclick="closeShelfDup()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
           </div>
         </div>
       </div>
@@ -3051,9 +3059,30 @@ async function fetchBookInfo(title, author, isbn=''){
 
 function isISBN(val){return /^[0-9]{9,13}[0-9X]?$/i.test((val||'').replace(/[-\s]/g,''));}
 function checkISBNInput(val){
-  // ISBN gibi görünüyorsa küçük ipucu göster
   const hint=document.getElementById('isbnHint');
   if(hint) hint.style.display=isISBN(val)?'':'none';
+}
+function searchBookByTitle(){
+  const val=document.getElementById('bookTitle')?.value.trim()||'';
+  if(!val) return;
+  if(isISBN(val)) fillFormFromISBN(val.replace(/[^0-9X]/gi,''));
+  else _searchByTitleFill();
+}
+async function _searchByTitleFill(){
+  const titleEl=document.getElementById('bookTitle');
+  const authorEl=document.getElementById('bookAuthor');
+  const raw=(titleEl?.value||'').trim();
+  if(!raw) return;
+  const st=document.getElementById('addStatus');
+  if(st){st.textContent='🔍 Aranıyor...';st.className='status-msg';}
+  const info=await fetchBookInfo(raw,authorEl?.value||'','');
+  if(info?.title_clean){
+    if(titleEl) titleEl.value=info.title_clean;
+    if(authorEl&&info.author_clean) authorEl.value=info.author_clean;
+    if(st){st.textContent=`✓ ${info.title_clean}${info.author_clean?' — '+info.author_clean:''}`;setTimeout(()=>{if(st.textContent.startsWith('✓'))st.textContent='';},5000);}
+  } else {
+    if(st){st.textContent='⚠️ Bulunamadı — bilgileri elle girin.';setTimeout(()=>{st.textContent='';},4000);}
+  }
 }
 
 // ── KİTAP RAFI ────────────────────────────────────────────────
@@ -3114,13 +3143,44 @@ async function addShelfBook(){
     if(info?.author_clean&&!author) authorEl.value=info.author_clean;
   }
   const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,shelfId:shelfId||null,isbn:isbn||null,addedAt:new Date().toISOString(),lent:null};
+
+  // Duplicate kontrol
+  const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const dup=(s.books||[]).find(b=>{
+    if(isbn&&b.isbn&&b.isbn===isbn) return true;
+    if(norm(title)&&norm(b.title)===norm(title)) return true;
+    return false;
+  });
+  if(dup&&!window._skipShelfDup){
+    const bar=document.getElementById('shelfDupBar');
+    const msg=document.getElementById('shelfDupMsg');
+    if(msg) msg.textContent=`"${dup.title}" zaten rafınızda var. Yine de eklensin mi?`;
+    if(bar) bar.classList.add('show');
+    window._pendingShelfBook=book;
+    if(st) st.textContent='';
+    return;
+  }
+  window._skipShelfDup=false;
+
   s.books.push(book);
   saveDb();
   if(titleEl) titleEl.value='';
   if(authorEl) authorEl.value='';
   if(pubEl) pubEl.value='';
+  const preview=document.getElementById('shelfBookPreview');
+  if(preview){preview.style.display='none';preview.textContent='';}
   if(st){st.textContent=`✓ "${title}" eklendi`;setTimeout(()=>{st.textContent='';},3000);}
   renderShelf();
+}
+
+function closeShelfDup(){
+  document.getElementById('shelfDupBar')?.classList.remove('show');
+  window._pendingShelfBook=null;window._skipShelfDup=false;
+}
+function shelfDupConfirmed(){
+  closeShelfDup();
+  window._skipShelfDup=true;
+  addShelfBook();
 }
 
 function deleteShelfBook(bookId){
@@ -3130,13 +3190,20 @@ function deleteShelfBook(bookId){
 }
 
 function lendShelfBook(bookId){
+  // Inline input göster
+  const row=document.getElementById('lend-row-'+bookId);
+  if(row){row.style.display=row.style.display==='none'?'flex':'none';return;}
+}
+function confirmLend(bookId){
+  const inp=document.getElementById('lend-inp-'+bookId);
+  const person=(inp?.value||'').trim();
+  if(!person) return;
   const s=myShelf();
   const book=(s.books||[]).find(b=>b.id===bookId);
   if(!book) return;
-  const person=prompt('Kime ödünç veriliyor?');
-  if(!person?.trim()) return;
-  book.lent={person:person.trim(),date:new Date().toISOString().split('T')[0]};
+  book.lent={person,date:new Date().toISOString().split('T')[0]};
   saveDb();renderShelf();
+  notify('📤 Ödünç Verildi',`"${book.title}" → ${person}`);
 }
 
 function returnShelfBook(bookId){
@@ -3148,6 +3215,14 @@ function returnShelfBook(bookId){
   notify('📚 Geri Alındı',`"${book.title}" iade edildi.`);
 }
 
+function moveShelfBook(bookId, shelfId){
+  const s=myShelf();
+  const book=(s.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.shelfId=shelfId||null;
+  saveDb();renderShelf();
+}
+
 function addShelfBookToLibrary(bookId){
   const s=myShelf();
   const book=(s.books||[]).find(b=>b.id===bookId);
@@ -3157,6 +3232,31 @@ function addShelfBookToLibrary(bookId){
   document.getElementById('bookPublisher').value=book.publisher||'';
   showPanel('myBooks',document.querySelector('.nav-tab[onclick*="myBooks"]'));
   notify('📖 Kitaplığıma Ekle',`"${book.title}" bilgileri forma aktarıldı.`);
+}
+
+async function searchShelfBook(){
+  const titleEl=document.getElementById('shelfBookTitle');
+  const authorEl=document.getElementById('shelfBookAuthor');
+  const preview=document.getElementById('shelfBookPreview');
+  const raw=(titleEl?.value||'').trim();
+  if(!raw) return;
+  const isbnPat=/^[0-9]{9,13}[0-9X]?$/i;
+  const looksIsbn=isbnPat.test(raw.replace(/[-\s]/g,''));
+  const isbn=looksIsbn?raw.replace(/[^0-9X]/gi,''):'';
+  if(preview){preview.style.display='block';preview.textContent='🔍 Aranıyor...';}
+  const info=await fetchBookInfo(looksIsbn?'':raw,authorEl?.value||'',isbn);
+  if(info?.title_clean&&info.title_clean!==raw){
+    if(titleEl) titleEl.value=info.title_clean;
+    if(authorEl&&info.author_clean) authorEl.value=info.author_clean;
+    if(preview){
+      preview.style.display='block';
+      preview.textContent=`✓ ${info.title_clean}${info.author_clean?' — '+info.author_clean:''}`;
+    }
+  } else if(info?.title_clean){
+    if(preview){preview.style.display='block';preview.textContent=`✓ ${info.title_clean}${info.author_clean?' — '+info.author_clean:''}`;}
+  } else {
+    if(preview){preview.style.display='block';preview.textContent='⚠️ Kitap bulunamadı — bilgileri elle girin.';}
+  }
 }
 
 function openShelfBarcodeScanner(){
@@ -3174,7 +3274,7 @@ function openShelfBarcodeScanner(){
         const isbn=result.getText();
         closeBarcodeScanner();
         document.getElementById('shelfBookTitle').value=isbn;
-        addShelfBook();
+        searchShelfBook();
       }
     });
     if(status) status.textContent='Barkodu kameraya göster';
@@ -3206,18 +3306,29 @@ function renderShelf(){
 
   function bookCard(b){
     const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
-    return`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
-      <div style="flex:1;min-width:0">
-        <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600;color:var(--ink)">${b.title||'İsimsiz'}</div>
-        ${b.author?`<div style="font-size:.8rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
-        ${lentBadge}
+    const shelfOptions=shelves.map(sh=>`<option value="${sh.id}"${b.shelfId===sh.id?' selected':''}>${sh.name}</option>`).join('');
+    const moveSelect=shelves.length?`<select class="book-input" style="font-size:.6rem;padding:.2rem .4rem;max-width:110px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" onchange="moveShelfBook('${b.id}',this.value)">
+      <option value="">📦 Rafsız</option>${shelfOptions}</select>`:'';
+    return`<div style="padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
+        <div style="flex:1;min-width:0">
+          <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600;color:var(--ink)">${b.title||'İsimsiz'}</div>
+          ${b.author?`<div style="font-size:.8rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
+          ${lentBadge}
+        </div>
+        <div style="display:flex;gap:.3rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center">
+          ${moveSelect}
+          ${b.lent
+            ?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓ Geri Aldım</button>`
+            :`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤 Ödünç</button>`}
+          <button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
+          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
+        </div>
       </div>
-      <div style="display:flex;gap:.3rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
-        ${b.lent
-          ?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓ Geri Aldım</button>`
-          :`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤 Ödünç Ver</button>`}
-        <button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖 Okumaya Ekle</button>
-        <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
+      <div id="lend-row-${b.id}" style="display:none;gap:.4rem;align-items:center;margin-top:.4rem;flex-wrap:wrap">
+        <input id="lend-inp-${b.id}" class="book-input" type="text" placeholder="Kişi adı..." style="flex:1;min-width:120px;font-size:.8rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)" onkeydown="if(event.key==='Enter')confirmLend('${b.id}')"/>
+        <button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="confirmLend('${b.id}')">Onayla</button>
+        <button class="btn btn-sm" style="font-size:.65rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="document.getElementById('lend-row-${b.id}').style.display='none'">İptal</button>
       </div>
     </div>`;
   }
