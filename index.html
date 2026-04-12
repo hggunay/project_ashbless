@@ -3544,7 +3544,7 @@ function openBook(bookId){
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
         ${book.readingStatus==='new'?`
-          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
@@ -3688,24 +3688,35 @@ function recalcSeriesCompletion(bookId){
 function applyToWholeSeries(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book||!book.series) return;
-  const seriesBooks=db.books[me].filter(b=>b.series===book.series&&b.id!==bookId);
-  if(!seriesBooks.length){notify('📚 Seri','Bu seride başka kitap yok.');return;}
+  const allSeriesBooks=db.books[me].filter(b=>b.series===book.series);
+  if(allSeriesBooks.length<2){notify('📚 Seri','Bu seride başka kitap yok.');return;}
+
+  // Seri içindeki en dolu bilgiyi topla
+  const best={};
+  const fields=['author','authorBirthYear','country','femaleAuthor','genres','seriesTotal','publisher','seriesComplete','miniSeriesComplete','bigSeriesComplete'];
+  fields.forEach(f=>{
+    for(const b of allSeriesBooks){
+      const v=b[f];
+      if(v&&(!best[f]||(Array.isArray(v)&&v.length>(best[f]||[]).length))) best[f]=v;
+    }
+  });
+
+  // Tüm kitaplara uygula
   let count=0;
-  seriesBooks.forEach(b=>{
-    if(!b.author&&book.author){b.author=book.author;count++;}
-    if(!b.authorBirthYear&&book.authorBirthYear){b.authorBirthYear=book.authorBirthYear;count++;}
-    if(!b.country&&book.country){b.country=book.country;count++;}
-    if(!b.femaleAuthor&&book.femaleAuthor){b.femaleAuthor=book.femaleAuthor;count++;}
-    if((!b.genres||!b.genres.length)&&book.genres?.length){b.genres=[...book.genres];count++;}
-    if(!b.seriesTotal&&book.seriesTotal){b.seriesTotal=book.seriesTotal;count++;}
-    if(!b.publisher&&book.publisher){b.publisher=book.publisher;count++;}
-    // Seri tamamlama flag'lerini her durumda uygula (değer true ise)
-    if(book.seriesComplete){b.seriesComplete=true;count++;}
-    if(book.miniSeriesComplete){b.miniSeriesComplete=true;count++;}
-    if(book.bigSeriesComplete){b.bigSeriesComplete=true;count++;}
+  allSeriesBooks.forEach(b=>{
+    if(best.author&&!b.author){b.author=best.author;count++;}
+    if(best.authorBirthYear&&!b.authorBirthYear){b.authorBirthYear=best.authorBirthYear;count++;}
+    if(best.country&&!b.country){b.country=best.country;count++;}
+    if(best.femaleAuthor&&!b.femaleAuthor){b.femaleAuthor=best.femaleAuthor;count++;}
+    if(best.genres?.length&&(!b.genres||!b.genres.length)){b.genres=[...best.genres];count++;}
+    if(best.seriesTotal&&!b.seriesTotal){b.seriesTotal=best.seriesTotal;count++;}
+    if(best.publisher&&!b.publisher){b.publisher=best.publisher;count++;}
+    if(best.seriesComplete){b.seriesComplete=true;}
+    if(best.miniSeriesComplete){b.miniSeriesComplete=true;}
+    if(best.bigSeriesComplete){b.bigSeriesComplete=true;}
   });
   saveDb();renderSafe();
-  if(count>0) notify('✅ Seri güncellendi',`${seriesBooks.length} kitaba bilgi aktarıldı`);
+  if(count>0) notify('✅ Seri güncellendi',`${allSeriesBooks.length} kitaba en dolu bilgi aktarıldı`);
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
 
