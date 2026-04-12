@@ -2252,6 +2252,7 @@ function saveGBooksKey(){
   notify('🔑 API Key',key?'Google Books API aktif.':'Open Library\'ye döndü.');
 }
 
+function saveHint(){
   const hint=document.getElementById('settingHint').value.trim();
   if(!db.users[me]){notify('⚠️ Hata','Kullanıcı bulunamadı.');return;}
   db.users[me].hint=hint||null;
