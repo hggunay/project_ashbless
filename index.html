@@ -552,6 +552,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     <div class="nav-tabs">
       <button class="nav-tab" onclick="showPanel('feed',this)">🏠 Ana Sayfa <span id="feedBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
+      <button class="nav-tab" onclick="showPanel('shelf',this)">🗄️ Kitap Rafım</button>
       <button class="nav-tab" onclick="showPanel('stories',this)">📖 Hikâyelerim</button>
       <button class="nav-tab" onclick="showPanel('series',this)">📚 Seriler</button>
       <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defterim</button>
@@ -1012,6 +1013,55 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div id="sPanel-map" style="display:none;padding:.75rem 0">
         <div id="mapContainer" style="max-width:960px;margin:0 auto;border:1px solid rgba(201,162,39,.3);border-radius:8px;overflow:hidden;background:#1a0f00"></div>
       </div>
+    </div>
+
+    <!-- SHELF PANEL -->
+    <div id="shelf" class="panel">
+      <div class="add-section" id="shelfAddSection">
+        <div class="section-title">🗄️ Kitap Rafım</div>
+        <!-- Raf oluştur -->
+        <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
+          <input class="book-input" id="shelfNewName" type="text" placeholder="Raf adı (örn: Odamdaki Kitaplık)" style="flex:1;min-width:160px"/>
+          <button class="btn btn-primary btn-sm" onclick="addShelf()">+ Raf Oluştur</button>
+        </div>
+        <!-- Kitap ekle -->
+        <div style="border-top:1px solid rgba(201,162,39,.15);padding-top:.75rem">
+          <div class="field-label" style="margin-bottom:.4rem">Rafa Kitap Ekle</div>
+          <div class="input-grid" style="margin-bottom:.5rem">
+            <div class="field-group" style="grid-column:1/-1">
+              <div style="display:flex;gap:.4rem">
+                <input class="book-input" id="shelfBookTitle" type="text" placeholder="Kitap adı veya ISBN" style="flex:1"/>
+                <button type="button" onclick="openShelfBarcodeScanner()" title="Barkod tara" style="padding:.65rem .8rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:1rem;flex-shrink:0">📷</button>
+              </div>
+            </div>
+            <div class="field-group"><input class="book-input" id="shelfBookAuthor" type="text" placeholder="Yazar"/></div>
+            <div class="field-group"><input class="book-input" id="shelfBookPublisher" type="text" placeholder="Yayınevi"/></div>
+            <div class="field-group" style="grid-column:1/-1">
+              <select class="book-input" id="shelfSelect" style="font-size:.85rem">
+                <option value="">— Raf seç —</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="addShelfBook()">+ Ekle</button>
+            <div class="status-msg" id="shelfStatus"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Arama + Sıralama -->
+      <div class="card" style="margin-bottom:.75rem">
+        <div class="card-body" style="padding:.6rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
+          <input class="book-input" id="shelfSearch" type="text" placeholder="🔍 Ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)" oninput="renderShelf()"/>
+          <select class="book-input" id="shelfSort" onchange="renderShelf()" style="font-size:.75rem;padding:.3rem .5rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);max-width:130px">
+            <option value="title">🔤 Başlık</option>
+            <option value="author">✍️ Yazar</option>
+            <option value="publisher">🏢 Yayınevi</option>
+            <option value="added">📅 Eklenme</option>
+          </select>
+        </div>
+      </div>
+      <!-- Raf listesi -->
+      <div id="shelfContainer"></div>
     </div>
 
     <!-- MEMBERS PANEL -->
@@ -1886,7 +1936,7 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.settings)db.settings={};
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
       // Avatar'ları ayrı node'dan yükle
       try{
         const avatars=await fbGet('aa-avatars');
@@ -2553,6 +2603,7 @@ function showPanel(id,el){
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
   else if(id==='series'){seriesPage=1;renderSeriesList();}
+  else if(id==='shelf'){renderShelf();}
   else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
   else render();
 }
@@ -3005,7 +3056,204 @@ function checkISBNInput(val){
   if(hint) hint.style.display=isISBN(val)?'':'none';
 }
 
-// ── BARKOD TARAYICI ───────────────────────────────────────────
+// ── KİTAP RAFI ────────────────────────────────────────────────
+function myShelf(){if(!db.shelf)db.shelf={};if(!db.shelf[me])db.shelf[me]={shelves:{},books:[]};return db.shelf[me];}
+
+function renderShelfSelect(){
+  const sel=document.getElementById('shelfSelect');
+  if(!sel) return;
+  const s=myShelf();
+  const shelves=Object.values(s.shelves||{});
+  sel.innerHTML='<option value="">— Raf seç —</option>'+shelves.map(sh=>`<option value="${sh.id}">${sh.name}</option>`).join('');
+}
+
+function addShelf(){
+  const inp=document.getElementById('shelfNewName');
+  const name=(inp?.value||'').trim();
+  if(!name) return;
+  const s=myShelf();
+  if(!s.shelves) s.shelves={};
+  const id='sh_'+Date.now();
+  s.shelves[id]={id,name,createdAt:new Date().toISOString()};
+  saveDb();
+  inp.value='';
+  renderShelfSelect();
+  renderShelf();
+  notify('🗄️ Raf Oluşturuldu',name);
+}
+
+function deleteShelf(shelfId){
+  const s=myShelf();
+  const name=s.shelves?.[shelfId]?.name||'Raf';
+  if(!confirm(`"${name}" rafını silmek istiyor musunuz? Raftaki kitaplar silinmez.`)) return;
+  if(s.shelves) delete s.shelves[shelfId];
+  saveDb();renderShelfSelect();renderShelf();
+}
+
+async function addShelfBook(){
+  const titleEl=document.getElementById('shelfBookTitle');
+  const authorEl=document.getElementById('shelfBookAuthor');
+  const pubEl=document.getElementById('shelfBookPublisher');
+  const selEl=document.getElementById('shelfSelect');
+  const st=document.getElementById('shelfStatus');
+  const rawTitle=(titleEl?.value||'').trim();
+  const author=(authorEl?.value||'').trim();
+  const publisher=(pubEl?.value||'').trim();
+  const shelfId=selEl?.value||'';
+  if(!rawTitle){notify('⚠️','Kitap adı gerekli.');return;}
+  const s=myShelf();
+  if(!s.books) s.books=[];
+  // ISBN mi?
+  const isbnPat=/^[0-9]{9,13}[0-9X]?$/i;
+  const looksIsbn=isbnPat.test(rawTitle.replace(/[-\s]/g,''));
+  let title=rawTitle,isbn=looksIsbn?rawTitle.replace(/[^0-9X]/gi,''):'';
+  if(st) st.textContent='Kitap aranıyor...';
+  if(looksIsbn||(!author&&!publisher)){
+    const info=await fetchBookInfo(looksIsbn?'':rawTitle,author,isbn);
+    if(info?.title_clean) title=info.title_clean;
+    if(info?.author_clean&&!author) authorEl.value=info.author_clean;
+  }
+  const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,shelfId:shelfId||null,isbn:isbn||null,addedAt:new Date().toISOString(),lent:null};
+  s.books.push(book);
+  saveDb();
+  if(titleEl) titleEl.value='';
+  if(authorEl) authorEl.value='';
+  if(pubEl) pubEl.value='';
+  if(st){st.textContent=`✓ "${title}" eklendi`;setTimeout(()=>{st.textContent='';},3000);}
+  renderShelf();
+}
+
+function deleteShelfBook(bookId){
+  const s=myShelf();
+  s.books=(s.books||[]).filter(b=>b.id!==bookId);
+  saveDb();renderShelf();
+}
+
+function lendShelfBook(bookId){
+  const s=myShelf();
+  const book=(s.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const person=prompt('Kime ödünç veriliyor?');
+  if(!person?.trim()) return;
+  book.lent={person:person.trim(),date:new Date().toISOString().split('T')[0]};
+  saveDb();renderShelf();
+}
+
+function returnShelfBook(bookId){
+  const s=myShelf();
+  const book=(s.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.lent=null;
+  saveDb();renderShelf();
+  notify('📚 Geri Alındı',`"${book.title}" iade edildi.`);
+}
+
+function addShelfBookToLibrary(bookId){
+  const s=myShelf();
+  const book=(s.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  document.getElementById('bookTitle').value=book.title||'';
+  document.getElementById('bookAuthor').value=book.author||'';
+  document.getElementById('bookPublisher').value=book.publisher||'';
+  showPanel('myBooks',document.querySelector('.nav-tab[onclick*="myBooks"]'));
+  notify('📖 Kitaplığıma Ekle',`"${book.title}" bilgileri forma aktarıldı.`);
+}
+
+function openShelfBarcodeScanner(){
+  // Barkod okuyunca shelfBookTitle'a yaz ve bilgi çek
+  const modal=document.getElementById('barcodeModal');
+  if(!modal) return;
+  modal.style.display='flex';
+  const status=document.getElementById('barcodeStatus');
+  if(status) status.textContent='Kamera başlatılıyor...';
+  if(typeof ZXing==='undefined'){if(status)status.textContent='⚠️ Tarayıcı yüklenemedi.';return;}
+  try{
+    _barcodeReader=new ZXing.BrowserMultiFormatReader();
+    _barcodeReader.decodeFromVideoDevice(null,'barcodeVideo',(result,err)=>{
+      if(result){
+        const isbn=result.getText();
+        closeBarcodeScanner();
+        document.getElementById('shelfBookTitle').value=isbn;
+        addShelfBook();
+      }
+    });
+    if(status) status.textContent='Barkodu kameraya göster';
+  }catch(e){if(status)status.textContent='⚠️ Kamera açılamadı.';}
+}
+
+function renderShelf(){
+  renderShelfSelect();
+  const s=myShelf();
+  const shelves=Object.values(s.shelves||{});
+  const allBooks=s.books||[];
+  const search=(document.getElementById('shelfSearch')?.value||'').toLowerCase().trim();
+  const sortMode=document.getElementById('shelfSort')?.value||'title';
+  const container=document.getElementById('shelfContainer');
+  if(!container) return;
+
+  let books=[...allBooks];
+  if(search) books=books.filter(b=>
+    (b.title||'').toLowerCase().includes(search)||
+    (b.author||'').toLowerCase().includes(search)||
+    (b.publisher||'').toLowerCase().includes(search)
+  );
+  books.sort((a,b_)=>{
+    if(sortMode==='author') return (a.author||'').localeCompare(b_.author||'','tr');
+    if(sortMode==='publisher') return (a.publisher||'').localeCompare(b_.publisher||'','tr');
+    if(sortMode==='added') return (b_.addedAt||'').localeCompare(a.addedAt||'');
+    return (a.title||'').localeCompare(b_.title||'','tr');
+  });
+
+  function bookCard(b){
+    const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
+    return`<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
+      <div style="flex:1;min-width:0">
+        <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600;color:var(--ink)">${b.title||'İsimsiz'}</div>
+        ${b.author?`<div style="font-size:.8rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
+        ${lentBadge}
+      </div>
+      <div style="display:flex;gap:.3rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        ${b.lent
+          ?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓ Geri Aldım</button>`
+          :`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤 Ödünç Ver</button>`}
+        <button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖 Okumaya Ekle</button>
+        <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
+      </div>
+    </div>`;
+  }
+
+  if(!shelves.length&&!allBooks.length){
+    container.innerHTML='<div class="empty-state">Henüz raf oluşturulmamış. Yukarıdan bir raf ekle!</div>';
+    return;
+  }
+
+  let html='';
+  // Rafa atanmış kitaplar — raf bazında
+  shelves.forEach(sh=>{
+    const shBooks=books.filter(b=>b.shelfId===sh.id);
+    html+=`<div class="card" style="margin-bottom:.75rem">
+      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+        <span>🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${shBooks.length} kitap</span></span>
+        <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelf('${sh.id}')">🗑 Rafı Sil</button>
+      </div>
+      <div class="card-body" style="padding:.5rem 1rem">
+        ${shBooks.length?shBooks.map(bookCard).join(''):'<div style="font-size:.8rem;color:#888;font-style:italic;padding:.3rem 0">Bu rafta kitap yok.</div>'}
+      </div>
+    </div>`;
+  });
+  // Rafa atanmamış kitaplar
+  const unsorted=books.filter(b=>!b.shelfId||(b.shelfId&&!s.shelves?.[b.shelfId]));
+  if(unsorted.length){
+    html+=`<div class="card" style="margin-bottom:.75rem">
+      <div class="card-header">📦 Rafsız Kitaplar <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${unsorted.length} kitap</span></div>
+      <div class="card-body" style="padding:.5rem 1rem">${unsorted.map(bookCard).join('')}</div>
+    </div>`;
+  }
+  if(!books.length&&search){
+    html='<div class="empty-state">Arama sonucu bulunamadı.</div>';
+  }
+  container.innerHTML=html;
+}
 let _barcodeReader=null;
 function openBarcodeScanner(){
   const modal=document.getElementById('barcodeModal');
