@@ -1174,12 +1174,24 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <div style="padding-top:.75rem;display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
                 <div>
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)">Profilim herkese açık</div>
-                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-top:.2rem">Kapalıysa diğer üyeler sadece kitap ve rozet sayını görür, detayları göremez.</div>
+                  <div style="font-size:.8rem;color:#555;font-style:italic;margin-top:.2rem">Kapalıysa diğer üyeler sadece kitap ve rozet sayını görür, detayları göremez.</div>
                 </div>
                 <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
                   <input type="checkbox" id="settingPublic" onchange="togglePublicProfile(this.checked)" style="opacity:0;width:0;height:0">
                   <span id="publicToggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(138,69,19,.3);border-radius:24px;transition:.3s">
                     <span id="publicToggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--parchment);border-radius:50%;transition:.3s"></span>
+                  </span>
+                </label>
+              </div>
+              <div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(201,162,39,.1);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+                <div>
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)">Kitap rafım herkese açık</div>
+                  <div style="font-size:.8rem;color:#555;font-style:italic;margin-top:.2rem">Kapalıysa kitap rafın sadece sana görünür.</div>
+                </div>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+                  <input type="checkbox" id="settingShelfPublic" onchange="toggleShelfPublic(this.checked)" style="opacity:0;width:0;height:0">
+                  <span id="shelfToggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(138,69,19,.3);border-radius:24px;transition:.3s">
+                    <span id="shelfToggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--parchment);border-radius:50%;transition:.3s"></span>
                   </span>
                 </label>
               </div>
@@ -2234,6 +2246,16 @@ function renderSettings(){
     track.style.background=isPublic?'var(--moss)':'rgba(138,69,19,.3)';
     thumb.style.transform=isPublic?'translateX(20px)':'translateX(0)';
   }
+  // Shelf public toggle
+  const isShelfPublic=user.shelfPublic===true;
+  const scb=document.getElementById('settingShelfPublic');
+  const strack=document.getElementById('shelfToggleTrack');
+  const sthumb=document.getElementById('shelfToggleThumb');
+  if(scb){
+    scb.checked=isShelfPublic;
+    if(strack) strack.style.background=isShelfPublic?'var(--moss)':'rgba(138,69,19,.3)';
+    if(sthumb) sthumb.style.transform=isShelfPublic?'translateX(20px)':'translateX(0)';
+  }
   // Şifre sıfırlama istekleri
   const reqBox=document.getElementById('forgotRequestsBox');
   const reqList=document.getElementById('forgotRequestsList');
@@ -2419,6 +2441,16 @@ function importData(input){
   input.value=''; // aynı dosyayı tekrar seçebilmek için
 }
 
+function toggleShelfPublic(val){
+  db.users[me].shelfPublic=val;
+  saveDb();
+  const track=document.getElementById('shelfToggleTrack');
+  const thumb=document.getElementById('shelfToggleThumb');
+  if(track) track.style.background=val?'var(--moss)':'rgba(138,69,19,.3)';
+  if(thumb) thumb.style.transform=val?'translateX(20px)':'translateX(0)';
+  notify(val?'🔓 Kitap Rafı Açık':'🔒 Kitap Rafı Gizli',val?'Diğer üyeler rafını görebilir.':'Rafın sadece sana görünür.');
+}
+
 function togglePublicProfile(val){
   db.users[me].publicProfile=val;
   saveDb();
@@ -2579,6 +2611,7 @@ function enterApp(){
   else if(targetPanel==='stories') renderStories();
   else if(targetPanel==='series') renderSeriesList();
   else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
+  else if(targetPanel==='shelf') renderShelf();
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
   setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
   // İlk state'i kaydet
@@ -3110,6 +3143,15 @@ async function _searchByTitleFill(){
 // ── KİTAP RAFI ────────────────────────────────────────────────
 function myShelf(){if(!db.shelf)db.shelf={};if(!db.shelf[me])db.shelf[me]={shelves:{},books:[]};return db.shelf[me];}
 
+function shelfShowMore(shelfId, count){
+  try{
+    const prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');
+    prefs['shelf-count-'+shelfId]=count;
+    localStorage.setItem('aa-acc',JSON.stringify(prefs));
+  }catch(e){}
+  renderShelf();
+}
+
 function renderShelfSelect(){
   const sel=document.getElementById('shelfSelect');
   if(!sel) return;
@@ -3321,11 +3363,26 @@ function openShelfBarcodeScanner(){
 }
 
 function renderShelf(){
+  const target=viewing||me;
+  const user=db.users[target];
+  // Gizlilik kontrolü
+  if(viewing&&!user?.shelfPublic){
+    const container=document.getElementById('shelfContainer');
+    if(container) container.innerHTML='<div class="empty-state">🔒 Bu üye kitap rafını gizli tutmaktadır.</div>';
+    const addSec=document.getElementById('shelfAddSection');
+    if(addSec) addSec.style.display='none';
+    return;
+  }
+  const addSec=document.getElementById('shelfAddSection');
+  if(addSec) addSec.style.display=viewing?'none':'';
+
+  if(!db.shelf) db.shelf={};
+  if(!db.shelf[target]) db.shelf[target]={shelves:{},books:[]};
+  const s=db.shelf[target];
   renderShelfSelect();
-  const s=myShelf();
   const shelves=Object.values(s.shelves||{});
   const allBooks=s.books||[];
-  const search=(document.getElementById('shelfSearch')?.value||'').toLowerCase().trim();
+  const search=viewing?'':(document.getElementById('shelfSearch')?.value||'').toLowerCase().trim();
   const sortMode=document.getElementById('shelfSort')?.value||'title';
   const container=document.getElementById('shelfContainer');
   if(!container) return;
@@ -3343,7 +3400,9 @@ function renderShelf(){
     return (a.title||'').localeCompare(b_.title||'','tr');
   });
 
-  function bookCard(b){
+  function prefs2(k){try{return JSON.parse(localStorage.getItem('aa-acc')||'{}')?.[k]||0;}catch(e){return 0;}}
+
+  function bookCard(b,isMe=true){
     const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
     const shelfOptions=shelves.map(sh=>`<option value="${sh.id}"${b.shelfId===sh.id?' selected':''}>${sh.name}</option>`).join('');
     const moveSelect=shelves.length?`<select class="book-input" style="font-size:.6rem;padding:.2rem .4rem;max-width:110px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" onchange="moveShelfBook('${b.id}',this.value)">
@@ -3357,12 +3416,12 @@ function renderShelf(){
         </div>
         <div style="display:flex;gap:.3rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center">
           ${moveSelect}
-          ${b.lent
+          ${isMe?(b.lent
             ?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓ Geri Aldım</button>`
-            :`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤 Ödünç</button>`}
-          <button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>
-          <button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
+            :`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤 Ödünç</button>`):''}
+          ${isMe?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>`:''}
+          ${isMe?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖</button>`:''}
+          ${isMe?`<button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelfBook('${b.id}')">🗑</button>`:''}
         </div>
       </div>
       <div id="edit-row-${b.id}" style="display:none;margin-top:.4rem;padding:.5rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.15)">
@@ -3389,26 +3448,58 @@ function renderShelf(){
     return;
   }
 
+  const SHELF_PAGE=5;
   let html='';
-  // Rafa atanmış kitaplar — raf bazında
   shelves.forEach(sh=>{
     const shBooks=books.filter(b=>b.shelfId===sh.id);
+    const accKey='shelf-acc-'+sh.id;
+    let prefs={};try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
+    const isOpen=prefs[accKey]!==false;
+    const shownCount=prefs['shelf-count-'+sh.id]||SHELF_PAGE;
+    const visible=shBooks.slice(0,shownCount);
+    const hasMore=shBooks.length>shownCount;
+    const hasLess=shownCount>SHELF_PAGE;
     html+=`<div class="card" style="margin-bottom:.75rem">
-      <div class="card-header" style="display:flex;align-items:center;justify-content:space-between">
+      <div class="card-header acc-header" onclick="toggleSection('${accKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
         <span>🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${shBooks.length} kitap</span></span>
-        <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelf('${sh.id}')">🗑 Rafı Sil</button>
+        <div style="display:flex;align-items:center;gap:.4rem" onclick="event.stopPropagation()">
+          ${!viewing?`<button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelf('${sh.id}')">🗑</button>`:''}
+          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}">▶</span>
+        </div>
       </div>
-      <div class="card-body" style="padding:.5rem 1rem">
-        ${shBooks.length?shBooks.map(bookCard).join(''):'<div style="font-size:.8rem;color:#888;font-style:italic;padding:.3rem 0">Bu rafta kitap yok.</div>'}
+      <div class="acc-body ${isOpen?'open':''}" id="body-${accKey}">
+        <div class="card-body" style="padding:.5rem 1rem">
+          ${shBooks.length?`
+            ${visible.map(b=>bookCard(b,!viewing)).join('')}
+            <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
+              ${hasMore?`<button class="btn btn-sm" style="font-size:.65rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="shelfShowMore('${sh.id}',${shownCount+SHELF_PAGE})">↓ Daha fazla (${shBooks.length-shownCount} kaldı)</button>`:''}
+              ${hasLess?`<button class="btn btn-sm" style="font-size:.65rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="shelfShowMore('${sh.id}',${SHELF_PAGE})">↑ Daha az göster</button>`:''}
+            </div>
+          `:'<div style="font-size:.8rem;color:#888;font-style:italic;padding:.3rem 0">Bu rafta kitap yok.</div>'}
+        </div>
       </div>
     </div>`;
   });
-  // Rafa atanmamış kitaplar
   const unsorted=books.filter(b=>!b.shelfId||(b.shelfId&&!s.shelves?.[b.shelfId]));
   if(unsorted.length){
+    const shownU=prefs2('shelf-count-unsorted')||SHELF_PAGE;
+    const visU=unsorted.slice(0,shownU);
+    const hasMoreU=unsorted.length>shownU;
+    const hasLessU=shownU>SHELF_PAGE;
     html+=`<div class="card" style="margin-bottom:.75rem">
-      <div class="card-header">📦 Rafsız Kitaplar <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${unsorted.length} kitap</span></div>
-      <div class="card-body" style="padding:.5rem 1rem">${unsorted.map(bookCard).join('')}</div>
+      <div class="card-header acc-header" onclick="toggleSection('shelf-acc-unsorted')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+        <span>📦 Rafsız Kitaplar <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${unsorted.length} kitap</span></span>
+        <span class="acc-arrow open" id="arr-shelf-acc-unsorted">▶</span>
+      </div>
+      <div class="acc-body open" id="body-shelf-acc-unsorted">
+        <div class="card-body" style="padding:.5rem 1rem">
+          ${visU.map(b=>bookCard(b,!viewing)).join('')}
+          <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
+            ${hasMoreU?`<button class="btn btn-sm" style="font-size:.65rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="shelfShowMore('unsorted',${shownU+SHELF_PAGE})">↓ Daha fazla (${unsorted.length-shownU} kaldı)</button>`:''}
+            ${hasLessU?`<button class="btn btn-sm" style="font-size:.65rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="shelfShowMore('unsorted',${SHELF_PAGE})">↑ Daha az göster</button>`:''}
+          </div>
+        </div>
+      </div>
     </div>`;
   }
   if(!books.length&&search){
