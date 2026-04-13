@@ -2087,19 +2087,32 @@ function renderPills(){
 }
 function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
-  if(!db.users[u]||db.users[u].password!==p){err.style.display='block';return;}
-  err.style.display='none';me=u;viewing=null;
-  if(document.getElementById('rememberMe').checked){
-    try{localStorage.setItem('aa-session',u);}catch(e){}
+  if(!db.users[u]){err.style.display='block';return;}
+  const stored=db.users[u].password;
+  if(!isHashed(stored)){
+    if(stored!==p){err.style.display='block';return;}
+    hashPassword(p).then(h=>{db.users[u].password=h;saveDb();});
+  } else {
+    hashPassword(p).then(h=>{
+      if(h!==stored){err.style.display='block';return;}
+      err.style.display='none';me=u;viewing=null;
+      if(document.getElementById('rememberMe').checked){try{localStorage.setItem('aa-session',u);}catch(e){}}
+      enterApp();
+    });
+    return;
   }
+  err.style.display='none';me=u;viewing=null;
+  if(document.getElementById('rememberMe').checked){try{localStorage.setItem('aa-session',u);}catch(e){}}
   enterApp();
 }
 function register(){
   const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null,email:email||null};db.books[u]=[];
-  saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+  hashPassword(p).then(h=>{
+    db.users[u]={displayName:dn,avatar:av,password:h,hint:hint||null,email:email||null};db.books[u]=[];
+    saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+  });
 }
 
 function showForgotFlow(){
@@ -2163,8 +2176,7 @@ function confirmResetCode(){
   if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
   if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
   // Şifreyi güncelle
-  db.users[_resetUser].password=pw;
-  saveDb();
+  hashPassword(pw).then(h=>{db.users[_resetUser].password=h;saveDb();});
   _resetCode=null;_resetUser=null;_resetExpiry=null;
   document.getElementById('forgotBox').style.display='none';
   document.getElementById('forgotStep1').style.display='';
@@ -2271,10 +2283,7 @@ function updateProfile(field, value){
 function changePassword(){
   const pw=document.getElementById('settingPw').value;
   if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
-  db.users[me].password=pw;
-  document.getElementById('settingPw').value='';
-  saveDb();
-  alert('Şifre güncellendi! ✅');
+  hashPassword(pw).then(h=>{db.users[me].password=h;document.getElementById('settingPw').value='';saveDb();alert('Şifre güncellendi! ✅');});
 }
 
 function deleteAllBooks(){
@@ -2443,21 +2452,14 @@ function adminResetFromForgot(u){
   const input=document.getElementById('forgotpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
-  db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
-  saveDb();
-  renderSettings();
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  hashPassword(pw).then(h=>{db.users[u].password=h;db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);saveDb();renderSettings();notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);});
 }
 
 function adminResetPassword(u){
   const input=document.getElementById('newpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
-  saveDb();
-  input.value='';
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  hashPassword(pw).then(h=>{db.users[u].password=h;saveDb();input.value='';notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);});
 }
 
 function exportData(){
@@ -4312,6 +4314,18 @@ function confirmRemoveBookFinal(id, deleteNote){
     });
   }
   db.books[me]=myBooks().filter(b=>b.id!==id);
+  // Silinen kitabın ülkesi başka aktif kitapta yoksa countryEvent'i de sil
+  if(book.country&&db.countryEvents&&db.countryEvents[me]){
+    const stillExists=(db.books[me]||[]).some(b=>
+      b.country&&b.country.toLowerCase()===book.country.toLowerCase()&&
+      b.readingStatus==='new'&&!b.retroactive
+    );
+    if(!stillExists){
+      db.countryEvents[me]=db.countryEvents[me].filter(e=>
+        e.country.toLowerCase()!==book.country.toLowerCase()
+      );
+    }
+  }
   saveDb();closeModal();renderSafe();
   notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
 }
@@ -7993,17 +8007,52 @@ function cancelDeleteSeries(id){
 function deleteSeries(id){
   const data = mySeriesData();
   const ser = data.series[id];
-  // Akıştan ilgili seri eventlerini temizle
   if(ser && db.seriesEvents && db.seriesEvents[me]){
     db.seriesEvents[me] = db.seriesEvents[me].filter(ev=>ev.seriesId!==id&&ev.seriesName!==ser.name);
   }
   delete data.series[id];
-  // Okuma yollarından da temizle
   Object.values(data.paths||{}).forEach(p=>{
     p.steps = (p.steps||[]).filter(s=>s.seriesId!==id);
   });
   saveDb();
   renderSeriesList();
+}
+
+function editSeriesName(id){
+  const nameEl=document.getElementById('seriesName_'+id);
+  const editBtn=document.getElementById('seriesEditBtn_'+id);
+  if(!nameEl||!editBtn) return;
+  const currentName=mySeriesData().series[id]?.name||'';
+  nameEl.innerHTML=`<input id="seriesNameInput_${id}" class="book-input" type="text" value="${currentName}" style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.4);padding:.2rem .5rem;border-radius:3px;width:100%;max-width:260px"/>
+    <button class="btn btn-sm btn-primary" style="font-size:.65rem;margin-left:.3rem" onclick="saveSeriesName('${id}')">💾 Kaydet</button>
+    <button class="btn btn-sm" style="font-size:.65rem;margin-left:.2rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="cancelSeriesEdit('${id}','${currentName}')">İptal</button>`;
+  editBtn.style.display='none';
+  document.getElementById('seriesNameInput_'+id)?.focus();
+}
+
+function saveSeriesName(id){
+  const input=document.getElementById('seriesNameInput_'+id);
+  if(!input) return;
+  const newName=input.value.trim();
+  if(!newName){notify('⚠️ Hata','Seri adı boş olamaz.');return;}
+  const data=mySeriesData();
+  if(!data.series[id]) return;
+  const oldName=data.series[id].name;
+  data.series[id].name=newName;
+  (db.books[me]||[]).forEach(b=>{if(b.series===oldName) b.series=newName;});
+  if(db.seriesEvents&&db.seriesEvents[me]){
+    db.seriesEvents[me].forEach(ev=>{if(ev.seriesName===oldName) ev.seriesName=newName;});
+  }
+  saveDb();
+  renderSeriesList();
+  notify('✅ Seri Adı Güncellendi',`"${newName}" olarak kaydedildi.`);
+}
+
+function cancelSeriesEdit(id,oldName){
+  const nameEl=document.getElementById('seriesName_'+id);
+  const editBtn=document.getElementById('seriesEditBtn_'+id);
+  if(nameEl) nameEl.innerHTML=oldName;
+  if(editBtn) editBtn.style.display='';
 }
 
 function toggleSeriesAddMode(seriesId){
@@ -8667,7 +8716,7 @@ function renderSeriesList(){
     return `<div class="series-card" data-sid="${ser.id}">
       <div class="series-card-header">
         <div>
-          <div class="series-card-name">${ser.name}</div>
+          <div class="series-card-name" id="seriesName_${ser.id}">${ser.name}</div>
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -8679,6 +8728,7 @@ function renderSeriesList(){
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
+          <button id="seriesEditBtn_${ser.id}" class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="editSeriesName('${ser.id}')">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>`}
         </div>
       </div>
@@ -9092,6 +9142,13 @@ function renderPathsList(){
     </div>`;
   }).join('');
 }
+
+// ── ŞİFRE HASH ───────────────────────────────────────────────
+async function hashPassword(pw){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function isHashed(pw){ return typeof pw==='string'&&pw.length===64&&/^[0-9a-f]+$/.test(pw); }
 
 async function init(){
   await loadDb();
