@@ -6153,11 +6153,15 @@ function updateNotifDot(){
 
 function fmtDate(dateStr){
   if(!dateStr) return '';
+  const s = String(dateStr);
   // YYYY-MM-DD → GG.AA.YYYY
-  const m = String(dateStr).match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(m) return `${m[3]}.${m[2]}.${m[1]}`;
-  // Sadece yıl (4 hane) olduğu durumda olduğu gibi bırak
-  return dateStr;
+  const full = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if(full) return `${full[3]}.${full[2]}.${full[1]}`;
+  // YYYY-MM → AA.YYYY
+  const ym = s.match(/^(\d{4})-(\d{2})$/);
+  if(ym) return `${ym[2]}.${ym[1]}`;
+  // Sadece yıl veya başka format — olduğu gibi bırak
+  return s;
 }
 
 function formatTimeAgo(ts){
@@ -7314,6 +7318,7 @@ function renderBookList(){
     const dateDisplay=b.startDate&&b.endDate
       ?`📅 ${fmtDate(b.startDate)} → ✅ ${fmtDate(b.endDate)}`
       :b.endDate?`✅ ${fmtDate(b.endDate)}`
+      :b.month?`✅ ${fmtDate(b.month)}`
       :b.yearOnly?`📅 ${b.yearOnly} (yıl)`:'';
     const tags=[
       ...(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`),
