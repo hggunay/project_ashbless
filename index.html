@@ -891,8 +891,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <!-- Tarih -->
             <div class="input-grid" style="margin-bottom:.75rem">
               <div class="field-group" style="grid-column:1/-1">
-                <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(YYYY-AA-GG veya sadece YYYY)</span></span>
-                <input class="book-input" id="storyDate" type="text" placeholder="örn: 2024-03-15 veya 2024"/>
+                <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(GG.AA.YYYY veya sadece YYYY)</span></span>
+                <input class="book-input" id="storyDate" type="text" placeholder="örn: 14.04.2026 veya 2026"/>
               </div>
             </div>
             <!-- Kaynak türü -->
@@ -4338,7 +4338,7 @@ function openBook(bookId){
       <div class="detail-acc-body" id="mSec-info-${book.id}">
         <div class="detail-grid" style="margin-top:.5rem">
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
-          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):book.month||''),'text',isMe,'YYYY-AA-GG veya sadece YYYY')}
+          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):book.month||''),'text',isMe,'GG.AA.YYYY veya sadece YYYY')}
           ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
@@ -4568,11 +4568,13 @@ function dField(label,field,val,type,editable,placeholder){
   const display = val!==null&&val!==undefined&&val!==''
     ? (isDateField ? fmtDate(val) : val)
     : '—';
-  const ph=placeholder||(type==='date'?'YYYY-AA-GG':type==='number'?'—':'—');
+  // Tarih alanı için input'a formatlanmış değer göster
+  const inputVal = isDateField && val ? fmtDate(val) : (val??'');
+  const ph = isDateField ? 'GG.AA.YYYY veya sadece YYYY' : (placeholder||(type==='number'?'—':'—'));
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
     ${editable
-      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${val??''}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
+      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${inputVal}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
       :`<span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">${display}</span>`}
   </div>`;
 }
@@ -4639,8 +4641,15 @@ function saveField(bookId,field,value){
 
 function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  // GG.AA.YYYY formatını YYYY-MM-DD'ye çevir
+  if((field==='endDate'||field==='startDate')&&rawVal){
+    const dmyFull = rawVal.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    if(dmyFull) rawVal = `${dmyFull[3]}-${dmyFull[2].padStart(2,'0')}-${dmyFull[1].padStart(2,'0')}`;
+    const dmy = rawVal.trim().match(/^(\d{2})\.(\d{4})$/);
+    if(dmy) rawVal = `${dmy[2]}-${dmy[1]}`;
+  }
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
-  if(field==='endDate'&&type==='date'&&rawVal){
+  if(field==='endDate'&&rawVal){
     const onlyYear=/^\d{4}$/.test(rawVal.trim());
     if(onlyYear){
       book.yearOnly=parseInt(rawVal.trim());
@@ -5045,8 +5054,8 @@ function openStoryDetail(ownerId, storyId){
           ${isMe?`<input class="detail-input" value="${story.sourceBook||''}" placeholder="—" onchange="saveStoryField(${storyId},'sourceBook',this.value||null)"/>`:`<span style="font-size:.9rem;color:var(--moss)">${story.sourceBook||'—'}</span>`}
         </div>
         <div class="detail-field" style="grid-column:1/-1">
-          <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
-          ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':fmtDate(story.readDate)):'—'}</span>`}
+          <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(GG.AA.YYYY veya sadece YYYY)</span></span>
+          ${isMe?`<input class="detail-input" value="${story.readDate?fmtDate(story.readDate):''}" placeholder="örn: 14.04.2026 veya 2026" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':fmtDate(story.readDate)):'—'}</span>`}
         </div>
       </div>
       <div style="margin-top:.5rem">
@@ -5094,9 +5103,13 @@ function openStoryDetail(ownerId, storyId){
 function saveStoryDate(storyId, rawVal){
   const story=(db.stories[me]||[]).find(s=>s.id===storyId);
   if(!story) return;
-  const onlyYear=/^\d{4}$/.test(rawVal.trim());
-  story.readDate=rawVal.trim()||null;
-  story.readYearOnly=onlyYear?parseInt(rawVal.trim()):null;
+  let val = rawVal.trim();
+  // GG.AA.YYYY → YYYY-MM-DD
+  const dmyFull = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if(dmyFull) val = `${dmyFull[3]}-${dmyFull[2].padStart(2,'0')}-${dmyFull[1].padStart(2,'0')}`;
+  const onlyYear=/^\d{4}$/.test(val);
+  story.readDate=val||null;
+  story.readYearOnly=onlyYear?parseInt(val):null;
   saveDb();renderStories();
 }
 
