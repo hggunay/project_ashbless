@@ -1787,6 +1787,17 @@ const BADGE_CATS = [
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
   {label:'🔮 Gizli Rozetler', chains:[
     {id:'gizli', label:'🔮 Gizli', badges:[
+      {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
+        const hasBook = b.length>0;
+        const hasRead = b.some(x=>x.readingStatus==='new');
+        const hasSeries = Object.keys(mySeriesData().series||{}).length>0;
+        const hasJournal = (db.journals&&db.journals[me]&&db.journals[me].length>0)||(db.entries&&db.entries[me]&&db.entries[me].length>0);
+        const hasStory = (db.stories&&db.stories[me]&&db.stories[me].length>0);
+        const hasShelf = (()=>{const s=db.shelf||{};const ud=s[me]||s;return Object.keys(ud).some(k=>k!=='mags'&&typeof ud[k]==='object'&&ud[k].books&&ud[k].books.length>0);})();
+        const hasCountry = b.some(x=>x.country&&x.readingStatus==='new'&&!x.retroactive);
+        const hasProfile = !!(db.users[me]&&(db.users[me].email||db.users[me].hint||(db.users[me].avatar&&db.users[me].avatar!=='📚')));
+        return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
+      }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
@@ -7593,8 +7604,84 @@ function renderBadges(){
   }).join('');
 }
 
+function openAshblessModal(){
+  const overlay = document.getElementById('modalOverlay');
+  const title = document.getElementById('modalTitle');
+  const subtitle = document.getElementById('modalSubtitle');
+  const body = document.getElementById('modalBody');
+  const footer = document.getElementById('modalFooter');
+  if(!overlay) return;
+  title.textContent = '🗝️ Project Ashbless';
+  subtitle.textContent = 'The Armchair Adventurers · 2025';
+  footer.innerHTML = `<button class="btn" onclick="closeModal()">Kapat</button>`;
+  body.innerHTML = `
+    <div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--leather);margin-bottom:.5rem;font-style:italic;text-align:center">
+        "Gerçek macera için çok tembel, okumayı bırakmak için çok meraklıyız."
+      </div>
+      <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1rem"></div>
+      <p style="margin-bottom:.9rem">
+        Okumayı oyunlaştırmak üzerine düşünürken rozet fikri aklıma geldi. 
+        Rozet adlarını ve açıklamalarını önce deftere yazdım, sonra Notion'da listeledim. 
+        Ama bir kitap birden fazla rozeti tetiklediği için takip etmek giderek zorlaştı. 
+        Aradım, bulamadım. Yapmaya karar verdim.
+      </p>
+      <p style="margin-bottom:.9rem">
+        Evrim Ağacı'nda "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" 
+        diyen bir video gördüm. Zaten aylardır aklımı meşgul eden rozet projem vardı. 
+        <strong>8 Mart 2025'te başladım.</strong>
+      </p>
+      <p style="margin-bottom:1.2rem">
+        Proje adı <em>Project Ashbless</em>, o dönem okuduğum ve çok beğendiğim 
+        <em>Anubis Kapıları</em> kitabının ana kahramanından geliyor.
+      </p>
+      <div style="border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;margin-bottom:1rem">
+        <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather);margin-bottom:.6rem">
+          📚 The Armchair Adventurers Okuma Kulübü
+        </div>
+        <p style="font-size:.9rem;margin-bottom:.75rem">
+          Mayıs 2018'den bu yana. Resmi kuruluş tarihi yok — yazmamışız. 
+          Acemi bir kitap kulübüyüz. 🙂
+        </p>
+        <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.8;margin-bottom:.5rem">
+          KULÜP KURALLARI
+        </div>
+        <div style="font-size:.85rem;line-height:2">
+          <div>1. Bakımadan Geçme.</div>
+          <div>2. 1. Madde değiştirilemez ve değiştirilmesi teklif dahi edilemez.</div>
+          <div>3. Kulüp üyesi bir diğer üyenin bilgi alışverişini engelleyecek davranışlarda bulunmamalı.</div>
+          <div>4. Kulüp üyesi bir diğer üyenin bilgilenmesini tehlikeye düşürecek bir davranışta bulunmamalı.</div>
+          <div>5. Kulüp üyesi kendi inisiyatifini kullanarak kulüp haklarını bir başka üyeye devredemez.</div>
+          <div>6. Yıl içerisinde periyodik olarak üyelerin bilgi akışı kontrol edilebilir. Kontroller mail ile yapılacaktır.</div>
+          <div>7. Kulüp hakkında duyuru yapıldığında her üyeye ulaşıldığından emin olunmalıdır.</div>
+          <div>8. Kulüp ile ilgili öneri ve eleştiriler yapıcı yönde olacaksa dile getirilecektir.</div>
+          <div>9. Kitap okuma esnasında mutlaka uykunun alınmış olması lazımdır.</div>
+          <div>10. Kitap okurken beyin yorgun olmamalı; alkol, uyuşturucu, antidepresan vücutta bulunmamalıdır.</div>
+          <div>11. Kitap okurken eleştirel bakış açısı elden bırakılmamalıdır.</div>
+          <div>12. Peyami Safa'nın dediği gibi, öğüterek okumak.</div>
+          <div>13. Okuma bittiği andan itibaren uyumak.</div>
+          <div>14. Yolculuğun kısa süreceği ulaşım araçlarında kitap okumamak.</div>
+          <div>15. Okumaya başlamak için okuma arzusunun doğmasını beklememek.</div>
+        </div>
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.6;text-align:right;margin-top:.5rem">
+        Nimet & Gweluien · Kurucu Asil Üyeler
+      </div>
+    </div>`;
+  overlay.classList.add('open');
+  // Özel konfeti
+  launchConfetti('ashbless');
+  // Bildirim
+  notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!');
+}
+
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
+  // Project Ashbless — hakkında modalını aç
+  if(badgeId==='secret_ashbless'){
+    openAshblessModal();
+    return;
+  }
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
@@ -8131,7 +8218,7 @@ function startReadingSeriesBook(bookId){
 
 // ── Konfeti & Rozet Parlama ────────────────────────────────────────────────
 function launchConfetti(type){
-  // type: 'series' → küçük renkli | 'group' → büyük altın | 'badge' → mini altın
+  // type: 'series' → küçük renkli | 'group' → büyük altın | 'badge' → mini altın | 'ashbless' → özel
   let canvas=document.getElementById('confetti-canvas');
   if(!canvas){canvas=document.createElement('canvas');canvas.id='confetti-canvas';document.body.appendChild(canvas);}
   const ctx=canvas.getContext('2d');
@@ -8139,29 +8226,44 @@ function launchConfetti(type){
 
   const isGroup=type==='group';
   const isBadge=type==='badge';
-  const count=isBadge?40:isGroup?180:80;
-  const gravity=isGroup?0.28:isBadge?0.5:0.35;
-  const spread=isGroup?1.6:isBadge?0.8:1.2;
+  const isAshbless=type==='ashbless';
+  const count=isAshbless?120:isBadge?40:isGroup?180:80;
+  const gravity=isAshbless?0.22:isGroup?0.28:isBadge?0.5:0.35;
+  const spread=isAshbless?2.2:isGroup?1.6:isBadge?0.8:1.2;
 
   const goldPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#b8860b'];
   const colorPalette=['#c9a227','#8a4513','#4a6741','#6b3a2a','#f0d060','#c17f3c','#2d5a3d'];
-  const palette=isGroup||isBadge?goldPalette:colorPalette;
+  const ashblessPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe'];
+  const palette=isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
+
+  // Yıldız çizimi için yardımcı
+  function drawStar(ctx, r){
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      const a=((i*4-1)*Math.PI)/5;
+      const b=((i*4+1)*Math.PI)/5;
+      ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
+      ctx.lineTo(Math.cos(b)*(r*0.4), Math.sin(b)*(r*0.4));
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
 
   const particles=Array.from({length:count},()=>({
-    x:canvas.width*(isGroup?Math.random():0.3+Math.random()*0.4),
-    y:isGroup?-10:canvas.height*0.35,
-    vx:(Math.random()-0.5)*spread*(isGroup?9:6),
-    vy:-(Math.random()*(isGroup?14:9)+4),
-    size:isGroup?(Math.random()*10+5):(isBadge?(Math.random()*5+3):(Math.random()*7+3)),
+    x:canvas.width*(isGroup?Math.random():isAshbless?0.2+Math.random()*0.6:0.3+Math.random()*0.4),
+    y:isGroup||isAshbless?-10:canvas.height*0.35,
+    vx:(Math.random()-0.5)*spread*(isGroup||isAshbless?9:6),
+    vy:-(Math.random()*(isGroup||isAshbless?16:9)+4),
+    size:isAshbless?(Math.random()*8+4):isGroup?(Math.random()*10+5):(isBadge?(Math.random()*5+3):(Math.random()*7+3)),
     color:palette[Math.floor(Math.random()*palette.length)],
     rot:Math.random()*360,
     rotV:(Math.random()-0.5)*8,
-    shape:Math.random()<(isGroup?0.6:0.4)?'rect':'circle',
+    shape:isAshbless?(Math.random()<0.4?'star':Math.random()<0.5?'rect':'circle'):Math.random()<(isGroup?0.6:0.4)?'rect':'circle',
     alpha:1
   }));
 
   let frame=0;
-  const maxFrames=isGroup?220:isBadge?100:160;
+  const maxFrames=isAshbless?280:isGroup?220:isBadge?100:160;
   function tick(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     particles.forEach(p=>{
@@ -8169,7 +8271,8 @@ function launchConfetti(type){
       p.alpha=Math.max(0,1-frame/maxFrames);
       ctx.save();ctx.globalAlpha=p.alpha;ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
       ctx.fillStyle=p.color;
-      if(p.shape==='rect'){ctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);}
+      if(p.shape==='star'){drawStar(ctx,p.size);}
+      else if(p.shape==='rect'){ctx.fillRect(-p.size/2,-p.size/4,p.size,p.size/2);}
       else{ctx.beginPath();ctx.arc(0,0,p.size/2,0,Math.PI*2);ctx.fill();}
       ctx.restore();
     });
