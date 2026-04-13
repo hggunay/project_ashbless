@@ -544,7 +544,19 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     <div class="header-user">
       <div class="header-avatar" id="headerAvatar">📚</div>
       <span class="header-username" id="headerUsername"></span>
+      <button id="notifBell" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;position:relative;font-size:1.1rem;padding:.2rem;line-height:1" title="Bildirimler">🔔<span id="notifDot" style="display:none;position:absolute;top:0;right:0;width:7px;height:7px;background:var(--rust);border-radius:50%"></span></button>
       <button class="logout-btn" onclick="logout()">Çıkış</button>
+    </div>
+    <!-- Bildirim Paneli -->
+    <div id="notifPanel" style="display:none;position:fixed;top:4rem;right:1rem;width:min(320px,90vw);max-height:400px;overflow-y:auto;background:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:500">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:.6rem .9rem;border-bottom:1px solid rgba(201,162,39,.15)">
+        <span style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather)">🔔 Bildirimler</span>
+        <div style="display:flex;gap:.4rem">
+          <button onclick="clearNotifs()" style="background:none;border:none;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer">Tümünü sil</button>
+          <button onclick="toggleNotifPanel()" style="background:none;border:none;font-size:1rem;color:var(--rust);cursor:pointer">✕</button>
+        </div>
+      </div>
+      <div id="notifList" style="padding:.4rem 0"></div>
     </div>
   </div>
   <div class="app">
@@ -2642,7 +2654,7 @@ function enterApp(){
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
   updateAdminBadge();
-  render();setTodayDate();updateAddFormFields();
+  render();setTodayDate();updateAddFormFields();updateNotifDot();
   showSpecialDayBanner();
   setTimeout(()=>checkNotifications(),1200);
   // Son açık sekmeye dön
@@ -6092,6 +6104,62 @@ function checkAndAddCountryEvent(book){
   notify('🌍 Yeni Ülke!',`${book.country} keşfedildi! ${book.title} ile haritana girdi`);
 }
 
+function toggleNotifPanel(){
+  const panel=document.getElementById('notifPanel');
+  if(!panel) return;
+  const isOpen=panel.style.display!=='none';
+  panel.style.display=isOpen?'none':'block';
+  if(!isOpen) renderNotifPanel();
+}
+
+function renderNotifPanel(){
+  const notifs=(db.notifications&&db.notifications[me])||[];
+  const list=document.getElementById('notifList');
+  if(!list) return;
+  if(!notifs.length){
+    list.innerHTML='<div style="padding:.75rem 1rem;font-size:.85rem;color:#888;font-style:italic">Henüz bildirim yok.</div>';
+    return;
+  }
+  const sorted=[...notifs].sort((a,b)=>b.ts.localeCompare(a.ts));
+  list.innerHTML=sorted.map(n=>{
+    const timeAgo=formatTimeAgo(n.ts);
+    return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+      <div style="font-size:.88rem;color:var(--ink)">${n.reaction} <strong>${n.fromName}</strong> — "${n.context}"</div>
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+    </div>`;
+  }).join('');
+  // Hepsini görüldü yap
+  if(db.notifications&&db.notifications[me]){
+    db.notifications[me].forEach(n=>n.seen=true);
+    saveDb();
+  }
+  updateNotifDot();
+}
+
+function clearNotifs(){
+  if(db.notifications) db.notifications[me]=[];
+  saveDb();
+  renderNotifPanel();
+}
+
+function updateNotifDot(){
+  const notifs=(db.notifications&&db.notifications[me])||[];
+  const unseen=notifs.filter(n=>!n.seen).length;
+  const dot=document.getElementById('notifDot');
+  if(dot) dot.style.display=unseen>0?'block':'none';
+}
+
+function formatTimeAgo(ts){
+  const diff=Date.now()-new Date(ts).getTime();
+  const m=Math.floor(diff/60000);
+  if(m<1) return'Az önce';
+  if(m<60) return`${m} dk önce`;
+  const h=Math.floor(m/60);
+  if(h<24) return`${h} sa önce`;
+  const d=Math.floor(h/24);
+  return`${d} gün önce`;
+}
+
 function pushReactionNotif(toUser,fromUser,reaction,context){
   if(!db.notifications) db.notifications={};
   if(!db.notifications[toUser]) db.notifications[toUser]=[];
@@ -6106,13 +6174,11 @@ function pushReactionNotif(toUser,fromUser,reaction,context){
 function checkNotifications(){
   if(!db.notifications||!db.notifications[me]) return;
   const unseen=db.notifications[me].filter(n=>!n.seen);
+  updateNotifDot();
   if(!unseen.length) return;
   const n=unseen[unseen.length-1];
   const extra=unseen.length>1?` (+${unseen.length-1} daha)`:'';
   notify(`${n.reaction} Reaksiyon`,`${n.fromName} — "${n.context}"${extra}`);
-  db.notifications[me].forEach(n=>n.seen=true);
-  if(db.notifications[me].length>30) db.notifications[me]=db.notifications[me].slice(-30);
-  saveDb();
 }
 
 // ── İSTATİSTİKLER ────────────────────────────────────────────
@@ -8846,6 +8912,13 @@ async function init(){
   window.addEventListener('scroll',()=>{
     const btn=document.getElementById('scrollTopBtn');
     if(btn) btn.style.display=window.scrollY>300?'flex':'none';
+  });
+  document.addEventListener('click',e=>{
+    const panel=document.getElementById('notifPanel');
+    const bell=document.getElementById('notifBell');
+    if(panel&&panel.style.display!=='none'&&!panel.contains(e.target)&&!bell?.contains(e.target)){
+      panel.style.display='none';
+    }
   });
   try{
     const saved=localStorage.getItem('aa-session');
