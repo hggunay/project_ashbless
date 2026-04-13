@@ -3196,6 +3196,49 @@ async function _searchByTitleFill(){
 }
 
 // ── KİTAP RAFI ────────────────────────────────────────────────
+function addToShelfFromLibrary(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const s=myShelf();
+  const shelves=Object.values(s.shelves||{});
+  // Raf seçim dropdown'u — modal footer'ın altına ekle
+  const footer=document.getElementById('modalFooter');
+  const existingPicker=document.getElementById('shelfPickerBar');
+  if(existingPicker){existingPicker.remove();return;}
+  const opts=shelves.map(sh=>`<option value="${sh.id}">${sh.name}</option>`).join('');
+  const bar=document.createElement('div');
+  bar.id='shelfPickerBar';
+  bar.style.cssText='display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;padding:.5rem;background:rgba(201,162,39,.05);border:1px solid rgba(201,162,39,.2);border-radius:4px';
+  bar.innerHTML=`<select class="book-input" id="shelfPickerSel" style="flex:1;font-size:.8rem;padding:.3rem .5rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)">
+    <option value="">📦 Rafsız</option>${opts}
+  </select>
+  <button class="btn btn-sm btn-primary" style="font-size:.7rem" onclick="confirmAddToShelf(${bookId})">✓ Ekle</button>
+  <button class="btn btn-sm" style="font-size:.7rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="document.getElementById('shelfPickerBar').remove()">İptal</button>`;
+  footer.parentNode.insertBefore(bar,footer.nextSibling);
+}
+
+function confirmAddToShelf(bookId){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const shelfId=document.getElementById('shelfPickerSel')?.value||'';
+  const s=myShelf();
+  if(!s.books) s.books=[];
+  const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const dup=s.books.find(b=>norm(b.title)===norm(book.title)&&b.shelfId===(shelfId||null));
+  if(dup){
+    dup.qty=(dup.qty||1)+1;
+    saveDb();
+    document.getElementById('shelfPickerBar')?.remove();
+    notify('🗄️ Adet Güncellendi',`"${book.title}" rafta ${dup.qty} adet oldu.`);
+    return;
+  }
+  const shelfBook={id:'sb_'+Date.now(),title:book.title||'',author:book.author||'',publisher:book.publisher||'',shelfId:shelfId||null,isbn:book.isbn||null,addedAt:new Date().toISOString(),lent:null};
+  s.books.push(shelfBook);
+  saveDb();
+  document.getElementById('shelfPickerBar')?.remove();
+  notify('🗄️ Rafa Eklendi',`"${book.title}" kitap rafına eklendi.`);
+}
+
 function myShelf(){if(!db.shelf)db.shelf={};if(!db.shelf[me])db.shelf[me]={shelves:{},books:[]};return db.shelf[me];}
 
 function switchShelfTab(tab){
@@ -4486,6 +4529,7 @@ function openBook(bookId){
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
+        <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="addToShelfFromLibrary(${book.id})">🗄️ Rafa Ekle</button>
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
       </div>`
     :'';
