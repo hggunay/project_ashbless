@@ -2452,7 +2452,6 @@ function adminResetFromForgot(u){
     notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
   });
 }
-}
 
 function adminResetPassword(u){
   const input=document.getElementById('newpw_'+u);
@@ -2463,7 +2462,6 @@ function adminResetPassword(u){
     saveDb();input.value='';
     notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
   });
-}
 }
 
 function exportData(){
