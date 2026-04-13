@@ -2076,7 +2076,25 @@ function renderPills(){
 }
 function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
-  if(!db.users[u]||db.users[u].password!==p){err.style.display='block';return;}
+  if(!db.users[u]){err.style.display='block';return;}
+  const stored=db.users[u].password;
+  // Geçiş: düz metin şifre varsa hash'e dönüştür
+  if(!isHashed(stored)){
+    if(stored!==p){err.style.display='block';return;}
+    // Düz metin eşleşti — arka planda hash'e çevir
+    hashPassword(p).then(h=>{db.users[u].password=h;saveDb();});
+  } else {
+    // Hash karşılaştır
+    hashPassword(p).then(h=>{
+      if(h!==stored){err.style.display='block';return;}
+      err.style.display='none';me=u;viewing=null;
+      if(document.getElementById('rememberMe').checked){
+        try{localStorage.setItem('aa-session',u);}catch(e){}
+      }
+      enterApp();
+    });
+    return; // async devam eder
+  }
   err.style.display='none';me=u;viewing=null;
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
@@ -2087,8 +2105,10 @@ function register(){
   const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null,email:email||null};db.books[u]=[];
-  saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+  hashPassword(p).then(h=>{
+    db.users[u]={displayName:dn,avatar:av,password:h,hint:hint||null,email:email||null};db.books[u]=[];
+    saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+  });
 }
 
 function showForgotFlow(){
@@ -2152,8 +2172,10 @@ function confirmResetCode(){
   if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
   if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
   // Şifreyi güncelle
-  db.users[_resetUser].password=pw;
-  saveDb();
+  hashPassword(pw).then(h=>{
+    db.users[_resetUser].password=h;
+    saveDb();
+  });
   _resetCode=null;_resetUser=null;_resetExpiry=null;
   document.getElementById('forgotBox').style.display='none';
   document.getElementById('forgotStep1').style.display='';
@@ -2260,10 +2282,12 @@ function updateProfile(field, value){
 function changePassword(){
   const pw=document.getElementById('settingPw').value;
   if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
-  db.users[me].password=pw;
-  document.getElementById('settingPw').value='';
-  saveDb();
-  alert('Şifre güncellendi! ✅');
+  hashPassword(pw).then(h=>{
+    db.users[me].password=h;
+    document.getElementById('settingPw').value='';
+    saveDb();
+    alert('Şifre güncellendi! ✅');
+  });
 }
 
 function deleteAllBooks(){
@@ -2432,21 +2456,25 @@ function adminResetFromForgot(u){
   const input=document.getElementById('forgotpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
-  db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
-  saveDb();
-  renderSettings();
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  hashPassword(pw).then(h=>{
+    db.users[u].password=h;
+    db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
+    saveDb();
+    renderSettings();
+    notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  });
 }
 
 function adminResetPassword(u){
   const input=document.getElementById('newpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
-  saveDb();
-  input.value='';
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  hashPassword(pw).then(h=>{
+    db.users[u].password=h;
+    saveDb();
+    input.value='';
+    notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
+  });
 }
 
 function exportData(){
@@ -4566,12 +4594,11 @@ function dFieldSeries(label,field,val,editable,bookId){
 function dField(label,field,val,type,editable,placeholder){
   const display=val!==null&&val!==undefined&&val!==''?val:'—';
   const ph=placeholder||(type==='date'?'YYYY-AA-GG':type==='number'?'—':'—');
-  // Ülke alanı için özel autocomplete
   if(field==='country'&&editable){
     return`<div class="detail-field">
       <span class="detail-field-label">${label}</span>
       <div style="position:relative">
-        <input class="detail-input" id="countryAcInput" type="text" value="${val??''}" placeholder="Ülke adı veya kısaltma (tr, gb, us...)"
+        <input class="detail-input" id="countryAcInput" type="text" value="${val??''}" placeholder="Ülke adı veya kod (tr, gb, us...)"
           autocomplete="off"
           oninput="countryAcShow(this,this.value)"
           onblur="setTimeout(()=>{const l=document.getElementById('countryAcList');if(l)l.style.display='none';},200)"
@@ -4663,10 +4690,9 @@ function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
-  // Ülke alanı: ISO'dan Türkçe adı normalize et
   if(field==='country'&&value){
-    const iso = countryToISO(value);
-    if(iso && ISO_DISPLAY[iso]) value = ISO_DISPLAY[iso];
+    const iso=countryToISO(value);
+    if(iso&&ISO_DISPLAY[iso]) value=ISO_DISPLAY[iso];
   }
   book[field]=value;
   // re-derive auto flags when years change
@@ -6275,24 +6301,80 @@ const COUNTRY_ISO = {
   'ly':'LY','lu':'LU','ie':'IE','is':'IS','cy':'CY','mt':'MT','xk':'XK','me':'ME',
   // Ek yaygın varyantlar
   'inglitere':'GB','ingilterre':'GB','britanya':'GB','büyük britanya':'GB',
-  'america':'US','americaa':'US','amerikan':'US',
-  'almany':'DE','almanyaa':'DE',
-  'fransaa':'FR','franssa':'FR',
+  'america':'US','amerikan':'US','ingland':'GB',
   'çin halk cumhuriyeti':'CN','cin':'CN',
-  'japonya':'JP','japon':'JP',
-  'rusyaa':'RU','rusya federasyonu':'RU',
-  'hollandaa':'NL','felemenk':'NL','netherlands':'NL',
-  'ispanyaa':'ES','ispan':'ES',
-  'italyaa':'IT',
-  'avustralyaa':'AU',
-  'hindistaan':'IN','hint':'IN',
+  'hollandaa':'NL','felemenk':'NL',
   'güney kore':'KR','kuzey kore':'KP',
-  'yeni zelanda':'NZ',
   'suudi arabistan':'SA','arabistan':'SA',
   'birleşik arap emirlikleri':'AE','emirlikler':'AE','dubai':'AE',
-  'mısırr':'EG',
-  'fas':'MA',
 };
+
+const ISO_DISPLAY = {
+  TR:'Türkiye',DE:'Almanya',FR:'Fransa',GB:'İngiltere',US:'Amerika Birleşik Devletleri',
+  RU:'Rusya',CN:'Çin',JP:'Japonya',BR:'Brezilya',AR:'Arjantin',IN:'Hindistan',
+  AU:'Avustralya',CA:'Kanada',MX:'Meksika',ES:'İspanya',IT:'İtalya',PT:'Portekiz',
+  NL:'Hollanda',BE:'Belçika',SE:'İsveç',NO:'Norveç',DK:'Danimarka',FI:'Finlandiya',
+  PL:'Polonya',CZ:'Çekya',AT:'Avusturya',CH:'İsviçre',GR:'Yunanistan',HU:'Macaristan',
+  RO:'Romanya',BG:'Bulgaristan',RS:'Sırbistan',HR:'Hırvatistan',UA:'Ukrayna',
+  EG:'Mısır',ZA:'Güney Afrika',NG:'Nijerya',ET:'Etiyopya',KE:'Kenya',MA:'Fas',
+  DZ:'Cezayir',TN:'Tunus',IR:'İran',IQ:'Irak',SY:'Suriye',LB:'Lübnan',IL:'İsrail',
+  SA:'Suudi Arabistan',AE:'Birleşik Arap Emirlikleri',PK:'Pakistan',BD:'Bangladeş',
+  ID:'Endonezya',PH:'Filipinler',VN:'Vietnam',TH:'Tayland',MY:'Malezya',
+  KR:'Güney Kore',KP:'Kuzey Kore',TW:'Tayvan',CO:'Kolombiya',CL:'Şili',
+  PE:'Peru',VE:'Venezuela',CU:'Küba',NZ:'Yeni Zelanda',AL:'Arnavutluk',
+  BA:'Bosna Hersek',MK:'Kuzey Makedonya',SI:'Slovenya',SK:'Slovakya',LT:'Litvanya',
+  LV:'Letonya',EE:'Estonya',BY:'Beyaz Rusya',MD:'Moldova',GE:'Gürcistan',
+  AM:'Ermenistan',AZ:'Azerbaycan',KZ:'Kazakistan',UZ:'Özbekistan',AF:'Afganistan',
+  AO:'Angola',CM:'Kamerun',SN:'Senegal',GH:'Gana',TZ:'Tanzanya',UG:'Uganda',
+  MZ:'Mozambik',MG:'Madagaskar',LK:'Sri Lanka',MM:'Myanmar',KH:'Kamboçya',
+  NP:'Nepal',UY:'Uruguay',PY:'Paraguay',BO:'Bolivya',EC:'Ekvador',PA:'Panama',
+  GT:'Guatemala',HN:'Honduras',NI:'Nikaragua',SV:'El Salvador',CR:'Kosta Rika',
+  DO:'Dominik Cumhuriyeti',HT:'Haiti',JM:'Jamaika',TT:'Trinidad ve Tobago',
+  ZW:'Zimbabve',ZM:'Zambiya',CD:'Demokratik Kongo',CG:'Kongo',CI:'Fildişi Sahili',
+  ML:'Mali',BF:'Burkina Faso',NE:'Nijer',TD:'Çad',SD:'Sudan',SS:'Güney Sudan',
+  SO:'Somali',ER:'Eritre',LY:'Libya',LU:'Lüksemburg',IE:'İrlanda',IS:'İzlanda',
+  CY:'Kıbrıs',MT:'Malta',XK:'Kosova',ME:'Karadağ',
+};
+
+const COUNTRY_AC_LIST = (()=>{
+  const seen = new Set();
+  const list = [];
+  Object.entries(COUNTRY_ISO).forEach(([key,iso])=>{
+    if(!seen.has(iso)){seen.add(iso);list.push({iso,display:ISO_DISPLAY[iso]||key,keys:[]});}
+    list.find(x=>x.iso===iso)?.keys.push(key);
+  });
+  return list.sort((a,b)=>a.display.localeCompare(b.display,'tr'));
+})();
+
+function countryAcSearch(q){
+  if(!q||q.length<1) return [];
+  const s=q.toLowerCase().trim();
+  return COUNTRY_AC_LIST.filter(c=>
+    c.display.toLowerCase().includes(s)||
+    c.iso.toLowerCase()===s||
+    c.keys.some(k=>k.includes(s))
+  ).slice(0,8);
+}
+
+function countryAcShow(inputEl,q){
+  const listEl=document.getElementById('countryAcList');
+  if(!listEl) return;
+  const results=countryAcSearch(q);
+  if(!results.length||!q){listEl.style.display='none';return;}
+  listEl.innerHTML=results.map(c=>`
+    <div class="autocomplete-item" onmousedown="countryAcSelect('${c.display}','${inputEl.id}')" style="display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;cursor:pointer">
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;opacity:.5;min-width:24px">${c.iso}</span>
+      <span>${c.display}</span>
+    </div>`).join('');
+  listEl.style.display='block';
+}
+
+function countryAcSelect(display,inputId){
+  const el=document.getElementById(inputId);
+  if(el){el.value=display;el.dispatchEvent(new Event('change'));}
+  const listEl=document.getElementById('countryAcList');
+  if(listEl) listEl.style.display='none';
+}
 
 const ISO_CONTINENT = {
   AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'americas',AT:'europe',AU:'oceania',AZ:'asia',
@@ -6329,81 +6411,6 @@ const CONTINENT_COLORS = {
 function countryToISO(name){
   if(!name) return null;
   return COUNTRY_ISO[name.trim().toLowerCase()]||null;
-}
-
-// ISO → Türkçe görünen ad
-const ISO_DISPLAY = {
-  TR:'Türkiye',DE:'Almanya',FR:'Fransa',GB:'İngiltere',US:'Amerika Birleşik Devletleri',
-  RU:'Rusya',CN:'Çin',JP:'Japonya',BR:'Brezilya',AR:'Arjantin',IN:'Hindistan',
-  AU:'Avustralya',CA:'Kanada',MX:'Meksika',ES:'İspanya',IT:'İtalya',PT:'Portekiz',
-  NL:'Hollanda',BE:'Belçika',SE:'İsveç',NO:'Norveç',DK:'Danimarka',FI:'Finlandiya',
-  PL:'Polonya',CZ:'Çekya',AT:'Avusturya',CH:'İsviçre',GR:'Yunanistan',HU:'Macaristan',
-  RO:'Romanya',BG:'Bulgaristan',RS:'Sırbistan',HR:'Hırvatistan',UA:'Ukrayna',
-  EG:'Mısır',ZA:'Güney Afrika',NG:'Nijerya',ET:'Etiyopya',KE:'Kenya',MA:'Fas',
-  DZ:'Cezayir',TN:'Tunus',IR:'İran',IQ:'Irak',SY:'Suriye',LB:'Lübnan',IL:'İsrail',
-  SA:'Suudi Arabistan',AE:'Birleşik Arap Emirlikleri',PK:'Pakistan',BD:'Bangladeş',
-  ID:'Endonezya',PH:'Filipinler',VN:'Vietnam',TH:'Tayland',MY:'Malezya',
-  KR:'Güney Kore',KP:'Kuzey Kore',TW:'Tayvan',CO:'Kolombiya',CL:'Şili',
-  PE:'Peru',VE:'Venezuela',CU:'Küba',NZ:'Yeni Zelanda',AL:'Arnavutluk',
-  BA:'Bosna Hersek',MK:'Kuzey Makedonya',SI:'Slovenya',SK:'Slovakya',LT:'Litvanya',
-  LV:'Letonya',EE:'Estonya',BY:'Beyaz Rusya',MD:'Moldova',GE:'Gürcistan',
-  AM:'Ermenistan',AZ:'Azerbaycan',KZ:'Kazakistan',UZ:'Özbekistan',AF:'Afganistan',
-  AO:'Angola',CM:'Kamerun',SN:'Senegal',GH:'Gana',TZ:'Tanzanya',UG:'Uganda',
-  MZ:'Mozambik',MG:'Madagaskar',LK:'Sri Lanka',MM:'Myanmar',KH:'Kamboçya',
-  NP:'Nepal',UY:'Uruguay',PY:'Paraguay',BO:'Bolivya',EC:'Ekvador',PA:'Panama',
-  GT:'Guatemala',HN:'Honduras',NI:'Nikaragua',SV:'El Salvador',CR:'Kosta Rika',
-  DO:'Dominik Cumhuriyeti',HT:'Haiti',JM:'Jamaika',TT:'Trinidad ve Tobago',
-  ZW:'Zimbabve',ZM:'Zambiya',CD:'Demokratik Kongo',CG:'Kongo',CI:'Fildişi Sahili',
-  ML:'Mali',BF:'Burkina Faso',NE:'Nijer',TD:'Çad',SD:'Sudan',SS:'Güney Sudan',
-  SO:'Somali',ER:'Eritre',LY:'Libya',LU:'Lüksemburg',IE:'İrlanda',IS:'İzlanda',
-  CY:'Kıbrıs',MT:'Malta',XK:'Kosova',ME:'Karadağ',
-};
-
-// Autocomplete için ülke listesi: her ülke için {iso, display, keys}
-const COUNTRY_AC_LIST = (()=>{
-  const seen = new Set();
-  const list = [];
-  Object.entries(COUNTRY_ISO).forEach(([key, iso])=>{
-    if(!seen.has(iso)){
-      seen.add(iso);
-      list.push({iso, display: ISO_DISPLAY[iso]||key, keys:[]});
-    }
-    list.find(x=>x.iso===iso)?.keys.push(key);
-  });
-  return list.sort((a,b)=>a.display.localeCompare(b.display,'tr'));
-})();
-
-function countryAcSearch(q){
-  if(!q||q.length<1) return [];
-  const s = q.toLowerCase().trim();
-  return COUNTRY_AC_LIST.filter(c=>
-    c.display.toLowerCase().includes(s) ||
-    c.iso.toLowerCase()===s ||
-    c.keys.some(k=>k.includes(s))
-  ).slice(0,8);
-}
-
-function countryAcShow(inputEl, q){
-  const listEl = document.getElementById('countryAcList');
-  if(!listEl) return;
-  const results = countryAcSearch(q);
-  if(!results.length||!q){ listEl.style.display='none'; return; }
-  listEl.innerHTML = results.map(c=>`
-    <div class="autocomplete-item" onmousedown="countryAcSelect('${c.display}','${inputEl.id}')" style="display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;cursor:pointer">
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;opacity:.5;min-width:24px">${c.iso}</span>
-      <span>${c.display}</span>
-    </div>`).join('');
-  listEl.style.display='block';
-}
-
-function countryAcSelect(display, inputId){
-  const el = document.getElementById(inputId);
-  if(el){
-    el.value = display;
-    el.dispatchEvent(new Event('change'));
-  }
-  const listEl = document.getElementById('countryAcList');
-  if(listEl) listEl.style.display='none';
 }
 
 function getCountryColor(iso, count){
@@ -9015,6 +9022,13 @@ function renderPathsList(){
     </div>`;
   }).join('');
 }
+
+// ── ŞİFRE HASH ───────────────────────────────────────────────
+async function hashPassword(pw){
+  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function isHashed(pw){ return typeof pw==='string'&&pw.length===64&&/^[0-9a-f]+$/.test(pw); }
 
 async function init(){
   await loadDb();
