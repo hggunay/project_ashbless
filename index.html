@@ -3182,9 +3182,17 @@ function addShelf(){
 function deleteShelf(shelfId){
   const s=myShelf();
   const name=s.shelves?.[shelfId]?.name||'Raf';
-  if(!confirm(`"${name}" rafını silmek istiyor musunuz? Raftaki kitaplar silinmez.`)) return;
-  if(s.shelves) delete s.shelves[shelfId];
-  saveDb();renderShelfSelect();renderShelf();
+  const btn=document.getElementById('del-shelf-btn-'+shelfId);
+  if(!btn) return;
+  if(btn.dataset.confirming==='1'){
+    if(s.shelves) delete s.shelves[shelfId];
+    saveDb();renderShelfSelect();renderShelf();
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='Evet, Sil';
+  btn.style.background='rgba(160,82,45,.5)';
+  setTimeout(()=>{if(btn){btn.dataset.confirming='';btn.textContent='🗑';btn.style.background='';}},3000);
 }
 
 async function addShelfBook(){
@@ -3252,6 +3260,13 @@ function shelfDupConfirmed(){
 }
 
 function deleteShelfBook(bookId){
+  const btn=document.querySelector(`[onclick="deleteShelfBook('${bookId}')"]`);
+  if(btn&&btn.dataset.confirming!=='1'){
+    btn.dataset.confirming='1';
+    btn.textContent='Evet?';
+    setTimeout(()=>{if(btn){btn.dataset.confirming='';btn.textContent='🗑';}},2500);
+    return;
+  }
   const s=myShelf();
   s.books=(s.books||[]).filter(b=>b.id!==bookId);
   saveDb();renderShelf();
@@ -3480,6 +3495,8 @@ function renderShelf(){
   let shelfPrefs={};try{shelfPrefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
   shelves.forEach(sh=>{
     const shBooks=books.filter(b=>b.shelfId===sh.id);
+    const uniqueTitles=new Set(shBooks.map(b=>(b.title||'').toLowerCase().trim())).size;
+    const countLabel=shBooks.length===uniqueTitles?`${shBooks.length} kitap`:`${shBooks.length} adet / ${uniqueTitles} başlık`;
     const accKey='shelf-acc-'+sh.id;
     const isOpen=shelfPrefs[accKey]===true;
     const shownCount=shelfPrefs['shelf-count-'+sh.id]||SHELF_PAGE;
@@ -3488,10 +3505,10 @@ function renderShelf(){
     const hasLess=shownCount>SHELF_PAGE;
     html+=`<div class="card" style="margin-bottom:.75rem">
       <div class="card-header acc-header" onclick="toggleSection('${accKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-        <span>🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${shBooks.length} kitap</span></span>
-        <div style="display:flex;align-items:center;gap:.4rem" onclick="event.stopPropagation()">
-          ${!viewing?`<button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="deleteShelf('${sh.id}')">🗑</button>`:''}
-          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}">▶</span>
+        <span>🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${countLabel}</span></span>
+        <div style="display:flex;align-items:center;gap:.5rem" onclick="event.stopPropagation()">
+          ${!viewing?`<button id="del-shelf-btn-${sh.id}" class="btn btn-sm btn-danger" style="font-size:.6rem;min-width:24px" onclick="deleteShelf('${sh.id}')">🗑</button>`:''}
+          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}" style="margin-left:.2rem">▶</span>
         </div>
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${accKey}">
@@ -8399,6 +8416,24 @@ async function init(){
   await loadDb();
   renderPills();
   setTimeout(checkHintAvailable, 500);
+  // Sekmeye dönünce sessiz senkronizasyon
+  document.addEventListener('visibilitychange',async()=>{
+    if(document.visibilityState==='visible'&&me){
+      const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
+      if(modalOpen) return; // Düzenleme varsa yenileme
+      try{
+        const fresh=await fbGet('aa-v4');
+        if(fresh&&fresh.users){
+          const oldBooks=JSON.stringify(db.books);
+          db={...db,...fresh};
+          if(!db.shelf) db.shelf={};
+          try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
+          if(JSON.stringify(db.books)!==oldBooks) render();
+          else renderBanners();
+        }
+      }catch(e){}
+    }
+  });
   window.addEventListener('scroll',()=>{
     const btn=document.getElementById('scrollTopBtn');
     if(btn) btn.style.display=window.scrollY>300?'flex':'none';
