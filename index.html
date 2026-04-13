@@ -1043,6 +1043,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             </div>
             <div class="field-group"><input class="book-input" id="shelfBookAuthor" type="text" placeholder="Yazar"/></div>
             <div class="field-group"><input class="book-input" id="shelfBookPublisher" type="text" placeholder="Yayınevi"/></div>
+            <div class="field-group">
+              <input class="book-input" id="shelfBookQty" type="number" min="1" max="99" placeholder="Adet (varsayılan: 1)" style="font-size:.85rem"/>
+            </div>
             <div class="field-group" style="grid-column:1/-1">
               <select class="book-input" id="shelfSelect" style="font-size:.85rem">
                 <option value="">— Raf seç —</option>
@@ -3218,7 +3221,8 @@ async function addShelfBook(){
     if(info?.title_clean) title=info.title_clean;
     if(info?.author_clean&&!author) authorEl.value=info.author_clean;
   }
-  const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,shelfId:shelfId||null,isbn:isbn||null,addedAt:new Date().toISOString(),lent:null};
+  const qty=Math.max(1,parseInt(document.getElementById('shelfBookQty')?.value)||1);
+  const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,qty:qty>1?qty:null,shelfId:shelfId||null,isbn:isbn||null,addedAt:new Date().toISOString(),lent:null};
 
   // Duplicate kontrol
   const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -3243,6 +3247,8 @@ async function addShelfBook(){
   if(titleEl) titleEl.value='';
   if(authorEl) authorEl.value='';
   if(pubEl) pubEl.value='';
+  const qtyEl=document.getElementById('shelfBookQty');
+  if(qtyEl) qtyEl.value='';
   const preview=document.getElementById('shelfBookPreview');
   if(preview){preview.style.display='none';preview.textContent='';}
   if(st){st.textContent=`✓ "${title}" eklendi`;setTimeout(()=>{st.textContent='';},3000);}
@@ -3309,10 +3315,12 @@ function saveShelfBookEdit(bookId){
   const t=document.getElementById('edit-title-'+bookId)?.value.trim();
   const a=document.getElementById('edit-author-'+bookId)?.value.trim();
   const p=document.getElementById('edit-pub-'+bookId)?.value.trim();
+  const q=parseInt(document.getElementById('edit-qty-'+bookId)?.value)||1;
   const n=document.getElementById('edit-note-'+bookId)?.value.trim();
   if(t) book.title=t;
   if(a!==undefined) book.author=a;
   if(p!==undefined) book.publisher=p;
+  book.qty=q>1?q:null;
   if(n!==undefined) book.note=n||null;
   saveDb();renderShelf();
 }
@@ -3436,9 +3444,7 @@ function renderShelf(){
   }
 
   function bookCard(b,isMe=true){
-    // Aynı kitaptan kaç tane var
-    const sameTitle=allBooks.filter(x=>x.id!==b.id&&(x.title||'').toLowerCase()===( b.title||'').toLowerCase());
-    const countBadge=sameTitle.length>0?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(201,162,39,.15);color:var(--leather);border:1px solid rgba(201,162,39,.3);border-radius:20px;padding:.1rem .4rem">×${sameTitle.length+1}</span>`:'';
+    const countBadge=b.qty&&b.qty>1?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(201,162,39,.15);color:var(--leather);border:1px solid rgba(201,162,39,.3);border-radius:20px;padding:.1rem .4rem">×${b.qty}</span>`:'';
     const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
     const shelfOptions=shelves.map(sh=>`<option value="${sh.id}"${b.shelfId===sh.id?' selected':''}>${sh.name}</option>`).join('');
     const moveSelect=isMe&&shelves.length?`<select class="book-input" style="font-size:.6rem;padding:.2rem .4rem;max-width:100px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" onchange="moveShelfBook('${b.id}',this.value)">
@@ -3469,6 +3475,8 @@ function renderShelf(){
           <input id="edit-author-${b.id}" class="book-input" type="text" value="${(b.author||'').replace(/"/g,'&quot;')}" placeholder="Yazar" style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
           <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Yayınevi</div>
           <input id="edit-pub-${b.id}" class="book-input" type="text" value="${(b.publisher||'').replace(/"/g,'&quot;')}" placeholder="Yayınevi" style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
+          <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Adet</div>
+          <input id="edit-qty-${b.id}" class="book-input" type="number" min="1" max="99" value="${b.qty||1}" style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);max-width:80px"/>
           <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Not <span style="opacity:.6;text-transform:none;letter-spacing:0">(isteğe bağlı)</span></div>
           <input id="edit-note-${b.id}" class="book-input" type="text" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Hangi baskı, nereden aldım..." style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
           <div style="display:flex;gap:.3rem">
@@ -3495,8 +3503,9 @@ function renderShelf(){
   let shelfPrefs={};try{shelfPrefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
   shelves.forEach(sh=>{
     const shBooks=books.filter(b=>b.shelfId===sh.id);
+    const totalQty=shBooks.reduce((s,b)=>s+(b.qty||1),0);
     const uniqueTitles=new Set(shBooks.map(b=>(b.title||'').toLowerCase().trim())).size;
-    const countLabel=shBooks.length===uniqueTitles?`${shBooks.length} kitap`:`${shBooks.length} adet / ${uniqueTitles} başlık`;
+    const countLabel=totalQty===uniqueTitles?`${totalQty} kitap`:`${totalQty} adet / ${uniqueTitles} başlık`;
     const accKey='shelf-acc-'+sh.id;
     const isOpen=shelfPrefs[accKey]===true;
     const shownCount=shelfPrefs['shelf-count-'+sh.id]||SHELF_PAGE;
@@ -3504,12 +3513,10 @@ function renderShelf(){
     const hasMore=shBooks.length>shownCount;
     const hasLess=shownCount>SHELF_PAGE;
     html+=`<div class="card" style="margin-bottom:.75rem">
-      <div class="card-header acc-header" onclick="toggleSection('${accKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer">
-        <span>🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${countLabel}</span></span>
-        <div style="display:flex;align-items:center;gap:.5rem" onclick="event.stopPropagation()">
-          ${!viewing?`<button id="del-shelf-btn-${sh.id}" class="btn btn-sm btn-danger" style="font-size:.6rem;min-width:24px" onclick="deleteShelf('${sh.id}')">🗑</button>`:''}
-          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}" style="margin-left:.2rem">▶</span>
-        </div>
+      <div class="card-header acc-header" onclick="toggleSection('${accKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:.5rem">
+        <span style="flex:1">🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${countLabel}</span></span>
+        <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}" onclick="event.stopPropagation()">▶</span>
+        ${!viewing?`<button id="del-shelf-btn-${sh.id}" class="btn btn-sm btn-danger" style="font-size:.6rem;min-width:28px;margin-left:.25rem" onclick="event.stopPropagation();deleteShelf('${sh.id}')">🗑</button>`:''}
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${accKey}">
         <div class="card-body" style="padding:.5rem 1rem">
