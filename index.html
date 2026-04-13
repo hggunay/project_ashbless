@@ -1321,11 +1321,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitapların kalır ama tüm ülke bilgileri silinir. Haritaya sıfırdan başlamak istersen kullan.</div>
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
                 </div>
-                <div style="margin-bottom:1.2rem">
-                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Geçmiş ülkeleri akışa ekle</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Yeni ülke sistemi kurulmadan önce eklenen kitapların ülkelerini akışa ekler.</div>
-                  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Geçmiş Ülkeleri Ekle</button>
-                </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.</div>
@@ -4668,11 +4663,11 @@ function saveField(bookId,field,value){
 
 function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
-  // GG.AA.YYYY formatını YYYY-MM-DD'ye çevir
+  // GG.AA.YYYY veya GG-AA-YYYY formatını YYYY-MM-DD'ye çevir
   if((field==='endDate'||field==='startDate')&&rawVal){
-    const dmyFull = rawVal.trim().match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    const dmyFull = rawVal.trim().match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})$/);
     if(dmyFull) rawVal = `${dmyFull[3]}-${dmyFull[2].padStart(2,'0')}-${dmyFull[1].padStart(2,'0')}`;
-    const dmy = rawVal.trim().match(/^(\d{2})\.(\d{4})$/);
+    const dmy = rawVal.trim().match(/^(\d{2})[.\-](\d{4})$/);
     if(dmy) rawVal = `${dmy[2]}-${dmy[1]}`;
   }
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
@@ -4690,6 +4685,10 @@ function saveFieldTyped(bookId,field,type,rawVal){
   let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
   if(field==='country'&&value){const iso=countryToISO(value);if(iso&&ISO_DISPLAY[iso])value=ISO_DISPLAY[iso];}
   book[field]=value;
+  // endDate değişince month'u da güncelle
+  if(field==='endDate'&&value&&value.length>=7){
+    book.month=value.substring(0,7);
+  }
   // re-derive auto flags when years change
   if(field==='pubYear'||field==='authorBirthYear'){
     const py=field==='pubYear'?value:book.pubYear;
@@ -7643,7 +7642,7 @@ function openAshblessModal(){
       <p style="margin-bottom:.9rem">
         Evrim Ağacı'nda "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" 
         diyen bir video gördüm. Zaten aylardır aklımı meşgul eden rozet projem vardı. 
-        <strong>8 Mart 2025'te başladım.</strong>
+        <strong>8 Mart 2026'da başladım.</strong>
       </p>
       <p style="margin-bottom:1.2rem">
         Proje adı <em>Project Ashbless</em>, o dönem okuduğum ve çok beğendiğim 
