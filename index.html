@@ -3376,8 +3376,6 @@ function renderShelf(){
           </div>
         </div>
       </div>
-        </div>
-      </div>
       <div id="lend-row-${b.id}" style="display:none;gap:.4rem;align-items:center;margin-top:.4rem;flex-wrap:wrap">
         <input id="lend-inp-${b.id}" class="book-input" type="text" placeholder="Kişi adı..." style="flex:1;min-width:120px;font-size:.8rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)" onkeydown="if(event.key==='Enter')confirmLend('${b.id}')"/>
         <button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="confirmLend('${b.id}')">Onayla</button>
