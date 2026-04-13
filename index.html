@@ -3253,6 +3253,8 @@ function saveShelfBookEdit(bookId){
   if(p!==undefined) book.publisher=p;
   saveDb();renderShelf();
 }
+
+function moveShelfBook(bookId, shelfId){
   const s=myShelf();
   const book=(s.books||[]).find(b=>b.id===bookId);
   if(!book) return;
