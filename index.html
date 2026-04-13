@@ -3463,6 +3463,8 @@ function magShowMore(shelfId,count){
   try{const p=JSON.parse(localStorage.getItem('aa-acc')||'{}');p['mag-count-'+shelfId]=count;localStorage.setItem('aa-acc',JSON.stringify(p));}catch(e){}
   renderMags();
 }
+
+function shelfShowMore(shelfId,count){
   try{
     const prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');
     prefs['shelf-count-'+shelfId]=count;
