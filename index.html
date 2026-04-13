@@ -1058,7 +1058,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           </div>
           <div class="confirm-bar" id="shelfDupBar">
             <span id="shelfDupMsg" style="flex:1;color:var(--rust)"></span>
-            <button class="btn btn-sm btn-primary" onclick="shelfDupConfirmed()">Yine de Ekle</button>
+            <button class="btn btn-sm btn-primary" id="shelfDupConfirmBtn" onclick="shelfDupConfirmed()">+ Adet Artır</button>
             <button class="btn btn-sm" onclick="closeShelfDup()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
           </div>
         </div>
@@ -3226,17 +3226,39 @@ async function addShelfBook(){
 
   // Duplicate kontrol
   const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
-  const dup=(s.books||[]).find(b=>{
+  const allDups=(s.books||[]).filter(b=>{
     if(isbn&&b.isbn&&b.isbn===isbn) return true;
     if(norm(title)&&norm(b.title)===norm(title)) return true;
     return false;
   });
-  if(dup&&!window._skipShelfDup){
+  const sameShelfDup=allDups.find(b=>b.shelfId===(shelfId||null));
+  const otherShelfDups=allDups.filter(b=>b.shelfId!==(shelfId||null));
+
+  if(sameShelfDup&&!window._skipShelfDup){
     const bar=document.getElementById('shelfDupBar');
     const msg=document.getElementById('shelfDupMsg');
-    if(msg) msg.textContent=`"${dup.title}" zaten rafınızda var. Yine de eklensin mi?`;
+    if(msg) msg.textContent=`"${sameShelfDup.title}" zaten bu rafta var (${sameShelfDup.qty||1} adet). Adet artırılsın mı?`;
     if(bar) bar.classList.add('show');
-    window._pendingShelfBook=book;
+    window._pendingDupBook=sameShelfDup;
+    const btn=document.getElementById('shelfDupConfirmBtn');
+    if(btn) btn.textContent='+ Adet Artır';
+    if(st) st.textContent='';
+    return;
+  }
+  if(otherShelfDups.length&&!window._skipShelfDup){
+    const rafNames=otherShelfDups.map(b=>{
+      const sh=s.shelves?.[b.shelfId];
+      return sh?sh.name:'Rafsız';
+    }).filter((v,i,a)=>a.indexOf(v)===i).join(', ');
+    const bar=document.getElementById('shelfDupBar');
+    const msg=document.getElementById('shelfDupMsg');
+    if(msg) msg.textContent=`"${title}" ${rafNames} rafında zaten var. Yine de eklensin mi?`;
+    if(bar) bar.classList.add('show');
+    window._pendingDupBook=null;
+    window._skipShelfDup=false;
+    window._pendingCrossShelf=true;
+    const btn=document.getElementById('shelfDupConfirmBtn');
+    if(btn) btn.textContent='Yine de Ekle';
     if(st) st.textContent='';
     return;
   }
@@ -3261,6 +3283,24 @@ function closeShelfDup(){
 }
 function shelfDupConfirmed(){
   closeShelfDup();
+  if(window._pendingCrossShelf){
+    window._pendingCrossShelf=false;
+    window._skipShelfDup=true;
+    addShelfBook();
+    return;
+  }
+  const s=myShelf();
+  const dupBook=window._pendingDupBook;
+  if(dupBook){
+    const existing=(s.books||[]).find(b=>b.id===dupBook.id);
+    if(existing){
+      existing.qty=(existing.qty||1)+1;
+      saveDb();renderShelf();
+      notify('📚 Adet Güncellendi',`"${existing.title}" adedi ${existing.qty} oldu.`);
+      window._pendingDupBook=null;
+      return;
+    }
+  }
   window._skipShelfDup=true;
   addShelfBook();
 }
