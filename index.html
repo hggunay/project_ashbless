@@ -860,6 +860,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 
     <!-- SERIES PANEL -->
+    </div>
 
     <!-- STORIES PANEL -->
     <div id="stories" class="panel">
@@ -891,8 +892,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <!-- Tarih -->
             <div class="input-grid" style="margin-bottom:.75rem">
               <div class="field-group" style="grid-column:1/-1">
-                <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(GG.AA.YYYY veya sadece YYYY)</span></span>
-                <input class="book-input" id="storyDate" type="text" placeholder="örn: 14.04.2026 veya 2026"/>
+                <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(YYYY-AA-GG veya sadece YYYY)</span></span>
+                <input class="book-input" id="storyDate" type="text" placeholder="örn: 2024-03-15 veya 2024"/>
               </div>
             </div>
             <!-- Kaynak türü -->
@@ -955,6 +956,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     </div>
 
       <!-- KİŞİSEL NOTLAR sekmesi -->
+    </div>
 
     <div id="series" class="panel">
       <div id="seriesViewingBanner" class="viewing-banner" style="display:none">
@@ -1136,7 +1138,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       </div>
       <div id="magContainer"></div>
       </div><!-- /ssp-mags -->
-    </div><!-- /shelf panel -->
 
     <!-- MEMBERS PANEL -->
     <div id="members" class="panel">
@@ -1320,6 +1321,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Harita verilerini sıfırla</div>
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitapların kalır ama tüm ülke bilgileri silinir. Haritaya sıfırdan başlamak istersen kullan.</div>
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
+                </div>
+                <div style="margin-bottom:1.2rem">
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Geçmiş ülkeleri akışa ekle</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Yeni ülke sistemi kurulmadan önce eklenen kitapların ülkelerini akışa ekler.</div>
+                  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Geçmiş Ülkeleri Ekle</button>
                 </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
@@ -1783,14 +1789,12 @@ const BADGE_CATS = [
   {label:'🔮 Gizli Rozetler', chains:[
     {id:'gizli', label:'🔮 Gizli', badges:[
       {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
-        const hasBook = b.length>0;
-        const hasRead = b.some(x=>x.readingStatus==='new');
-        const hasSeries = Object.keys(mySeriesData().series||{}).length>0;
-        const hasJournal = (db.journals&&db.journals[me]&&db.journals[me].length>0)||(db.entries&&db.entries[me]&&db.entries[me].length>0);
-        const hasStory = (db.stories&&db.stories[me]&&db.stories[me].length>0);
-        const hasShelf = (()=>{const s=db.shelf||{};const ud=s[me]||s;return Object.keys(ud).some(k=>k!=='mags'&&typeof ud[k]==='object'&&ud[k].books&&ud[k].books.length>0);})();
-        const hasCountry = b.some(x=>x.country&&x.readingStatus==='new'&&!x.retroactive);
-        const hasProfile = !!(db.users[me]&&(db.users[me].email||db.users[me].hint||(db.users[me].avatar&&db.users[me].avatar!=='📚')));
+        const hasBook=b.length>0;
+        const hasRead=b.some(x=>x.readingStatus==='new');
+        const hasSeries=Object.keys(mySeriesData().series||{}).length>0;
+        const hasStory=(db.stories&&db.stories[me]&&db.stories[me].length>0);
+        const hasShelf=(()=>{const s=db.shelf||{};const ud=s[me]||s;return Object.keys(ud).some(k=>k!=='mags'&&typeof ud[k]==='object'&&ud[k].books&&ud[k].books.length>0);})();
+        const hasCountry=b.some(x=>x.country&&x.readingStatus==='new'&&!x.retroactive);
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
@@ -2082,32 +2086,19 @@ function renderPills(){
 }
 function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
-  if(!db.users[u]){err.style.display='block';return;}
-  const stored=db.users[u].password;
-  if(!isHashed(stored)){
-    if(stored!==p){err.style.display='block';return;}
-    hashPassword(p).then(h=>{db.users[u].password=h;saveDb();});
-  } else {
-    hashPassword(p).then(h=>{
-      if(h!==stored){err.style.display='block';return;}
-      err.style.display='none';me=u;viewing=null;
-      if(document.getElementById('rememberMe').checked){try{localStorage.setItem('aa-session',u);}catch(e){}}
-      enterApp();
-    });
-    return;
-  }
+  if(!db.users[u]||db.users[u].password!==p){err.style.display='block';return;}
   err.style.display='none';me=u;viewing=null;
-  if(document.getElementById('rememberMe').checked){try{localStorage.setItem('aa-session',u);}catch(e){}}
+  if(document.getElementById('rememberMe').checked){
+    try{localStorage.setItem('aa-session',u);}catch(e){}
+  }
   enterApp();
 }
 function register(){
   const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  hashPassword(p).then(h=>{
-    db.users[u]={displayName:dn,avatar:av,password:h,hint:hint||null,email:email||null};db.books[u]=[];
-    saveDb();err.style.display='none';me=u;viewing=null;enterApp();
-  });
+  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null,email:email||null};db.books[u]=[];
+  saveDb();err.style.display='none';me=u;viewing=null;enterApp();
 }
 
 function showForgotFlow(){
@@ -2171,7 +2162,8 @@ function confirmResetCode(){
   if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
   if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
   // Şifreyi güncelle
-  hashPassword(pw).then(h=>{db.users[_resetUser].password=h;saveDb();});
+  db.users[_resetUser].password=pw;
+  saveDb();
   _resetCode=null;_resetUser=null;_resetExpiry=null;
   document.getElementById('forgotBox').style.display='none';
   document.getElementById('forgotStep1').style.display='';
@@ -2278,7 +2270,10 @@ function updateProfile(field, value){
 function changePassword(){
   const pw=document.getElementById('settingPw').value;
   if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
-  hashPassword(pw).then(h=>{db.users[me].password=h;document.getElementById('settingPw').value='';saveDb();alert('Şifre güncellendi! ✅');});
+  db.users[me].password=pw;
+  document.getElementById('settingPw').value='';
+  saveDb();
+  alert('Şifre güncellendi! ✅');
 }
 
 function deleteAllBooks(){
@@ -2447,14 +2442,21 @@ function adminResetFromForgot(u){
   const input=document.getElementById('forgotpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  hashPassword(pw).then(h=>{db.users[u].password=h;db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);saveDb();renderSettings();notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);});
+  db.users[u].password=pw;
+  db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
+  saveDb();
+  renderSettings();
+  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
 
 function adminResetPassword(u){
   const input=document.getElementById('newpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  hashPassword(pw).then(h=>{db.users[u].password=h;saveDb();input.value='';notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);});
+  db.users[u].password=pw;
+  saveDb();
+  input.value='';
+  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
 
 function exportData(){
@@ -3865,7 +3867,7 @@ function renderShelf(){
 
   function bookCard(b,isMe=true){
     const countBadge=b.qty&&b.qty>1?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(201,162,39,.15);color:var(--leather);border:1px solid rgba(201,162,39,.3);border-radius:20px;padding:.1rem .4rem">×${b.qty}</span>`:'';
-    const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${fmtDate(b.lent.date)}</span>`:'';
+    const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
     const shelfOptions=shelves.map(sh=>`<option value="${sh.id}"${b.shelfId===sh.id?' selected':''}>${sh.name}</option>`).join('');
     const moveSelect=isMe&&shelves.length?`<select class="book-input" style="font-size:.6rem;padding:.2rem .4rem;max-width:100px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.3)" onchange="moveShelfBook('${b.id}',this.value)">
       <option value="">📦 Rafsız</option>${shelfOptions}</select>`:'';
@@ -4309,18 +4311,6 @@ function confirmRemoveBookFinal(id, deleteNote){
     });
   }
   db.books[me]=myBooks().filter(b=>b.id!==id);
-  // Silinen kitabın ülkesi başka aktif kitapta yoksa countryEvent'i de sil
-  if(book.country&&db.countryEvents&&db.countryEvents[me]){
-    const stillExists=(db.books[me]||[]).some(b=>
-      b.country&&b.country.toLowerCase()===book.country.toLowerCase()&&
-      b.readingStatus==='new'&&!b.retroactive
-    );
-    if(!stillExists){
-      db.countryEvents[me]=db.countryEvents[me].filter(e=>
-        e.country.toLowerCase()!==book.country.toLowerCase()
-      );
-    }
-  }
   saveDb();closeModal();renderSafe();
   notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
 }
@@ -4358,7 +4348,7 @@ function openBook(bookId){
       <div class="detail-acc-body" id="mSec-info-${book.id}">
         <div class="detail-grid" style="margin-top:.5rem">
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
-          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):book.month||''),'text',isMe,'GG.AA.YYYY veya sadece YYYY')}
+          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'YYYY-AA-GG veya sadece YYYY')}
           ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
@@ -4584,19 +4574,12 @@ function dFieldSeries(label,field,val,editable,bookId){
 }
 
 function dField(label,field,val,type,editable,placeholder){
-  const isDateField = field==='startDate'||field==='endDate';
-  const display = val!==null&&val!==undefined&&val!==''
-    ? (isDateField ? fmtDate(val) : val)
-    : '—';
-  const inputVal = isDateField && val ? fmtDate(val) : (val??'');
-  const ph = isDateField ? 'GG.AA.YYYY veya sadece YYYY' : (placeholder||(type==='number'?'—':'—'));
-  if(field==='country'&&editable){
-    return`<div class="detail-field"><span class="detail-field-label">${label}</span><div style="position:relative"><input class="detail-input" id="countryAcInput" type="text" value="${val??''}" placeholder="Ülke adı veya kod (tr, gb, us...)" autocomplete="off" oninput="countryAcShow(this,this.value)" onblur="setTimeout(()=>{const l=document.getElementById('countryAcList');if(l)l.style.display='none';},200)" onchange="saveFieldTyped(${modalBookId},'country','text',this.value)"/><div id="countryAcList" class="autocomplete-list" style="display:none;z-index:9999"></div></div></div>`;
-  }
+  const display=val!==null&&val!==undefined&&val!==''?val:'—';
+  const ph=placeholder||(type==='date'?'YYYY-AA-GG':type==='number'?'—':'—');
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
     ${editable
-      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${inputVal}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
+      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${val??''}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
       :`<span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">${display}</span>`}
   </div>`;
 }
@@ -4663,15 +4646,8 @@ function saveField(bookId,field,value){
 
 function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
-  // GG.AA.YYYY veya GG-AA-YYYY formatını YYYY-MM-DD'ye çevir
-  if((field==='endDate'||field==='startDate')&&rawVal){
-    const dmyFull = rawVal.trim().match(/^(\d{1,2})[.\-](\d{1,2})[.\-](\d{4})$/);
-    if(dmyFull) rawVal = `${dmyFull[3]}-${dmyFull[2].padStart(2,'0')}-${dmyFull[1].padStart(2,'0')}`;
-    const dmy = rawVal.trim().match(/^(\d{2})[.\-](\d{4})$/);
-    if(dmy) rawVal = `${dmy[2]}-${dmy[1]}`;
-  }
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
-  if(field==='endDate'&&rawVal){
+  if(field==='endDate'&&type==='date'&&rawVal){
     const onlyYear=/^\d{4}$/.test(rawVal.trim());
     if(onlyYear){
       book.yearOnly=parseInt(rawVal.trim());
@@ -4683,12 +4659,7 @@ function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
-  if(field==='country'&&value){const iso=countryToISO(value);if(iso&&ISO_DISPLAY[iso])value=ISO_DISPLAY[iso];}
   book[field]=value;
-  // endDate değişince month'u da güncelle
-  if(field==='endDate'&&value&&value.length>=7){
-    book.month=value.substring(0,7);
-  }
   // re-derive auto flags when years change
   if(field==='pubYear'||field==='authorBirthYear'){
     const py=field==='pubYear'?value:book.pubYear;
@@ -5081,8 +5052,8 @@ function openStoryDetail(ownerId, storyId){
           ${isMe?`<input class="detail-input" value="${story.sourceBook||''}" placeholder="—" onchange="saveStoryField(${storyId},'sourceBook',this.value||null)"/>`:`<span style="font-size:.9rem;color:var(--moss)">${story.sourceBook||'—'}</span>`}
         </div>
         <div class="detail-field" style="grid-column:1/-1">
-          <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(GG.AA.YYYY veya sadece YYYY)</span></span>
-          ${isMe?`<input class="detail-input" value="${story.readDate?fmtDate(story.readDate):''}" placeholder="örn: 14.04.2026 veya 2026" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':fmtDate(story.readDate)):'—'}</span>`}
+          <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
+          ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
         </div>
       </div>
       <div style="margin-top:.5rem">
@@ -5130,13 +5101,9 @@ function openStoryDetail(ownerId, storyId){
 function saveStoryDate(storyId, rawVal){
   const story=(db.stories[me]||[]).find(s=>s.id===storyId);
   if(!story) return;
-  let val = rawVal.trim();
-  // GG.AA.YYYY → YYYY-MM-DD
-  const dmyFull = val.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if(dmyFull) val = `${dmyFull[3]}-${dmyFull[2].padStart(2,'0')}-${dmyFull[1].padStart(2,'0')}`;
-  const onlyYear=/^\d{4}$/.test(val);
-  story.readDate=val||null;
-  story.readYearOnly=onlyYear?parseInt(val):null;
+  const onlyYear=/^\d{4}$/.test(rawVal.trim());
+  story.readDate=rawVal.trim()||null;
+  story.readYearOnly=onlyYear?parseInt(rawVal.trim()):null;
   saveDb();renderStories();
 }
 
@@ -5279,7 +5246,7 @@ function startReadingStory(storyId){
 
 function storyItemHtml(s, ownerId, srcMap){
   const stars=s.rating?'⭐'.repeat(Math.floor(s.rating))+(s.rating%1?'½':''):'';
-  const dateDisplay=s.readDate?(s.readYearOnly?s.readDate:fmtDate(s.readDate)):'';
+  const dateDisplay=s.readDate?(s.readYearOnly?s.readDate:s.readDate):'';
   return`<div class="story-item" onclick="openStoryDetail('${ownerId}',${s.id})">
     <div class="book-info">
       <span class="book-title-text">${s.title}</span>
@@ -6191,19 +6158,6 @@ function updateNotifDot(){
   if(dot) dot.style.display=unseen>0?'block':'none';
 }
 
-function fmtDate(dateStr){
-  if(!dateStr) return '';
-  const s = String(dateStr);
-  // YYYY-MM-DD → GG.AA.YYYY
-  const full = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if(full) return `${full[3]}.${full[2]}.${full[1]}`;
-  // YYYY-MM → AA.YYYY
-  const ym = s.match(/^(\d{4})-(\d{2})$/);
-  if(ym) return `${ym[2]}.${ym[1]}`;
-  // Sadece yıl veya başka format — olduğu gibi bırak
-  return s;
-}
-
 function formatTimeAgo(ts){
   const diff=Date.now()-new Date(ts).getTime();
   const m=Math.floor(diff/60000);
@@ -6293,78 +6247,7 @@ const COUNTRY_ISO = {
   'irlanda':'IE','ireland':'IE','izlanda':'IS','İzlanda':'IS','iceland':'IS',
   'kibris':'CY','kıbrıs':'CY','cyprus':'CY','malta':'MT','kosova':'XK','kosovo':'XK',
   'karadağ':'ME','montenegro':'ME','isvicre':'CH',
-  // ISO 2-harf kodları
-  'tr':'TR','de':'DE','fr':'FR','gb':'GB','us':'US','ru':'RU','cn':'CN','jp':'JP',
-  'br':'BR','ar':'AR','in':'IN','au':'AU','ca':'CA','mx':'MX','es':'ES','it':'IT',
-  'pt':'PT','nl':'NL','be':'BE','se':'SE','no':'NO','dk':'DK','fi':'FI','pl':'PL',
-  'cz':'CZ','at':'AT','ch':'CH','gr':'GR','hu':'HU','ro':'RO','bg':'BG','rs':'RS',
-  'hr':'HR','ua':'UA','eg':'EG','za':'ZA','ng':'NG','et':'ET','ke':'KE','ma':'MA',
-  'dz':'DZ','tn':'TN','ir':'IR','iq':'IQ','sy':'SY','lb':'LB','il':'IL','sa':'SA',
-  'ae':'AE','pk':'PK','bd':'BD','id':'ID','ph':'PH','vn':'VN','th':'TH','my':'MY',
-  'kr':'KR','kp':'KP','tw':'TW','co':'CO','cl':'CL','pe':'PE','ve':'VE','cu':'CU',
-  'nz':'NZ','al':'AL','ba':'BA','mk':'MK','si':'SI','sk':'SK','lt':'LT','lv':'LV',
-  'ee':'EE','by':'BY','md':'MD','ge':'GE','am':'AM','az':'AZ','kz':'KZ','uz':'UZ',
-  'af':'AF','ly':'LY','lu':'LU','ie':'IE','is':'IS','cy':'CY','mt':'MT','xk':'XK','me':'ME',
-  // Yaygın varyantlar
-  'inglitere':'GB','ingilterre':'GB','britanya':'GB','america':'US','ingland':'GB',
-  'felemenk':'NL','emirlikler':'AE','dubai':'AE','arabistan':'SA',
 };
-
-const ISO_DISPLAY = {
-  TR:'Türkiye',DE:'Almanya',FR:'Fransa',GB:'İngiltere',US:'Amerika Birleşik Devletleri',
-  RU:'Rusya',CN:'Çin',JP:'Japonya',BR:'Brezilya',AR:'Arjantin',IN:'Hindistan',
-  AU:'Avustralya',CA:'Kanada',MX:'Meksika',ES:'İspanya',IT:'İtalya',PT:'Portekiz',
-  NL:'Hollanda',BE:'Belçika',SE:'İsveç',NO:'Norveç',DK:'Danimarka',FI:'Finlandiya',
-  PL:'Polonya',CZ:'Çekya',AT:'Avusturya',CH:'İsviçre',GR:'Yunanistan',HU:'Macaristan',
-  RO:'Romanya',BG:'Bulgaristan',RS:'Sırbistan',HR:'Hırvatistan',UA:'Ukrayna',
-  EG:'Mısır',ZA:'Güney Afrika',NG:'Nijerya',ET:'Etiyopya',KE:'Kenya',MA:'Fas',
-  DZ:'Cezayir',TN:'Tunus',IR:'İran',IQ:'Irak',SY:'Suriye',LB:'Lübnan',IL:'İsrail',
-  SA:'Suudi Arabistan',AE:'Birleşik Arap Emirlikleri',PK:'Pakistan',BD:'Bangladeş',
-  ID:'Endonezya',PH:'Filipinler',VN:'Vietnam',TH:'Tayland',MY:'Malezya',
-  KR:'Güney Kore',KP:'Kuzey Kore',TW:'Tayvan',CO:'Kolombiya',CL:'Şili',
-  PE:'Peru',VE:'Venezuela',CU:'Küba',NZ:'Yeni Zelanda',AL:'Arnavutluk',
-  BA:'Bosna Hersek',MK:'Kuzey Makedonya',SI:'Slovenya',SK:'Slovakya',LT:'Litvanya',
-  LV:'Letonya',EE:'Estonya',BY:'Beyaz Rusya',MD:'Moldova',GE:'Gürcistan',
-  AM:'Ermenistan',AZ:'Azerbaycan',KZ:'Kazakistan',UZ:'Özbekistan',AF:'Afganistan',
-  AO:'Angola',CM:'Kamerun',SN:'Senegal',GH:'Gana',TZ:'Tanzanya',UG:'Uganda',
-  MZ:'Mozambik',MG:'Madagaskar',LK:'Sri Lanka',MM:'Myanmar',KH:'Kamboçya',
-  NP:'Nepal',UY:'Uruguay',PY:'Paraguay',BO:'Bolivya',EC:'Ekvador',PA:'Panama',
-  GT:'Guatemala',HN:'Honduras',NI:'Nikaragua',SV:'El Salvador',CR:'Kosta Rika',
-  DO:'Dominik Cumhuriyeti',HT:'Haiti',JM:'Jamaika',TT:'Trinidad ve Tobago',
-  ZW:'Zimbabve',ZM:'Zambiya',CD:'Demokratik Kongo',CG:'Kongo',CI:'Fildişi Sahili',
-  ML:'Mali',BF:'Burkina Faso',NE:'Nijer',TD:'Çad',SD:'Sudan',SS:'Güney Sudan',
-  SO:'Somali',ER:'Eritre',LY:'Libya',LU:'Lüksemburg',IE:'İrlanda',IS:'İzlanda',
-  CY:'Kıbrıs',MT:'Malta',XK:'Kosova',ME:'Karadağ',
-};
-
-const COUNTRY_AC_LIST=(()=>{
-  const seen=new Set(),list=[];
-  Object.entries(COUNTRY_ISO).forEach(([key,iso])=>{
-    if(!seen.has(iso)){seen.add(iso);list.push({iso,display:ISO_DISPLAY[iso]||key,keys:[]});}
-    list.find(x=>x.iso===iso)?.keys.push(key);
-  });
-  return list.sort((a,b)=>a.display.localeCompare(b.display,'tr'));
-})();
-
-function countryAcSearch(q){
-  if(!q||q.length<1) return [];
-  const s=q.toLowerCase().trim();
-  return COUNTRY_AC_LIST.filter(c=>c.display.toLowerCase().includes(s)||c.iso.toLowerCase()===s||c.keys.some(k=>k.includes(s))).slice(0,8);
-}
-function countryAcShow(inputEl,q){
-  const listEl=document.getElementById('countryAcList');
-  if(!listEl) return;
-  const results=countryAcSearch(q);
-  if(!results.length||!q){listEl.style.display='none';return;}
-  listEl.innerHTML=results.map(c=>`<div class="autocomplete-item" onmousedown="countryAcSelect('${c.display}','${inputEl.id}')" style="display:flex;align-items:center;gap:.5rem;padding:.45rem .75rem;cursor:pointer"><span style="font-family:'Space Mono',monospace;font-size:.6rem;opacity:.5;min-width:24px">${c.iso}</span><span>${c.display}</span></div>`).join('');
-  listEl.style.display='block';
-}
-function countryAcSelect(display,inputId){
-  const el=document.getElementById(inputId);
-  if(el){el.value=display;el.dispatchEvent(new Event('change'));}
-  const listEl=document.getElementById('countryAcList');
-  if(listEl) listEl.style.display='none';
-}
 
 const ISO_CONTINENT = {
   AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'americas',AT:'europe',AU:'oceania',AZ:'asia',
@@ -7326,7 +7209,7 @@ function renderBookList(){
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':b.title}</span>
             ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-            ${b.startDate?`<span class="book-meta">📅 ${fmtDate(b.startDate)} · okumaya devam ediyor</span>`:''}
+            ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
           </div>
@@ -7427,9 +7310,8 @@ function renderBookList(){
   function bookItemHtml(b){
     const noTitle=!b.title||b.title.startsWith('ISBN:');
     const dateDisplay=b.startDate&&b.endDate
-      ?`📅 ${fmtDate(b.startDate)} → ✅ ${fmtDate(b.endDate)}`
-      :b.endDate?`✅ ${fmtDate(b.endDate)}`
-      :b.month?`✅ ${fmtDate(b.month)}`
+      ?`📅 ${b.startDate} → ✅ ${b.endDate}`
+      :b.endDate?`✅ ${b.endDate}`
       :b.yearOnly?`📅 ${b.yearOnly} (yıl)`:'';
     const tags=[
       ...(b.formats||['kitap']).map(f=>`<span class="tag format-tag">${fmtMap[f]||f}</span>`),
@@ -7618,83 +7500,56 @@ function renderBadges(){
 }
 
 function openAshblessModal(){
-  const overlay = document.getElementById('modalOverlay');
-  const title = document.getElementById('modalTitle');
-  const subtitle = document.getElementById('modalSubtitle');
-  const body = document.getElementById('modalBody');
-  const footer = document.getElementById('modalFooter');
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
   if(!overlay) return;
-  title.textContent = '🗝️ Project Ashbless';
-  subtitle.textContent = 'The Armchair Adventurers · 2025';
-  footer.innerHTML = `<button class="btn" onclick="closeModal()">Kapat</button>`;
-  body.innerHTML = `
-    <div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
-      <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--leather);margin-bottom:.5rem;font-style:italic;text-align:center">
-        "Gerçek macera için çok tembel, okumayı bırakmak için çok meraklıyız."
+  title.textContent='🗝️ Project Ashbless';
+  subtitle.textContent='The Armchair Adventurers · 2026';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--leather);margin-bottom:.5rem;font-style:italic;text-align:center">"Gerçek bir macera için çok tembel; okumayı bırakmak için fazla meraklı."</div>
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1rem"></div>
+    <p style="margin-bottom:.9rem">Okumayı oyunlaştırma fikri üzerine düşünürken rozet fikri aklıma geldi. Rozet adlarını ve açıklamalarını önce deftere yazdım, sonra Notion'da listeledim. Niyetim kazandığım rozetlerin yanına tek tek tik atabilmekti. Ancak bir kitabın birden fazla rozeti tetiklemesi, sistemi takip etmeyi giderek zorlaştırdı. Bir noktadan sonra bu, keyifli bir fikir olmaktan çıkıp küçük bir karmaşaya dönüştü. Aradım, düşündüm, bulamadım...</p>
+    <p style="margin-bottom:.9rem;font-style:italic;text-align:center">Bir gün...</p>
+    <p style="margin-bottom:.9rem">Evrim Ağacı'nda karşıma çıkan bir videoda, "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" diyordu. Zaten aylardır aklımı meşgul eden rozet projem vardı. Bu cümle, ertelemek için kalan son bahaneyi de ortadan kaldırdı. Ve <strong>8 Mart 2026'da Project Ashbless başladı.</strong></p>
+    <p style="margin-bottom:.9rem">Projenin adı: <em>Project Ashbless.</em> İsim, o dönem okuyup çok beğendiğim <em>Anubis Kapıları</em> kitabından geliyor. Benim için özel bir yeri var — uzun süre etkisinden çıkamadığım, bittiğinde bir süre boşluğunu hissettiğim, bazı sahneleri zihnimde yeniden yeniden dönen kitaplardan biri.</p>
+    <p style="margin-bottom:.9rem;font-size:.88rem;color:var(--rust);font-style:italic">Ashbless kimdi? Köpek Surat Joe şimdi nerede, kime benziyor? Antoin Kardeşliği hâlâ faaliyet gösteriyor mu? Gecenin On İki Saati'nde ne demek? Ya Dr. Romany neyin peşinde? Bu film gibi maceranın neden hâlâ bir dizisi yok? Yoksa sen hâlâ Anubis Kapıları'nı okumadın mı?</p>
+    <p style="margin-bottom:1.2rem">Eğer bu yazıyı okuyorsan, uygulamanın her alanını en az bir kez kullanmışsın demektir. Yani Project Ashbless rozetini açtın. Kısacası: sistemi keşfettin.<br><span style="font-size:.9rem;opacity:.7">(Bir de üstüne küçük bir konfeti patlattık. Hak ettin. 🎉)</span></p>
+    <div style="border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather);margin-bottom:.6rem">📚 The Armchair Adventurers Okuma Kulübü</div>
+      <p style="font-size:.9rem;margin-bottom:.75rem">Mayıs 2018'den bu yana var. Resmî bir kuruluş tarihi yok — yazmamışız. Hâlâ acemiyiz. Ama belki de bu yüzden devam ediyoruz. 🙂</p>
+      <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.8;margin-bottom:.5rem">KULÜP KURALLARI</div>
+      <div style="font-size:.82rem;line-height:2">
+        <div><strong>1.</strong> "Bakmadan Geçme."</div>
+        <div><strong>2.</strong> 1. Madde değiştirilemez ve değiştirilmesi teklif dahi edilemez.</div>
+        <div><strong>3.</strong> Kulüp üyesi, bir diğer üyenin bilgi alışverişini engelleyecek davranışlarda bulunmamalıdır.</div>
+        <div><strong>4.</strong> Kulüp üyesi, bir diğer üyenin bilgilenmesini tehlikeye düşürecek bir davranışta bulunmamalıdır.</div>
+        <div><strong>5.</strong> Kulüp üyesi, kendi inisiyatifini kullanarak kulüp haklarını bir başka üyeye devredemez.</div>
+        <div><strong>6.</strong> Yıl içerisinde periyodik olarak üyelerin bilgi akışı kontrol edilebilir. Kontroller mail ile yapılacaktır.</div>
+        <div><strong>7.</strong> Kulüp hakkında duyuru yapıldığında her üyeye ulaşıldığından emin olunmalıdır.</div>
+        <div><strong>8.</strong> Öneri ve eleştiriler yapıcı yönde olacaksa dile getirilecektir. Gereksiz fikirler ortaya atılıp beyindeki çöplüğün dolmasına izin verilmeyecektir.</div>
+        <div><strong>9.</strong> Kitap okuma esnasında mutlaka uykunun alınmış olması gerekmektedir.</div>
+        <div><strong>10.</strong> Kitap okuma esnasında beyin yorgun olmamalı; alkol, uyuşturucu, antidepresan vb. maddeler vücutta bulunmamalıdır.</div>
+        <div><strong>11.</strong> Kitap okurken eleştirel bakış açısı elden bırakılmamalıdır.</div>
+        <div><strong>12.</strong> Peyami Safa'nın dediği gibi, "öğüterek okumak." Kitabın ana fikrini taşıyan cümleleri ağır ağır okuyup kendimizle münakaşa etmeliyiz.</div>
+        <div><strong>13.</strong> Okuma bittiği andan itibaren uyumak.</div>
+        <div><strong>14.</strong> Yolculuğun kısa süreceği ulaşım araçlarında kitap okunmamalıdır.</div>
+        <div><strong>15.</strong> Okumaya başlamak için okuma arzusunun doğmasını beklememek. Okuma arzusu çoğu zaman birkaç satır okuduktan sonra başlar.</div>
       </div>
-      <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1rem"></div>
-      <p style="margin-bottom:.9rem">
-        Okumayı oyunlaştırmak üzerine düşünürken rozet fikri aklıma geldi. 
-        Rozet adlarını ve açıklamalarını önce deftere yazdım, sonra Notion'da listeledim. 
-        Ama bir kitap birden fazla rozeti tetiklediği için takip etmek giderek zorlaştı. 
-        Aradım, bulamadım. Yapmaya karar verdim.
-      </p>
-      <p style="margin-bottom:.9rem">
-        Evrim Ağacı'nda "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" 
-        diyen bir video gördüm. Zaten aylardır aklımı meşgul eden rozet projem vardı. 
-        <strong>8 Mart 2026'da başladım.</strong>
-      </p>
-      <p style="margin-bottom:1.2rem">
-        Proje adı <em>Project Ashbless</em>, o dönem okuduğum ve çok beğendiğim 
-        <em>Anubis Kapıları</em> kitabının ana kahramanından geliyor.
-      </p>
-      <div style="border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;margin-bottom:1rem">
-        <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather);margin-bottom:.6rem">
-          📚 The Armchair Adventurers Okuma Kulübü
-        </div>
-        <p style="font-size:.9rem;margin-bottom:.75rem">
-          Mayıs 2018'den bu yana. Resmi kuruluş tarihi yok — yazmamışız. 
-          Acemi bir kitap kulübüyüz. 🙂
-        </p>
-        <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.8;margin-bottom:.5rem">
-          KULÜP KURALLARI
-        </div>
-        <div style="font-size:.85rem;line-height:2">
-          <div>1. Bakımadan Geçme.</div>
-          <div>2. 1. Madde değiştirilemez ve değiştirilmesi teklif dahi edilemez.</div>
-          <div>3. Kulüp üyesi bir diğer üyenin bilgi alışverişini engelleyecek davranışlarda bulunmamalı.</div>
-          <div>4. Kulüp üyesi bir diğer üyenin bilgilenmesini tehlikeye düşürecek bir davranışta bulunmamalı.</div>
-          <div>5. Kulüp üyesi kendi inisiyatifini kullanarak kulüp haklarını bir başka üyeye devredemez.</div>
-          <div>6. Yıl içerisinde periyodik olarak üyelerin bilgi akışı kontrol edilebilir. Kontroller mail ile yapılacaktır.</div>
-          <div>7. Kulüp hakkında duyuru yapıldığında her üyeye ulaşıldığından emin olunmalıdır.</div>
-          <div>8. Kulüp ile ilgili öneri ve eleştiriler yapıcı yönde olacaksa dile getirilecektir.</div>
-          <div>9. Kitap okuma esnasında mutlaka uykunun alınmış olması lazımdır.</div>
-          <div>10. Kitap okurken beyin yorgun olmamalı; alkol, uyuşturucu, antidepresan vücutta bulunmamalıdır.</div>
-          <div>11. Kitap okurken eleştirel bakış açısı elden bırakılmamalıdır.</div>
-          <div>12. Peyami Safa'nın dediği gibi, öğüterek okumak.</div>
-          <div>13. Okuma bittiği andan itibaren uyumak.</div>
-          <div>14. Yolculuğun kısa süreceği ulaşım araçlarında kitap okumamak.</div>
-          <div>15. Okumaya başlamak için okuma arzusunun doğmasını beklememek.</div>
-        </div>
-      </div>
-      <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.6;text-align:right;margin-top:.5rem">
-        Nimet & Gweluien · Kurucu Asil Üyeler
-      </div>
-    </div>`;
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.6;text-align:right;margin-top:.5rem">Nimet & Gweluien · Kurucu Asil Üyeler</div>
+  </div>`;
   overlay.classList.add('open');
-  // Özel konfeti
   launchConfetti('ashbless');
-  // Bildirim
   notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!');
 }
 
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
-  // Project Ashbless — hakkında modalını aç
-  if(badgeId==='secret_ashbless'){
-    openAshblessModal();
-    return;
-  }
+  if(badgeId==='secret_ashbless'){openAshblessModal();return;}
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
@@ -8006,52 +7861,17 @@ function cancelDeleteSeries(id){
 function deleteSeries(id){
   const data = mySeriesData();
   const ser = data.series[id];
+  // Akıştan ilgili seri eventlerini temizle
   if(ser && db.seriesEvents && db.seriesEvents[me]){
     db.seriesEvents[me] = db.seriesEvents[me].filter(ev=>ev.seriesId!==id&&ev.seriesName!==ser.name);
   }
   delete data.series[id];
+  // Okuma yollarından da temizle
   Object.values(data.paths||{}).forEach(p=>{
     p.steps = (p.steps||[]).filter(s=>s.seriesId!==id);
   });
   saveDb();
   renderSeriesList();
-}
-
-function editSeriesName(id){
-  const nameEl=document.getElementById('seriesName_'+id);
-  const editBtn=document.getElementById('seriesEditBtn_'+id);
-  if(!nameEl||!editBtn) return;
-  const currentName=mySeriesData().series[id]?.name||'';
-  nameEl.innerHTML=`<input id="seriesNameInput_${id}" class="book-input" type="text" value="${currentName}" style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.4);padding:.2rem .5rem;border-radius:3px;width:100%;max-width:260px"/>
-    <button class="btn btn-sm btn-primary" style="font-size:.65rem;margin-left:.3rem" onclick="saveSeriesName('${id}')">💾 Kaydet</button>
-    <button class="btn btn-sm" style="font-size:.65rem;margin-left:.2rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="cancelSeriesEdit('${id}','${currentName}')">İptal</button>`;
-  editBtn.style.display='none';
-  document.getElementById('seriesNameInput_'+id)?.focus();
-}
-
-function saveSeriesName(id){
-  const input=document.getElementById('seriesNameInput_'+id);
-  if(!input) return;
-  const newName=input.value.trim();
-  if(!newName){notify('⚠️ Hata','Seri adı boş olamaz.');return;}
-  const data=mySeriesData();
-  if(!data.series[id]) return;
-  const oldName=data.series[id].name;
-  data.series[id].name=newName;
-  (db.books[me]||[]).forEach(b=>{if(b.series===oldName) b.series=newName;});
-  if(db.seriesEvents&&db.seriesEvents[me]){
-    db.seriesEvents[me].forEach(ev=>{if(ev.seriesName===oldName) ev.seriesName=newName;});
-  }
-  saveDb();
-  renderSeriesList();
-  notify('✅ Seri Adı Güncellendi',`"${newName}" olarak kaydedildi.`);
-}
-
-function cancelSeriesEdit(id,oldName){
-  const nameEl=document.getElementById('seriesName_'+id);
-  const editBtn=document.getElementById('seriesEditBtn_'+id);
-  if(nameEl) nameEl.innerHTML=oldName;
-  if(editBtn) editBtn.style.display='';
 }
 
 function toggleSeriesAddMode(seriesId){
@@ -8284,17 +8104,15 @@ function launchConfetti(type){
   const ashblessPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe'];
   const palette=isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
 
-  // Yıldız çizimi için yardımcı
-  function drawStar(ctx, r){
+  function drawStar(ctx,r){
     ctx.beginPath();
     for(let i=0;i<5;i++){
       const a=((i*4-1)*Math.PI)/5;
       const b=((i*4+1)*Math.PI)/5;
-      ctx.lineTo(Math.cos(a)*r, Math.sin(a)*r);
-      ctx.lineTo(Math.cos(b)*(r*0.4), Math.sin(b)*(r*0.4));
+      ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);
+      ctx.lineTo(Math.cos(b)*(r*0.4),Math.sin(b)*(r*0.4));
     }
-    ctx.closePath();
-    ctx.fill();
+    ctx.closePath();ctx.fill();
   }
 
   const particles=Array.from({length:count},()=>({
@@ -8715,7 +8533,7 @@ function renderSeriesList(){
     return `<div class="series-card" data-sid="${ser.id}">
       <div class="series-card-header">
         <div>
-          <div class="series-card-name" id="seriesName_${ser.id}">${ser.name}</div>
+          <div class="series-card-name">${ser.name}</div>
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -8727,7 +8545,6 @@ function renderSeriesList(){
           <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
             style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
             onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button id="seriesEditBtn_${ser.id}" class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="editSeriesName('${ser.id}')">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>`}
         </div>
       </div>
@@ -9141,13 +8958,6 @@ function renderPathsList(){
     </div>`;
   }).join('');
 }
-
-// ── ŞİFRE HASH ───────────────────────────────────────────────
-async function hashPassword(pw){
-  const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(pw));
-  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
-}
-function isHashed(pw){ return typeof pw==='string'&&pw.length===64&&/^[0-9a-f]+$/.test(pw); }
 
 async function init(){
   await loadDb();
