@@ -2015,13 +2015,13 @@ function booksForBadge(badge,books){
   // Gizli
   if(id.startsWith('secret_')) return [];
   // Seri rozetleri
-  if(id==='badge_dune') return filtered.filter(b=>(b.author||'').toLowerCase().includes('herbert')&&(b.series||'').toLowerCase().includes('dune'));
-  if(id==='badge_vakif') return filtered.filter(b=>(b.author||'').toLowerCase().includes('asimov')&&((b.series||'').toLowerCase().includes('vakıf')||(b.series||'').toLowerCase().includes('foundation')));
-  if(id==='badge_hp') return filtered.filter(b=>(b.author||'').toLowerCase().includes('rowling')&&(b.series||'').toLowerCase().includes('harry potter'));
-  if(id==='badge_ye') return filtered.filter(b=>(b.author||'').toLowerCase().includes('tolkien')&&((b.series||'').toLowerCase().includes('yüzük')||(b.series||'').toLowerCase().includes('lord of the rings')||(b.series||'').toLowerCase().includes('lotr')));
-  if(id==='badge_earthsea') return filtered.filter(b=>(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('yerdeniz')||(b.series||'').toLowerCase().includes('earthsea')));
-  if(id==='badge_hainish') return filtered.filter(b=>(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('hainl')||(b.series||'').toLowerCase().includes('hainish')));
-  if(id==='badge_anubis') return filtered.filter(b=>(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
+  if(id==='badge_dune') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('herbert')&&(b.series||'').toLowerCase().includes('dune'));
+  if(id==='badge_vakif') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('asimov')&&((b.series||'').toLowerCase().includes('vakıf')||(b.series||'').toLowerCase().includes('foundation')));
+  if(id==='badge_hp') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('rowling')&&(b.series||'').toLowerCase().includes('harry potter'));
+  if(id==='badge_ye') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tolkien')&&((b.series||'').toLowerCase().includes('yüzük')||(b.series||'').toLowerCase().includes('lord of the rings')||(b.series||'').toLowerCase().includes('lotr')));
+  if(id==='badge_earthsea') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('yerdeniz')||(b.series||'').toLowerCase().includes('earthsea')));
+  if(id==='badge_hainish') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('hainl')||(b.series||'').toLowerCase().includes('hainish')));
+  if(id==='badge_anubis') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
   return [];
 }
 
@@ -7454,20 +7454,26 @@ function renderBadges(){
       </div>`:'';
     return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
       ${tooltipHtml}
-      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')">
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="padding:0;overflow:hidden;position:relative;min-height:120px;"`:''}>
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
+        ${b.imgSrc?`
+          <img src="${b.imgSrc}" style="width:100%;height:120px;object-fit:cover;display:block;${s.earned?'':'filter:grayscale(1);opacity:.4'}" />
+          <div style="padding:.4rem .5rem;background:rgba(0,0,0,.55);">
+            <div class="badge-name" style="color:#fff;font-size:.72rem">${b.name}</div>
+            <div class="progress-wrap" style="margin:.2rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+            <div class="progress-text" style="color:rgba(255,255,255,.7)">${s.cur} / ${s.max} · %${s.pct}</div>
+          </div>
+        `:`
         <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-        ${b.imgSrc
-          ?`<img src="${b.imgSrc}" class="badge-icon" style="width:2.5rem;height:2.5rem;object-fit:contain;${s.earned?'':'filter:grayscale(1);opacity:.35'}" />`
-          :`<span class="badge-icon">${b.icon}</span>`}
+        <span class="badge-icon">${b.icon}</span>
         <div class="badge-name">${b.name}</div>
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
         ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
-        ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}
+        ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}`}
       </div>
     </div>`;
   }
