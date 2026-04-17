@@ -1812,7 +1812,7 @@ const BADGE_CATS = [
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
       {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
-        check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('tim powers')&&(x.title||'').toLowerCase().includes('anubis')))},
+        check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&((x.title||'').toLowerCase().includes('anubis')||(x.title||'').toLowerCase().includes('kapı'))))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
@@ -2013,7 +2013,7 @@ function booksForBadge(badge,books){
   if(id==='semavi') return filtered.filter(b=>(b.genres||[]).includes('kutsal'));
   if(['kadim1','kadim2','kadim3'].includes(id)) return filtered.filter(b=>(b.genres||[]).includes('kutsal meta'));
   // Gizli — önce spesifik olanlar
-  if(id==='secret_anubis') return filtered.filter(b=>(b.readingStatus==='new'||b.retroactive)&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
+  if(id==='secret_anubis') return filtered.filter(b=>(b.readingStatus==='new'||b.retroactive)&&(b.author||'').toLowerCase().includes('powers')&&((b.title||'').toLowerCase().includes('anubis')||(b.title||'').toLowerCase().includes('kapı')));
   if(id==='secret_author'){const counts=filtered.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{});const topAuthor=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];return topAuthor?filtered.filter(b=>b.author===topAuthor[0]):[];}
   if(id==='secret_whale') return filtered.filter(b=>b.pages&&b.pages>=1000);
   if(id==='secret_month'||id==='secret_speed'||id==='secret_multi'||id==='secret_100pg') return filtered.filter(b=>b.hundredPages);
@@ -7440,7 +7440,7 @@ function renderBadges(){
     const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
     const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
     const bookListHtml=relBooks.length===0&&!storyCount
-      ? isSerisBadge
+      ? (isSerisBadge||b.id.startsWith('secret_'))
         ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>`
         : '<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
       :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
