@@ -1799,11 +1799,9 @@ const BADGE_CATS = [
         check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('yerdeniz')||(x.series||'').toLowerCase().includes('earthsea'))).length>=6)},
       {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Hainli Gezgin',        desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badge_hainish.png',
         check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('hainl')||(x.series||'').toLowerCase().includes('hainish'))).length>=8)},
-      {id:'badge_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
-        check:b=>flag(b.some(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tim powers')&&(x.title||'').toLowerCase().includes('anubis')))},
     ]},
     {id:'gizli', label:'🔮 Gizli', badges:[
-      {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
+      {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', imgSrc:'badge_ashbless.png', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
         const hasBook=b.length>0;
         const hasRead=b.some(x=>x.readingStatus==='new');
         const hasSeries=Object.keys(mySeriesData().series||{}).length>0;
@@ -1813,6 +1811,8 @@ const BADGE_CATS = [
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
+      {id:'badge_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
+        check:b=>flag(b.some(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tim powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
@@ -2013,8 +2013,16 @@ function booksForBadge(badge,books){
   if(id==='semavi') return filtered.filter(b=>(b.genres||[]).includes('kutsal'));
   if(['kadim1','kadim2','kadim3'].includes(id)) return filtered.filter(b=>(b.genres||[]).includes('kutsal meta'));
   // Gizli
-  if(id.startsWith('secret_')) return filtered;
-  return filtered;
+  if(id.startsWith('secret_')) return [];
+  // Seri rozetleri
+  if(id==='badge_dune') return filtered.filter(b=>(b.author||'').toLowerCase().includes('herbert')&&(b.series||'').toLowerCase().includes('dune'));
+  if(id==='badge_vakif') return filtered.filter(b=>(b.author||'').toLowerCase().includes('asimov')&&((b.series||'').toLowerCase().includes('vakıf')||(b.series||'').toLowerCase().includes('foundation')));
+  if(id==='badge_hp') return filtered.filter(b=>(b.author||'').toLowerCase().includes('rowling')&&(b.series||'').toLowerCase().includes('harry potter'));
+  if(id==='badge_ye') return filtered.filter(b=>(b.author||'').toLowerCase().includes('tolkien')&&((b.series||'').toLowerCase().includes('yüzük')||(b.series||'').toLowerCase().includes('lord of the rings')||(b.series||'').toLowerCase().includes('lotr')));
+  if(id==='badge_earthsea') return filtered.filter(b=>(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('yerdeniz')||(b.series||'').toLowerCase().includes('earthsea')));
+  if(id==='badge_hainish') return filtered.filter(b=>(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('hainl')||(b.series||'').toLowerCase().includes('hainish')));
+  if(id==='badge_anubis') return filtered.filter(b=>(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
+  return [];
 }
 
 // ── STATE ─────────────────────────────────────────────────────
