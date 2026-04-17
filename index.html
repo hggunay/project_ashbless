@@ -860,7 +860,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 
     <!-- SERIES PANEL -->
-    </div>
 
     <!-- STORIES PANEL -->
     <div id="stories" class="panel">
@@ -956,7 +955,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     </div>
 
       <!-- KİŞİSEL NOTLAR sekmesi -->
-    </div>
 
     <div id="series" class="panel">
       <div id="seriesViewingBanner" class="viewing-banner" style="display:none">
@@ -1138,6 +1136,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       </div>
       <div id="magContainer"></div>
       </div><!-- /ssp-mags -->
+    </div><!-- /shelf panel -->
 
     <!-- MEMBERS PANEL -->
     <div id="members" class="panel">
@@ -1787,6 +1786,22 @@ const BADGE_CATS = [
   ], badges:[]},
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
   {label:'🔮 Gizli Rozetler', chains:[
+    {id:'seri_rozetleri', label:'📖 Özel Seri Rozetleri', badges:[
+      {id:'badge_dune',     tier:'diamond', icon:'🏜️', name:'Solucan Fatihi',      desc:'Frank Herbert\'in Dune serisini tamamla (6 kitap).', imgSrc:'badge_dune.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('herbert')&&(x.series||'').toLowerCase().includes('dune')).length>=6)},
+      {id:'badge_vakif',    tier:'diamond', icon:'🤖', name:'Kurucu',               desc:'Asimov\'un Vakıf serisini tamamla (7 kitap).', imgSrc:'badge_vakif.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('asimov')&&((x.series||'').toLowerCase().includes('vakıf')||(x.series||'').toLowerCase().includes('foundation'))).length>=7)},
+      {id:'badge_hp',       tier:'diamond', icon:'🧙', name:'Hogwarts Mezunu',      desc:'Harry Potter serisini tamamla (7 kitap).', imgSrc:'badge_hp.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('rowling')&&(x.series||'').toLowerCase().includes('harry potter')).length>=7)},
+      {id:'badge_ye',       tier:'diamond', icon:'💍', name:'Yüzük Taşıyıcısı',    desc:'Yüzüklerin Efendisi üçlemesini tamamla (3 kitap).', imgSrc:'badge_ye.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tolkien')&&((x.series||'').toLowerCase().includes('yüzük')||(x.series||'').toLowerCase().includes('lord of the rings')||(x.series||'').toLowerCase().includes('lotr'))).length>=3)},
+      {id:'badge_earthsea', tier:'diamond', icon:'🐉', name:'Yerdeniz Büyücüsü',   desc:'Le Guin\'in Yerdeniz serisini tamamla (6 kitap).', imgSrc:'badge_earthsea.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('yerdeniz')||(x.series||'').toLowerCase().includes('earthsea'))).length>=6)},
+      {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Hainli Gezgin',        desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badge_hainish.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('hainl')||(x.series||'').toLowerCase().includes('hainish'))).length>=8)},
+      {id:'badge_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
+        check:b=>flag(b.some(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tim powers')&&(x.title||'').toLowerCase().includes('anubis')))},
+    ]},
     {id:'gizli', label:'🔮 Gizli', badges:[
       {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
         const hasBook=b.length>0;
@@ -7436,7 +7451,9 @@ function renderBadges(){
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
-        <span class="badge-icon">${b.icon}</span>
+        ${b.imgSrc
+          ?`<img src="${b.imgSrc}" class="badge-icon" style="width:2.5rem;height:2.5rem;object-fit:contain;${s.earned?'':'filter:grayscale(1);opacity:.35'}" />`
+          :`<span class="badge-icon">${b.icon}</span>`}
         <div class="badge-name">${b.name}</div>
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
@@ -7516,7 +7533,7 @@ function openAshblessModal(){
     <p style="margin-bottom:.9rem;font-style:italic;text-align:center">Bir gün...</p>
     <p style="margin-bottom:.9rem">Evrim Ağacı'nda karşıma çıkan bir videoda, "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" diyordu. Zaten aylardır aklımı meşgul eden rozet projem vardı. Bu cümle, ertelemek için kalan son bahaneyi de ortadan kaldırdı. Ve <strong>8 Mart 2026'da Project Ashbless başladı.</strong></p>
     <p style="margin-bottom:.9rem">Projenin adı: <em>Project Ashbless.</em> İsim, o dönem okuyup çok beğendiğim <em>Anubis Kapıları</em> kitabından geliyor. Benim için özel bir yeri var — uzun süre etkisinden çıkamadığım, bittiğinde bir süre boşluğunu hissettiğim, bazı sahneleri zihnimde yeniden yeniden dönen kitaplardan biri.</p>
-    <p style="margin-bottom:.9rem;font-size:.88rem;color:var(--rust);font-style:italic">Ashbless kimdi? Köpek Surat Joe şimdi nerede, kime benziyor? Antoin Kardeşliği hâlâ faaliyet gösteriyor mu? Gecenin On İki Saati'nde ne demek? Ya Dr. Romany neyin peşinde? Bu film gibi maceranın neden hâlâ bir dizisi yok? Yoksa sen hâlâ Anubis Kapıları'nı okumadın mı?</p>
+    <p style="margin-bottom:.9rem;font-size:.88rem;color:var(--rust);font-style:italic">Ashbless kimdi? Köpek Surat Joe şimdi nerede, kime benziyor? Antoian Kardeşliği hâlâ faaliyet gösteriyor mu? Gecenin On İki Saati'nde ne demek? Ya Dr. Romany neyin peşinde? Bu film gibi maceranın neden hâlâ bir dizisi yok? Yoksa sen hâlâ Anubis Kapıları'nı okumadın mı?</p>
     <p style="margin-bottom:1.2rem">Eğer bu yazıyı okuyorsan, uygulamanın her alanını en az bir kez kullanmışsın demektir. Yani Project Ashbless rozetini açtın. Kısacası: sistemi keşfettin.<br><span style="font-size:.9rem;opacity:.7">(Bir de üstüne küçük bir konfeti patlattık. Hak ettin. 🎉)</span></p>
     <div style="border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;margin-bottom:1rem">
       <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather);margin-bottom:.6rem">📚 The Armchair Adventurers Okuma Kulübü</div>
