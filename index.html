@@ -7454,12 +7454,12 @@ function renderBadges(){
       </div>`:'';
     return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
       ${tooltipHtml}
-      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="padding:0;overflow:hidden;position:relative;min-height:120px;"`:''}>
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="padding:0;overflow:hidden;position:relative;min-height:100px;"`:''}>
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         ${b.imgSrc?`
-          <img src="${b.imgSrc}" style="width:100%;height:120px;object-fit:cover;display:block;${s.earned?'':'filter:grayscale(1);opacity:.4'}" />
+          <img src="${b.imgSrc}" style="width:100%;height:100px;object-fit:cover;display:block;${s.earned?'':'filter:grayscale(1);opacity:.4'}" />
           <div style="padding:.4rem .5rem;background:rgba(0,0,0,.55);">
             <div class="badge-name" style="color:#fff;font-size:.72rem">${b.name}</div>
             <div class="progress-wrap" style="margin:.2rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
