@@ -1944,7 +1944,7 @@ const REGIONS={
 };
 
 // Seri rozetleri retroactive kitapları da sayar, diğerleri saymaz
-const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish']);
+const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis']);
 
 function bstat(badge,books){
   const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
@@ -2014,14 +2014,9 @@ function booksForBadge(badge,books){
   if(['kadim1','kadim2','kadim3'].includes(id)) return filtered.filter(b=>(b.genres||[]).includes('kutsal meta'));
   // Gizli
   if(id.startsWith('secret_')) return [];
-  // Seri rozetleri
-  if(id==='badge_dune') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('herbert')&&(b.series||'').toLowerCase().includes('dune'));
-  if(id==='badge_vakif') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('asimov')&&((b.series||'').toLowerCase().includes('vakıf')||(b.series||'').toLowerCase().includes('foundation')));
-  if(id==='badge_hp') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('rowling')&&(b.series||'').toLowerCase().includes('harry potter'));
-  if(id==='badge_ye') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tolkien')&&((b.series||'').toLowerCase().includes('yüzük')||(b.series||'').toLowerCase().includes('lord of the rings')||(b.series||'').toLowerCase().includes('lotr')));
-  if(id==='badge_earthsea') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('yerdeniz')||(b.series||'').toLowerCase().includes('earthsea')));
-  if(id==='badge_hainish') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('hainl')||(b.series||'').toLowerCase().includes('hainish')));
-  if(id==='secret_anubis') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
+  // Seri rozetleri — kitap listesi gösterme, desc yeterli
+  if(['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(id)) return [];
+  if(id==='secret_anubis') return filtered.filter(b=>(b.readingStatus==='new'||b.retroactive)&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
   return [];
 }
 
@@ -7438,8 +7433,11 @@ function renderBadges(){
     const MAX_BOOKS=5;
     const storyCount=relBooks._storyCount||0;
     const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
+    const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
     const bookListHtml=relBooks.length===0&&!storyCount
-      ?'<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
+      ? isSerisBadge
+        ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>`
+        : '<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
       :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
           +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
           +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
@@ -7449,7 +7447,7 @@ function renderBadges(){
       +storyNote;
     const tooltipHtml=isOpen2?`
       <div class="badge-tooltip open" id="tooltip-${b.id}" onclick="event.stopPropagation()">
-        <div class="badge-tooltip-title">📚 İlgili Kitaplar (${relBooks.length})</div>
+        <div class="badge-tooltip-title">${isSerisBadge?'📖 Seri Bilgisi':'📚 İlgili Kitaplar ('+relBooks.length+')'}</div>
         ${bookListHtml}
       </div>`:'';
     return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
