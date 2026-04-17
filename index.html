@@ -1764,6 +1764,20 @@ const BADGE_CATS = [
       {id:'aud2',tier:'silver',icon:'🎵', name:'Sesli Kitap Dostu',desc:'3 sesli kitap dinle.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,3)},
       {id:'aud3',tier:'gold',  icon:'🎼', name:'Kulak Okuyucu',    desc:'10 sesli kitap dinle.', check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,10)},
     ]},
+    {id:'seri_rozetleri', label:'📖 Özel Seri Rozetleri', badges:[
+      {id:'badge_dune',     tier:'diamond', icon:'🏜️', name:'Solucan Fatihi',      desc:'Frank Herbert\'in Dune serisini tamamla (6 kitap).', imgSrc:'badge_dune.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('herbert')&&(x.series||'').toLowerCase().includes('dune')).length>=6)},
+      {id:'badge_vakif',    tier:'diamond', icon:'🤖', name:'Kurucu',               desc:'Asimov\'un Vakıf serisini tamamla (7 kitap).', imgSrc:'badge_vakif.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('asimov')&&((x.series||'').toLowerCase().includes('vakıf')||(x.series||'').toLowerCase().includes('foundation'))).length>=7)},
+      {id:'badge_hp',       tier:'diamond', icon:'🧙', name:'Hogwarts Mezunu',      desc:'Harry Potter serisini tamamla (7 kitap).', imgSrc:'badge_hp.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('rowling')&&(x.series||'').toLowerCase().includes('harry potter')).length>=7)},
+      {id:'badge_ye',       tier:'diamond', icon:'💍', name:'Yüzük Taşıyıcısı',    desc:'Yüzüklerin Efendisi üçlemesini tamamla (3 kitap).', imgSrc:'badge_ye.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tolkien')&&((x.series||'').toLowerCase().includes('yüzük')||(x.series||'').toLowerCase().includes('lord of the rings')||(x.series||'').toLowerCase().includes('lotr'))).length>=3)},
+      {id:'badge_earthsea', tier:'diamond', icon:'🐉', name:'Yerdeniz Büyücüsü',   desc:'Le Guin\'in Yerdeniz serisini tamamla (6 kitap).', imgSrc:'badge_earthsea.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('yerdeniz')||(x.series||'').toLowerCase().includes('earthsea'))).length>=6)},
+      {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Hainli Gezgin',        desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badge_hainish.png',
+        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('hainl')||(x.series||'').toLowerCase().includes('hainish'))).length>=8)},
+    ]},
   ], badges:[]},
   // ── 6. SOSYAL ETKİLEŞİM ───────────────────────────────────────
   {label:'👥 Sosyal Etkileşim', chains:[
@@ -1786,20 +1800,6 @@ const BADGE_CATS = [
   ], badges:[]},
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
   {label:'🔮 Gizli Rozetler', chains:[
-    {id:'seri_rozetleri', label:'📖 Özel Seri Rozetleri', badges:[
-      {id:'badge_dune',     tier:'diamond', icon:'🏜️', name:'Solucan Fatihi',      desc:'Frank Herbert\'in Dune serisini tamamla (6 kitap).', imgSrc:'badge_dune.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('herbert')&&(x.series||'').toLowerCase().includes('dune')).length>=6)},
-      {id:'badge_vakif',    tier:'diamond', icon:'🤖', name:'Kurucu',               desc:'Asimov\'un Vakıf serisini tamamla (7 kitap).', imgSrc:'badge_vakif.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('asimov')&&((x.series||'').toLowerCase().includes('vakıf')||(x.series||'').toLowerCase().includes('foundation'))).length>=7)},
-      {id:'badge_hp',       tier:'diamond', icon:'🧙', name:'Hogwarts Mezunu',      desc:'Harry Potter serisini tamamla (7 kitap).', imgSrc:'badge_hp.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('rowling')&&(x.series||'').toLowerCase().includes('harry potter')).length>=7)},
-      {id:'badge_ye',       tier:'diamond', icon:'💍', name:'Yüzük Taşıyıcısı',    desc:'Yüzüklerin Efendisi üçlemesini tamamla (3 kitap).', imgSrc:'badge_ye.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tolkien')&&((x.series||'').toLowerCase().includes('yüzük')||(x.series||'').toLowerCase().includes('lord of the rings')||(x.series||'').toLowerCase().includes('lotr'))).length>=3)},
-      {id:'badge_earthsea', tier:'diamond', icon:'🐉', name:'Yerdeniz Büyücüsü',   desc:'Le Guin\'in Yerdeniz serisini tamamla (6 kitap).', imgSrc:'badge_earthsea.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('yerdeniz')||(x.series||'').toLowerCase().includes('earthsea'))).length>=6)},
-      {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Hainli Gezgin',        desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badge_hainish.png',
-        check:b=>flag(b.filter(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('hainl')||(x.series||'').toLowerCase().includes('hainish'))).length>=8)},
-    ]},
     {id:'gizli', label:'🔮 Gizli', badges:[
       {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', imgSrc:'badge_ashbless.png', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
         const hasBook=b.length>0;
@@ -1811,7 +1811,7 @@ const BADGE_CATS = [
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
-      {id:'badge_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
+      {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
         check:b=>flag(b.some(x=>x.readingStatus==='new'&&(x.author||'').toLowerCase().includes('tim powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
@@ -2021,7 +2021,7 @@ function booksForBadge(badge,books){
   if(id==='badge_ye') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tolkien')&&((b.series||'').toLowerCase().includes('yüzük')||(b.series||'').toLowerCase().includes('lord of the rings')||(b.series||'').toLowerCase().includes('lotr')));
   if(id==='badge_earthsea') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('yerdeniz')||(b.series||'').toLowerCase().includes('earthsea')));
   if(id==='badge_hainish') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('le guin')&&((b.series||'').toLowerCase().includes('hainl')||(b.series||'').toLowerCase().includes('hainish')));
-  if(id==='badge_anubis') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
+  if(id==='secret_anubis') return filtered.filter(b=>b.readingStatus==='new'&&(b.author||'').toLowerCase().includes('tim powers')&&(b.title||'').toLowerCase().includes('anubis'));
   return [];
 }
 
@@ -7454,16 +7454,16 @@ function renderBadges(){
       </div>`:'';
     return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
       ${tooltipHtml}
-      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="padding:0;overflow:hidden;position:relative;min-height:100px;"`:''}>
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="padding:0;overflow:hidden;position:relative;"`:''}>
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         ${b.imgSrc?`
-          <img src="${b.imgSrc}" style="width:100%;height:100px;object-fit:cover;object-position:center top;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" />
-          <div style="padding:.4rem .5rem;background:rgba(0,0,0,.55);">
-            <div class="badge-name" style="color:#fff;font-size:.72rem">${b.name}</div>
-            <div class="progress-wrap" style="margin:.2rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
-            <div class="progress-text" style="color:rgba(255,255,255,.7)">${s.cur} / ${s.max} · %${s.pct}</div>
+          <img src="${b.imgSrc}" style="width:100%;height:110px;object-fit:cover;object-position:center top;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" />
+          <div style="padding:.5rem .6rem .4rem;">
+            <div class="badge-name" style="font-size:.78rem;margin-bottom:.25rem">${b.name}</div>
+            <div class="progress-wrap" style="margin:.15rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+            <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
           </div>
         `:`
         <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
