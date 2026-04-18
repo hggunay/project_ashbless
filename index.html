@@ -3724,6 +3724,8 @@ function renderSpecialShelfHtml(type){
     </div>`;
   }).join('');
 
+  const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
+
   const titleEl=isBedside
     ?`<div class="special-shelf-title" style="color:${titleColor}">${title}</div>`
     :`<div class="special-shelf-title glitch-target" data-glitch="⛓️ Yasaklı Raf" onclick="triggerGlitch(this)" style="color:${titleColor};cursor:pointer;border-bottom:1px solid #4c1d95;display:inline-block;padding-bottom:1px" title="Glitch">${title}</div>`;
