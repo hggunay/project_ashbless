@@ -3675,12 +3675,17 @@ function renderSpecialShelfHtml(type){
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;">
         <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
           <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
+  const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
+
+  return`<div class="special-shelf">
+    <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;">
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;">
+        <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
+          <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
         <div style="flex:1;display:flex;align-items:center;padding:.5rem 1rem">
-    const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
-
-        <div style="${spineRowStyle}">${spinesHtml}${moreBtn}${addBtn}</div>
+          <div style="${spineRowStyle}">${spinesHtml}${moreBtn}${addBtn}</div>
         </div>
       </div>
     </div>
