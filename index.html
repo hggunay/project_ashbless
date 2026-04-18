@@ -331,8 +331,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .special-shelf-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:.15rem;display:flex;align-items:center;gap:.5rem;}
 .special-shelf-sub{font-family:'Crimson Pro',serif;font-style:italic;font-size:.82rem;opacity:.75;margin-bottom:.75rem;}
 .book-spine{width:clamp(24px,5vw,36px);min-width:clamp(24px,5vw,36px);height:100px;border-radius:3px 6px 6px 3px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;box-shadow:2px 2px 6px rgba(0,0,0,.35),inset -3px 0 6px rgba(0,0,0,.3),inset 2px 0 4px rgba(255,255,255,.1);flex-shrink:0;}
-.book-spine::before{content:'';position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(180deg,rgba(201,162,39,.7),rgba(201,162,39,.2));border-radius:3px 6px 0 0;}
-.book-spine::after{content:'';position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(0deg,rgba(201,162,39,.7),rgba(201,162,39,.2));border-radius:0 0 6px 6px;}
 .book-spine:hover{transform:translateY(-6px);box-shadow:2px 8px 16px rgba(0,0,0,.45),inset -3px 0 6px rgba(0,0,0,.3),inset 2px 0 4px rgba(255,255,255,.15);}
 .book-spine-title{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-family:'Crimson Pro',serif;font-size:clamp(.45rem,.7rem,1rem);font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:10px 3px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;word-break:break-word;line-height:1.2;position:relative;z-index:1;}
 .spine-add-btn{width:clamp(24px,5vw,36px);min-width:clamp(24px,5vw,36px);height:100px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
@@ -3657,12 +3655,23 @@ function renderSpecialShelfHtml(type){
   const title=isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf';
   const sub=isBedside?'Yastığının altındaki kitaplar':'Yasak bilginin saklandığı yer';
   const spineColors=isBedside?SPINE_COLORS_BEDSIDE:SPINE_COLORS_FORBIDDEN;
-
+  const bandColors=['rgba(201,162,39,.8)','rgba(255,255,255,.5)','rgba(180,140,60,.9)','rgba(220,180,80,.7)','rgba(255,220,100,.6)','rgba(160,120,40,.9)','rgba(240,200,100,.7)'];
+  const textures=[
+    'linear-gradient(180deg,rgba(255,255,255,.12) 0%,transparent 40%,rgba(0,0,0,.15) 100%)',
+    'linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.04) 50%,rgba(0,0,0,.2) 100%)',
+    'linear-gradient(180deg,rgba(255,255,255,.15) 0%,transparent 30%,rgba(0,0,0,.1) 100%)',
+    'linear-gradient(180deg,rgba(255,255,255,.06) 0%,transparent 60%,rgba(0,0,0,.25) 100%)',
+  ];
 
   const spinesHtml=books.map((b,i)=>{
     const col=spineColors[i%spineColors.length];
+    const band=bandColors[i%bandColors.length];
+    const tex=textures[i%textures.length];
     const safeTitle=(b.title||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return`<div class="book-spine" style="background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}">
+    return`<div class="book-spine" style="background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}" data-band="${band}" data-tex="${tex}">
+      <div style="position:absolute;inset:0;background:${tex};border-radius:inherit;pointer-events:none;z-index:0"></div>
+      <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(180deg,${band},transparent);border-radius:3px 6px 0 0;z-index:2"></div>
+      <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(0deg,${band},transparent);border-radius:0 0 6px 6px;z-index:2"></div>
       <span class="book-spine-title">${b.title||'?'}</span>
     </div>`;
   }).join('');
