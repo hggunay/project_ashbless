@@ -3690,6 +3690,13 @@ function triggerGlitch(titleEl){
 function triggerBedside(){
   const shelf=document.querySelector('#specialShelvesContainer .special-shelf');
   if(!shelf) return;
+
+  // Önce rafı görünür alana getir, sonra animasyon başlat
+  shelf.scrollIntoView({behavior:'smooth',block:'center'});
+  setTimeout(()=>_startBedsideAnim(shelf), 600);
+}
+
+function _startBedsideAnim(shelf){
   const overlay=document.getElementById('bedsideOverlay');
   const lamp=document.getElementById('bedsideLamp');
   const cornerText=shelf.querySelector('.bedside-corner-text');
@@ -3697,12 +3704,9 @@ function triggerBedside(){
 
   // Raf'ın sayfadaki pozisyonunu hesapla
   const rect=shelf.getBoundingClientRect();
-  const lampX=rect.left+rect.width*0.28; // lambanın görseldeki yeri (~%28)
-  const lampY=rect.top+rect.height*0.45;
-  const lampXpct=((lampX/window.innerWidth)*100).toFixed(1);
-  const lampYpct=((lampY/window.innerHeight)*100).toFixed(1);
+  const lampXpct=((( rect.left+rect.width*0.28)/window.innerWidth)*100).toFixed(1);
+  const lampYpct=(((rect.top+rect.height*0.45)/window.innerHeight)*100).toFixed(1);
 
-  // Lamba pozisyonunu ayarla
   if(lamp){
     lamp.style.background=`radial-gradient(ellipse at ${lampXpct}% ${lampYpct}%,rgba(255,200,80,.5) 0%,rgba(255,160,20,.2) 20%,transparent 45%)`;
     lamp.style.transition='opacity 700ms ease';
@@ -3710,28 +3714,22 @@ function triggerBedside(){
 
   document.body.style.overflow='hidden';
 
-  // 1. Periferden merkeze kararma + lamba aynı anda
+  // 1. Kararma + lamba
   if(overlay) overlay.classList.add('dim');
   setTimeout(()=>{if(lamp) lamp.style.opacity='1';},200);
 
-  // 2. 1200ms: kitaplar sırayla yerleşir
+  // 2. 1200ms: kitaplar sırayla
   spines.forEach((sp,i)=>{
-    sp.style.opacity='0';
-    sp.style.transform='translateY(10px)';
-    sp.style.transition='none';
+    sp.style.opacity='0';sp.style.transform='translateY(10px)';sp.style.transition='none';
     setTimeout(()=>{
       sp.style.transition='opacity 350ms ease, transform 350ms ease';
-      sp.style.opacity='1';
-      sp.style.transform='translateY(0)';
+      sp.style.opacity='1';sp.style.transform='translateY(0)';
     },1200+i*120);
   });
 
-  // 3. 2400ms: yazı belirir
+  // 3. 2400ms: yazı
   setTimeout(()=>{
-    if(cornerText){
-      cornerText.style.opacity='1';
-      cornerText.style.transform='translateY(0)';
-    }
+    if(cornerText){cornerText.style.opacity='1';cornerText.style.transform='translateY(0)';}
   },2400);
 
   // 4. 5400ms: yazı solar
@@ -3739,7 +3737,7 @@ function triggerBedside(){
     if(cornerText){cornerText.style.transition='opacity 800ms ease';cornerText.style.opacity='0';}
   },5400);
 
-  // 5. 6200ms: sayfa ve lamba birlikte yavaşça aydınlanır
+  // 5. 6200ms: aydınlanma
   setTimeout(()=>{
     if(overlay){overlay.style.transition='background 1400ms ease';overlay.classList.remove('dim');}
     if(lamp){lamp.style.transition='opacity 1400ms ease';lamp.style.opacity='0';}
