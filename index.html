@@ -325,7 +325,16 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .me-badge{font-size:.55rem;background:var(--gold);color:var(--ink);padding:.15rem .5rem;border-radius:20px;font-family:'Space Mono',monospace;font-weight:700;margin-left:.4rem;}
 .viewing-banner{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.6rem 1rem;margin-bottom:1rem;font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-size:.9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
 
-/* GLITCH */
+@keyframes glitchBg{
+  0%{filter:none;transform:none;}
+  15%{filter:hue-rotate(90deg) saturate(3);transform:skewX(3deg);}
+  30%{filter:hue-rotate(180deg) saturate(2) brightness(1.3);transform:skewX(-2deg) translateX(4px);}
+  45%{filter:hue-rotate(270deg) saturate(4) brightness(.7);transform:skewX(1deg) translateX(-3px);}
+  60%{filter:hue-rotate(90deg) saturate(2);transform:skewX(-3deg);}
+  75%{filter:hue-rotate(0deg) saturate(1) brightness(1.5);transform:skewX(2deg) translateX(2px);}
+  100%{filter:none;transform:none;}
+}
+.glitch-bg-active{animation:glitchBg 200ms steps(2) forwards;}
 @keyframes glitch1{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}25%{clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}50%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}75%{clip-path:inset(10% 0 80% 0);transform:translate(3px,0)}}
 @keyframes glitch2{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(4px,0);opacity:.8}33%{clip-path:inset(80% 0 5% 0);transform:translate(-4px,0);opacity:.6}66%{clip-path:inset(20% 0 70% 0);transform:translate(2px,0);opacity:.9}}
 @keyframes glitchFade{0%{opacity:1}20%{opacity:.3}40%{opacity:.8}60%{opacity:.2}80%{opacity:.9}100%{opacity:1}}
@@ -3623,12 +3632,14 @@ function showSimpleModal(title,subtitle,bodyHtml){
   modalBookId=null;
 }
 
-function triggerGlitch(el){
-  if(!el) return;
-  el.classList.remove('glitching');
-  void el.offsetWidth;
-  el.classList.add('glitching');
-  setTimeout(()=>el.classList.remove('glitching'),200);
+function triggerGlitch(titleEl){
+  if(!titleEl) return;
+  const bg=titleEl.closest('.special-shelf')?.querySelector('.special-shelf-bg');
+  if(!bg) return;
+  bg.classList.remove('glitch-bg-active');
+  void bg.offsetWidth;
+  bg.classList.add('glitch-bg-active');
+  setTimeout(()=>bg.classList.remove('glitch-bg-active'),220);
 }
 
 function goToShelf(type){
