@@ -1812,7 +1812,7 @@ const BADGE_CATS = [
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
       {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
-        check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&((x.title||'').toLowerCase().includes('anubis')||(x.title||'').toLowerCase().includes('kapı'))))},
+        check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
@@ -1946,10 +1946,19 @@ const REGIONS={
 // Seri rozetleri retroactive kitapları da sayar, diğerleri saymaz
 const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis']);
 
+function isRetroactive(b){
+  if(b.retroactive) return true;
+  if(b.endDate){
+    const today=new Date();today.setHours(0,0,0,0);
+    const end=new Date(b.endDate);
+    if(!isNaN(end)&&end<today) return true;
+  }
+  return false;
+}
 function bstat(badge,books){
   const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
     ? books
-    : books.filter(b=>!b.retroactive);
+    : books.filter(b=>!isRetroactive(b));
   const{cur,max}=badge.check(filteredBooks);
   const pct=max>0?Math.round(cur/max*100):0;
   return{cur,max,pct,earned:cur>=max};
@@ -1957,7 +1966,7 @@ function bstat(badge,books){
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
 function booksForBadge(badge,books){
-  const filtered=SERIES_BADGE_IDS.has(badge.id)?books:books.filter(b=>!b.retroactive);
+  const filtered=SERIES_BADGE_IDS.has(badge.id)?books:books.filter(b=>!isRetroactive(b));
   const id=badge.id;
   // Okuma Miktarı
   if(['b5','b10','b25','b50','b100','b250'].includes(id)) return filtered;
@@ -4627,6 +4636,8 @@ function toggleRetroactive(bookId,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   el.classList.toggle('active');
   book.retroactive=el.classList.contains('active');
+  if(!book.retroactive&&book.readingStatus==='past') book.readingStatus='new';
+  if(book.retroactive) book.readingStatus='past';
   saveDb();renderSafe();
 }
 
