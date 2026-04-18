@@ -325,6 +325,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .me-badge{font-size:.55rem;background:var(--gold);color:var(--ink);padding:.15rem .5rem;border-radius:20px;font-family:'Space Mono',monospace;font-weight:700;margin-left:.4rem;}
 .viewing-banner{background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.6rem 1rem;margin-bottom:1rem;font-family:'Crimson Pro',serif;font-style:italic;color:var(--gold);font-size:.9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;flex-wrap:wrap;}
 
+/* GLITCH */
+@keyframes glitch1{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}25%{clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}50%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}75%{clip-path:inset(10% 0 80% 0);transform:translate(3px,0)}}
+@keyframes glitch2{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(4px,0);opacity:.8}33%{clip-path:inset(80% 0 5% 0);transform:translate(-4px,0);opacity:.6}66%{clip-path:inset(20% 0 70% 0);transform:translate(2px,0);opacity:.9}}
+@keyframes glitchFade{0%{opacity:1}20%{opacity:.3}40%{opacity:.8}60%{opacity:.2}80%{opacity:.9}100%{opacity:1}}
+.glitch-target{position:relative;}
+.glitch-target.glitching{animation:glitchFade 180ms steps(2) forwards;}
+.glitch-target.glitching::before{content:attr(data-glitch);position:absolute;top:0;left:0;right:0;color:#ff00ff;mix-blend-mode:screen;animation:glitch1 180ms steps(2) forwards;}
+.glitch-target.glitching::after{content:attr(data-glitch);position:absolute;top:0;left:0;right:0;color:#00ffff;mix-blend-mode:screen;animation:glitch2 180ms steps(2) forwards;}
 /* ÖZEL RAFLAR */
 .special-shelf{border-radius:8px;overflow:hidden;margin-bottom:1.25rem;position:relative;}
 .special-shelf-bg{position:relative;min-height:160px;background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:flex;flex-direction:column;justify-content:space-between;}
@@ -3615,6 +3623,26 @@ function showSimpleModal(title,subtitle,bodyHtml){
   modalBookId=null;
 }
 
+function triggerGlitch(el){
+  if(!el) return;
+  el.classList.remove('glitching');
+  void el.offsetWidth;
+  el.classList.add('glitching');
+  setTimeout(()=>el.classList.remove('glitching'),200);
+}
+
+function goToShelf(type){
+  showPanel('shelf',document.querySelector('[onclick*=shelf]'));
+  openBadgeId=null;
+  renderBadges();
+  if(type==='forbidden'){
+    setTimeout(()=>{
+      const el=document.querySelector('.glitch-target');
+      triggerGlitch(el);
+    },300);
+  }
+}
+
 // ── ÖZEL RAFLAR (Başucu & Yasaklı) ───────────────────────────
 const SPINE_COLORS_BEDSIDE=['#5c3a1e','#2d5a3d','#1e3a5c','#5c2d3a','#4a3d1e','#3d1e5c','#1e4a3d','#5c4a1e','#3a1e4a','#2d3a5c','#5c1e2d','#3d5c1e'];
 const SPINE_COLORS_FORBIDDEN=['#2a0a3a','#0a1a2a','#2a0a0a','#1a0a2a','#0a2a1a','#2a1a0a','#1a2a0a','#0a0a2a','#2a0a1a','#1a0a0a','#0a2a2a','#2a2a0a'];
@@ -3696,13 +3724,15 @@ function renderSpecialShelfHtml(type){
     </div>`;
   }).join('');
 
-  const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
+  const titleEl=isBedside
+    ?`<div class="special-shelf-title" style="color:${titleColor}">${title}</div>`
+    :`<div class="special-shelf-title glitch-target" data-glitch="⛓️ Yasaklı Raf" onclick="triggerGlitch(this)" style="color:${titleColor};cursor:pointer;border-bottom:1px solid #4c1d95;display:inline-block;padding-bottom:1px" title="Glitch">${title}</div>`;
 
   return`<div class="special-shelf">
     <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;width:100%;">
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;width:100%;">
         <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
-          <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
+          ${titleEl}
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;padding:.5rem 0;min-height:110px;">
@@ -7824,7 +7854,12 @@ function renderBadges(){
     const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
     const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
     const isShelfBadge=b.id==='secret_bedside'||b.id==='secret_forbidden';
-    const shelfLink=isShelfBadge&&s.earned?`<div style="margin-top:.5rem"><button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="showPanel('shelf',document.querySelector('[onclick*=shelf]'));openBadgeId=null;renderBadges()">🗄️ Rafa Git</button></div>`:'';
+    const isForbiddenBadge=b.id==='secret_forbidden';
+    const shelfLink=isShelfBadge&&s.earned?(
+      b.id==='secret_bedside'
+        ?`<div style="margin-top:.75rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.7">İz bırakan kitapları biriktirdin. Artık, sana ait bir köşe var.<br>Okuma yolculuğunun sonunda, <span onclick="goToShelf('bedside')" style="color:var(--gold);text-decoration:underline;cursor:pointer;font-weight:600">başucu rafın</span> hazır.</div>`
+        :`<div style="margin-top:.75rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.7">Bazı kapılar merakla değil, bedelle açılır.<br>Geri dönmeyeceğini bilerek okudun.<br><span onclick="goToShelf('forbidden')" style="color:#7c3aed;text-decoration:underline;text-decoration-color:#4c1d95;text-underline-offset:3px;cursor:pointer;font-weight:600;border-bottom:1px solid #4c1d95">Yasaklı rafın</span> açıldı.</div>`
+    ):'';
     const bookListHtml=relBooks.length===0&&!storyCount
       ? (isSerisBadge||b.id.startsWith('secret_'))
         ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>${shelfLink}`
