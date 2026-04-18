@@ -1826,7 +1826,20 @@ const BADGE_CATS = [
         const hasCountry=b.some(x=>x.country&&(x.readingStatus==='new'||x.readingStatus==='past'));
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
-      {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
+      {id:'secret_bedside',tier:'diamond',icon:'🌙', name:'Başucu Seçkisi', imgSrc:'basucuseckisi.png', desc:'25 kitap oku, 5 farklı ülkeden yazar oku, 5 tür rozeti kazan ve 1 seriyi tamamla.',
+        check:b=>{
+          const books25=b.length>=25;
+          const countries5=uniqueCountries(b)>=5;
+          const series1=completedSeriesCount()>=1;
+          const books2=validBooks();
+          let genreRozetCount=0;
+          const turZincirleri=['kc_roman','kc_sf','kc_fantastik','kc_polisiye','kc_korku','kc_tarih','kc_felsefe','kc_psikoloji','kc_gezi','kc_biyografi','kc_deneme','kc_dis','kc_romantik','kc_mitoloji','kc_oyku'];
+          BADGE_CATS.forEach(cat=>{(cat.chains||[]).forEach(ch=>{if(turZincirleri.includes(ch.id)){const allEarned=ch.badges.every(bg=>bstat(bg,books2).earned);if(allEarned)genreRozetCount++;}});});
+          const genres5=genreRozetCount>=5;
+          return flag(books25&&countries5&&series1&&genres5);
+        }},
+      {id:'secret_forbidden',tier:'diamond',icon:'⛓️', name:'Yasaklı Bilgi', imgSrc:'yasaklibilgi.png', desc:'Korku, Felsefe ve Mitoloji türlerinden her birinde en az 3 kitap oku.',
+        check:b=>flag(genre(b,'korku',3).cur>=3&&genre(b,'felsefe',3).cur>=3&&genre(b,'mitoloji',3).cur>=3)},
       {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
         check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
@@ -3635,9 +3648,16 @@ function spReadBooks(){
 function renderSpecialShelves(){
   const container=document.getElementById('specialShelvesContainer');
   if(!container) return;
+  const target=viewing||me;
+  const allBadges=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):c.badges||[]);
+  const bedsideBadge=allBadges.find(b=>b.id==='secret_bedside');
+  const forbiddenBadge=allBadges.find(b=>b.id==='secret_forbidden');
+  const targetBooks2=(db.books[target]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
+  const showBedside=bedsideBadge?bstat(bedsideBadge,targetBooks2).earned:false;
+  const showForbidden=forbiddenBadge?bstat(forbiddenBadge,targetBooks2).earned:false;
   let html='';
-  html+=renderSpecialShelfHtml('bedside');
-  html+=renderSpecialShelfHtml('forbidden');
+  if(showBedside) html+=renderSpecialShelfHtml('bedside');
+  if(showForbidden) html+=renderSpecialShelfHtml('forbidden');
   container.innerHTML=html;
 }
 
@@ -7803,9 +7823,11 @@ function renderBadges(){
     const storyCount=relBooks._storyCount||0;
     const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
     const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
+    const isShelfBadge=b.id==='secret_bedside'||b.id==='secret_forbidden';
+    const shelfLink=isShelfBadge&&s.earned?`<div style="margin-top:.5rem"><button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="showPanel('shelf',document.querySelector('[onclick*=shelf]'));openBadgeId=null;renderBadges()">🗄️ Rafa Git</button></div>`:'';
     const bookListHtml=relBooks.length===0&&!storyCount
       ? (isSerisBadge||b.id.startsWith('secret_'))
-        ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>`
+        ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>${shelfLink}`
         : '<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
       :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
           +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
