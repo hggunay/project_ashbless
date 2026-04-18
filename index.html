@@ -3591,7 +3591,8 @@ function renderShelfSelect(){
 }
 
 function showSimpleModal(title,subtitle,bodyHtml){
-  document.getElementById('modalTitle').textContent=title;
+  const titleEl=document.getElementById('modalTitle');
+  if(titleEl) titleEl.innerHTML=title;
   document.getElementById('modalSubtitle').innerHTML=subtitle||'';
   document.getElementById('modalBody').innerHTML=bodyHtml;
   document.getElementById('modalOverlay').classList.add('open');
@@ -3601,6 +3602,8 @@ function showSimpleModal(title,subtitle,bodyHtml){
 // ── ÖZEL RAFLAR (Başucu & Yasaklı) ───────────────────────────
 const SPINE_COLORS_BEDSIDE=['#7c5c2e','#a07040','#4a6741','#2e5c7c','#7c2e4a','#6b4a7c','#7c6b2e'];
 const SPINE_COLORS_FORBIDDEN=['#3a1a4a','#1a1a3a','#4a1a1a','#2a0a2a','#1a2a1a','#3a2a0a','#2a1a0a'];
+const SP_MAX={bedside:7,forbidden:20};
+const SP_VISIBLE=10;
 
 function getSpecialShelf(type){
   if(!db.shelf) db.shelf={};
@@ -3619,16 +3622,19 @@ function saveSpecialShelf(type,data){
   saveDb();
 }
 
+function spReadBooks(){
+  return (db.books[me]||[]).filter(b=>
+    b.title&&!b.title.startsWith('ISBN:')&&
+    b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'
+  );
+}
+
 function renderSpecialShelves(){
   const container=document.getElementById('specialShelvesContainer');
   if(!container) return;
-  const target=viewing||me;
-  // Test için her zaman görünür (rozetlere bağlanınca değişecek)
-  const showBedside=true;
-  const showForbidden=true;
   let html='';
-  if(showBedside) html+=renderSpecialShelfHtml('bedside');
-  if(showForbidden) html+=renderSpecialShelfHtml('forbidden');
+  html+=renderSpecialShelfHtml('bedside');
+  html+=renderSpecialShelfHtml('forbidden');
   container.innerHTML=html;
 }
 
@@ -3637,44 +3643,54 @@ function renderSpecialShelfHtml(type){
   const shelf=getSpecialShelf(type);
   const books=shelf.books||[];
   const isMe=!viewing;
-  const maxBooks=isBedside?7:999;
-  const canAdd=isMe&&(!isBedside||books.length<maxBooks);
-
+  const maxBooks=SP_MAX[type];
+  const canAdd=isMe&&books.length<maxBooks;
   const bgImg=isBedside?'bedside_bg.png':'forbidden_bg.png';
-  const bgCss=isBedside
-    ?'background-color:#1a0f00;background-image:linear-gradient(180deg,#2d1a05 0%,#1a0f00 60%,#0f0800 100%);'
-    :'background-color:#0d0010;background-image:linear-gradient(180deg,#1a0028 0%,#0d0010 60%,#050008 100%);';
+  const bgCss=isBedside?'background-color:#1a0f00;':'background-color:#0d0010;';
   const titleColor=isBedside?'var(--gold)':'#c084fc';
+  const accentColor=isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)';
   const title=isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf';
   const sub=isBedside?'Yastığının altındaki kitaplar':'Yasak bilginin saklandığı yer';
   const spineColors=isBedside?SPINE_COLORS_BEDSIDE:SPINE_COLORS_FORBIDDEN;
 
+  // İlk SP_VISIBLE kitap görünür, kalanlar scroll ile
+  const visibleBooks=books.slice(0,SP_VISIBLE);
+  const hiddenBooks=books.slice(SP_VISIBLE);
+
   const spinesHtml=books.map((b,i)=>{
     const col=spineColors[i%spineColors.length];
-    const safeTitle=(b.title||'').replace(/'/g,'&#39;');
+    const safeTitle=(b.title||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return`<div class="book-spine" style="background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}">
       <span class="book-spine-title">${b.title||'?'}</span>
     </div>`;
   }).join('');
 
-  const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="${isBedside?'Başucu kitabı ekle':'Yasaklı kitap ekle'}">+</button>`:'';
+  const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
+
+  // Scroll container: ilk 10 görünür, devamı scroll ile
+  const spineRowStyle=books.length>SP_VISIBLE
+    ?`display:flex;gap:6px;align-items:flex-end;min-height:110px;overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x mandatory;`
+    :`display:flex;gap:6px;align-items:flex-end;min-height:110px;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding-bottom:.5rem;`;
 
   return`<div class="special-shelf">
     <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;">
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100%;min-height:180px;">
-        <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.55) 0%,transparent 100%)">
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;">
+        <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
           <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
-        <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:.5rem 1rem">
-          <div class="spine-row" style="justify-content:center">${spinesHtml}${addBtn}</div>
+        <div style="flex:1;display:flex;align-items:center;padding:.5rem 1rem">
+          <div style="${spineRowStyle}">${spinesHtml}${addBtn}</div>
         </div>
       </div>
     </div>
-    ${isMe&&books.length?`<div class="special-shelf-footer" style="background:${isBedside?'rgba(26,15,0,.9)':'rgba(13,0,16,.9)'}">
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${isBedside?'var(--gold)':'#c084fc'};opacity:.7">${books.length}${isBedside?'/7':''} kitap</span>
-      <button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:${isBedside?'var(--gold)':'#c084fc'};border:1px solid ${isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)'}" onclick="openManageSpecialShelf('${type}')">⚙️ Düzenle</button>
-    </div>`:''}
+    <div class="special-shelf-footer" style="background:${isBedside?'rgba(26,15,0,.95)':'rgba(13,0,16,.95)'}">
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${titleColor};opacity:.7">${books.length}/${maxBooks} kitap</span>
+      ${isMe?`<div style="display:flex;gap:.4rem">
+        ${canAdd?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:${titleColor};border:1px solid ${accentColor}" onclick="openAddSpecialBook('${type}')">+ Ekle</button>`:''}
+        ${books.length?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(138,69,19,.2)" onclick="openManageSpecialShelf('${type}')">⚙️ Düzenle</button>`:''}
+      </div>`:''}
+    </div>
   </div>`;
 }
 
@@ -3684,53 +3700,87 @@ function openSpecialBook(type,bookId){
   if(!book) return;
   const isBedside=type==='bedside';
   const col=isBedside?'var(--gold)':'#c084fc';
+  const isMe=!viewing;
+  // Kitaplığımda eşleşen kitabı bul
+  const libBook=book.libId?(db.books[viewing||me]||[]).find(b=>b.id==book.libId):null;
+  const libLink=libBook?`<button class="btn btn-sm" style="font-size:.7rem;margin-top:.75rem;background:rgba(201,162,39,.1);color:var(--leather);border:1px solid rgba(201,162,39,.3)" onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id}),100)">📖 Kitaplığımda Aç</button>`:'';
   showSimpleModal(
-    book.title||'Kitap',
+    `<span style="cursor:${libBook?'pointer':'default'};color:${col}" ${libBook?`onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id}),100)"`:''}>${book.title||'Kitap'}</span>`,
     book.author?`<span style="font-style:italic;color:var(--rust)">${book.author}</span>`:'',
-    `<div style="padding:.5rem 0">
-      ${book.why?`<div style="background:rgba(201,162,39,.06);border-left:3px solid ${col};padding:.5rem .75rem;border-radius:0 4px 4px 0;font-style:italic;font-size:.9rem;margin-bottom:.75rem">"${book.why}"</div>`:''}
-      ${book.author?`<div style="font-size:.82rem;color:var(--rust);margin-bottom:.3rem">✍️ ${book.author}</div>`:''}
-      ${book.publisher?`<div style="font-size:.82rem;color:var(--rust)">🏢 ${book.publisher}</div>`:''}
+    `<div style="padding:.25rem 0">
+      ${book.why?`<div style="background:rgba(201,162,39,.06);border-left:3px solid ${col};padding:.5rem .75rem;border-radius:0 4px 4px 0;font-style:italic;font-size:.9rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto;margin-bottom:.75rem">"${book.why}"</div>`:''}
+      ${book.author?`<div style="font-size:.82rem;color:var(--rust);margin-bottom:.2rem">✍️ ${book.author}</div>`:''}
+      ${isMe?`<div style="margin-top:.75rem;display:flex;gap:.4rem;flex-wrap:wrap">
+        ${libLink}
+        <button class="btn btn-sm" style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="openEditSpecialBook('${type}','${bookId}')">✏️ Düzenle</button>
+      </div>`:''}
     </div>`
   );
 }
 
+function openEditSpecialBook(type,bookId){
+  const shelf=getSpecialShelf(type);
+  const book=(shelf.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const isBedside=type==='bedside';
+  const whyLabel=isBedside?'"Neden bu kitap?"':'Neden yasaklı?';
+  showSimpleModal(
+    '✏️ Düzenle','',
+    `<div style="display:flex;flex-direction:column;gap:.6rem">
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Kitap Adı</div>
+      <input id="spETitle" class="detail-input" type="text" value="${(book.title||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Yazar</div>
+      <input id="spEAuthor" class="detail-input" type="text" value="${(book.author||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">${whyLabel}</div>
+      <textarea id="spEWhy" class="detail-input" rows="3" style="width:100%;resize:vertical">${book.why||''}</textarea></div>
+      <button class="btn btn-primary" onclick="saveEditSpecialBook('${type}','${bookId}')">💾 Kaydet</button>
+    </div>`
+  );
+}
+
+function saveEditSpecialBook(type,bookId){
+  const shelf=getSpecialShelf(type);
+  const book=(shelf.books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  book.title=(document.getElementById('spETitle')?.value||'').trim()||book.title;
+  book.author=(document.getElementById('spEAuthor')?.value||'').trim();
+  book.why=(document.getElementById('spEWhy')?.value||'').trim();
+  saveSpecialShelf(type,shelf);
+  closeModal();
+  renderSpecialShelves();
+}
+
 function openAddSpecialBook(type){
   const isBedside=type==='bedside';
-  const col=isBedside?'var(--gold)':'#c084fc';
-  const border=isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)';
-  // Kitaplığımdan seç
-  const myBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:'));
-  const opts=myBooks.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('');
+  const readBooks=spReadBooks();
+  const shelf=getSpecialShelf(type);
+  const existing=new Set((shelf.books||[]).map(b=>b.libId).filter(Boolean));
+  const available=readBooks.filter(b=>!existing.has(String(b.id)));
+  const whyLabel=isBedside?'"Neden bu kitap?"':'Neden yasaklı?';
+  const whyPh=isBedside?'Bu kitabı neden başucuma koydum...':'Bu kitabın sırrı...';
 
   showSimpleModal(
     isBedside?'🌙 Başucu Kitabı Ekle':'⛓️ Yasaklı Kitap Ekle','',
-    `<div style="display:flex;flex-direction:column;gap:.75rem">
+    `<div style="display:flex;flex-direction:column;gap:.6rem">
       <div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.3rem">Kitaplığımdan Seç</div>
-        <select id="spBook" class="detail-input" style="width:100%">
-          <option value="">— Seç —</option>${opts}
+        <div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Kitaplığımdan Seç</div>
+        <input id="spSearch" class="detail-input" type="text" placeholder="🔍 Ara..." style="width:100%;margin-bottom:.3rem" oninput="filterSpBooks('${type}')"/>
+        <select id="spBook" class="detail-input" style="width:100%;max-height:160px" size="5">
+          ${available.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('')}
         </select>
       </div>
-      <div style="text-align:center;font-size:.75rem;color:var(--rust);opacity:.6">— ya da elle gir —</div>
-      <div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.3rem">Kitap Adı</div>
-        <input id="spTitle" class="detail-input" type="text" placeholder="Kitap adı" style="width:100%"/>
-      </div>
-      <div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.3rem">Yazar</div>
-        <input id="spAuthor" class="detail-input" type="text" placeholder="Yazar" style="width:100%"/>
-      </div>
-      <div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.3rem">${isBedside?'"Neden bu kitap?"':'Neden yasaklı?'} <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı)</span></div>
-        <input id="spWhy" class="detail-input" type="text" placeholder="${isBedside?'Bu kitabı neden başucuma koydum...':'Bu kitabın sırrı...'}" style="width:100%"/>
-      </div>
+      <div style="text-align:center;font-size:.72rem;color:var(--rust);opacity:.6">— ya da elle gir —</div>
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Kitap Adı</div>
+      <input id="spTitle" class="detail-input" type="text" placeholder="Kitap adı" style="width:100%"/></div>
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Yazar</div>
+      <input id="spAuthor" class="detail-input" type="text" placeholder="Yazar" style="width:100%"/></div>
+      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">${whyLabel} <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı)</span></div>
+      <textarea id="spWhy" class="detail-input" rows="2" placeholder="${whyPh}" style="width:100%;resize:vertical"></textarea></div>
       <button class="btn btn-primary" onclick="addSpecialBook('${type}')">+ Ekle</button>
     </div>`
   );
-  // Kitaplıktan seçince otomatik doldur
   document.getElementById('spBook')?.addEventListener('change',function(){
-    const book=(db.books[me]||[]).find(b=>b.id==this.value);
+    const book=spReadBooks().find(b=>b.id==this.value);
     if(book){
       document.getElementById('spTitle').value=book.title||'';
       document.getElementById('spAuthor').value=book.author||'';
@@ -3738,42 +3788,91 @@ function openAddSpecialBook(type){
   });
 }
 
+function filterSpBooks(type){
+  const q=(document.getElementById('spSearch')?.value||'').toLowerCase();
+  const readBooks=spReadBooks();
+  const shelf=getSpecialShelf(type);
+  const existing=new Set((shelf.books||[]).map(b=>b.libId).filter(Boolean));
+  const filtered=readBooks.filter(b=>!existing.has(String(b.id))&&(
+    !q||(b.title||'').toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q)
+  ));
+  const sel=document.getElementById('spBook');
+  if(sel) sel.innerHTML=filtered.map(b=>`<option value="${b.id}">${b.title}${b.author?' — '+b.author:''}</option>`).join('');
+}
+
 function addSpecialBook(type){
-  const title=(document.getElementById('spTitle')?.value||'').trim();
-  const author=(document.getElementById('spAuthor')?.value||'').trim();
+  const selEl=document.getElementById('spBook');
+  const selId=selEl?.value;
+  let title=(document.getElementById('spTitle')?.value||'').trim();
+  let author=(document.getElementById('spAuthor')?.value||'').trim();
   const why=(document.getElementById('spWhy')?.value||'').trim();
+  let libId=null;
+  if(selId){
+    const lb=spReadBooks().find(b=>b.id==selId);
+    if(lb){title=lb.title;author=lb.author||'';libId=String(lb.id);}
+  }
   if(!title){alert('Kitap adı gerekli');return;}
   const shelf=getSpecialShelf(type);
   if(!shelf.books) shelf.books=[];
-  const isBedside=type==='bedside';
-  if(isBedside&&shelf.books.length>=7){alert('Başucu kitaplığı en fazla 7 kitap içerebilir.');return;}
-  shelf.books.push({id:'sp_'+Date.now(),title,author,why,addedAt:new Date().toISOString()});
+  const max=SP_MAX[type];
+  if(shelf.books.length>=max){alert(`Bu rafa en fazla ${max} kitap eklenebilir.`);return;}
+  shelf.books.push({id:'sp_'+Date.now(),title,author,why,libId,addedAt:new Date().toISOString()});
   saveSpecialShelf(type,shelf);
   closeModal();
   renderSpecialShelves();
-  notify(isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf',`"${title}" eklendi`);
+  notify(type==='bedside'?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf',`"${title}" eklendi`);
 }
 
 function openManageSpecialShelf(type){
+  const isBedside=type==='bedside';
+  _renderManageModal(type);
+}
+
+function _renderManageModal(type){
   const shelf=getSpecialShelf(type);
   const books=shelf.books||[];
   const isBedside=type==='bedside';
-  const rows=books.map(b=>`
-    <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
+  const rows=books.length?books.map(b=>`
+    <div id="mrow-${b.id}" style="display:flex;align-items:flex-start;gap:.5rem;padding:.4rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
       <div style="flex:1;min-width:0">
-        <div style="font-size:.88rem;font-weight:600;color:var(--ink)">${b.title}</div>
-        ${b.author?`<div style="font-size:.75rem;color:var(--rust)">${b.author}</div>`:''}
-        ${b.why?`<div style="font-size:.72rem;font-style:italic;color:#555">"${b.why}"</div>`:''}
+        <div style="font-size:.85rem;font-weight:600;color:var(--ink);word-break:break-word">${b.title}</div>
+        ${b.author?`<div style="font-size:.72rem;color:var(--rust)">${b.author}</div>`:''}
+        ${b.why?`<div style="font-size:.7rem;font-style:italic;color:#555;margin-top:.1rem;word-break:break-word">"${b.why}"</div>`:''}
       </div>
-      <button class="btn btn-sm btn-danger" style="font-size:.6rem;flex-shrink:0" onclick="removeSpecialBook('${type}','${b.id}')">🗑</button>
-    </div>`).join('');
+      <button class="btn btn-sm btn-danger" style="font-size:.6rem;flex-shrink:0" onclick="removeSpecialBookInline('${type}','${b.id}')">🗑</button>
+    </div>`).join('')
+    :'<div style="font-style:italic;opacity:.5;padding:.5rem 0">Henüz kitap yok.</div>';
+
   showSimpleModal(
     isBedside?'🌙 Başucu Kitaplığını Düzenle':'⛓️ Yasaklı Rafı Düzenle','',
-    `<div>${rows||'<div style="font-style:italic;opacity:.5;padding:.5rem 0">Henüz kitap yok.</div>'}</div>
-    <div style="margin-top:.75rem;border-top:1px solid rgba(201,162,39,.15);padding-top:.75rem">
+    `<div id="manageBookList" style="max-height:50vh;overflow-y:auto">${rows}</div>
+    <div style="margin-top:.75rem;border-top:1px solid rgba(201,162,39,.15);padding-top:.75rem;display:flex;gap:.4rem;flex-wrap:wrap">
       <button class="btn btn-primary btn-sm" onclick="closeModal();openAddSpecialBook('${type}')">+ Kitap Ekle</button>
+      ${books.length?`<button class="btn btn-sm btn-danger" onclick="clearAllSpecialBooks('${type}')">🗑 Tümünü Sil</button>`:''}
     </div>`
   );
+}
+
+function removeSpecialBookInline(type,bookId){
+  const shelf=getSpecialShelf(type);
+  shelf.books=(shelf.books||[]).filter(b=>b.id!==bookId);
+  saveSpecialShelf(type,shelf);
+  renderSpecialShelves();
+  // Modalı kapat/aç yerine sadece listeyi güncelle
+  const row=document.getElementById('mrow-'+bookId);
+  if(row) row.remove();
+  // Liste boşaldıysa modalı yenile
+  const list=document.getElementById('manageBookList');
+  if(list&&!list.children.length) _renderManageModal(type);
+}
+
+function clearAllSpecialBooks(type){
+  if(!confirm('Tüm kitapları silmek istediğinden emin misin?')) return;
+  const shelf=getSpecialShelf(type);
+  shelf.books=[];
+  saveSpecialShelf(type,shelf);
+  renderSpecialShelves();
+  _renderManageModal(type);
 }
 
 function removeSpecialBook(type,bookId){
