@@ -367,8 +367,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   opacity:0;border-radius:inherit;transition:opacity 400ms ease;
 }
 .bedside-lamp-overlay.glow{opacity:1;}
-#bedsideOverlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 0%,transparent 100%);pointer-events:none;z-index:200;transition:background 700ms ease;}
-#bedsideOverlay.dim{background:radial-gradient(ellipse at center,transparent 15%,rgba(0,0,0,.88) 65%);}
+#bedsideOverlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 0%,transparent 100%);pointer-events:none;z-index:200;transition:background 1400ms ease;}
+#bedsideOverlay.dim{background:radial-gradient(ellipse at center,transparent 0%,rgba(0,0,0,.93) 52%);}
 .bedside-lamp-overlay{position:absolute;inset:0;pointer-events:none;z-index:210;background:radial-gradient(ellipse at 32% 50%,rgba(255,200,80,.5) 0%,rgba(255,160,20,.2) 30%,transparent 65%);opacity:0;border-radius:inherit;transition:opacity 700ms ease;}
 .bedside-corner-text{
   position:absolute;top:15%;left:0;right:0;display:flex;align-items:center;justify-content:center;
@@ -3732,20 +3732,19 @@ function _startBedsideAnim(shelf){
     if(cornerText){cornerText.style.opacity='1';cornerText.style.transform='translateY(0)';}
   },2400);
 
-  // 4. 5400ms: yazı solar
+  // 4. 5000ms: yazı solar
   setTimeout(()=>{
     if(cornerText){cornerText.style.transition='opacity 800ms ease';cornerText.style.opacity='0';}
-  },5400);
+  },5000);
 
-  // 5. 6200ms: aydınlanma
+  // 5. 5500ms: sayfa yavaşça aydınlanır (1400ms transition CSS'de)
   setTimeout(()=>{
-    if(overlay){overlay.style.transition='background 1400ms ease';overlay.classList.remove('dim');}
+    if(overlay) overlay.classList.remove('dim');
     if(lamp){lamp.style.transition='opacity 1400ms ease';lamp.style.opacity='0';}
     setTimeout(()=>{
-      if(overlay) overlay.style.transition='';
       document.body.style.overflow='';
     },1500);
-  },6200);
+  },5500);
 }
 
 function goToShelf(type){
