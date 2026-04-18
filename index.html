@@ -3669,12 +3669,6 @@ function renderSpecialShelfHtml(type){
 
   const centered=books.length<=SP_VISIBLE;
   const spineRowStyle=`display:flex;gap:6px;align-items:center;min-height:110px;overflow-x:auto;padding-bottom:.5rem;${centered?'justify-content:center;':''}`;
-
-  return`<div class="special-shelf">
-    <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;">
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;">
-        <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
-          <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
   const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
 
   return`<div class="special-shelf">
