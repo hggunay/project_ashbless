@@ -7522,12 +7522,19 @@ function renderBadges(){
       const chainEarned=chain.badges.filter(b=>bstat(b,books).earned).length;
       const chainTotal=chain.badges.length;
       const chainComplete=chainEarned===chainTotal;
+      const chainKey='chain-'+chain.id;
+      const chainOpen=prefs[chainKey]!==undefined?prefs[chainKey]:true;
       return`<div class="badge-chain">
-        <div class="badge-chain-header">
+        <div class="badge-chain-header" style="cursor:pointer" onclick="toggleSection('${chainKey}')">
           <span class="badge-chain-label">${chain.label}</span>
-          <span class="badge-chain-count" style="color:${chainComplete?'var(--gold)':'var(--rust)'}">${chainEarned}/${chainTotal}${chainComplete?' ✦':''}</span>
+          <span style="display:flex;align-items:center;gap:.4rem">
+            <span class="badge-chain-count" style="color:${chainComplete?'var(--gold)':'var(--rust)'}">${chainEarned}/${chainTotal}${chainComplete?' ✦':''}</span>
+            <span class="acc-arrow ${chainOpen?'open':''}" id="arr-${chainKey}">▶</span>
+          </span>
         </div>
-        <div class="badge-chain-cards">${chain.badges.map(b=>badgeCardHtml(b)).join('')}</div>
+        <div class="acc-body ${chainOpen?'open':''}" id="body-${chainKey}">
+          <div class="badge-chain-cards" style="padding-top:.4rem">${chain.badges.map(b=>badgeCardHtml(b)).join('')}</div>
+        </div>
       </div>`;
     }).join('');
 
@@ -9037,6 +9044,11 @@ async function init(){
     const bell=document.getElementById('notifBell');
     if(panel&&panel.style.display!=='none'&&!panel.contains(e.target)&&!bell?.contains(e.target)){
       panel.style.display='none';
+    }
+    // Badge tooltip dışa tıklayınca kapat
+    if(openBadgeId&&!e.target.closest('.badge-tooltip-wrap')){
+      openBadgeId=null;
+      renderBadges();
     }
   });
   try{
