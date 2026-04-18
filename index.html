@@ -335,8 +335,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .book-spine-title{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-family:'Crimson Pro',serif;font-size:clamp(.45rem,.7rem,1rem);font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:4px 3px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;word-break:break-word;line-height:1.2;}
 .spine-add-btn{width:clamp(24px,5vw,36px);min-width:clamp(24px,5vw,36px);height:100px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
-.special-shelf-scroll::-webkit-scrollbar{display:none;}
-.special-shelf-footer{padding:.5rem 1.25rem .75rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;}
+.special-shelf-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:thin;scrollbar-color:rgba(201,162,39,.4) transparent;}
+.special-shelf-scroll::-webkit-scrollbar{height:4px;}
+.special-shelf-scroll::-webkit-scrollbar-track{background:transparent;}
+.special-shelf-scroll::-webkit-scrollbar-thumb{background:rgba(201,162,39,.4);border-radius:2px;}
+@media(max-width:600px){.special-shelf-scroll{scrollbar-width:none;}.special-shelf-scroll::-webkit-scrollbar{display:none;}}
 
 .special-day-banner{
   background:linear-gradient(135deg,#2a1a05,#1a2a05);
@@ -3672,8 +3675,7 @@ function renderSpecialShelfHtml(type){
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
         <div style="display:flex;align-items:center;justify-content:center;padding:.5rem 0;min-height:110px;">
-          <div style="display:flex;gap:6px;align-items:center;overflow-x:auto;width:min(${SP_VISIBLE*42+60}px,80%);padding:.2rem .4rem;scrollbar-width:none;-ms-overflow-style:none;flex-shrink:0;">
-            ${spinesHtml}${addBtn}
+          <div class="special-shelf-scroll" style="display:flex;gap:6px;align-items:center;width:min(${SP_VISIBLE*42+60}px,80%);padding:.2rem .4rem;flex-shrink:0;">            ${spinesHtml}${addBtn}
           </div>
         </div>
       </div>
