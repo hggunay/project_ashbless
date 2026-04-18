@@ -338,36 +338,43 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 @keyframes lampGlow{
   0%{opacity:0;}
-  40%{opacity:.6;}
+  50%{opacity:1;}
   100%{opacity:0;}
 }
-@keyframes bedsideFadeIn{
-  0%{opacity:0;}
-  100%{opacity:1;}
+@keyframes bedsideShelfIn{
+  0%{opacity:0;transform:scale(.98);}
+  100%{opacity:1;transform:scale(1);}
 }
 @keyframes spineRise{
-  0%{opacity:0;transform:translateY(12px);}
+  0%{opacity:0;transform:translateY(10px);}
   100%{opacity:1;transform:translateY(0);}
 }
-@keyframes cornerText{
-  0%{opacity:0;}
-  100%{opacity:.7;}
+@keyframes cornerTextIn{
+  0%{opacity:0;transform:translateY(4px);}
+  100%{opacity:1;transform:translateY(0);}
+}
+@keyframes cornerTextOut{
+  0%{opacity:1;}
+  100%{opacity:0;}
+}
+@keyframes bodyDim{
+  0%{opacity:1;}
+  100%{opacity:.92;}
 }
 .bedside-lamp-overlay{
   position:absolute;inset:0;pointer-events:none;z-index:10;
-  background:radial-gradient(ellipse at 30% 40%,rgba(255,200,80,.25) 0%,transparent 65%);
-  opacity:0;border-radius:inherit;
+  background:radial-gradient(ellipse at 30% 40%,rgba(255,200,80,.3) 0%,transparent 65%);
+  opacity:0;border-radius:inherit;transition:opacity 400ms ease;
 }
-.bedside-lamp-overlay.glow{animation:lampGlow 600ms ease forwards;}
+.bedside-lamp-overlay.glow{opacity:1;}
 .bedside-corner-text{
-  position:absolute;bottom:.6rem;right:.8rem;
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   font-family:'Crimson Pro',serif;font-style:italic;
-  font-size:.72rem;color:rgba(255,200,80,.8);
-  opacity:0;pointer-events:none;z-index:11;
-  text-shadow:0 0 8px rgba(255,180,40,.6);
+  font-size:1.1rem;color:rgba(255,210,100,.95);
+  opacity:0;pointer-events:none;z-index:12;
+  text-shadow:0 0 20px rgba(255,180,40,.8),0 2px 8px rgba(0,0,0,.6);
+  letter-spacing:.05em;
 }
-.bedside-corner-text.show{animation:cornerText 400ms ease 500ms forwards;}
-.spine-rising{animation:spineRise 250ms ease forwards;opacity:0;}
 @keyframes glitch1{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}25%{clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}50%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}75%{clip-path:inset(10% 0 80% 0);transform:translate(3px,0)}}
 @keyframes glitch2{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(4px,0);opacity:.8}33%{clip-path:inset(80% 0 5% 0);transform:translate(-4px,0);opacity:.6}66%{clip-path:inset(20% 0 70% 0);transform:translate(2px,0);opacity:.9}}
 @keyframes glitchFade{0%{opacity:1}20%{opacity:.3}40%{opacity:.8}60%{opacity:.2}80%{opacity:.9}100%{opacity:1}}
@@ -3682,17 +3689,57 @@ function triggerBedside(){
   const overlay=shelf.querySelector('.bedside-lamp-overlay');
   const cornerText=shelf.querySelector('.bedside-corner-text');
   const spines=[...shelf.querySelectorAll('.book-spine')];
-  // Lamp glow
-  if(overlay){overlay.classList.remove('glow');void overlay.offsetWidth;overlay.classList.add('glow');}
-  // Spines rise with stagger
+
+  // 1. Ekran hafif kararır
+  document.body.style.transition='opacity 400ms ease';
+  document.body.style.opacity='.92';
+
+  // 2. 400ms sonra raf belirir
+  setTimeout(()=>{
+    if(bg){
+      bg.style.transition='opacity 500ms ease, transform 500ms ease';
+      bg.style.opacity='0';bg.style.transform='scale(.98)';
+      void bg.offsetWidth;
+      bg.style.opacity='1';bg.style.transform='scale(1)';
+    }
+    // Lamba glow
+    if(overlay) overlay.classList.add('glow');
+  },400);
+
+  // 3. 900ms sonra kitaplar sırayla yerleşir
   spines.forEach((sp,i)=>{
-    sp.style.animation='none';sp.style.opacity='0';
-    setTimeout(()=>{sp.classList.add('spine-rising');sp.style.animation='';},i*40);
-    setTimeout(()=>sp.classList.remove('spine-rising'),i*40+260);
+    sp.style.opacity='0';
+    sp.style.transform='translateY(10px)';
+    sp.style.transition='none';
+    setTimeout(()=>{
+      sp.style.transition='opacity 300ms ease, transform 300ms ease';
+      sp.style.opacity='1';
+      sp.style.transform='translateY(0)';
+    },900+i*80);
   });
-  // Corner text
-  if(cornerText){cornerText.classList.remove('show');void cornerText.offsetWidth;cornerText.classList.add('show');
-    setTimeout(()=>cornerText.classList.remove('show'),1200);}
+
+  // 4. 1800ms sonra "Burası senin köşen." belirir
+  setTimeout(()=>{
+    if(cornerText){
+      cornerText.style.transition='opacity 600ms ease, transform 600ms ease';
+      cornerText.style.transform='translateY(4px)';
+      cornerText.style.opacity='0';
+      void cornerText.offsetWidth;
+      cornerText.style.transform='translateY(0)';
+      cornerText.style.opacity='1';
+      // 3sn sonra yavaşça solar
+      setTimeout(()=>{
+        cornerText.style.transition='opacity 800ms ease';
+        cornerText.style.opacity='0';
+      },3000);
+    }
+  },1800);
+
+  // 5. Ekranı normale döndür
+  setTimeout(()=>{
+    document.body.style.opacity='1';
+    if(overlay) overlay.classList.remove('glow');
+  },2200);
 }
 
 function goToShelf(type){
