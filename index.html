@@ -9381,6 +9381,10 @@ async function init(){
     const btn=document.getElementById('scrollTopBtn');
     if(btn) btn.style.display=window.scrollY>300?'flex':'none';
   });
+  document.addEventListener('wheel',e=>{
+    const el=e.target.closest('.special-shelf-scroll');
+    if(el){e.preventDefault();el.scrollLeft+=e.deltaY;}
+  },{passive:false});
   document.addEventListener('click',e=>{
     const panel=document.getElementById('notifPanel');
     const bell=document.getElementById('notifBell');
