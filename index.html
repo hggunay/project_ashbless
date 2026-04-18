@@ -367,13 +367,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   opacity:0;border-radius:inherit;transition:opacity 400ms ease;
 }
 .bedside-lamp-overlay.glow{opacity:1;}
-#bedsideOverlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:200;transition:background 400ms ease;}
-#bedsideOverlay.dim{background:rgba(0,0,0,.75);}
+#bedsideOverlay{position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 0%,transparent 100%);pointer-events:none;z-index:200;transition:background 700ms ease;}
+#bedsideOverlay.dim{background:radial-gradient(ellipse at center,transparent 15%,rgba(0,0,0,.88) 65%);}
+.bedside-lamp-overlay{position:absolute;inset:0;pointer-events:none;z-index:210;background:radial-gradient(ellipse at 32% 50%,rgba(255,200,80,.5) 0%,rgba(255,160,20,.2) 30%,transparent 65%);opacity:0;border-radius:inherit;transition:opacity 700ms ease;}
 .bedside-corner-text{
   position:absolute;top:15%;left:0;right:0;display:flex;align-items:center;justify-content:center;
   font-family:'Crimson Pro',serif;font-style:italic;
   font-size:1.2rem;color:rgba(255,210,100,.95);
-  opacity:0;pointer-events:none;z-index:12;
+  opacity:0;pointer-events:none;z-index:220;
   text-shadow:0 0 20px rgba(255,180,40,.8),0 2px 8px rgba(0,0,0,.6);
   letter-spacing:.05em;transition:opacity 600ms ease,transform 600ms ease;transform:translateY(6px);
 }
@@ -3693,49 +3694,60 @@ function triggerBedside(){
   const cornerText=shelf.querySelector('.bedside-corner-text');
   const spines=[...shelf.querySelectorAll('.book-spine')];
 
-  // 1. Tüm sayfa kararır (400ms)
+  // Scroll sorununu önle
+  document.body.style.overflow='hidden';
+
+  // 1. Periferden merkeze kararma (700ms)
   if(overlay) overlay.classList.add('dim');
 
-  // 2. 500ms: lamba yanar
+  // 2. 800ms: lamba yanar
   setTimeout(()=>{
-    if(lampOverlay){lampOverlay.style.transition='opacity 500ms ease';lampOverlay.style.opacity='1';}
-  },500);
+    if(lampOverlay) lampOverlay.style.opacity='1';
+  },800);
 
-  // 3. 900ms: kitaplar sırayla yerleşir
+  // 3. 1200ms: kitaplar sırayla yerleşir (120ms arayla)
   spines.forEach((sp,i)=>{
     sp.style.opacity='0';
     sp.style.transform='translateY(10px)';
     sp.style.transition='none';
     setTimeout(()=>{
-      sp.style.transition='opacity 300ms ease, transform 300ms ease';
+      sp.style.transition='opacity 350ms ease, transform 350ms ease';
       sp.style.opacity='1';
       sp.style.transform='translateY(0)';
-    },900+i*80);
+    },1200+i*120);
   });
 
-  // 4. 1800ms: yazı belirir
+  // 4. 2400ms: "Burası senin köşen." belirir
   setTimeout(()=>{
     if(cornerText){
       cornerText.style.opacity='1';
       cornerText.style.transform='translateY(0)';
     }
-  },1800);
+  },2400);
 
-  // 5. 4800ms: yazı solar
+  // 5. 5400ms: yazı solar
   setTimeout(()=>{
     if(cornerText){
       cornerText.style.transition='opacity 800ms ease';
       cornerText.style.opacity='0';
     }
-  },4800);
+  },5400);
 
-  // 6. 5600ms: sayfa yavaşça aydınlanır
+  // 6. 6200ms: sayfa yavaşça aydınlanır
   setTimeout(()=>{
-    if(overlay){overlay.style.transition='background 1200ms ease';overlay.classList.remove('dim');}
-    if(lampOverlay){lampOverlay.style.transition='opacity 1200ms ease';lampOverlay.style.opacity='0';}
-    // Overlay'i sıfırla
-    setTimeout(()=>{if(overlay)overlay.style.transition='';},1300);
-  },5600);
+    if(overlay){
+      overlay.style.transition='background 1400ms ease';
+      overlay.classList.remove('dim');
+    }
+    if(lampOverlay){
+      lampOverlay.style.transition='opacity 1400ms ease';
+      lampOverlay.style.opacity='0';
+    }
+    setTimeout(()=>{
+      if(overlay) overlay.style.transition='';
+      document.body.style.overflow='';
+    },1500);
+  },6200);
 }
 
 function goToShelf(type){
