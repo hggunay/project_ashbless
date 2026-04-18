@@ -3653,7 +3653,8 @@ function renderSpecialShelfHtml(type){
   const spineColors=isBedside?SPINE_COLORS_BEDSIDE:SPINE_COLORS_FORBIDDEN;
 
 
-  const spinesHtml=books.map((b,i)=>{
+  const visibleBooks=books.slice(0,SP_VISIBLE);
+  const spinesHtml=visibleBooks.map((b,i)=>{
     const col=spineColors[i%spineColors.length];
     const safeTitle=(b.title||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
     return`<div class="book-spine" style="background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}">
@@ -3661,8 +3662,7 @@ function renderSpecialShelfHtml(type){
     </div>`;
   }).join('');
 
-  const centered=books.length<=SP_VISIBLE&&books.length>0;
-  const spineRowStyle=`display:flex;gap:6px;align-items:center;min-height:110px;overflow-x:auto;padding:.5rem 1rem;width:100%;box-sizing:border-box;${centered?'justify-content:center;':'justify-content:flex-start;'}`;
+  const spineRowStyle=`display:flex;gap:6px;align-items:center;justify-content:center;min-height:110px;padding:.5rem 1rem;flex-wrap:nowrap;width:100%;box-sizing:border-box;`;
   const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
 
   return`<div class="special-shelf">
@@ -3672,14 +3672,14 @@ function renderSpecialShelfHtml(type){
           <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
-        <div style="${spineRowStyle}">${spinesHtml}${addBtn}</div>
+        <div style="${spineRowStyle}">${spinesHtml}${books.length<SP_VISIBLE?addBtn:''}</div>
       </div>
     </div>
     <div class="special-shelf-footer" style="background:${isBedside?'rgba(26,15,0,.95)':'rgba(13,0,16,.95)'}">
-      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${titleColor};opacity:.7">${books.length}/${maxBooks} kitap</span>
+      <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${titleColor};opacity:.7">${books.length}/${maxBooks} kitap${books.length>SP_VISIBLE?` · rafta ${SP_VISIBLE} gösteriliyor`:''}</span>
       ${isMe?`<div style="display:flex;gap:.4rem">
-        ${canAdd?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:${titleColor};border:1px solid ${accentColor}" onclick="openAddSpecialBook('${type}')">+ Ekle</button>`:''}
-        ${books.length?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(138,69,19,.2)" onclick="openManageSpecialShelf('${type}')">⚙️ Düzenle</button>`:''}
+        ${canAdd&&books.length<SP_VISIBLE?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:${titleColor};border:1px solid ${accentColor}" onclick="openAddSpecialBook('${type}')">+ Ekle</button>`:''}
+        ${books.length?`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(138,69,19,.2)" onclick="openManageSpecialShelf('${type}')">⚙️ Düzenle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;background:rgba(201,162,39,.1);color:${titleColor};border:1px solid ${accentColor}" onclick="openAddSpecialBook('${type}')">+ Ekle</button>`}
       </div>`:''}
     </div>
   </div>`;
