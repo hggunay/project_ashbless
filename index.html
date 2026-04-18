@@ -1803,11 +1803,11 @@ const BADGE_CATS = [
     {id:'gizli', label:'🔮 Gizli', badges:[
       {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', imgSrc:'badge_ashbless.png', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
         const hasBook=b.length>0;
-        const hasRead=b.some(x=>x.readingStatus==='new');
+        const hasRead=b.some(x=>x.readingStatus==='new'||x.readingStatus==='past');
         const hasSeries=Object.keys(mySeriesData().series||{}).length>0;
         const hasStory=(db.stories&&db.stories[me]&&db.stories[me].length>0);
         const hasShelf=(()=>{const s=db.shelf||{};const ud=s[me]||s;return Object.keys(ud).some(k=>k!=='mags'&&typeof ud[k]==='object'&&ud[k].books&&ud[k].books.length>0);})();
-        const hasCountry=b.some(x=>x.country&&x.readingStatus==='new'&&!x.retroactive);
+        const hasCountry=b.some(x=>x.country&&(x.readingStatus==='new'||x.readingStatus==='past'));
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
       {id:'secret_author',tier:'diamond',icon:'🔍', name:'Yazar Hayranı',   desc:'Aynı yazardan 3 veya daha fazla kitap oku.', check:b=>flag(Object.values(b.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{})).some(c=>c>=3))},
@@ -1944,7 +1944,7 @@ const REGIONS={
 };
 
 // Seri rozetleri retroactive kitapları da sayar, diğerleri saymaz
-const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis']);
+const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis','secret_ashbless']);
 
 function isRetroactive(b){
   if(b.retroactive) return true;
