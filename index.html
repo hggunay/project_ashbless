@@ -334,7 +334,40 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   75%{filter:hue-rotate(0deg) saturate(1) brightness(1.5);transform:skewX(2deg) translateX(2px);}
   100%{filter:none;transform:none;}
 }
-.glitch-bg-active{animation:glitchBg 200ms steps(2) forwards;}
+.glitch-bg-active{animation:glitchBg 400ms steps(3) forwards;}
+
+@keyframes lampGlow{
+  0%{opacity:0;}
+  40%{opacity:.6;}
+  100%{opacity:0;}
+}
+@keyframes bedsideFadeIn{
+  0%{opacity:0;}
+  100%{opacity:1;}
+}
+@keyframes spineRise{
+  0%{opacity:0;transform:translateY(12px);}
+  100%{opacity:1;transform:translateY(0);}
+}
+@keyframes cornerText{
+  0%{opacity:0;}
+  100%{opacity:.7;}
+}
+.bedside-lamp-overlay{
+  position:absolute;inset:0;pointer-events:none;z-index:10;
+  background:radial-gradient(ellipse at 30% 40%,rgba(255,200,80,.25) 0%,transparent 65%);
+  opacity:0;border-radius:inherit;
+}
+.bedside-lamp-overlay.glow{animation:lampGlow 600ms ease forwards;}
+.bedside-corner-text{
+  position:absolute;bottom:.6rem;right:.8rem;
+  font-family:'Crimson Pro',serif;font-style:italic;
+  font-size:.72rem;color:rgba(255,200,80,.8);
+  opacity:0;pointer-events:none;z-index:11;
+  text-shadow:0 0 8px rgba(255,180,40,.6);
+}
+.bedside-corner-text.show{animation:cornerText 400ms ease 500ms forwards;}
+.spine-rising{animation:spineRise 250ms ease forwards;opacity:0;}
 @keyframes glitch1{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}25%{clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}50%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}75%{clip-path:inset(10% 0 80% 0);transform:translate(3px,0)}}
 @keyframes glitch2{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(4px,0);opacity:.8}33%{clip-path:inset(80% 0 5% 0);transform:translate(-4px,0);opacity:.6}66%{clip-path:inset(20% 0 70% 0);transform:translate(2px,0);opacity:.9}}
 @keyframes glitchFade{0%{opacity:1}20%{opacity:.3}40%{opacity:.8}60%{opacity:.2}80%{opacity:.9}100%{opacity:1}}
@@ -3639,19 +3672,41 @@ function triggerGlitch(titleEl){
   bg.classList.remove('glitch-bg-active');
   void bg.offsetWidth;
   bg.classList.add('glitch-bg-active');
-  setTimeout(()=>bg.classList.remove('glitch-bg-active'),220);
+  setTimeout(()=>bg.classList.remove('glitch-bg-active'),420);
+}
+
+function triggerBedside(){
+  const shelf=document.querySelector('#specialShelvesContainer .special-shelf');
+  if(!shelf) return;
+  const bg=shelf.querySelector('.special-shelf-bg');
+  const overlay=shelf.querySelector('.bedside-lamp-overlay');
+  const cornerText=shelf.querySelector('.bedside-corner-text');
+  const spines=[...shelf.querySelectorAll('.book-spine')];
+  // Lamp glow
+  if(overlay){overlay.classList.remove('glow');void overlay.offsetWidth;overlay.classList.add('glow');}
+  // Spines rise with stagger
+  spines.forEach((sp,i)=>{
+    sp.style.animation='none';sp.style.opacity='0';
+    setTimeout(()=>{sp.classList.add('spine-rising');sp.style.animation='';},i*40);
+    setTimeout(()=>sp.classList.remove('spine-rising'),i*40+260);
+  });
+  // Corner text
+  if(cornerText){cornerText.classList.remove('show');void cornerText.offsetWidth;cornerText.classList.add('show');
+    setTimeout(()=>cornerText.classList.remove('show'),1200);}
 }
 
 function goToShelf(type){
   showPanel('shelf',document.querySelector('[onclick*=shelf]'));
   openBadgeId=null;
   renderBadges();
-  if(type==='forbidden'){
-    setTimeout(()=>{
+  setTimeout(()=>{
+    if(type==='forbidden'){
       const el=document.querySelector('.glitch-target');
       triggerGlitch(el);
-    },300);
-  }
+    } else if(type==='bedside'){
+      triggerBedside();
+    }
+  },350);
 }
 
 // ── ÖZEL RAFLAR (Başucu & Yasaklı) ───────────────────────────
@@ -3738,11 +3793,15 @@ function renderSpecialShelfHtml(type){
   const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
 
   const titleEl=isBedside
-    ?`<div class="special-shelf-title" style="color:${titleColor}">${title}</div>`
+    ?`<div class="special-shelf-title" style="color:${titleColor};cursor:pointer" onclick="triggerBedside()">${title}</div>`
     :`<div class="special-shelf-title glitch-target" data-glitch="⛓️ Yasaklı Raf" onclick="triggerGlitch(this)" style="color:${titleColor};cursor:pointer;border-bottom:1px solid #4c1d95;display:inline-block;padding-bottom:1px" title="Glitch">${title}</div>`;
+  const extraOverlay=isBedside
+    ?`<div class="bedside-lamp-overlay"></div><div class="bedside-corner-text">Burası senin köşen.</div>`
+    :'';
 
   return`<div class="special-shelf">
     <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;width:100%;">
+      ${extraOverlay}
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;width:100%;">
         <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
           ${titleEl}
