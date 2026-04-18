@@ -3652,9 +3652,6 @@ function renderSpecialShelfHtml(type){
   const sub=isBedside?'Yastığının altındaki kitaplar':'Yasak bilginin saklandığı yer';
   const spineColors=isBedside?SPINE_COLORS_BEDSIDE:SPINE_COLORS_FORBIDDEN;
 
-  // İlk SP_VISIBLE kitap görünür, kalanlar scroll ile
-  const visibleBooks=books.slice(0,SP_VISIBLE);
-  const hasMore=books.length>SP_VISIBLE;
 
   const spinesHtml=books.map((b,i)=>{
     const col=spineColors[i%spineColors.length];
@@ -3664,13 +3661,13 @@ function renderSpecialShelfHtml(type){
     </div>`;
   }).join('');
 
-  const centered=books.length<=SP_VISIBLE;
-  const spineRowStyle=`display:flex;gap:6px;align-items:center;min-height:110px;overflow-x:auto;padding:.5rem 1rem;${centered?'justify-content:center;':''}`;
+  const centered=books.length<=SP_VISIBLE&&books.length>0;
+  const spineRowStyle=`display:flex;gap:6px;align-items:center;min-height:110px;overflow-x:auto;padding:.5rem 1rem;width:100%;box-sizing:border-box;${centered?'justify-content:center;':'justify-content:flex-start;'}`;
   const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
 
   return`<div class="special-shelf">
-    <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;">
-      <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;">
+    <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;width:100%;">
+      <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;width:100%;">
         <div style="padding:.75rem 1.25rem .3rem;background:linear-gradient(180deg,rgba(0,0,0,.6) 0%,transparent 100%)">
           <div class="special-shelf-title" style="color:${titleColor}">${title}</div>
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
@@ -3697,9 +3694,9 @@ function openSpecialBook(type,bookId){
   const isMe=!viewing;
   // Kitaplığımda eşleşen kitabı bul
   const libBook=book.libId?(db.books[viewing||me]||[]).find(b=>b.id==book.libId):null;
-  const libLink=libBook?`<button class="btn btn-sm" style="font-size:.7rem;margin-top:.75rem;background:rgba(201,162,39,.1);color:var(--leather);border:1px solid rgba(201,162,39,.3)" onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id}),100)">📖 Kitaplığımda Aç</button>`:'';
+  const libLink=libBook?`<button class="btn btn-sm" style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--leather);border:1px solid rgba(201,162,39,.3)" onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id},true),150)">📖 Kitaplığımda Aç</button>`:'';
   showSimpleModal(
-    `<span style="cursor:${libBook?'pointer':'default'};color:${col}" ${libBook?`onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id}),100)"`:''}>${book.title||'Kitap'}</span>`,
+    `<span style="cursor:${libBook?'pointer':'default'};color:${col}" ${libBook?`onclick="closeModal();showPanel('myBooks',document.querySelector('[onclick*=myBooks]'));setTimeout(()=>openBook(${libBook.id},true),150)"`:''}>${book.title||'Kitap'}</span>`,
     book.author?`<span style="font-style:italic;color:var(--rust)">${book.author}</span>`:'',
     `<div style="padding:.25rem 0">
       ${book.why?`<div style="background:rgba(201,162,39,.06);border-left:3px solid ${col};padding:.5rem .75rem;border-radius:0 4px 4px 0;font-style:italic;font-size:.9rem;line-height:1.6;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow-y:auto;margin-bottom:.75rem">"${book.why}"</div>`:''}
@@ -3718,26 +3715,34 @@ function openEditSpecialBook(type,bookId){
   if(!book) return;
   const isBedside=type==='bedside';
   const whyLabel=isBedside?'"Neden bu kitap?"':'Neden yasaklı?';
+  const hasLib=!!book.libId;
   showSimpleModal(
     '✏️ Düzenle','',
     `<div style="display:flex;flex-direction:column;gap:.6rem">
-      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Kitap Adı</div>
-      <input id="spETitle" class="detail-input" type="text" value="${(book.title||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
-      <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Yazar</div>
-      <input id="spEAuthor" class="detail-input" type="text" value="${(book.author||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
+      ${hasLib?`
+        <div style="font-size:.85rem;font-weight:600;color:var(--ink)">${book.title}</div>
+        ${book.author?`<div style="font-size:.78rem;color:var(--rust)">${book.author}</div>`:''}
+      `:`
+        <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Kitap Adı</div>
+        <input id="spETitle" class="detail-input" type="text" value="${(book.title||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
+        <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">Yazar</div>
+        <input id="spEAuthor" class="detail-input" type="text" value="${(book.author||'').replace(/"/g,'&quot;')}" style="width:100%"/></div>
+      `}
       <div><div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.2rem">${whyLabel}</div>
       <textarea id="spEWhy" class="detail-input" rows="3" style="width:100%;resize:vertical">${book.why||''}</textarea></div>
-      <button class="btn btn-primary" onclick="saveEditSpecialBook('${type}','${bookId}')">💾 Kaydet</button>
+      <button class="btn btn-primary" onclick="saveEditSpecialBook('${type}','${bookId}',${hasLib})">💾 Kaydet</button>
     </div>`
   );
 }
 
-function saveEditSpecialBook(type,bookId){
+function saveEditSpecialBook(type,bookId,hasLib){
   const shelf=getSpecialShelf(type);
   const book=(shelf.books||[]).find(b=>b.id===bookId);
   if(!book) return;
-  book.title=(document.getElementById('spETitle')?.value||'').trim()||book.title;
-  book.author=(document.getElementById('spEAuthor')?.value||'').trim();
+  if(!hasLib){
+    book.title=(document.getElementById('spETitle')?.value||'').trim()||book.title;
+    book.author=(document.getElementById('spEAuthor')?.value||'').trim();
+  }
   book.why=(document.getElementById('spEWhy')?.value||'').trim();
   saveSpecialShelf(type,shelf);
   closeModal();
@@ -4678,7 +4683,7 @@ function confirmRemoveBookFinal(id, deleteNote){
 }
 
 // ── MODAL ─────────────────────────────────────────────────────
-function openBook(bookId){
+function openBook(bookId,fromShelf=false){
   const book=targetBooks().find(b=>b.id===bookId);
   if(!book)return;
   modalBookId=bookId;
@@ -4895,6 +4900,7 @@ function openBook(bookId){
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        ${fromShelf?'':`
         ${book.readingStatus==='reading'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
           <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="pauseReading(${book.id})">🚧 Yarım bırak</button>
@@ -4914,6 +4920,7 @@ function openBook(bookId){
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="addToShelfFromLibrary(${book.id})">🗄️ Rafa Ekle</button>
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
+        `}
       </div>`
     :'';
 
