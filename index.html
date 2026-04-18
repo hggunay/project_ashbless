@@ -613,6 +613,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 <!-- APP -->
 <div id="appScreen">
 <div id="bedsideOverlay"></div>
+<div id="bedsideLamp" style="position:fixed;inset:0;pointer-events:none;z-index:201;opacity:0;transition:opacity 700ms ease;background:radial-gradient(ellipse at center,rgba(255,200,80,.4) 0%,rgba(255,160,20,.15) 25%,transparent 55%);"></div>
 <button id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Yukarı çık">▲</button>
   <div class="header">
     <div class="club-name">The Armchair Adventurers</div>
@@ -3690,22 +3691,21 @@ function triggerBedside(){
   const shelf=document.querySelector('#specialShelvesContainer .special-shelf');
   if(!shelf) return;
   const overlay=document.getElementById('bedsideOverlay');
-  const lampOverlay=shelf.querySelector('.bedside-lamp-overlay');
+  const lamp=document.getElementById('bedsideLamp');
   const cornerText=shelf.querySelector('.bedside-corner-text');
   const spines=[...shelf.querySelectorAll('.book-spine')];
 
-  // Scroll sorununu önle
   document.body.style.overflow='hidden';
 
-  // 1. Periferden merkeze kararma (700ms)
+  // 1. Periferden merkeze kararma
   if(overlay) overlay.classList.add('dim');
 
-  // 2. 800ms: lamba yanar
+  // 2. 800ms: merkezdeki lamba yanar
   setTimeout(()=>{
-    if(lampOverlay) lampOverlay.style.opacity='1';
+    if(lamp) lamp.style.opacity='1';
   },800);
 
-  // 3. 1200ms: kitaplar sırayla yerleşir (120ms arayla)
+  // 3. 1200ms: kitaplar sırayla yerleşir
   spines.forEach((sp,i)=>{
     sp.style.opacity='0';
     sp.style.transform='translateY(10px)';
@@ -3717,7 +3717,7 @@ function triggerBedside(){
     },1200+i*120);
   });
 
-  // 4. 2400ms: "Burası senin köşen." belirir
+  // 4. 2400ms: yazı belirir
   setTimeout(()=>{
     if(cornerText){
       cornerText.style.opacity='1';
@@ -3735,16 +3735,11 @@ function triggerBedside(){
 
   // 6. 6200ms: sayfa yavaşça aydınlanır
   setTimeout(()=>{
-    if(overlay){
-      overlay.style.transition='background 1400ms ease';
-      overlay.classList.remove('dim');
-    }
-    if(lampOverlay){
-      lampOverlay.style.transition='opacity 1400ms ease';
-      lampOverlay.style.opacity='0';
-    }
+    if(overlay){overlay.style.transition='background 1400ms ease';overlay.classList.remove('dim');}
+    if(lamp){lamp.style.transition='opacity 1400ms ease';lamp.style.opacity='0';}
     setTimeout(()=>{
       if(overlay) overlay.style.transition='';
+      if(lamp) lamp.style.transition='opacity 700ms ease';
       document.body.style.overflow='';
     },1500);
   },6200);
