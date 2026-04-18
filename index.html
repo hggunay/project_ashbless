@@ -367,13 +367,15 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   opacity:0;border-radius:inherit;transition:opacity 400ms ease;
 }
 .bedside-lamp-overlay.glow{opacity:1;}
+#bedsideOverlay{position:fixed;inset:0;background:rgba(0,0,0,0);pointer-events:none;z-index:200;transition:background 400ms ease;}
+#bedsideOverlay.dim{background:rgba(0,0,0,.75);}
 .bedside-corner-text{
-  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  position:absolute;top:15%;left:0;right:0;display:flex;align-items:center;justify-content:center;
   font-family:'Crimson Pro',serif;font-style:italic;
-  font-size:1.1rem;color:rgba(255,210,100,.95);
+  font-size:1.2rem;color:rgba(255,210,100,.95);
   opacity:0;pointer-events:none;z-index:12;
   text-shadow:0 0 20px rgba(255,180,40,.8),0 2px 8px rgba(0,0,0,.6);
-  letter-spacing:.05em;
+  letter-spacing:.05em;transition:opacity 600ms ease,transform 600ms ease;transform:translateY(6px);
 }
 @keyframes glitch1{0%,100%{clip-path:inset(0 0 95% 0);transform:translate(-4px,0)}25%{clip-path:inset(30% 0 50% 0);transform:translate(4px,0)}50%{clip-path:inset(60% 0 20% 0);transform:translate(-2px,0)}75%{clip-path:inset(10% 0 80% 0);transform:translate(3px,0)}}
 @keyframes glitch2{0%,100%{clip-path:inset(50% 0 30% 0);transform:translate(4px,0);opacity:.8}33%{clip-path:inset(80% 0 5% 0);transform:translate(-4px,0);opacity:.6}66%{clip-path:inset(20% 0 70% 0);transform:translate(2px,0);opacity:.9}}
@@ -609,6 +611,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 <!-- APP -->
 <div id="appScreen">
+<div id="bedsideOverlay"></div>
 <button id="scrollTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="Yukarı çık">▲</button>
   <div class="header">
     <div class="club-name">The Armchair Adventurers</div>
@@ -3685,28 +3688,20 @@ function triggerGlitch(titleEl){
 function triggerBedside(){
   const shelf=document.querySelector('#specialShelvesContainer .special-shelf');
   if(!shelf) return;
-  const bg=shelf.querySelector('.special-shelf-bg');
-  const overlay=shelf.querySelector('.bedside-lamp-overlay');
+  const overlay=document.getElementById('bedsideOverlay');
+  const lampOverlay=shelf.querySelector('.bedside-lamp-overlay');
   const cornerText=shelf.querySelector('.bedside-corner-text');
   const spines=[...shelf.querySelectorAll('.book-spine')];
 
-  // 1. Ekran hafif kararır
-  document.body.style.transition='opacity 400ms ease';
-  document.body.style.opacity='.92';
+  // 1. Tüm sayfa kararır (400ms)
+  if(overlay) overlay.classList.add('dim');
 
-  // 2. 400ms sonra raf belirir
+  // 2. 500ms: lamba yanar
   setTimeout(()=>{
-    if(bg){
-      bg.style.transition='opacity 500ms ease, transform 500ms ease';
-      bg.style.opacity='0';bg.style.transform='scale(.98)';
-      void bg.offsetWidth;
-      bg.style.opacity='1';bg.style.transform='scale(1)';
-    }
-    // Lamba glow
-    if(overlay) overlay.classList.add('glow');
-  },400);
+    if(lampOverlay){lampOverlay.style.transition='opacity 500ms ease';lampOverlay.style.opacity='1';}
+  },500);
 
-  // 3. 900ms sonra kitaplar sırayla yerleşir
+  // 3. 900ms: kitaplar sırayla yerleşir
   spines.forEach((sp,i)=>{
     sp.style.opacity='0';
     sp.style.transform='translateY(10px)';
@@ -3718,28 +3713,29 @@ function triggerBedside(){
     },900+i*80);
   });
 
-  // 4. 1800ms sonra "Burası senin köşen." belirir
+  // 4. 1800ms: yazı belirir
   setTimeout(()=>{
     if(cornerText){
-      cornerText.style.transition='opacity 600ms ease, transform 600ms ease';
-      cornerText.style.transform='translateY(4px)';
-      cornerText.style.opacity='0';
-      void cornerText.offsetWidth;
-      cornerText.style.transform='translateY(0)';
       cornerText.style.opacity='1';
-      // 3sn sonra yavaşça solar
-      setTimeout(()=>{
-        cornerText.style.transition='opacity 800ms ease';
-        cornerText.style.opacity='0';
-      },3000);
+      cornerText.style.transform='translateY(0)';
     }
   },1800);
 
-  // 5. Ekranı normale döndür
+  // 5. 4800ms: yazı solar
   setTimeout(()=>{
-    document.body.style.opacity='1';
-    if(overlay) overlay.classList.remove('glow');
-  },2200);
+    if(cornerText){
+      cornerText.style.transition='opacity 800ms ease';
+      cornerText.style.opacity='0';
+    }
+  },4800);
+
+  // 6. 5600ms: sayfa yavaşça aydınlanır
+  setTimeout(()=>{
+    if(overlay){overlay.style.transition='background 1200ms ease';overlay.classList.remove('dim');}
+    if(lampOverlay){lampOverlay.style.transition='opacity 1200ms ease';lampOverlay.style.opacity='0';}
+    // Overlay'i sıfırla
+    setTimeout(()=>{if(overlay)overlay.style.transition='';},1300);
+  },5600);
 }
 
 function goToShelf(type){
