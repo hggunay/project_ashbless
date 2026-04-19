@@ -2854,6 +2854,8 @@ function enterApp(){
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   showSpecialDayBanner();
   setTimeout(()=>checkNotifications(),1200);
+  // AudioContext önceden ısıt
+  try{_getNmAudioCtx();}catch(e){};
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
@@ -9718,15 +9720,22 @@ function tryShowNightMessage() {
   localStorage.setItem("lastNightMessage", message);
 }
 
+// 🌙 Global AudioContext — önceden hazır
+let _nmAudioCtx = null;
+function _getNmAudioCtx() {
+  if (!_nmAudioCtx) _nmAudioCtx = new AudioContext();
+  return _nmAudioCtx;
+}
+
 // 🌙 UI gösterim
 function showNightMessage(text) {
   const toast = document.createElement('div');
   toast.className = 'night-toast';
-  toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;opacity:1;';
+  toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:9990;opacity:0;';
   document.body.appendChild(toast);
 
   // Chime — hemen
-  const ctx = new AudioContext();
+  const ctx = _getNmAudioCtx();
   [[4186,0],[4699,0.10],[5274,0.20],[6272,0.30],[7040,0.40],[7902,0.50]].forEach(([freq,delay])=>{
     const o=ctx.createOscillator(),g=ctx.createGain();
     o.type='sine';o.frequency.value=freq;
@@ -9738,20 +9747,35 @@ function showNightMessage(text) {
   });
 
   // Görsel — 200ms sonra
-  setTimeout(() => {
-    text.split('').forEach((ch, i) => {
-      const span = document.createElement('span');
-      span.textContent = ch === ' ' ? '\u00A0' : ch;
-      span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
+  setTimeout(()=>{
+    text.split('').forEach((ch,i)=>{
+      const span=document.createElement('span');
+      span.textContent=ch===' '?'\u00A0':ch;
+      span.style.cssText=`display:inline-block;opacity:0;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
       toast.appendChild(span);
-      setTimeout(() => nmSpawnParticles(toast), i * 55 + 100);
+      setTimeout(()=>{
+        const rect=toast.getBoundingClientRect();
+        for(let j=0;j<3;j++){
+          const p=document.createElement('div');
+          const size=Math.random()*4+2;
+          const x=rect.left+(i/text.length)*rect.width+(Math.random()-.5)*16;
+          const y=rect.top+rect.height/2;
+          const dx=(Math.random()-.5)*60;
+          const dy=-(15+Math.random()*50);
+          p.style.cssText=`position:fixed;width:${size}px;height:${size}px;left:${x}px;top:${y}px;border-radius:50%;background:#e8c85a;opacity:1;transition:transform 0.7s ease,opacity 0.7s ease;z-index:9999;pointer-events:none;`;
+          document.body.appendChild(p);
+          requestAnimationFrame(()=>requestAnimationFrame(()=>{p.style.transform=`translate(${dx}px,${dy}px)`;p.style.opacity='0';}));
+          setTimeout(()=>p.remove(),800);
+        }
+      },i*55+100);
     });
-    setTimeout(() => {
-      toast.style.transition = 'opacity 0.8s ease';
-      toast.style.opacity = '0';
-      setTimeout(() => { if(toast.parentNode) toast.remove(); }, 800);
-    }, text.length * 55 + 3000);
-  }, 200);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{toast.style.transition='opacity 0.3s ease';toast.style.opacity='1';}));
+    setTimeout(()=>{
+      toast.style.transition='opacity 0.8s ease';
+      toast.style.opacity='0';
+      setTimeout(()=>{if(toast.parentNode)toast.remove();},800);
+    },text.length*55+3000);
+  },200);
 }
 
 function nmSpawnParticles(toast) {
