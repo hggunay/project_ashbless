@@ -2872,8 +2872,19 @@ function enterApp(){
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
-  // Gece yarısı mesajı — uygulama açıldıktan 2 saniye sonra dene
-  setTimeout(()=>tryShowNightMessage(), 2000);
+  // Gece yarısı mesajı — 10 saniye sonra, sekme aktifse göster
+  setTimeout(()=>{
+    if(document.visibilityState==='visible') tryShowNightMessage();
+    else{
+      const onVisible=()=>{
+        if(document.visibilityState==='visible'){
+          tryShowNightMessage();
+          document.removeEventListener('visibilitychange',onVisible);
+        }
+      };
+      document.addEventListener('visibilitychange',onVisible);
+    }
+  }, 10000);
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
