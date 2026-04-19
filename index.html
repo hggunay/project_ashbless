@@ -8784,7 +8784,7 @@ function launchConfetti(type){
   const isCreator=type==='creator';
   const count=isCreator?200:isAshbless?120:isSecret?80:isBadge?40:isGroup?180:80;
   const gravity=isCreator?0.18:isAshbless?0.22:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
-  const spread=isCreator?2.8:isAshbless?2.2:isSecret?1.8:isGroup?1.6:isBadge?0.8:1.2;
+  const spread=isCreator?1.8:isAshbless?1.6:isSecret?1.4:isGroup?1.6:isBadge?0.8:1.2;
 
   const goldPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#b8860b'];
   const colorPalette=['#c9a227','#8a4513','#4a6741','#6b3a2a','#f0d060','#c17f3c','#2d5a3d'];
@@ -8805,7 +8805,7 @@ function launchConfetti(type){
   }
 
   const particles=Array.from({length:count},()=>({
-    x:canvas.width*(isGroup?Math.random():isAshbless||isCreator?0.2+Math.random()*0.6:isSecret?0.25+Math.random()*0.5:0.3+Math.random()*0.4),
+    x:canvas.width*(isGroup?Math.random():isAshbless||isCreator?0.3+Math.random()*0.4:isSecret?0.3+Math.random()*0.4:0.3+Math.random()*0.4),
     y:isGroup||isAshbless||isCreator||isSecret?-10:canvas.height*0.35,
     vx:(Math.random()-0.5)*spread*(isGroup||isAshbless||isCreator?9:isSecret?7:6),
     vy:-(Math.random()*(isGroup||isAshbless||isCreator?16:isSecret?13:9)+4),
