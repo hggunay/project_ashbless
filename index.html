@@ -1955,7 +1955,7 @@ const BADGE_CATS = [
         }},
       {id:'secret_forbidden',tier:'diamond',icon:'⛓️', name:'Yasaklı Bilgi', imgSrc:'yasaklibilgi.png', desc:'Korku, Felsefe ve Mitoloji türlerinden her birinde en az 3 kitap oku.',
         check:b=>flag(genre(b,'korku',3).cur>=3&&genre(b,'felsefe',3).cur>=3&&genre(b,'mitoloji',3).cur>=3)},
-      {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Tim Powers\'ın Anubis Kapıları\'nı oku.', imgSrc:'badge_anubis.png',
+      {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Zamanın çizgisel olmadığını fark ettin. Ashbless\'in izini sürerken, aslında kendi izine rastladın.\nBazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.\n\nGecenin On İki Saati\n\n"Ve bir nehir uzanır\nAlacakaranlıkla şafak arasında.\nVe saatler mesafedir, değişken gecenin\nEngin gelgitinde ölçülen —\nKorku duymayacak kadar felakete mahkûm,\nİhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor\nGözkamaştırıcı bir ışık gibi parlayan karanlığın içine\nGecenin On İki Saati\'nde."\n— William Ashbless (buluntu metin)', imgSrc:'badge_anubis.png',
         check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
