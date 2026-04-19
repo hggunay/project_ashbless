@@ -9805,17 +9805,18 @@ function tryShowNightMessage() {
   const message =
     availableMessages[Math.floor(Math.random() * availableMessages.length)];
 
-  showNightMessage(message);
-
-  // Kaydet
+  // Önce kaydet, sonra göster — çift tetiklenmeyi engeller
   localStorage.setItem("nightMessageDate", today);
   localStorage.setItem("lastNightMessage", message);
+
+  showNightMessage(message);
 }
 
 // 🌙 Global AudioContext — önceden hazır
 let _nmAudioCtx = null;
 function _getNmAudioCtx() {
   if (!_nmAudioCtx) _nmAudioCtx = new AudioContext();
+  if (_nmAudioCtx.state === 'suspended') _nmAudioCtx.resume();
   return _nmAudioCtx;
 }
 
@@ -9886,7 +9887,7 @@ function nmSpawnParticles(toast) {
   }
 }
 
-// 🌙 Tetikleme — sadece giriş yapılmışsa
+// 🌙 Sekmeye dönünce de dene — ama günde 1 kez sınırı tryShowNightMessage içinde
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible" && me) {
     tryShowNightMessage();
