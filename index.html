@@ -1473,7 +1473,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </div>
 
 <!-- BOOK DETAIL MODAL -->
-<div class="modal-overlay" id="modalOverlay" onclick="closeModalIfBg(event)">
+<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this)_modalMouseDownPos={x:event.clientX,y:event.clientY}" onclick="closeModalIfBg(event)">
   <div class="modal">
     <div class="modal-header">
       <div>
@@ -5463,7 +5463,16 @@ function confirmMarkAsUnread(bookId, status){
 }
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
-function closeModalIfBg(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
+let _modalMouseDownPos=null;
+function closeModalIfBg(e){
+  if(e.target!==document.getElementById('modalOverlay')) return;
+  if(_modalMouseDownPos){
+    const dx=e.clientX-_modalMouseDownPos.x;
+    const dy=e.clientY-_modalMouseDownPos.y;
+    if(Math.sqrt(dx*dx+dy*dy)>5) return; // drag ise kapanma
+  }
+  closeModal();
+}
 
 // ── NOTIFY ────────────────────────────────────────────────────
 let nt;
@@ -5489,7 +5498,7 @@ function notify(title,body,silent=false){
     _notifSoundPlayed=true;
     try{
       const ctx=_getNmAudioCtx();
-      [[784,0],[1047,0.15]].forEach(([freq,delay])=>{
+      [[988,0],[784,0.15]].forEach(([freq,delay])=>{
         const o=ctx.createOscillator(),g=ctx.createGain();
         o.type='sine';o.frequency.value=freq;
         g.gain.setValueAtTime(0,ctx.currentTime+delay);
