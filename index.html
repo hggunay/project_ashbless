@@ -2872,6 +2872,8 @@ function enterApp(){
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
+  // Gece yarısı mesajı — uygulama açıldıktan 2 saniye sonra dene
+  setTimeout(()=>tryShowNightMessage(), 2000);
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
@@ -9873,12 +9875,9 @@ function nmSpawnParticles(toast) {
   }
 }
 
-// 🌙 Tetikleme (uygulama açıldığında çağır)
-tryShowNightMessage();
-
-// İstersen sayfa görünür olunca da tetikleyebilirsin:
+// 🌙 Tetikleme — sadece giriş yapılmışsa
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
+  if (document.visibilityState === "visible" && me) {
     tryShowNightMessage();
   }
 });
