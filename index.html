@@ -5479,11 +5479,13 @@ function notifyBadgesSequentially(badges){
 }
 
 let _notifSoundPlayed=false;
-function notify(title,body){
+const _SOUND_NOTIFS=new Set(['🏅','🌍','✅','🗝️','💎','🥇','🥈','🥉']);
+function notify(title,body,silent=false){
   clearTimeout(nt);document.getElementById('notifTitle').textContent=title;document.getElementById('notifBody').textContent=body;
   const n=document.getElementById('notification');n.classList.add('show');nt=setTimeout(()=>{n.classList.remove('show');_notifSoundPlayed=false;},4500);
-  // Sağ alt bildirim sesi — sadece ilkinde
-  if(!_notifSoundPlayed){
+  // Ses: sessiz değilse ve başarı emojisiyse çal
+  const firstChar=[...title][0];
+  if(!silent&&_SOUND_NOTIFS.has(firstChar)&&!_notifSoundPlayed){
     _notifSoundPlayed=true;
     try{
       const ctx=_getNmAudioCtx();
@@ -8227,7 +8229,7 @@ function openAshblessModal(){
   </div>`;
   overlay.classList.add('open');
   launchConfetti('ashbless');
-  notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!');
+  notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!',true);
 }
 
 function toggleBadgeDetail(badgeId){
