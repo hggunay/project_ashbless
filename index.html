@@ -549,6 +549,65 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   animation:mapPulse 2s ease-in-out infinite;
 }
 
+/* 🌙 Gece yarısı toast */
+.night-toast {
+  position: fixed;
+  top: 22%;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 16px;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  color: #f5f3ff;
+  background: rgba(15, 10, 30, 0.85);
+  border: 1px solid rgba(180, 170, 255, 0.25);
+  box-shadow:
+    0 0 25px rgba(180, 160, 255, 0.25),
+    0 0 60px rgba(120, 100, 255, 0.08);
+  backdrop-filter: blur(8px);
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+}
+.night-toast::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  background: radial-gradient(circle,
+    rgba(255,255,255,0.25),
+    transparent 60%);
+  filter: blur(2px);
+  animation: sparkle 1.8s infinite ease-in-out;
+  border-radius: 12px;
+}
+@keyframes magicFade {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateX(-40px) scale(0.92);
+    filter: blur(6px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(-50%) translateX(0) scale(1);
+    filter: blur(0);
+  }
+  70% {
+    opacity: 1;
+    transform: translateX(-50%) translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateX(30px) scale(1.03);
+    filter: blur(4px);
+  }
+}
+@keyframes sparkle {
+  0%,100% { opacity: 0.3; transform: scale(1); }
+  50%      { opacity: 0.7; transform: scale(1.1); }
+}
 </style>
 </head>
 <body>
@@ -9667,40 +9726,23 @@ function tryShowNightMessage() {
 // 🌙 UI gösterim
 function showNightMessage(text) {
   const el = document.createElement("div");
+  el.className = "night-toast";
   el.innerText = text;
-
-  Object.assign(el.style, {
-    position: "fixed",
-    top: "20%",
-    left: "50%",
-    transform: "translateX(-50%)",
-    background: "rgba(0,0,0,0.6)",
-    color: "#fff",
-    padding: "10px 16px",
-    borderRadius: "8px",
-    fontSize: "14px",
-    opacity: "0",
-    transition: "opacity 0.3s ease",
-    zIndex: 9999,
-    pointerEvents: "none"
-  });
-
   document.body.appendChild(el);
 
-  // fade-in
-  setTimeout(() => {
-    el.style.opacity = "1";
-  }, 50);
+  // Ses efekti
+  try {
+    const audio = new Audio("https://actions.google.com/sounds/v1/ambiences/mystical_wind.ogg");
+    audio.volume = 0.25;
+    audio.play();
+  } catch(e) {}
 
-  // 3.5 saniye sonra fade-out
-  setTimeout(() => {
-    el.style.opacity = "0";
-  }, 3500);
+  // Animasyon
+  el.style.animation = "magicFade 4s ease forwards";
 
-  // DOM'dan kaldır
   setTimeout(() => {
-    document.body.removeChild(el);
-  }, 4000);
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }, 4100);
 }
 
 // 🌙 Tetikleme (uygulama açıldığında çağır)
