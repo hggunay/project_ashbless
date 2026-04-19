@@ -1473,7 +1473,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </div>
 
 <!-- BOOK DETAIL MODAL -->
-<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this)_modalMouseDownPos={x:event.clientX,y:event.clientY}" onclick="closeModalIfBg(event)">
+<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this){_modalMouseDownPos={x:event.clientX,y:event.clientY};_modalMouseDownTime=Date.now();}" onclick="closeModalIfBg(event)">
   <div class="modal">
     <div class="modal-header">
       <div>
@@ -2250,23 +2250,21 @@ async function saveDb(){
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   updateAdminBadge();
-  // Mikro feedback — modal açıksa göster
+  // Mikro feedback — modal-footer içine, sabit
   const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
   if(modalOpen){
-    const modal=document.querySelector('#modalOverlay .modal');
-    if(modal){
-      let fb=document.getElementById('_saveFeedback');
-      if(!fb){
-        fb=document.createElement('div');
-        fb.id='_saveFeedback';
-        fb.style.cssText='position:absolute;bottom:.75rem;right:1.25rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;letter-spacing:.05em;z-index:2;';
-        modal.appendChild(fb);
-      }
-      fb.textContent='✓ kaydedildi';
-      fb.style.opacity='1';
-      clearTimeout(fb._t);
-      fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
+    let fb=document.getElementById('_saveFeedback');
+    if(!fb){
+      fb=document.createElement('span');
+      fb.id='_saveFeedback';
+      fb.style.cssText='font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .3s;pointer-events:none;letter-spacing:.05em;';
+      const footer=document.getElementById('modalFooter');
+      if(footer) footer.appendChild(fb);
     }
+    fb.textContent='✓ kaydedildi';
+    fb.style.opacity='1';
+    clearTimeout(fb._t);
+    fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
   }
 }
 function myBooks(){return db.books[me]||[];}
@@ -5482,12 +5480,15 @@ function confirmMarkAsUnread(bookId, status){
 
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
 let _modalMouseDownPos=null;
+let _modalMouseDownTime=null;
 function closeModalIfBg(e){
   if(e.target!==document.getElementById('modalOverlay')) return;
   if(_modalMouseDownPos){
     const dx=e.clientX-_modalMouseDownPos.x;
     const dy=e.clientY-_modalMouseDownPos.y;
-    if(Math.sqrt(dx*dx+dy*dy)>5) return; // drag ise kapanma
+    const dt=Date.now()-(_modalMouseDownTime||0);
+    if(Math.sqrt(dx*dx+dy*dy)>3) return; // hareket varsa kapanma
+    if(dt>400) return; // uzun basış varsa kapanma (metin seçimi)
   }
   closeModal();
 }
