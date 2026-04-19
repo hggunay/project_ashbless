@@ -561,7 +561,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   font-size: 16px;
   font-weight: 500;
   letter-spacing: 0.6px;
-  color: #f5edd6;
+  color: #c9a227;
   background: rgba(26, 12, 0, 0.88);
   border: 1px solid rgba(201, 162, 39, 0.35);
   box-shadow:
@@ -9725,7 +9725,17 @@ function showNightMessage(text) {
   toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;opacity:1;';
   document.body.appendChild(toast);
 
-  text.split('').forEach((ch, i) => {
+  // 🔔 Chime
+  const ctx = new AudioContext();
+  [[4186,0],[4699,0.10],[5274,0.20],[6272,0.30],[7040,0.40],[7902,0.50]].forEach(([freq,delay])=>{
+    const o=ctx.createOscillator(),g=ctx.createGain();
+    o.type='sine';o.frequency.value=freq;
+    g.gain.setValueAtTime(0,ctx.currentTime+delay);
+    g.gain.linearRampToValueAtTime(0.04,ctx.currentTime+delay+0.01);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+1.5);
+    o.connect(g);g.connect(ctx.destination);
+    o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+1.5);
+  });
     const span = document.createElement('span');
     span.textContent = ch === ' ' ? '\u00A0' : ch;
     span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
