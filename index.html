@@ -1473,7 +1473,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </div>
 
 <!-- BOOK DETAIL MODAL -->
-<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this){_modalMouseDownPos={x:event.clientX,y:event.clientY};_modalMouseDownTime=Date.now();}" onclick="closeModalIfBg(event)">
+<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this){_modalMouseDownPos={x:event.clientX,y:event.clientY};_modalMouseDownTime=Date.now();}" onmouseup="closeModalIfBg(event)">
   <div class="modal">
     <div class="modal-header">
       <div>
@@ -2250,14 +2250,14 @@ async function saveDb(){
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   updateAdminBadge();
-  // Mikro feedback — modal header'ına, sabit görünür
+  // Mikro feedback — modal header'ında, layout bozmadan
   const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
   if(modalOpen){
     let fb=document.getElementById('_saveFeedback');
     if(!fb){
       fb=document.createElement('span');
       fb.id='_saveFeedback';
-      fb.style.cssText='font-family:\'Space Mono\',monospace;font-size:.6rem;color:var(--moss);opacity:0;transition:opacity .3s;pointer-events:none;letter-spacing:.05em;margin-left:.5rem;';
+      fb.style.cssText='position:absolute;top:.75rem;left:50%;transform:translateX(-50%);font-family:\'Space Mono\',monospace;font-size:.6rem;color:var(--moss);opacity:0;transition:opacity .3s;pointer-events:none;letter-spacing:.05em;white-space:nowrap;z-index:2;';
       const header=document.querySelector('#modalOverlay .modal-header');
       if(header) header.appendChild(fb);
     }
