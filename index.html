@@ -5491,6 +5491,8 @@ function confirmMarkAsUnread(bookId, status){
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
+
 function titleSparkle(el){
   if(el._animating) return;
   el._animating=true;
