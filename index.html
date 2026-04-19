@@ -9725,7 +9725,7 @@ function showNightMessage(text) {
   toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;opacity:1;';
   document.body.appendChild(toast);
 
-  // 🔔 Chime
+  // Chime — hemen
   const ctx = new AudioContext();
   [[4186,0],[4699,0.10],[5274,0.20],[6272,0.30],[7040,0.40],[7902,0.50]].forEach(([freq,delay])=>{
     const o=ctx.createOscillator(),g=ctx.createGain();
@@ -9737,19 +9737,21 @@ function showNightMessage(text) {
     o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+1.5);
   });
 
-  text.split('').forEach((ch, i) => {
-    const span = document.createElement('span');
-    span.textContent = ch === ' ' ? '\u00A0' : ch;
-    span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
-    toast.appendChild(span);
-    setTimeout(() => nmSpawnParticles(toast), i * 55 + 100);
-  });
-
+  // Görsel — 200ms sonra
   setTimeout(() => {
-    toast.style.transition = 'opacity 0.8s ease';
-    toast.style.opacity = '0';
-    setTimeout(() => { if(toast.parentNode) toast.remove(); }, 800);
-  }, text.length * 55 + 3000);
+    text.split('').forEach((ch, i) => {
+      const span = document.createElement('span');
+      span.textContent = ch === ' ' ? '\u00A0' : ch;
+      span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
+      toast.appendChild(span);
+      setTimeout(() => nmSpawnParticles(toast), i * 55 + 100);
+    });
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.8s ease';
+      toast.style.opacity = '0';
+      setTimeout(() => { if(toast.parentNode) toast.remove(); }, 800);
+    }, text.length * 55 + 3000);
+  }, 200);
 }
 
 function nmSpawnParticles(toast) {
