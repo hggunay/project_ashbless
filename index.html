@@ -1473,7 +1473,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </div>
 
 <!-- BOOK DETAIL MODAL -->
-<div class="modal-overlay" id="modalOverlay" onmousedown="if(event.target===this){_modalMouseDownPos={x:event.clientX,y:event.clientY};_modalMouseDownTime=Date.now();}" onmouseup="closeModalIfBg(event)">
+<div class="modal-overlay" id="modalOverlay" onmouseup="closeModalIfBg(event)">
   <div class="modal">
     <div class="modal-header">
       <div>
@@ -5481,14 +5481,24 @@ function confirmMarkAsUnread(bookId, status){
 function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;}
 let _modalMouseDownPos=null;
 let _modalMouseDownTime=null;
+let _mouseDownOnModal=false;
+document.addEventListener('mousedown',e=>{
+  const modal=document.querySelector('#modalOverlay .modal');
+  _mouseDownOnModal=modal&&modal.contains(e.target);
+  if(e.target===document.getElementById('modalOverlay')){
+    _modalMouseDownPos={x:e.clientX,y:e.clientY};
+    _modalMouseDownTime=Date.now();
+  }
+});
 function closeModalIfBg(e){
   if(e.target!==document.getElementById('modalOverlay')) return;
+  if(_mouseDownOnModal) return; // mousedown modal içindeyse kapanma
   if(_modalMouseDownPos){
     const dx=e.clientX-_modalMouseDownPos.x;
     const dy=e.clientY-_modalMouseDownPos.y;
     const dt=Date.now()-(_modalMouseDownTime||0);
-    if(Math.sqrt(dx*dx+dy*dy)>3) return; // hareket varsa kapanma
-    if(dt>400) return; // uzun basış varsa kapanma (metin seçimi)
+    if(Math.sqrt(dx*dx+dy*dy)>3) return;
+    if(dt>400) return;
   }
   closeModal();
 }
