@@ -9731,11 +9731,9 @@ function showNightMessage(text) {
   document.body.appendChild(el);
 
   // Ses efekti
-  try {
-    const audio = new Audio("https://actions.google.com/sounds/v1/ambiences/mystical_wind.ogg");
-    audio.volume = 0.25;
-    audio.play();
-  } catch(e) {}
+  const audio = new Audio("https://www.soundjay.com/buttons/sounds/button-3.mp3");
+  audio.volume = 0.25;
+  audio.play().catch(() => {});
 
   // Animasyon
   el.style.animation = "magicFade 4s ease forwards";
