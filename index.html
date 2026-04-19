@@ -8262,6 +8262,39 @@ function renderBadges(){
   }).join('');
 }
 
+function openAnubisModal(){
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
+  if(!overlay) return;
+  title.textContent='🗝️ Ashbless\'in İzinde';
+  subtitle.textContent='Tim Powers · Anubis Kapıları';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+    <p style="margin-bottom:1rem">Zamanın çizgisel olmadığını fark ettin. Ashbless'in izini sürerken, aslında kendi izine rastladın.</p>
+    <p style="margin-bottom:1.5rem">Bazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.</p>
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1.5rem"></div>
+    <div style="font-family:'Playfair Display',serif;font-size:.85rem;color:var(--leather);margin-bottom:.5rem;letter-spacing:.05em;text-align:center">Gecenin On İki Saati</div>
+    <div style="background:rgba(201,162,39,.06);border-left:3px solid var(--gold);padding:.9rem 1.1rem;border-radius:0 4px 4px 0;margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:.92rem;color:var(--leather);line-height:2">
+        "Ve bir nehir uzanır<br>
+        Alacakaranlıkla şafak arasında.<br>
+        Ve saatler mesafedir, değişken gecenin<br>
+        Engin gelgitinde ölçülen —<br>
+        Korku duymayacak kadar felakete mahkûm,<br>
+        İhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor<br>
+        Gözkamaştırıcı bir ışık gibi parlayan karanlığın içine<br>
+        Gecenin On İki Saati'nde."
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7;margin-top:.75rem;text-align:right">— William Ashbless (buluntu metin)</div>
+    </div>
+  </div>`;
+  overlay.classList.add('open');
+  launchConfetti('secret');
+}
+
 function openAshblessModal(){
   const overlay=document.getElementById('modalOverlay');
   const title=document.getElementById('modalTitle');
@@ -8313,6 +8346,7 @@ function openAshblessModal(){
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
   if(badgeId==='secret_ashbless'){openAshblessModal();return;}
+  if(badgeId==='secret_anubis'){openAnubisModal();return;}
   if(badgeId==='secret_creator'){launchConfetti('creator');return;}
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
