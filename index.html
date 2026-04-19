@@ -9608,6 +9608,50 @@ async function init(){
   }catch(e){}
 }
 init();
+
+// ── GECE YARISI MESAJLARI ─────────────────────────────────────
+(function(){
+  const GECE_CUMLELERI=[
+    "Gece derindir.",
+    "Bazı şeyler gece daha net görünür.",
+    "Okumak için en doğru saat.",
+    "Sessizlik iyi bir anlatıcıdır.",
+    "Herkes uyurken raflar konuşur.",
+    "Bir sayfa daha kalabilir...",
+    "Okumak için doğru saat.",
+    "Bazı şeyler geceleri daha net olur.",
+    "Işığı kapatmadan önce...",
+    "Her kitap bir iz bırakır.",
+    "Sadece bir bakacaktın.",
+    "Kapatmayı denedin mi gerçekten?",
+    "Bu mesajı görmen tesadüf olabilir. Ya da değil.",
+    "Kitap: 1 — Sen: 0",
+    "Bir sayfa daha kimseyi üzmez.",
+  ];
+  function geceYarisiKontrol(){
+    const h=new Date().getHours();
+    if(h<0||h>=5) return; // 00:00–04:59 arası
+    if(Math.random()>0.20) return; // %20 ihtimal
+    if(!me) return; // giriş yapılmamışsa çalıştırma
+    const msg=GECE_CUMLELERI[Math.floor(Math.random()*GECE_CUMLELERI.length)];
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;bottom:5rem;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(26,18,8,.92);border:1px solid rgba(201,162,39,.35);border-radius:4px;padding:.7rem 1.2rem;font-family:\'Crimson Pro\',serif;font-style:italic;font-size:.95rem;color:var(--parchment-dark);z-index:9990;opacity:0;transition:opacity .6s ease,transform .6s ease;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;';
+    el.textContent=msg;
+    document.body.appendChild(el);
+    requestAnimationFrame(()=>{
+      el.style.opacity='1';
+      el.style.transform='translateX(-50%) translateY(0)';
+    });
+    setTimeout(()=>{
+      el.style.opacity='0';
+      el.style.transform='translateX(-50%) translateY(20px)';
+      setTimeout(()=>el.remove(),700);
+    },4000);
+  }
+  // Sayfa açılışında bir kez dene, sonra her 30 dakikada bir
+  setTimeout(geceYarisiKontrol, 3000);
+  setInterval(geceYarisiKontrol, 30*60*1000);
+})();
 </script>
 <!-- Barkod Tarayıcı Modal -->
 <div id="barcodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center">
