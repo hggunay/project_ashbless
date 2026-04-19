@@ -174,7 +174,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 /* MODAL */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,8,5,.85);z-index:300;display:flex;align-items:center;justify-content:center;padding:1rem;opacity:0;pointer-events:none;transition:opacity .25s;}
 .modal-overlay.open{opacity:1;pointer-events:all;}
-.modal{background:var(--parchment);border:1px solid var(--gold);border-radius:4px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;overflow-x:visible;box-shadow:0 24px 80px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .25s;}
+.modal{background:var(--parchment);border:1px solid var(--gold);border-radius:4px;width:100%;max-width:600px;max-height:90vh;overflow-y:auto;overflow-x:visible;box-shadow:0 24px 80px rgba(0,0,0,.6);transform:translateY(20px);transition:transform .25s;position:relative;}
 .modal-overlay.open .modal{transform:translateY(0);}
 .modal-header{background:linear-gradient(180deg,var(--parchment-dark),var(--parchment));padding:1rem 1.25rem;border-bottom:1px solid rgba(201,162,39,.3);display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;position:sticky;top:0;z-index:1;}
 .modal-title{font-family:'Playfair Display',serif;font-size:1.15rem;font-weight:700;color:var(--ink);line-height:1.2;}
@@ -2259,8 +2259,7 @@ async function saveDb(){
       if(!fb){
         fb=document.createElement('div');
         fb.id='_saveFeedback';
-        fb.style.cssText='position:absolute;bottom:.75rem;right:1.25rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;letter-spacing:.05em;';
-        modal.style.position='relative';
+        fb.style.cssText='position:absolute;bottom:.75rem;right:1.25rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;letter-spacing:.05em;z-index:2;';
         modal.appendChild(fb);
       }
       fb.textContent='✓ kaydedildi';
