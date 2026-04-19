@@ -9722,7 +9722,7 @@ function tryShowNightMessage() {
 function showNightMessage(text) {
   const toast = document.createElement('div');
   toast.className = 'night-toast';
-  toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;';
+  toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;opacity:1;';
   document.body.appendChild(toast);
 
   text.split('').forEach((ch, i) => {
