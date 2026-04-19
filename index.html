@@ -2250,6 +2250,21 @@ async function saveDb(){
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   updateAdminBadge();
+  // Mikro feedback — modal açıksa göster
+  const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
+  if(modalOpen){
+    let fb=document.getElementById('_saveFeedback');
+    if(!fb){
+      fb=document.createElement('div');
+      fb.id='_saveFeedback';
+      fb.style.cssText='position:fixed;bottom:5.5rem;right:2rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;z-index:999;letter-spacing:.05em;';
+      document.body.appendChild(fb);
+    }
+    fb.textContent='✓ kaydedildi';
+    fb.style.opacity='1';
+    clearTimeout(fb._t);
+    fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
+  }
 }
 function myBooks(){return db.books[me]||[];}
 function targetBooks(){return db.books[viewing||me]||[];}
