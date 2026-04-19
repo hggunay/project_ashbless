@@ -9736,6 +9736,8 @@ function showNightMessage(text) {
     o.connect(g);g.connect(ctx.destination);
     o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+1.5);
   });
+
+  text.split('').forEach((ch, i) => {
     const span = document.createElement('span');
     span.textContent = ch === ' ' ? '\u00A0' : ch;
     span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
