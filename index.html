@@ -8773,6 +8773,7 @@ function launchConfetti(type){
   // type: 'series' → küçük renkli | 'group' → büyük altın | 'badge' → mini altın | 'ashbless' → özel | 'secret' → gizli rozet | 'creator' → yaratıcının tanığı
   let canvas=document.getElementById('confetti-canvas');
   if(!canvas){canvas=document.createElement('canvas');canvas.id='confetti-canvas';document.body.appendChild(canvas);}
+  else{document.body.appendChild(canvas);} // her seferinde en üste taşı
   const ctx=canvas.getContext('2d');
   canvas.width=window.innerWidth;canvas.height=window.innerHeight;
 
