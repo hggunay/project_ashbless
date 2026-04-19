@@ -2253,17 +2253,21 @@ async function saveDb(){
   // Mikro feedback — modal açıksa göster
   const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
   if(modalOpen){
-    let fb=document.getElementById('_saveFeedback');
-    if(!fb){
-      fb=document.createElement('div');
-      fb.id='_saveFeedback';
-      fb.style.cssText='position:fixed;bottom:5.5rem;right:2rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;z-index:999;letter-spacing:.05em;';
-      document.body.appendChild(fb);
+    const modal=document.querySelector('#modalOverlay .modal');
+    if(modal){
+      let fb=document.getElementById('_saveFeedback');
+      if(!fb){
+        fb=document.createElement('div');
+        fb.id='_saveFeedback';
+        fb.style.cssText='position:absolute;bottom:.75rem;right:1.25rem;font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);opacity:0;transition:opacity .25s;pointer-events:none;letter-spacing:.05em;';
+        modal.style.position='relative';
+        modal.appendChild(fb);
+      }
+      fb.textContent='✓ kaydedildi';
+      fb.style.opacity='1';
+      clearTimeout(fb._t);
+      fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
     }
-    fb.textContent='✓ kaydedildi';
-    fb.style.opacity='1';
-    clearTimeout(fb._t);
-    fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
   }
 }
 function myBooks(){return db.books[me]||[];}
