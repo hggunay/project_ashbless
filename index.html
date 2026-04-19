@@ -9609,49 +9609,109 @@ async function init(){
 }
 init();
 
-// ── GECE YARISI MESAJLARI ─────────────────────────────────────
-(function(){
-  const GECE_CUMLELERI=[
-    "Gece derindir.",
-    "Bazı şeyler gece daha net görünür.",
-    "Okumak için en doğru saat.",
-    "Sessizlik iyi bir anlatıcıdır.",
-    "Herkes uyurken raflar konuşur.",
-    "Bir sayfa daha kalabilir...",
-    "Okumak için doğru saat.",
-    "Bazı şeyler geceleri daha net olur.",
-    "Işığı kapatmadan önce...",
-    "Her kitap bir iz bırakır.",
-    "Sadece bir bakacaktın.",
-    "Kapatmayı denedin mi gerçekten?",
-    "Bu mesajı görmen tesadüf olabilir. Ya da değil.",
-    "Kitap: 1 — Sen: 0",
-    "Bir sayfa daha kimseyi üzmez.",
-  ];
-  function geceYarisiKontrol(){
-    const h=new Date().getHours();
-    if(h<0||h>=5) return; // 00:00–04:59 arası
-    if(Math.random()>0.20) return; // %20 ihtimal
-    if(!me) return; // giriş yapılmamışsa çalıştırma
-    const msg=GECE_CUMLELERI[Math.floor(Math.random()*GECE_CUMLELERI.length)];
-    const el=document.createElement('div');
-    el.style.cssText='position:fixed;bottom:5rem;left:50%;transform:translateX(-50%) translateY(20px);background:rgba(26,18,8,.92);border:1px solid rgba(201,162,39,.35);border-radius:4px;padding:.7rem 1.2rem;font-family:\'Crimson Pro\',serif;font-style:italic;font-size:.95rem;color:var(--parchment-dark);z-index:9990;opacity:0;transition:opacity .6s ease,transform .6s ease;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center;';
-    el.textContent=msg;
-    document.body.appendChild(el);
-    requestAnimationFrame(()=>{
-      el.style.opacity='1';
-      el.style.transform='translateX(-50%) translateY(0)';
-    });
-    setTimeout(()=>{
-      el.style.opacity='0';
-      el.style.transform='translateX(-50%) translateY(20px)';
-      setTimeout(()=>el.remove(),700);
-    },4000);
+// 🌙 Mesaj listesi
+const nightMessages = [
+  "Gece derindir.",
+  "Bazı şeyler geceleri daha net olur.",
+  "Sessizlik iyi bir anlatıcıdır.",
+  "Herkes uyurken raflar konuşur.",
+  "Okumak için doğru saat.",
+  "Bir sayfa daha kalabilir...",
+  "Işığı kapatmadan önce...",
+  "Her kitap bir iz bırakır.",
+  "Sadece bir bakacaktın.",
+  "Kapatmayı denedin mi gerçekten?",
+  "Bu mesajı görmen tesadüf olabilir. Ya da değil.",
+  "Kitap: 1 — Sen: 0",
+  "Bir sayfa daha kimseyi üzmez."
+];
+
+// 🌙 Yardımcı: saat kontrolü
+function isNightTime() {
+  const hour = new Date().getHours();
+  return hour >= 0 && hour < 5; // 00:00 - 05:00
+}
+
+// 🌙 Ana fonksiyon
+function tryShowNightMessage() {
+  if (!isNightTime()) return;
+
+  const today = new Date().toDateString();
+  const lastShownDate = localStorage.getItem("nightMessageDate");
+
+  // Günde 1 kez
+  if (lastShownDate === today) return;
+
+  // %35 ihtimal
+  if (Math.random() > 0.35) return;
+
+  // Son mesajı tekrar etme
+  const lastMessage = localStorage.getItem("lastNightMessage");
+  let availableMessages = nightMessages.filter(m => m !== lastMessage);
+
+  // Eğer hepsi aynıysa fallback
+  if (availableMessages.length === 0) {
+    availableMessages = nightMessages;
   }
-  // Sayfa açılışında bir kez dene, sonra her 30 dakikada bir
-  setTimeout(geceYarisiKontrol, 3000);
-  setInterval(geceYarisiKontrol, 30*60*1000);
-})();
+
+  const message =
+    availableMessages[Math.floor(Math.random() * availableMessages.length)];
+
+  showNightMessage(message);
+
+  // Kaydet
+  localStorage.setItem("nightMessageDate", today);
+  localStorage.setItem("lastNightMessage", message);
+}
+
+// 🌙 UI gösterim
+function showNightMessage(text) {
+  const el = document.createElement("div");
+  el.innerText = text;
+
+  Object.assign(el.style, {
+    position: "fixed",
+    top: "20%",
+    left: "50%",
+    transform: "translateX(-50%)",
+    background: "rgba(0,0,0,0.6)",
+    color: "#fff",
+    padding: "10px 16px",
+    borderRadius: "8px",
+    fontSize: "14px",
+    opacity: "0",
+    transition: "opacity 0.3s ease",
+    zIndex: 9999,
+    pointerEvents: "none"
+  });
+
+  document.body.appendChild(el);
+
+  // fade-in
+  setTimeout(() => {
+    el.style.opacity = "1";
+  }, 50);
+
+  // 3.5 saniye sonra fade-out
+  setTimeout(() => {
+    el.style.opacity = "0";
+  }, 3500);
+
+  // DOM'dan kaldır
+  setTimeout(() => {
+    document.body.removeChild(el);
+  }, 4000);
+}
+
+// 🌙 Tetikleme (uygulama açıldığında çağır)
+tryShowNightMessage();
+
+// İstersen sayfa görünür olunca da tetikleyebilirsin:
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    tryShowNightMessage();
+  }
+});
 </script>
 <!-- Barkod Tarayıcı Modal -->
 <div id="barcodeModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center">
