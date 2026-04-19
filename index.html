@@ -9722,22 +9722,22 @@ function tryShowNightMessage() {
 function showNightMessage(text) {
   const toast = document.createElement('div');
   toast.className = 'night-toast';
+  toast.style.cssText = 'position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:99999;';
   document.body.appendChild(toast);
 
-  const chars = text.split('');
-  chars.forEach((ch, i) => {
+  text.split('').forEach((ch, i) => {
     const span = document.createElement('span');
     span.textContent = ch === ' ' ? '\u00A0' : ch;
-    span.style.cssText = `display:inline-block;opacity:0;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
+    span.style.cssText = `display:inline-block;animation:nmLetterIn 0.4s ease both;animation-delay:${i*55}ms;`;
     toast.appendChild(span);
     setTimeout(() => nmSpawnParticles(toast), i * 55 + 100);
   });
 
-  const inDuration = chars.length * 55 + 400;
   setTimeout(() => {
-    toast.style.animation = 'nmToastOut 0.8s ease forwards';
+    toast.style.transition = 'opacity 0.8s ease';
+    toast.style.opacity = '0';
     setTimeout(() => { if(toast.parentNode) toast.remove(); }, 800);
-  }, inDuration + 2000);
+  }, text.length * 55 + 3000);
 }
 
 function nmSpawnParticles(toast) {
