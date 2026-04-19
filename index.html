@@ -8233,6 +8233,7 @@ function openAshblessModal(){
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
   if(badgeId==='secret_ashbless'){openAshblessModal();return;}
+  if(badgeId==='secret_creator'){launchConfetti('creator');return;}
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
@@ -8769,7 +8770,7 @@ function startReadingSeriesBook(bookId){
 
 // ── Konfeti & Rozet Parlama ────────────────────────────────────────────────
 function launchConfetti(type){
-  // type: 'series' → küçük renkli | 'group' → büyük altın | 'badge' → mini altın | 'ashbless' → özel
+  // type: 'series' → küçük renkli | 'group' → büyük altın | 'badge' → mini altın | 'ashbless' → özel | 'secret' → gizli rozet | 'creator' → yaratıcının tanığı
   let canvas=document.getElementById('confetti-canvas');
   if(!canvas){canvas=document.createElement('canvas');canvas.id='confetti-canvas';document.body.appendChild(canvas);}
   const ctx=canvas.getContext('2d');
@@ -8778,14 +8779,18 @@ function launchConfetti(type){
   const isGroup=type==='group';
   const isBadge=type==='badge';
   const isAshbless=type==='ashbless';
-  const count=isAshbless?120:isBadge?40:isGroup?180:80;
-  const gravity=isAshbless?0.22:isGroup?0.28:isBadge?0.5:0.35;
-  const spread=isAshbless?2.2:isGroup?1.6:isBadge?0.8:1.2;
+  const isSecret=type==='secret';
+  const isCreator=type==='creator';
+  const count=isCreator?200:isAshbless?120:isSecret?80:isBadge?40:isGroup?180:80;
+  const gravity=isCreator?0.18:isAshbless?0.22:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
+  const spread=isCreator?2.8:isAshbless?2.2:isSecret?1.8:isGroup?1.6:isBadge?0.8:1.2;
 
   const goldPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#b8860b'];
   const colorPalette=['#c9a227','#8a4513','#4a6741','#6b3a2a','#f0d060','#c17f3c','#2d5a3d'];
   const ashblessPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe'];
-  const palette=isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
+  const secretPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#fff8dc','#b8860b'];
+  const creatorPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe','#fff','#f0d060'];
+  const palette=isCreator?creatorPalette:isSecret?secretPalette:isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
 
   function drawStar(ctx,r){
     ctx.beginPath();
@@ -8799,20 +8804,20 @@ function launchConfetti(type){
   }
 
   const particles=Array.from({length:count},()=>({
-    x:canvas.width*(isGroup?Math.random():isAshbless?0.2+Math.random()*0.6:0.3+Math.random()*0.4),
-    y:isGroup||isAshbless?-10:canvas.height*0.35,
-    vx:(Math.random()-0.5)*spread*(isGroup||isAshbless?9:6),
-    vy:-(Math.random()*(isGroup||isAshbless?16:9)+4),
-    size:isAshbless?(Math.random()*8+4):isGroup?(Math.random()*10+5):(isBadge?(Math.random()*5+3):(Math.random()*7+3)),
+    x:canvas.width*(isGroup?Math.random():isAshbless||isCreator?0.2+Math.random()*0.6:isSecret?0.25+Math.random()*0.5:0.3+Math.random()*0.4),
+    y:isGroup||isAshbless||isCreator||isSecret?-10:canvas.height*0.35,
+    vx:(Math.random()-0.5)*spread*(isGroup||isAshbless||isCreator?9:isSecret?7:6),
+    vy:-(Math.random()*(isGroup||isAshbless||isCreator?16:isSecret?13:9)+4),
+    size:isCreator?(Math.random()*10+4):isAshbless?(Math.random()*8+4):isSecret?(Math.random()*7+3):isGroup?(Math.random()*10+5):(isBadge?(Math.random()*5+3):(Math.random()*7+3)),
     color:palette[Math.floor(Math.random()*palette.length)],
     rot:Math.random()*360,
     rotV:(Math.random()-0.5)*8,
-    shape:isAshbless?(Math.random()<0.4?'star':Math.random()<0.5?'rect':'circle'):Math.random()<(isGroup?0.6:0.4)?'rect':'circle',
+    shape:isCreator?(Math.random()<0.5?'star':Math.random()<0.5?'rect':'circle'):isAshbless?(Math.random()<0.4?'star':Math.random()<0.5?'rect':'circle'):isSecret?(Math.random()<0.3?'star':'rect'):Math.random()<(isGroup?0.6:0.4)?'rect':'circle',
     alpha:1
   }));
 
   let frame=0;
-  const maxFrames=isAshbless?280:isGroup?220:isBadge?100:160;
+  const maxFrames=isCreator?340:isAshbless?280:isSecret?200:isGroup?220:isBadge?100:160;
   function tick(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     particles.forEach(p=>{
@@ -8834,15 +8839,18 @@ function launchConfetti(type){
 
 function shimmerNewBadges(prevEarned){
   // prevEarned: Set of badge ids that were earned before re-render
+  const SECRET_IDS=new Set(['secret_ashbless','secret_bedside','secret_forbidden','secret_anubis','secret_month','secret_whale','secret_speed','secret_multi','secret_100pg']);
   setTimeout(()=>{
     document.querySelectorAll('.badge-card.earned').forEach(card=>{
-      // badge id, card onclick'ten alınabilir
       const onclick=card.getAttribute('onclick')||'';
       const m=onclick.match(/toggleBadgeDetail\('([^']+)'\)/);
       if(m&&!prevEarned.has(m[1])){
         card.classList.add('badge-shine');
         setTimeout(()=>card.classList.remove('badge-shine'),3600);
-        launchConfetti('badge');
+        const bid=m[1];
+        if(bid==='secret_creator') launchConfetti('creator');
+        else if(SECRET_IDS.has(bid)) launchConfetti('secret');
+        else launchConfetti('badge');
       }
     });
   },80);
