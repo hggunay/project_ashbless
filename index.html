@@ -5478,9 +5478,26 @@ function notifyBadgesSequentially(badges){
   });
 }
 
+let _notifSoundPlayed=false;
 function notify(title,body){
   clearTimeout(nt);document.getElementById('notifTitle').textContent=title;document.getElementById('notifBody').textContent=body;
-  const n=document.getElementById('notification');n.classList.add('show');nt=setTimeout(()=>n.classList.remove('show'),4500);
+  const n=document.getElementById('notification');n.classList.add('show');nt=setTimeout(()=>{n.classList.remove('show');_notifSoundPlayed=false;},4500);
+  // Sağ alt bildirim sesi — sadece ilkinde
+  if(!_notifSoundPlayed){
+    _notifSoundPlayed=true;
+    try{
+      const ctx=_getNmAudioCtx();
+      [[784,0],[1047,0.15]].forEach(([freq,delay])=>{
+        const o=ctx.createOscillator(),g=ctx.createGain();
+        o.type='sine';o.frequency.value=freq;
+        g.gain.setValueAtTime(0,ctx.currentTime+delay);
+        g.gain.linearRampToValueAtTime(0.06,ctx.currentTime+delay+0.01);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+1.2);
+        o.connect(g);g.connect(ctx.destination);
+        o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+1.2);
+      });
+    }catch(e){}
+  }
 }
 
 // ── FILTER ────────────────────────────────────────────────────
@@ -6814,6 +6831,19 @@ function checkNotifications(){
   const n=unseen[unseen.length-1];
   const extra=unseen.length>1?` (+${unseen.length-1} daha)`:'';
   notify(`${n.reaction} Reaksiyon`,`${n.fromName} — "${n.context}"${extra}`);
+  // Sağ üst zil sesi
+  try{
+    const ctx=_getNmAudioCtx();
+    [[988,0],[784,0.15]].forEach(([freq,delay])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=freq;
+      g.gain.setValueAtTime(0,ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.06,ctx.currentTime+delay+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+delay+1.2);
+      o.connect(g);g.connect(ctx.destination);
+      o.start(ctx.currentTime+delay);o.stop(ctx.currentTime+delay+1.2);
+    });
+  }catch(e){}
 }
 
 // ── İSTATİSTİKLER ────────────────────────────────────────────
