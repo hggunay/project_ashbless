@@ -8413,17 +8413,56 @@ function openCreatorModal(){
 
   </div>`;
 
-  // Modal açılış glitch+distortion efekti
+  // Modal açılış glitch+distortion+karıncalanma efekti
   const modal=overlay.querySelector('.modal');
   if(modal){
-    modal.style.cssText+=';filter:hue-rotate(90deg) saturate(3) brightness(1.4);transform:translateY(20px) skewX(4deg);transition:none;';
+    modal.style.transition='none';
+    modal.style.filter='hue-rotate(90deg) saturate(4) brightness(1.6)';
+    modal.style.transform='translateY(20px) skewX(6deg) translateX(8px)';
     overlay.classList.add('open');
+
+    // Karıncalanma (static noise) overlay
+    const noise=document.createElement('canvas');
+    noise.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:.35;pointer-events:none;z-index:9999;border-radius:4px;';
+    modal.style.position='relative';
+    modal.appendChild(noise);
+    const ctx2=noise.getContext('2d');
+    let noiseFrame;
+    function drawNoise(){
+      noise.width=modal.offsetWidth||400;
+      noise.height=modal.offsetHeight||500;
+      const img=ctx2.createImageData(noise.width,noise.height);
+      for(let i=0;i<img.data.length;i+=4){
+        const v=Math.random()<.5?0:255;
+        img.data[i]=img.data[i+1]=img.data[i+2]=v;
+        img.data[i+3]=Math.random()*180;
+      }
+      ctx2.putImageData(img,0,0);
+      noiseFrame=requestAnimationFrame(drawNoise);
+    }
+    drawNoise();
+
     setTimeout(()=>{
-      modal.style.cssText+=';filter:hue-rotate(180deg) saturate(2) brightness(.7);transform:translateY(10px) skewX(-2deg);';
-    },80);
+      modal.style.filter='hue-rotate(200deg) saturate(2) brightness(.5) contrast(2)';
+      modal.style.transform='translateY(15px) skewX(-4deg) translateX(-6px)';
+    },150);
     setTimeout(()=>{
-      modal.style.cssText+=';filter:none;transform:translateY(0);transition:filter .15s ease,transform .2s ease;';
-    },220);
+      modal.style.filter='hue-rotate(300deg) saturate(3) brightness(1.3) contrast(1.5)';
+      modal.style.transform='translateY(8px) skewX(2deg) translateX(4px)';
+    },300);
+    setTimeout(()=>{
+      modal.style.filter='hue-rotate(0deg) saturate(5) brightness(.8) contrast(3)';
+      modal.style.transform='translateY(5px) skewX(-1deg) translateX(-2px)';
+    },450);
+    setTimeout(()=>{
+      modal.style.transition='filter .25s ease,transform .25s ease';
+      modal.style.filter='none';
+      modal.style.transform='translateY(0)';
+    },600);
+    setTimeout(()=>{
+      cancelAnimationFrame(noiseFrame);
+      if(noise.parentNode) noise.remove();
+    },850);
   } else {
     overlay.classList.add('open');
   }
