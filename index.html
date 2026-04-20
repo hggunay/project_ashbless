@@ -8185,7 +8185,7 @@ function renderBadges(){
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         ${b.imgSrc?`
           <div style="padding:.6rem .6rem .2rem;display:flex;justify-content:center;">
-            <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" />
+            <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" onerror="this.parentNode.style.display='none'" />
           </div>
           <div style="padding:.3rem .6rem .5rem;text-align:center;">
             <div class="badge-name" style="font-size:.78rem;margin-bottom:.25rem">${b.name}</div>
@@ -8547,22 +8547,16 @@ function openCreatorModal(){
   }
 
   function _triggerDataLeak(){
-    // Görsel: log bloğunda yarım metin belirip kaybolur
     const block=document.getElementById('creator-log-block');
     if(!block) return;
     const leak=document.createElement('div');
     const txt=LEAK_TEXTS[Math.floor(Math.random()*LEAK_TEXTS.length)];
-    // Metni glitch karakterleriyle boz
     const chars='█▓▒░|/\\';
     const glitched=txt.split('').map(c=>Math.random()<.3?chars[Math.floor(Math.random()*chars.length)]:c).join('');
     leak.style.cssText='font-family:"Space Mono",monospace;font-size:.72rem;color:#ff00ff;line-height:2;opacity:0;transition:opacity .15s ease;';
     leak.textContent=glitched;
     block.appendChild(leak);
     requestAnimationFrame(()=>requestAnimationFrame(()=>{leak.style.opacity='1';}));
-    // Kısa ses
-    const ctx=_getNmAudioCtx();
-    _playGlitchSound(ctx,.12);
-    // 0.4-1.2sn sonra kaybol
     const dur=400+Math.random()*800;
     setTimeout(()=>{
       leak.style.opacity='0';
@@ -8573,15 +8567,7 @@ function openCreatorModal(){
   let _creatorIdleSoundTimer=null;
   function _playIdleSound(){
     if(!overlay.classList.contains('open')) return;
-    if(Math.random()<.70){
-      // %15 data leak, %85 normal glitch
-      if(Math.random()<.15){
-        _triggerDataLeak();
-      } else {
-        const ctx=_getNmAudioCtx();
-        _playGlitchSound(ctx);
-      }
-    }
+    if(Math.random()<.15) _triggerDataLeak();
     _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
   }
   _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
