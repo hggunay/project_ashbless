@@ -8467,6 +8467,38 @@ function openCreatorModal(){
     overlay.classList.add('open');
   }
 
+  // Açılış sesi — 4 tipten random biri, 0-150ms jitter
+  setTimeout(()=>{
+    const ctx=_getNmAudioCtx();
+    const type=Math.floor(Math.random()*3); // 0,1,2
+    if(type===0){
+      // static_glitch_01: CRT cızırtı
+      const buf=ctx.createBuffer(1,ctx.sampleRate*2.4,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(i<d.length*.3?1:Math.max(0,1-(i-d.length*.3)/(d.length*.7)));
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const g=ctx.createGain();g.gain.setValueAtTime(.25,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+2.4);
+      s.connect(g);g.connect(ctx.destination);s.start();
+    } else if(type===1){
+      // static_glitch_02: radyo hiss
+      const buf=ctx.createBuffer(1,ctx.sampleRate*3.0,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.4;
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=0.5;
+      const g=ctx.createGain();g.gain.setValueAtTime(.15,ctx.currentTime);g.gain.linearRampToValueAtTime(.2,ctx.currentTime+.8);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+3.0);
+      s.connect(f);f.connect(g);g.connect(ctx.destination);s.start();
+    } else {
+      // static_glitch_03: pop + noise burst
+      const buf=ctx.createBuffer(1,ctx.sampleRate*2.0,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=i<200?(Math.random()*2-1)*(1-i/200):(Math.random()*2-1)*.3*(1-i/d.length);
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const g=ctx.createGain();g.gain.setValueAtTime(.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+2.0);
+      s.connect(g);g.connect(ctx.destination);s.start();
+    }
+  }, Math.random()*150);
+
   // Log glitch — 3-4sn aralıklı sürekli
   let _creatorGlitchTimer=null;
   function _runLogGlitch(){
