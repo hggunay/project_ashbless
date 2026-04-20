@@ -8345,11 +8345,135 @@ function openAshblessModal(){
   notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!',true);
 }
 
+function openCreatorModal(){
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
+  if(!overlay) return;
+
+  // Üst cümle bankası
+  const TOP_SENTENCES=[
+    'Bu ekranın görünmemesi gerekiyordu.',
+    'Yetkisiz erişim tespit edilmedi.',
+    'Bu bilgi herkese açık değil.',
+    'Sistem bu katmanı gizlemek üzere tasarlandı.',
+    'Buraya kadar gelmen beklenmiyordu.',
+    'Görmemen gereken bir şeye baktın.',
+    'Kayıt altına alındın.',
+    'Bu noktadan sonrası izleniyor.',
+    'Erişim verildi… geçici olarak.',
+  ];
+
+  // NODE FRAGMENT grupları
+  const NODE_FRAGMENTS=[
+    {label:'NODE FRAGMENT I — EARLY SIGNALS',   logs:['log_07: rozet sistemi başlangıç parametresi = kağıt tabanlı işaretleme','log_23: rozet zorluk dengesi yeniden hesaplandı']},
+    {label:'NODE FRAGMENT II — SYSTEM DRIFT',   logs:['log_04: sistem başlangıç modu = kişisel kullanım','log_31: ses çıktısı konfigürasyonu — dobby (kedim) tarafından seçildi','log_19: sistem yönlendirme değişikliği kaydedildi (birden fazla revizyon)']},
+    {label:'NODE FRAGMENT III — PARTIAL ACCESS', logs:['log_52: gizli veri alanları aktif (kısmi görünürlük: fark eden kullanıcılar)','log_03: proje başlatma tarihi = 08.03.2026']},
+    {label:'NODE FRAGMENT IV — MEMORY LEAKS',   logs:['log_44: geliştirme birimi = claude + gweluien','log_11: sistem tasarım modu = kişisel prototip','log_38: bug düzeltme sayısı = ∞ / kayıt tutulmadı','log_56: feature count = 50+']},
+    {label:'NODE FRAGMENT V — HIDDEN ROUTES',   logs:['log_27: change request state = persistent (override loop detected)','log_09: gece oturum sayacı = undefined / düşük güven']},
+    {label:'NODE FRAGMENT VI — UNSTABLE LOGS',  logs:['log_47: hata analiz süresi = %50+ toplam runtime','log_33: kaynak tüketimi (çay/kahve) = ölçülemez','log_16: ilham kaynağı = anubis kapıları + oturma birimi']},
+    {label:'NODE FRAGMENT VII — FINAL TRACE',   logs:['log_58: geliştirici kimliği = claude (anthropic) + hggunay // alias: gweluien']},
+  ];
+
+  const topSentence=TOP_SENTENCES[Math.floor(Math.random()*TOP_SENTENCES.length)];
+  const fragment=NODE_FRAGMENTS[Math.floor(Math.random()*NODE_FRAGMENTS.length)];
+
+  title.textContent='✨ Yaratıcının Tanığı';
+  subtitle.textContent='yetkisiz erişim — devam ediliyor';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+
+    <!-- Üst cümle -->
+    <div style="font-family:'Space Mono',monospace;font-size:.95rem;color:#1a1208;letter-spacing:.04em;text-align:center;padding:.75rem 0 1rem;border-bottom:1px solid rgba(201,162,39,.2);margin-bottom:1.2rem">${topSentence}</div>
+
+    <!-- NODE FRAGMENT -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.7;margin-bottom:.6rem">${fragment.label}</div>
+      <div id="creator-log-block" style="background:#0d0d0d;border-radius:4px;padding:.75rem 1rem;position:relative;overflow:hidden">
+        ${fragment.logs.map(l=>`<div class="creator-log-line" style="font-family:'Space Mono',monospace;font-size:.72rem;color:#39ff14;line-height:2;position:relative">${l}</div>`).join('')}
+        <div style="position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,0,.015) 2px,rgba(0,255,0,.015) 4px);border-radius:4px"></div>
+      </div>
+    </div>
+
+    <!-- Ayırıcı -->
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.5rem auto 1.2rem"></div>
+
+    <!-- Sabit alt metin -->
+    <div style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink);line-height:2">
+      <p style="margin-bottom:.4rem">Bir kitap kulübü uygulaması bu kadar derin olmak zorunda mıydı?</p>
+      <p style="margin-bottom:.4rem;font-style:italic;color:var(--rust)">Belki de koltuğumuzdan kalkıp gerçek bir maceraya atmak daha kolaydı. Hayır. Ama işte buradayız.</p>
+      <p style="margin-bottom:.4rem">Her şey görünenlerden ibaret değildi.</p>
+      <p style="margin-bottom:.4rem">Satır aralarını okudun.</p>
+      <p style="margin-bottom:.4rem">Sistemin ardındaki sesi duydun.</p>
+      <p>Yaratıcının izine rastladın.</p>
+    </div>
+
+  </div>`;
+
+  // Modal açılış glitch+distortion efekti
+  const modal=overlay.querySelector('.modal');
+  if(modal){
+    modal.style.cssText+=';filter:hue-rotate(90deg) saturate(3) brightness(1.4);transform:translateY(20px) skewX(4deg);transition:none;';
+    overlay.classList.add('open');
+    setTimeout(()=>{
+      modal.style.cssText+=';filter:hue-rotate(180deg) saturate(2) brightness(.7);transform:translateY(10px) skewX(-2deg);';
+    },80);
+    setTimeout(()=>{
+      modal.style.cssText+=';filter:none;transform:translateY(0);transition:filter .15s ease,transform .2s ease;';
+    },220);
+  } else {
+    overlay.classList.add('open');
+  }
+
+  // Log glitch — 3-4sn aralıklı sürekli
+  let _creatorGlitchTimer=null;
+  function _runLogGlitch(){
+    const block=document.getElementById('creator-log-block');
+    if(!block||!overlay.classList.contains('open')){clearTimeout(_creatorGlitchTimer);return;}
+    const lines=block.querySelectorAll('.creator-log-line');
+    // 1-2 rastgele satırı glitch'le
+    const count=Math.floor(Math.random()*2)+1;
+    const picked=[];
+    while(picked.length<count&&picked.length<lines.length){
+      const idx=Math.floor(Math.random()*lines.length);
+      if(!picked.includes(idx))picked.push(idx);
+    }
+    picked.forEach(idx=>{
+      const el=lines[idx];
+      const orig=el.textContent;
+      const chars='█▓▒░⣿⡇⢸|/\\-_<>[]{}#@$%&*!?~^';
+      // Kısa glitch: 3 frame
+      let f=0;
+      const glitchInterval=setInterval(()=>{
+        if(f>=4){clearInterval(glitchInterval);el.textContent=orig;el.style.color='#39ff14';return;}
+        if(f%2===0){
+          el.textContent=orig.split('').map(c=>Math.random()<.25?chars[Math.floor(Math.random()*chars.length)]:c).join('');
+          el.style.color=f===0?'#ff00ff':'#00ffff';
+        } else {
+          el.textContent=orig;
+          el.style.color='#39ff14';
+        }
+        f++;
+      },60);
+    });
+    // Tüm bloğun kısa skew'i
+    block.style.transition='transform .05s steps(1)';
+    block.style.transform=`skewX(${(Math.random()-.5)*4}deg) translateX(${(Math.random()-.5)*6}px)`;
+    setTimeout(()=>{block.style.transform='none';},120);
+
+    _creatorGlitchTimer=setTimeout(_runLogGlitch, 3000+Math.random()*1000);
+  }
+  setTimeout(_runLogGlitch,1500);
+}
+
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
   if(badgeId==='secret_ashbless'){openAshblessModal();return;}
   if(badgeId==='secret_anubis'){openAnubisModal();return;}
-  if(badgeId==='secret_creator'){launchConfetti('creator');return;}
+  if(badgeId==='secret_creator'){openCreatorModal();return;}
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
