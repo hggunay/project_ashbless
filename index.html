@@ -225,6 +225,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card.locked{opacity:.4;filter:grayscale(1) brightness(.9);}
 .badge-card.locked .badge-icon{opacity:.3;}
 @keyframes badgeShimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes romHeartbeat{0%,100%{transform:scale(1)}14%{transform:scale(1.08)}42%{transform:scale(1.05)}}
+@keyframes romAura{0%,100%{box-shadow:0 0 0 0 rgba(255,110,180,.8)}50%{box-shadow:0 0 0 20px rgba(255,110,180,0)}}
 @keyframes badgeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 22px rgba(201,162,39,.7),0 0 40px rgba(201,162,39,.35)}}
 .badge-card.badge-shine{animation:badgeGlow .8s ease 3,badgeShimmer 1.2s ease 3;background:linear-gradient(100deg,#fdf5e0 35%,#fff8b0 50%,#fdf5e0 65%) !important;background-size:200% 100% !important;}
 .badge-new-tag{position:absolute;top:.35rem;right:.35rem;font-family:'Space Mono',monospace;font-size:.5rem;font-weight:700;background:linear-gradient(135deg,var(--gold),#e8c840);color:var(--ink);padding:.15rem .4rem;border-radius:20px;letter-spacing:.05em;animation:badgeGlow .8s ease infinite;}
@@ -8582,6 +8584,23 @@ function toggleBadgeDetail(badgeId){
   if(badgeId==='secret_ashbless'){openAshblessModal();return;}
   if(badgeId==='secret_anubis'){openAnubisModal();return;}
   if(badgeId==='secret_creator'){openCreatorModal();return;}
+
+  // Rom rozeti kalp animasyonu
+  if(['rom1','rom2','rom3','rom4'].includes(badgeId)){
+    const books=validBooks();
+    const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+    const badge=allB.find(b=>b.id===badgeId);
+    if(badge&&bstat(badge,books).earned){
+      const wrap=document.getElementById('twrap-'+badgeId);
+      const card=wrap?.querySelector('.badge-card');
+      if(card){
+        const duration=1.2;
+        const beats=4;
+        card.style.animation=`romHeartbeat ${duration}s ease-in-out ${beats},romAura ${duration}s ease-in-out ${beats}`;
+        setTimeout(()=>{card.style.animation='';},duration*beats*1000+100);
+      }
+    }
+  }
   const wasOpen=openBadgeId===badgeId;
   openBadgeId=wasOpen?null:badgeId;
   renderBadges();
