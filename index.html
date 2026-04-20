@@ -8570,9 +8570,9 @@ function openCreatorModal(){
         s.connect(g);g.connect(ctx.destination);s.start();
       }
     }
-    _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
+    _creatorIdleSoundTimer=setTimeout(_playIdleSound, 30000+Math.random()*30000);
   }
-  _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
+  _creatorIdleSoundTimer=setTimeout(_playIdleSound, 30000+Math.random()*30000);
   window._creatorCleanup=function(){
     clearTimeout(_creatorIdleSoundTimer);
     clearTimeout(_creatorGlitchTimer);
