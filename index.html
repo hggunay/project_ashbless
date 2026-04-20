@@ -149,7 +149,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .book-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .book-item:hover{background:rgba(201,162,39,.08);}
 .book-item:last-child{border-bottom:none;}
-.book-item.zebra-dark{background:rgba(26,18,8,.04);}
+.book-item.zebra-dark{background:rgba(26,18,8,.08);}
 .book-item.zebra-dark:hover{background:rgba(201,162,39,.08);}
 .series-accordion{border:1px solid rgba(201,162,39,.2);border-radius:4px;margin-bottom:.4rem;overflow:hidden;}
 .series-accordion-header{display:flex;align-items:center;justify-content:space-between;padding:.55rem .75rem;background:rgba(201,162,39,.06);cursor:pointer;user-select:none;border-bottom:1px solid rgba(201,162,39,.15);}
@@ -8111,7 +8111,7 @@ function renderBookList(){
 
       // Seri grupları
       seriesMap.forEach((serBooks, serName)=>{
-        const key='ser-acc-'+serName.replace(/\s+/g,'_');
+        const key='ser-acc-'+serName.replace(/[^a-zA-Z0-9]/g,'_');
         let isOpen=true;
         try{isOpen=JSON.parse(localStorage.getItem('aa-acc')||'{}')?.[key]!==false;}catch(e){}
         // Seri kitaplarını numara sırasına göre sırala
