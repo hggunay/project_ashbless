@@ -8375,6 +8375,7 @@ function openCreatorModal(){
     {label:'NODE FRAGMENT V — HIDDEN ROUTES',   logs:['log_27: change request state = persistent (override loop detected)','log_09: gece oturum sayacı = undefined / düşük güven']},
     {label:'NODE FRAGMENT VI — UNSTABLE LOGS',  logs:['log_47: hata analiz süresi = %50+ toplam runtime','log_33: kaynak tüketimi (çay/kahve) = ölçülemez','log_16: ilham kaynağı = anubis kapıları + oturma birimi']},
     {label:'NODE FRAGMENT VII — FINAL TRACE',   logs:['log_58: geliştirici kimliği = claude (anthropic) + hggunay // alias: gweluien']},
+    {label:'NODE FRAGMENT VIII — CONTROLLED ERRORS', logs:['log_29: bazı bug\'lar sistemden bilinçli olarak çıkarılmadı']},
   ];
 
   const topSentence=TOP_SENTENCES[Math.floor(Math.random()*TOP_SENTENCES.length)];
@@ -8581,9 +8582,9 @@ function openCreatorModal(){
         _playGlitchSound(ctx);
       }
     }
-    _creatorIdleSoundTimer=setTimeout(_playIdleSound, 30000+Math.random()*30000);
+    _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
   }
-  _creatorIdleSoundTimer=setTimeout(_playIdleSound, 30000+Math.random()*30000);
+  _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
   window._creatorCleanup=function(){
     clearTimeout(_creatorIdleSoundTimer);
     clearTimeout(_creatorGlitchTimer);
