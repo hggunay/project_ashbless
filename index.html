@@ -149,6 +149,15 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .book-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .book-item:hover{background:rgba(201,162,39,.08);}
 .book-item:last-child{border-bottom:none;}
+.book-item.zebra-dark{background:rgba(26,18,8,.04);}
+.book-item.zebra-dark:hover{background:rgba(201,162,39,.08);}
+.series-accordion{border:1px solid rgba(201,162,39,.2);border-radius:4px;margin-bottom:.4rem;overflow:hidden;}
+.series-accordion-header{display:flex;align-items:center;justify-content:space-between;padding:.55rem .75rem;background:rgba(201,162,39,.06);cursor:pointer;user-select:none;border-bottom:1px solid rgba(201,162,39,.15);}
+.series-accordion-header:hover{background:rgba(201,162,39,.12);}
+.series-accordion-title{font-family:'Playfair Display',serif;font-size:.88rem;color:var(--leather);display:flex;align-items:center;gap:.4rem;}
+.series-accordion-count{font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7;}
+.series-accordion-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
+.series-accordion-body.open{max-height:9999px;opacity:1;}
 .book-item-warn{background:rgba(160,82,45,.08);border-left:3px solid var(--rust);}
 .autocomplete-wrap{position:relative;}
 .autocomplete-list{position:absolute;top:100%;left:0;right:0;background:#2a1f0e;border:1px solid rgba(201,162,39,.3);border-radius:0 0 4px 4px;z-index:100;max-height:220px;overflow-y:auto;}
@@ -8047,7 +8056,7 @@ function renderBookList(){
 
   const list=document.getElementById('bookList');
 
-  function bookItemHtml(b){
+  function bookItemHtml(b, idx){
     const noTitle=!b.title||b.title.startsWith('ISBN:');
     const dateDisplay=b.startDate&&b.endDate
       ?`📅 ${b.startDate} → ✅ ${b.endDate}`
@@ -8059,7 +8068,8 @@ function renderBookList(){
       b.rating?`<span style="font-size:.72rem;color:var(--gold);white-space:nowrap">${'⭐'.repeat(Math.floor(b.rating))}${b.rating%1?'½':''}</span>`:'',
       b.pages?`<span class="book-pages">${b.pages}s</span>`:'',
     ].filter(Boolean).join('');
-    return`<div class="book-item${noTitle?' book-item-warn':''}" onclick="openBook(${b.id})">
+    const zebraClass=idx%2===1?'zebra-dark':'';
+    return`<div class="book-item${noTitle?' book-item-warn':''} ${zebraClass}" onclick="openBook(${b.id})">
       <div class="book-info">
         <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
         ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
@@ -8078,20 +8088,79 @@ function renderBookList(){
     const totalVisible=booksPage*PAGE_SIZE;
     const visible=filteredBooks.slice(0,totalVisible);
     const hasMore=filteredBooks.length>totalVisible;
-    // Geçmiş okumalar (retroactive) sadece tarih sıralamasında ayrı gösterilsin
     const showRetroSplit=sortMode==='date_desc'||sortMode==='date_asc';
+    const useGrouping=sortMode==='date_desc'; // Sadece varsayılan sıralamada seri grupla
+
     let html='';
-    if(showRetroSplit){
+
+    function renderGrouped(books){
+      // Seri grupları
+      const seriesMap=new Map();
+      const soloBooks=[];
+      books.forEach(b=>{
+        if(b.series){
+          if(!seriesMap.has(b.series)) seriesMap.set(b.series,[]);
+          seriesMap.get(b.series).push(b);
+        } else {
+          soloBooks.push(b);
+        }
+      });
+
+      let h='';
+      let zebraIdx=0;
+
+      // Seri grupları
+      seriesMap.forEach((serBooks, serName)=>{
+        const key='ser-acc-'+serName.replace(/\s+/g,'_');
+        let isOpen=true;
+        try{isOpen=JSON.parse(localStorage.getItem('aa-acc')||'{}')?.[key]!==false;}catch(e){}
+        // Seri kitaplarını numara sırasına göre sırala
+        serBooks.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
+        h+=`<div class="series-accordion">
+          <div class="series-accordion-header" onclick="toggleSeriesAcc('${key}')">
+            <span class="series-accordion-title">📚 ${serName}</span>
+            <span style="display:flex;align-items:center;gap:.4rem">
+              <span class="series-accordion-count">${serBooks.length} kitap</span>
+              <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+            </span>
+          </div>
+          <div class="series-accordion-body ${isOpen?'open':''}" id="body-${key}">
+            ${serBooks.map((b,i)=>bookItemHtml(b,i)).join('')}
+          </div>
+        </div>`;
+      });
+
+      // Solo kitaplar
+      if(soloBooks.length){
+        if(seriesMap.size>0){
+          h+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.6;padding:.6rem .75rem .3rem;margin-top:.25rem">Tekil Kitaplar</div>`;
+        }
+        h+=soloBooks.map((b,i)=>bookItemHtml(b,i)).join('');
+      }
+
+      return h;
+    }
+
+    if(useGrouping){
       const visibleNew=visible.filter(b=>!b.retroactive);
       const visiblePast=visible.filter(b=>b.retroactive);
-      html+=visibleNew.map(bookItemHtml).join('');
+      html+=renderGrouped(visibleNew);
       if(visiblePast.length){
         html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .75rem .3rem;border-top:1px solid rgba(201,162,39,.1)">📦 Geçmiş Okumalar</div>`;
-        html+=visiblePast.map(bookItemHtml).join('');
+        html+=renderGrouped(visiblePast);
+      }
+    } else if(showRetroSplit){
+      const visibleNew=visible.filter(b=>!b.retroactive);
+      const visiblePast=visible.filter(b=>b.retroactive);
+      html+=visibleNew.map((b,i)=>bookItemHtml(b,i)).join('');
+      if(visiblePast.length){
+        html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .75rem .3rem;border-top:1px solid rgba(201,162,39,.1)">📦 Geçmiş Okumalar</div>`;
+        html+=visiblePast.map((b,i)=>bookItemHtml(b,i)).join('');
       }
     } else {
-      html+=visible.map(bookItemHtml).join('');
+      html+=visible.map((b,i)=>bookItemHtml(b,i)).join('');
     }
+
     if(hasMore) html+=`<button class="load-more-btn" onclick="booksPage++;renderBookList()">↓ Daha fazla yükle (${filteredBooks.length-totalVisible} kaldı)</button>`;
     list.innerHTML=html;
   }
@@ -8577,6 +8646,20 @@ function openCreatorModal(){
     clearTimeout(_creatorIdleSoundTimer);
     clearTimeout(_creatorGlitchTimer);
   };
+}
+
+function toggleSeriesAcc(key){
+  const body=document.getElementById('body-'+key);
+  const arr=document.getElementById('arr-'+key);
+  if(!body) return;
+  const isOpen=body.classList.contains('open');
+  body.classList.toggle('open',!isOpen);
+  if(arr) arr.classList.toggle('open',!isOpen);
+  try{
+    const p=JSON.parse(localStorage.getItem('aa-acc')||'{}');
+    p[key]=!isOpen;
+    localStorage.setItem('aa-acc',JSON.stringify(p));
+  }catch(e){}
 }
 
 function toggleBadgeDetail(badgeId){
