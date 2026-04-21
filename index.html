@@ -1634,6 +1634,12 @@ function normalizeGenre(g){
   return GENRE_NORMALIZE[low]||low;
 }
 
+function normalizeSeries(s){
+  return (s||'').toLowerCase().trim()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
+}
+
 // Tür ID'sinden görüntü adı al
 function genreLabel(id){
   function search(nodes){
@@ -3155,9 +3161,9 @@ function selectSeries(name){
 
 // En dolu bilgiye sahip kitabı referans olarak seç
 function bestSeriesRef(seriesName){
-  const books=myBooks().filter(b=>b.series===seriesName);
+  const normInput=normalizeSeries(seriesName);
+  const books=myBooks().filter(b=>normalizeSeries(b.series||'')===normInput);
   if(!books.length) return null;
-  // En fazla dolu alana sahip kitabı bul
   return books.reduce((best,b)=>{
     const score=(b.author?2:0)+(b.country?2:0)+(b.genres?.length||0)+(b.femaleAuthor?1:0)+(b.seriesTotal?1:0);
     const bestScore=(best.author?2:0)+(best.country?2:0)+(best.genres?.length||0)+(best.femaleAuthor?1:0)+(best.seriesTotal?1:0);
@@ -8099,7 +8105,7 @@ function renderBookList(){
       const soloBooks=[];
       books.forEach(b=>{
         if(b.series){
-          const normKey=b.series.trim().toLowerCase();
+          const normKey=normalizeSeries(b.series);
           if(!seriesMap.has(normKey)) seriesMap.set(normKey,{name:b.series,books:[]});
           seriesMap.get(normKey).books.push(b);
         } else {
