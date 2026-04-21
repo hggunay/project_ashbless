@@ -2890,7 +2890,7 @@ function enterApp(){
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
-  // Gece yarısı mesajı — 10 saniye sonra, sekme aktifse göster
+  // Gece yarısı mesajı — 30 saniye sonra, sekme aktifse göster
   setTimeout(()=>{
     if(document.visibilityState==='visible') tryShowNightMessage();
     else{
@@ -2902,7 +2902,7 @@ function enterApp(){
       };
       document.addEventListener('visibilitychange',onVisible);
     }
-  }, 10000);
+  }, 30000);
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
