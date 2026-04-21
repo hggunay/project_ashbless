@@ -302,7 +302,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .tier-label.silver{background:rgba(170,170,170,.15);color:#777;}
 .tier-label.gold{background:rgba(201,162,39,.15);color:#8a6f0f;}
 .tier-label.diamond{background:rgba(100,200,255,.15);color:#0080a0;}
-@keyframes badgeShimmerNew{0%{background-position:-200% 0}100%{background-position:200% 0}}
+.badge-card.earned:hover{transform:rotate(5deg) scale(1.03);box-shadow:0 6px 18px rgba(180,160,255,.25);}
+.badge-card.earned{transform-style:preserve-3d;perspective:600px;}
+.badge-card.earned::after{content:"";position:absolute;top:-50%;left:-75%;width:50%;height:200%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.35),transparent);transform:rotate(25deg);opacity:0;pointer-events:none;}
+.badge-card.earned:hover::after{animation:badgeShimmerGlow .8s ease forwards;}
+@keyframes badgeShimmerGlow{0%{left:-75%;opacity:0}30%{opacity:1}100%{left:125%;opacity:0}}
+.badge-card:not(.earned):not(.locked):hover{transform:rotate(2deg) scale(1.02);}
 .badge-card.badge-shine-new{animation:badgeGlow .6s ease 4,badgeShimmerNew 1s ease 4;background:linear-gradient(100deg,#fdf5e0 30%,#fff8b0 50%,#fdf5e0 70%) !important;background-size:200% 100% !important;}
 #confetti-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;}
 .badge-icon{font-size:2rem;margin-bottom:.5rem;display:block;}
@@ -8329,9 +8334,22 @@ function renderBadges(){
       </div>
     </div>`;
   }).join('');
-}
 
-function openAnubisModal(){
+  // Kazanılmış rozetlere 3D tilt efekti
+  document.querySelectorAll('.badge-card.earned').forEach(card=>{
+    card.addEventListener('mousemove',function(e){
+      const rect=card.getBoundingClientRect();
+      const x=e.clientX-rect.left;
+      const y=e.clientY-rect.top;
+      const rotateY=(x-rect.width/2)/10;
+      const rotateX=-(y-rect.height/2)/10;
+      card.style.transform=`rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
+    });
+    card.addEventListener('mouseleave',function(){
+      card.style.transform='';
+    });
+  });
+}
   const overlay=document.getElementById('modalOverlay');
   const title=document.getElementById('modalTitle');
   const subtitle=document.getElementById('modalSubtitle');
@@ -8717,6 +8735,17 @@ function toggleBadgeDetail(badgeId){
       if(badge&&bstat(badge,books).earned){
         const card=wrap?.querySelector('.badge-card');
         if(card){card.classList.add('badge-shine-new');setTimeout(()=>card.classList.remove('badge-shine-new'),1500);}
+      }
+      // Rozet görünür alandan çıkınca tooltip kapat
+      if(wrap){
+        if(window._badgeObserver) window._badgeObserver.disconnect();
+        window._badgeObserver=new IntersectionObserver((entries)=>{
+          if(!entries[0].isIntersecting){
+            window._badgeObserver.disconnect();
+            closeBadgeTooltip();
+          }
+        },{threshold:0.1});
+        window._badgeObserver.observe(wrap);
       }
     },50);
   }
