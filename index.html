@@ -10403,3 +10403,27 @@ document.addEventListener("visibilitychange", () => {
 </div>
 </body>
 </html>
+// --- SHADOW AURA SISTEMI ---
+function triggerShadowEffect(prefix) {
+  const el = document.querySelector(`[onclick*="${prefix}"]`);
+  if(el) {
+    el.classList.add('active-unlock', `badge-aura-${prefix}`);
+    setTimeout(() => el.classList.remove('active-unlock', `badge-aura-${prefix}`), 3000);
+  }
+}
+
+// Bu kısım sistemin otomatik tetiklenmesini sağlar
+const originalUnlockBadge = window.unlockBadge;
+window.unlockBadge = function(id, name, type) {
+    if (typeof originalUnlockBadge === 'function') {
+        originalUnlockBadge(id, name, type);
+    }
+    
+    setTimeout(() => {
+        if(type === 'Korku') {
+            triggerShadowEffect('hor');
+        } else if(type === 'Gerilim') {
+            triggerShadowEffect('ger');
+        }
+    }, 400);
+};
