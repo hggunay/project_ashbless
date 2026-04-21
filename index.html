@@ -227,7 +227,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-category{margin-bottom:1.5rem;}
 .category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.8;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.75rem;}
-.badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;}
+.badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;min-height:259px;display:flex;flex-direction:column;justify-content:center;}
 .badge-card:hover{transform:translateY(-2px);box-shadow:0 4px 15px var(--shadow);}
 .badge-card.earned{border-color:var(--gold);background:linear-gradient(135deg,#fdf5e0,#fff8e8);box-shadow:0 0 12px rgba(201,162,39,.15);}
 .badge-card.earned::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
@@ -8267,7 +8267,7 @@ function renderBadges(){
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
         ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
-        ${!isOpen2?'<div class="badge-card-hint">&#128070; detay</div>':''}`}
+        ${!isOpen2?'':''}`}
       </div>
     </div>`;
   }
