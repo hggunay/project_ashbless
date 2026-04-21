@@ -304,6 +304,31 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .tier-label.diamond{background:rgba(100,200,255,.15);color:#0080a0;}
 .badge-card.earned:hover{transform:rotate(5deg) scale(1.03);box-shadow:0 6px 18px rgba(180,160,255,.25);}
 .badge-card.earned{transform-style:preserve-3d;perspective:600px;}
+
+/* ── ARCANE: Fantastik (mor/altın) ── */
+@keyframes auraFantasy{0%,100%{box-shadow:0 0 8px 2px rgba(139,92,246,.18),0 0 16px 4px rgba(201,162,39,.10)}50%{box-shadow:0 0 18px 6px rgba(139,92,246,.32),0 0 28px 8px rgba(201,162,39,.18)}}
+.badge-aura-fantasy{animation:auraFantasy 3s ease-in-out infinite;}
+.badge-aura-fantasy.tier-bronze{animation-duration:3.5s;}
+.badge-aura-fantasy.tier-silver{animation-duration:3s;}
+.badge-aura-fantasy.tier-gold{animation-duration:2.5s;}
+.badge-aura-fantasy.tier-diamond{animation-duration:2s;}
+.badge-aura-fantasy.tier-diamond.earned{box-shadow:0 0 22px 8px rgba(139,92,246,.4),0 0 36px 10px rgba(201,162,39,.22) !important;}
+
+/* ── ARCANE: Bilim Kurgu (mavi/cyan) ── */
+@keyframes auraSF{0%,100%{box-shadow:0 0 8px 2px rgba(14,165,233,.18),0 0 16px 4px rgba(103,232,249,.10)}50%{box-shadow:0 0 18px 6px rgba(14,165,233,.32),0 0 28px 8px rgba(103,232,249,.22)}}
+.badge-aura-sf{animation:auraSF 3s ease-in-out infinite;}
+.badge-aura-sf.tier-bronze{animation-duration:3.5s;}
+.badge-aura-sf.tier-silver{animation-duration:3s;}
+.badge-aura-sf.tier-gold{animation-duration:2.5s;}
+.badge-aura-sf.tier-diamond{animation-duration:2s;}
+
+/* ── ARCANE: Mitoloji (altın/amber) ── */
+@keyframes auraMyt{0%,100%{box-shadow:0 0 8px 2px rgba(201,162,39,.20),0 0 16px 4px rgba(245,158,11,.12)}50%{box-shadow:0 0 18px 6px rgba(201,162,39,.38),0 0 28px 8px rgba(245,158,11,.22)}}
+.badge-aura-myth{animation:auraMyt 3s ease-in-out infinite;}
+.badge-aura-myth.tier-bronze{animation-duration:3.5s;}
+.badge-aura-myth.tier-silver{animation-duration:3s;}
+.badge-aura-myth.tier-gold{animation-duration:2.5s;}
+.badge-aura-myth.tier-diamond{animation-duration:2s;}
 .badge-card.earned::after{content:"";position:absolute;top:-50%;left:-75%;width:50%;height:200%;background:linear-gradient(120deg,transparent,rgba(255,255,255,.35),transparent);transform:rotate(25deg);opacity:0;pointer-events:none;}
 .badge-card.earned:hover::after{animation:badgeShimmerGlow .8s ease forwards;}
 @keyframes badgeShimmerGlow{0%{left:-75%;opacity:0}30%{opacity:1}100%{left:125%;opacity:0}}
@@ -8219,7 +8244,17 @@ function renderBadges(){
     const tier=b.tier||'gold';
     const isSecret=b.id.startsWith('secret_')||b.id.startsWith('comb_');
     const isNew=pendingShimmerBadges.has(b.id);
-    const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier;
+    // Aura sınıfı — sadece kazanılmışsa
+    const ARCANE_FANTASY=['fan1','fan2','fan3','fan4'];
+    const ARCANE_SF=['sf1','sf2','sf3','sf4'];
+    const ARCANE_MYTH=['myt1','myt2','myt3','myt4'];
+    let auraClass='';
+    if(s.earned){
+      if(ARCANE_FANTASY.includes(b.id)) auraClass=' badge-aura-fantasy';
+      else if(ARCANE_SF.includes(b.id)) auraClass=' badge-aura-sf';
+      else if(ARCANE_MYTH.includes(b.id)) auraClass=' badge-aura-myth';
+    }
+    const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
     const isOpen2=openBadgeId===b.id;
     const relBooks=booksForBadge(b,books);
     const MAX_BOOKS=5;
