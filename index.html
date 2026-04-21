@@ -22,7 +22,39 @@
 .pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--rust);opacity:.7;font-size:.9rem;padding:.2rem;}
 .pw-toggle:hover{opacity:1;}
 
-html{overflow-x:hidden;max-width:100%;}
+/* --- SHADOW / KARANLIK AİLESİ --- */
+.badge-aura-horror.active-unlock {
+    position: relative;
+    overflow: visible !important;
+    animation: horrorChaos 3s ease-in-out forwards;
+}
+@keyframes horrorChaos {
+    0% { filter: grayscale(1) brightness(0.5); transform: scale(1); }
+    20% { filter: drop-shadow(0 0 15px #4b0082) contrast(1.5); transform: scale(1.05) skewX(2deg); }
+    40% { filter: drop-shadow(0 0 25px #000) drop-shadow(0 0 5px #ff0000); transform: scale(1.03) skewX(-2deg); }
+    100% { filter: grayscale(0) brightness(1); transform: scale(1); }
+}
+.badge-aura-thriller.active-unlock {
+    position: relative;
+    overflow: visible !important;
+    animation: thrillerPulse 3s ease-in-out forwards;
+}
+@keyframes thrillerPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    25%, 60% { transform: scale(1.04); filter: drop-shadow(0 0 15px #333) brightness(1.1); }
+}
+.active-unlock::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    animation: glitchShimmer 0.5s steps(2) 3;
+    pointer-events: none;
+}
+@keyframes glitchShimmer {
+    0% { left: -100%; opacity: 0; }
+    50% { opacity: 0.5; }
+    100% { left: 100%; opacity: 0; }
+}
+  html{overflow-x:hidden;max-width:100%;}
 body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-height:100vh;overflow-x:hidden;max-width:100%;background-image:radial-gradient(ellipse at 20% 50%,#2d1f0e 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,#1a2d0e 0%,transparent 50%),radial-gradient(ellipse at 60% 80%,#0e1a2d 0%,transparent 50%);}
 
 /* AUTH */
