@@ -149,7 +149,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .book-item{display:flex;align-items:flex-start;gap:.6rem;padding:.75rem;border-radius:2px;border-bottom:1px solid rgba(201,162,39,.12);transition:background .15s;cursor:pointer;}
 .book-item:hover{background:rgba(201,162,39,.08);}
 .book-item:last-child{border-bottom:none;}
-.book-item.zebra-dark{background:rgba(26,18,8,.08);}
+.book-item.zebra-dark{background:rgba(26,18,8,.1);}
 .book-item.zebra-dark:hover{background:rgba(201,162,39,.08);}
 .series-accordion{border:1px solid rgba(201,162,39,.2);border-radius:4px;margin-bottom:.4rem;overflow:hidden;}
 .series-accordion-header{display:flex;align-items:center;justify-content:space-between;padding:.55rem .75rem;background:rgba(201,162,39,.06);cursor:pointer;user-select:none;border-bottom:1px solid rgba(201,162,39,.15);}
@@ -825,6 +825,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                 <option value="date_asc">📅 En eski</option>
                 <option value="alpha">🔤 Alfabetik</option>
                 <option value="rating">⭐ Puan</option>
+                <option value="series">📚 Seriye Göre Grupla</option>
               </select>
             </div>
             <div id="bookFilterBar" style="display:none;padding:.5rem .25rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
@@ -8089,32 +8090,29 @@ function renderBookList(){
     const visible=filteredBooks.slice(0,totalVisible);
     const hasMore=filteredBooks.length>totalVisible;
     const showRetroSplit=sortMode==='date_desc'||sortMode==='date_asc';
-    const useGrouping=sortMode==='date_desc'; // Sadece varsayılan sıralamada seri grupla
+    const useGrouping=sortMode==='series';
 
     let html='';
 
     function renderGrouped(books){
-      // Seri grupları
       const seriesMap=new Map();
       const soloBooks=[];
       books.forEach(b=>{
         if(b.series){
-          if(!seriesMap.has(b.series)) seriesMap.set(b.series,[]);
-          seriesMap.get(b.series).push(b);
+          const normKey=b.series.trim().toLowerCase();
+          if(!seriesMap.has(normKey)) seriesMap.set(normKey,{name:b.series,books:[]});
+          seriesMap.get(normKey).books.push(b);
         } else {
           soloBooks.push(b);
         }
       });
 
       let h='';
-      let zebraIdx=0;
 
-      // Seri grupları
-      seriesMap.forEach((serBooks, serName)=>{
+      seriesMap.forEach(({name:serName, books:serBooks})=>{
         const key='ser-acc-'+serName.replace(/[^a-zA-Z0-9]/g,'_');
         let isOpen=true;
         try{isOpen=JSON.parse(localStorage.getItem('aa-acc')||'{}')?.[key]!==false;}catch(e){}
-        // Seri kitaplarını numara sırasına göre sırala
         serBooks.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
         h+=`<div class="series-accordion">
           <div class="series-accordion-header" onclick="toggleSeriesAcc('${key}')">
@@ -8130,25 +8128,17 @@ function renderBookList(){
         </div>`;
       });
 
-      // Solo kitaplar
       if(soloBooks.length){
         if(seriesMap.size>0){
           h+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.6;padding:.6rem .75rem .3rem;margin-top:.25rem">Tekil Kitaplar</div>`;
         }
         h+=soloBooks.map((b,i)=>bookItemHtml(b,i)).join('');
       }
-
       return h;
     }
 
     if(useGrouping){
-      const visibleNew=visible.filter(b=>!b.retroactive);
-      const visiblePast=visible.filter(b=>b.retroactive);
-      html+=renderGrouped(visibleNew);
-      if(visiblePast.length){
-        html+=`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .75rem .3rem;border-top:1px solid rgba(201,162,39,.1)">📦 Geçmiş Okumalar</div>`;
-        html+=renderGrouped(visiblePast);
-      }
+      html+=renderGrouped(visible);
     } else if(showRetroSplit){
       const visibleNew=visible.filter(b=>!b.retroactive);
       const visiblePast=visible.filter(b=>b.retroactive);
