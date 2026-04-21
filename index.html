@@ -3863,6 +3863,14 @@ function triggerGlitch(titleEl){
   setTimeout(()=>bg.classList.remove('glitch-bg-active'),420);
 }
 
+function triggerShadowEffect(prefix){
+  const el=document.querySelector(`[onclick*="${prefix}1"],[onclick*="${prefix}2"],[onclick*="${prefix}3"],[onclick*="${prefix}4"]`);
+  if(!el) return;
+  const card=el.closest('.badge-card')||el;
+  card.classList.add('active-unlock',`badge-aura-${prefix}`);
+  setTimeout(()=>card.classList.remove('active-unlock',`badge-aura-${prefix}`),3000);
+}
+
 function triggerBedside(){
   const shelf=document.querySelector('#specialShelvesContainer .special-shelf');
   if(!shelf) return;
@@ -5634,6 +5642,9 @@ function notifyBadgesSequentially(badges){
     setTimeout(()=>{
       const tier=tierLabels[b.tier]||'🏅';
       notify(`${tier} Rozet Kazandın!`,`${b.icon} ${b.name}`);
+      // Shadow aura efekti
+      if(['hor1','hor2','hor3','hor4'].includes(b.id)) triggerShadowEffect('hor');
+      else if(['ger1','ger2','ger3','ger4'].includes(b.id)) triggerShadowEffect('ger');
     }, i*2000);
   });
 }
@@ -10403,27 +10414,3 @@ document.addEventListener("visibilitychange", () => {
 </div>
 </body>
 </html>
-// --- SHADOW AURA SISTEMI ---
-function triggerShadowEffect(prefix) {
-  const el = document.querySelector(`[onclick*="${prefix}"]`);
-  if(el) {
-    el.classList.add('active-unlock', `badge-aura-${prefix}`);
-    setTimeout(() => el.classList.remove('active-unlock', `badge-aura-${prefix}`), 3000);
-  }
-}
-
-// Bu kısım sistemin otomatik tetiklenmesini sağlar
-const originalUnlockBadge = window.unlockBadge;
-window.unlockBadge = function(id, name, type) {
-    if (typeof originalUnlockBadge === 'function') {
-        originalUnlockBadge(id, name, type);
-    }
-    
-    setTimeout(() => {
-        if(type === 'Korku') {
-            triggerShadowEffect('hor');
-        } else if(type === 'Gerilim') {
-            triggerShadowEffect('ger');
-        }
-    }, 400);
-};
