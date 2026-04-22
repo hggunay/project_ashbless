@@ -165,6 +165,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .acc-arrow{font-size:.75rem;transition:transform .25s;display:inline-block;color:var(--rust);opacity:.8;flex-shrink:0;}
 .acc-arrow.open{transform:rotate(90deg);}
 .acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
+.acc-body.open{max-height:9999px;opacity:1;overflow:visible;}
 .acc-body.open{max-height:9999px;opacity:1;}
 /* card-header içindeki accordion */
 .card-header.acc-header{cursor:pointer;}
@@ -288,11 +289,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .genre-dd-item.sub{padding-left:1.5rem;font-size:.78rem;color:var(--rust);}
 .genre-dd-item.selected{opacity:.4;pointer-events:none;}
 /* Chain rozet grupları */
-.badge-chain{border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;background:rgba(201,162,39,.03);}
+.badge-chain{border:1px solid rgba(201,162,39,.2);border-radius:8px;padding:.6rem .75rem;margin-bottom:.75rem;background:rgba(201,162,39,.03);overflow:visible;}
 .badge-chain-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;}
 .badge-chain-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.06em;color:var(--rust);opacity:.8;}
 .badge-chain-count{font-family:'Space Mono',monospace;font-size:.6rem;font-weight:700;}
-.badge-chain-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.5rem;}
+.badge-chain-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:1rem;padding:.5rem;}
 /* Tier renkleri — kazanılmış */
 .badge-card.tier-bronze.earned{border-color:#cd7f32;background:linear-gradient(135deg,#fdf0e0,#fff4ea);box-shadow:0 0 10px rgba(205,127,50,.2);}
 .badge-card.tier-bronze.earned::before{background:linear-gradient(90deg,transparent,#cd7f32,transparent);}
