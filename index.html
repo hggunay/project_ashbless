@@ -912,7 +912,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <div class="book-subpanel active" id="bsp-bitti">
             <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.6rem">
               <button class="filter-tab" onclick="toggleBookFilter()" id="bookFilterToggle">🔍 Filtrele</button>
-              <select class="book-input" id="bookSortSelect" onchange="booksPage=1;renderBookList()" style="font-size:.7rem;padding:.25rem .4rem;max-width:140px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)">
+              <select class="book-input" id="bookSortSelect" onchange="booksPage=1;localStorage.setItem('bookSortPref',this.value);renderBookList()" style="font-size:.7rem;padding:.25rem .4rem;max-width:140px;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)">
                 <option value="date_desc">📅 En yeni</option>
                 <option value="date_asc">📅 En eski</option>
                 <option value="alpha">🔤 Alfabetik</option>
@@ -8081,6 +8081,13 @@ function renderStats(){
 }
 
 function renderBookList(){
+  // Kayıtlı sıralama tercihini geri yükle
+  const sortEl=document.getElementById('bookSortSelect');
+  if(sortEl && !sortEl._prefLoaded){
+    const saved=localStorage.getItem('bookSortPref');
+    if(saved) sortEl.value=saved;
+    sortEl._prefLoaded=true;
+  }
   const allBooks=targetBooks();
   const isMe=!viewing;
   const fmtMap={'kitap':'📖','ekitap':'📱','sesli':'🎧','cizgi':'🎨'};
