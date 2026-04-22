@@ -378,6 +378,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-aura-action.tier-silver{animation-duration:3s;}
 .badge-aura-action.tier-gold{animation-duration:2.5s;}
 .badge-aura-action.tier-diamond{animation-duration:2s;}
+/* ── ARCANE: Mitoloji (altın/amber) ── */
 @keyframes auraMyt{0%,100%{box-shadow:0 0 8px 2px rgba(201,162,39,.20),0 0 16px 4px rgba(245,158,11,.12)}50%{box-shadow:0 0 18px 6px rgba(201,162,39,.38),0 0 28px 8px rgba(245,158,11,.22)}}
 .badge-aura-myth{animation:auraMyt 3s ease-in-out infinite;}
 .badge-aura-myth.tier-bronze{animation-duration:3.5s;}
@@ -3892,6 +3893,11 @@ function triggerGlitch(titleEl){
   setTimeout(()=>bg.classList.remove('glitch-bg-active'),420);
 }
 
+// ── SHADOW EFEKT TETİKLEYİCİ ──
+// Korku (hor) ve Gerilim (ger) rozetleri kazanılınca çağrılır.
+// prefix: 'hor' veya 'ger' — ilgili rozet kartına 3 saniyelik
+// horrorChaos / thrillerPulse animasyonu uygular (bkz. CSS .badge-aura-hor/ger).
+// notifyBadgesSequentially içinden otomatik tetiklenir.
 function triggerShadowEffect(prefix){
   const el=document.querySelector(`[onclick*="${prefix}1"],[onclick*="${prefix}2"],[onclick*="${prefix}3"],[onclick*="${prefix}4"]`);
   if(!el) return;
@@ -8360,21 +8366,21 @@ function renderBadges(){
     const tier=b.tier||'gold';
     const isSecret=b.id.startsWith('secret_')||b.id.startsWith('comb_');
     const isNew=pendingShimmerBadges.has(b.id);
-    // Aura sınıfı — sadece kazanılmışsa
-    const ARCANE_FANTASY=['fan1','fan2','fan3','fan4'];
-    const ARCANE_SF=['sf1','sf2','sf3','sf4'];
-    const ARCANE_MYTH=['myt1','myt2','myt3','myt4'];
-    const NEUTRAL=['his1','his2','his3','his4','phi1','phi2','phi3','phi4','ess1','ess2','ess3','ess4','sci1','sci2','sci3','sci4'];
-    const HUMAN=['psy1','psy2','psy3','psy4'];
-    const ACTION=['det1','det2','det3','det4'];
+    // ── ROZET AURA HARİTASI ──
+    // Her rozet ailesinin ID listesi ve karşılık gelen CSS aura sınıfı.
+    // Yeni aile eklemek için buraya satır eklemek yeterli.
+    const BADGE_AURA_MAP = [
+      { ids: ['fan1','fan2','fan3','fan4'],                                                                           cls: 'badge-aura-fantasy' }, // 💜 Arcane Fantastik — mor/altın
+      { ids: ['sf1','sf2','sf3','sf4'],                                                                              cls: 'badge-aura-sf'      }, // 🔵 Arcane Bilim Kurgu — mavi/cyan
+      { ids: ['myt1','myt2','myt3','myt4'],                                                                          cls: 'badge-aura-myth'    }, // 🟡 Arcane Mitoloji — altın/amber
+      { ids: ['his1','his2','his3','his4','phi1','phi2','phi3','phi4','ess1','ess2','ess3','ess4','sci1','sci2','sci3','sci4'], cls: 'badge-aura-neutral' }, // 🟤 Neutral — sepia
+      { ids: ['psy1','psy2','psy3','psy4'],                                                                          cls: 'badge-aura-human'   }, // 🟣 Human/Inner — lavanta
+      { ids: ['det1','det2','det3','det4'],                                                                          cls: 'badge-aura-action'  }, // ⚫ Action Polisiye — koyu gri
+    ];
     let auraClass='';
     if(s.earned){
-      if(ARCANE_FANTASY.includes(b.id)) auraClass=' badge-aura-fantasy';
-      else if(ARCANE_SF.includes(b.id)) auraClass=' badge-aura-sf';
-      else if(ARCANE_MYTH.includes(b.id)) auraClass=' badge-aura-myth';
-      else if(NEUTRAL.includes(b.id)) auraClass=' badge-aura-neutral';
-      else if(HUMAN.includes(b.id)) auraClass=' badge-aura-human';
-      else if(ACTION.includes(b.id)) auraClass=' badge-aura-action';
+      const found = BADGE_AURA_MAP.find(entry => entry.ids.includes(b.id));
+      if(found) auraClass = ' ' + found.cls;
     }
     const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
     const isOpen2=openBadgeId===b.id;
