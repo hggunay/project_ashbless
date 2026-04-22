@@ -260,7 +260,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-category{margin-bottom:1.5rem;}
 .category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.8;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.75rem;}
-.badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;min-height:259px;display:flex;flex-direction:column;justify-content:center;}
+.badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;}
 .badge-card:hover{transform:translateY(-2px);box-shadow:0 4px 15px var(--shadow);}
 .badge-card.earned{border-color:var(--gold);background:linear-gradient(135deg,#fdf5e0,#fff8e8);box-shadow:0 0 12px rgba(201,162,39,.15);}
 .badge-card.earned::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
@@ -370,6 +370,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-aura-human.tier-silver{animation-duration:4.5s;}
 .badge-aura-human.tier-gold{animation-duration:3.5s;}
 .badge-aura-human.tier-diamond{animation-duration:2.5s;}
+
+/* ── ACTION AİLESİ: Polisiye (beyaz/soğuk mavi — keskin flash) ── */
+@keyframes auraAction{0%,85%,100%{box-shadow:0 0 4px 1px rgba(148,163,184,.15)}88%{box-shadow:0 0 20px 8px rgba(248,250,252,.6),0 0 30px 12px rgba(148,163,184,.3)}92%{box-shadow:0 0 6px 2px rgba(148,163,184,.2)}95%{box-shadow:0 0 18px 6px rgba(248,250,252,.4),0 0 24px 8px rgba(148,163,184,.2)}98%{box-shadow:0 0 4px 1px rgba(148,163,184,.15)}}
+.badge-aura-action{animation:auraAction 4s ease-in-out infinite;}
+.badge-aura-action.tier-bronze{animation-duration:5s;}
+.badge-aura-action.tier-silver{animation-duration:4s;}
+.badge-aura-action.tier-gold{animation-duration:3s;}
+.badge-aura-action.tier-diamond{animation-duration:2s;}
 @keyframes auraMyt{0%,100%{box-shadow:0 0 8px 2px rgba(201,162,39,.20),0 0 16px 4px rgba(245,158,11,.12)}50%{box-shadow:0 0 18px 6px rgba(201,162,39,.38),0 0 28px 8px rgba(245,158,11,.22)}}
 .badge-aura-myth{animation:auraMyt 3s ease-in-out infinite;}
 .badge-aura-myth.tier-bronze{animation-duration:3.5s;}
@@ -8308,6 +8316,7 @@ function renderBadges(){
     const ARCANE_MYTH=['myt1','myt2','myt3','myt4'];
     const NEUTRAL=['his1','his2','his3','his4','phi1','phi2','phi3','phi4','ess1','ess2','ess3','ess4','sci1','sci2','sci3','sci4'];
     const HUMAN=['psy1','psy2','psy3','psy4'];
+    const ACTION=['det1','det2','det3','det4'];
     let auraClass='';
     if(s.earned){
       if(ARCANE_FANTASY.includes(b.id)) auraClass=' badge-aura-fantasy';
@@ -8315,6 +8324,7 @@ function renderBadges(){
       else if(ARCANE_MYTH.includes(b.id)) auraClass=' badge-aura-myth';
       else if(NEUTRAL.includes(b.id)) auraClass=' badge-aura-neutral';
       else if(HUMAN.includes(b.id)) auraClass=' badge-aura-human';
+      else if(ACTION.includes(b.id)) auraClass=' badge-aura-action';
     }
     const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
     const isOpen2=openBadgeId===b.id;
