@@ -891,6 +891,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <button class="btn btn-sm btn-primary" onclick="addBookConfirmed()">Yine de Ekle</button>
           <button class="btn btn-sm" onclick="closeDupConfirm()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
         </div>
+        <div class="confirm-bar" id="seriesConfirmBar">
+          <span id="seriesConfirmMsg" style="flex:1"></span>
+          <button class="btn btn-sm btn-primary" onclick="addBookSeriesConfirmed()">Olduğu Gibi Devam</button>
+          <button class="btn btn-sm" onclick="useExistingSeriesName()" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)">Mevcut Adı Kullan</button>
+          <button class="btn btn-sm" onclick="closeSeriesConfirm()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
+        </div>
       </div>
       <div class="card">
         <div class="card-body" style="padding:.75rem">
@@ -4878,6 +4884,25 @@ async function addBook(){
   // Manuel girilen seri adı API'den gelenden öncelikli
   if(manualSeries && !info.series) info.series=manualSeries;
 
+  // Seri adı normalize kontrolü — farklı yazım varsa uyar
+  const enteredSeries=info.series||'';
+  if(enteredSeries){
+    const normEntered=normalizeSeries(enteredSeries);
+    const existingSeries=[...new Set(myBooks().filter(b=>b.series).map(b=>b.series))];
+    const match=existingSeries.find(s=>normalizeSeries(s)===normEntered && s!==enteredSeries);
+    if(match && !window._skipSeriesCheck){
+      st.textContent='';
+      const bar=document.getElementById('seriesConfirmBar');
+      const msg=document.getElementById('seriesConfirmMsg');
+      if(msg) msg.textContent=`Seri adı farklı yazılmış: "${enteredSeries}" ↔ mevcut: "${match}"`;
+      if(bar) bar.classList.add('show');
+      window._pendingSeriesMatch=match;
+      window._pendingSeriesInfo=info;
+      return;
+    }
+  }
+  window._skipSeriesCheck=false;
+
   // Duplicate kontrol — başlık artık kesin belli
   const normalizeForDup=s=>(s||'').toLowerCase()
     .replace(/[ğ]/g,'g').replace(/[üü]/g,'u').replace(/[şş]/g,'s').replace(/[ıi]/g,'i').replace(/[öo]/g,'o').replace(/[çc]/g,'c')
@@ -5022,6 +5047,31 @@ function closeDupConfirm(){
 function addBookConfirmed(){
   closeDupConfirm();
   window._skipDupCheck=true;
+  addBook();
+}
+
+function closeSeriesConfirm(){
+  const bar=document.getElementById('seriesConfirmBar');
+  if(bar) bar.classList.remove('show');
+  window._skipSeriesCheck=false;
+  window._pendingSeriesMatch=null;
+  window._pendingSeriesInfo=null;
+}
+
+function addBookSeriesConfirmed(){
+  closeSeriesConfirm();
+  window._skipSeriesCheck=true;
+  addBook();
+}
+
+function useExistingSeriesName(){
+  const match=window._pendingSeriesMatch;
+  if(match){
+    const seriesInput=document.getElementById('bookSeries');
+    if(seriesInput) seriesInput.value=match;
+  }
+  closeSeriesConfirm();
+  window._skipSeriesCheck=true;
   addBook();
 }
 
