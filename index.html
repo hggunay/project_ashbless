@@ -354,7 +354,13 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-aura-sf.tier-gold{animation-duration:2.5s;}
 .badge-aura-sf.tier-diamond{animation-duration:2s;}
 
-/* ── ARCANE: Mitoloji (altın/amber) ── */
+/* ── NEUTRAL AİLESİ: Tarih, Felsefe, Deneme, Bilim (sepia/krem) ── */
+@keyframes auraNeutral{0%,100%{box-shadow:0 0 4px 1px rgba(139,90,43,.12)}50%{box-shadow:0 0 10px 3px rgba(139,90,43,.22)}}
+.badge-aura-neutral{animation:auraNeutral 5s ease-in-out infinite;}
+.badge-aura-neutral.tier-bronze{animation-duration:6s;}
+.badge-aura-neutral.tier-silver{animation-duration:5s;}
+.badge-aura-neutral.tier-gold{animation-duration:4s;}
+.badge-aura-neutral.tier-diamond{animation-duration:3s;}
 @keyframes auraMyt{0%,100%{box-shadow:0 0 8px 2px rgba(201,162,39,.20),0 0 16px 4px rgba(245,158,11,.12)}50%{box-shadow:0 0 18px 6px rgba(201,162,39,.38),0 0 28px 8px rgba(245,158,11,.22)}}
 .badge-aura-myth{animation:auraMyt 3s ease-in-out infinite;}
 .badge-aura-myth.tier-bronze{animation-duration:3.5s;}
@@ -8291,11 +8297,13 @@ function renderBadges(){
     const ARCANE_FANTASY=['fan1','fan2','fan3','fan4'];
     const ARCANE_SF=['sf1','sf2','sf3','sf4'];
     const ARCANE_MYTH=['myt1','myt2','myt3','myt4'];
+    const NEUTRAL=['his1','his2','his3','his4','phi1','phi2','phi3','phi4','ess1','ess2','ess3','ess4','sci1','sci2','sci3','sci4'];
     let auraClass='';
     if(s.earned){
       if(ARCANE_FANTASY.includes(b.id)) auraClass=' badge-aura-fantasy';
       else if(ARCANE_SF.includes(b.id)) auraClass=' badge-aura-sf';
       else if(ARCANE_MYTH.includes(b.id)) auraClass=' badge-aura-myth';
+      else if(NEUTRAL.includes(b.id)) auraClass=' badge-aura-neutral';
     }
     const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
     const isOpen2=openBadgeId===b.id;
