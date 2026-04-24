@@ -1255,6 +1255,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         <button id="sTab-map" class="filter-tab" onclick="switchStatsTab('map')">🗺️ Harita</button>
       </div>
       <div id="sPanel-stats">
+        <div style="display:flex;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap">
+          <button id="stf-all" class="filter-tab active" onclick="setStatsTimeFilter('all')">📚 Tüm Zamanlar</button>
+          <button id="stf-year" class="filter-tab" onclick="setStatsTimeFilter('year')">📅 Bu Yıl</button>
+          <button id="stf-month" class="filter-tab" onclick="setStatsTimeFilter('month')">🗓️ Bu Ay</button>
+        </div>
         <div id="statsContainer"></div>
       </div>
       <div id="sPanel-map" style="display:none;padding:.75rem 0">
@@ -7789,11 +7794,37 @@ document.addEventListener('touchstart',e=>{
 });
 // ─────────────────────────────────────────────────────────────
 
+function setStatsTimeFilter(filter){
+  window._statsTimeFilter = filter;
+  ['all','year','month'].forEach(f=>{
+    const btn = document.getElementById('stf-'+f);
+    if(btn) btn.classList.toggle('active', f===filter);
+  });
+  renderStatsPanel();
+}
+
 function renderStatsPanel(){
   const target=viewing||me;
   const user=db.users[target];
   const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
-  const books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading');
+  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading');
+
+  // Zaman filtresi uygula
+  const tf = window._statsTimeFilter||'all';
+  const now = new Date();
+  const curYearStr = String(now.getFullYear());
+  const curMonthStr = `${curYearStr}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  if(tf==='year'){
+    books = books.filter(b=>{
+      const d = b.endDate||b.month||b.yearOnly||'';
+      return d.startsWith(curYearStr);
+    });
+  } else if(tf==='month'){
+    books = books.filter(b=>{
+      const d = b.endDate||b.month||'';
+      return d.startsWith(curMonthStr);
+    });
+  }
 
   // Viewing banner
   const isV=!!viewing;
