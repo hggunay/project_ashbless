@@ -3220,17 +3220,26 @@ function playStreakBreak(){
     msg.style.opacity='0';
   }, 3800);
 
-  // Sahne 5 — 🔥 yeniden doğuş (küçükten büyüye, yavaş)
+  // Sahne 5 — 🔥 yeniden doğuş (tabandan büyüyen tek alev)
   setTimeout(()=>{
     emoji.textContent='🔥';
+    emoji.style.animation='none';
     emoji.style.transition='none';
-    emoji.style.transform='scale(1)';
-    emoji.style.opacity='1';
-    emoji.style.animation='fireGrow 2.2s cubic-bezier(.25,.46,.45,.94) forwards';
+    emoji.style.opacity='0';
+    emoji.style.transform='scaleY(0)';
+    emoji.style.transformOrigin='bottom center';
+    emoji.style.fontSize='4.5rem';
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        emoji.style.transition='opacity 0.5s ease, transform 1.2s cubic-bezier(.34,1.56,.64,1)';
+        emoji.style.opacity='1';
+        emoji.style.transform='scaleY(1)';
+      });
+    });
     setTimeout(()=>{
       msg.textContent='Bugün bir sayfa yeter.';
       msg.style.opacity='1';
-    }, 900);
+    }, 1400);
   }, 4600);
 
   // Kapat butonu
