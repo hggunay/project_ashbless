@@ -9465,7 +9465,7 @@ function seriesAcSearch(seriesId){
   if(!matches.length){ dropdown.style.display='none'; return; }
 
   dropdown.innerHTML = matches.map(b=>`
-    <div class="series-ac-item" onmousedown="event.preventDefault();selectSeriesAc('${seriesId}',${JSON.stringify(b.title).replace(/'/g,"&#39;")},${JSON.stringify(b.author||'').replace(/'/g,"&#39;")})">
+    <div class="series-ac-item" onclick="selectSeriesAc('${seriesId}',${JSON.stringify(b.title).replace(/'/g,"&#39;")},${JSON.stringify(b.author||'').replace(/'/g,"&#39;")})">
       <span style="font-size:.88rem;color:var(--ink);font-weight:600">${b.title}</span>
       ${b.author?`<span style="font-size:.75rem;color:var(--rust);opacity:.8"> — ${b.author}</span>`:''}
       ${b.series?`<span style="font-size:.65rem;color:var(--moss);font-family:'Space Mono',monospace"> · ${b.series}</span>`:''}
@@ -9989,7 +9989,7 @@ function renderSeriesList(){
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
             style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-            oninput="seriesAcSearch('${ser.id}')"/>
+            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),300)"/>
           <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
