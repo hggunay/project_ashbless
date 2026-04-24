@@ -10235,7 +10235,7 @@ function goToFullSeriesCard(seriesId){
     card.style.display='';
     const booksEl = document.getElementById('seriesBooks_'+seriesId);
     const btn = document.getElementById('seriesToggleBtn_'+seriesId);
-    if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
+    if(booksEl&&!booksEl.classList.contains('open')){ toggleSeriesBooks(seriesId); }
     card.scrollIntoView({behavior:'smooth',block:'center'});
     card.style.outline='2px solid var(--moss)';
     setTimeout(()=>card.style.outline='',2000);
