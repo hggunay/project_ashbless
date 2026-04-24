@@ -8010,6 +8010,54 @@ function renderStatsPanel(){
           <div id="dtab-content-country" style="display:none">${topCountries.length?listRows(topCountries,books.length):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
         `):''}
 
+        ${(()=>{
+          // ── OKUMA PROFİLİ ──
+          if(!books.length) return '';
+
+          // Tür eğilimi
+          const topGenre = topGenres[0]?topGenres[0][0]:null;
+          const genreLabel = topGenre ? {
+            'fantastik':'Fantastik okuyucu','bilimkurgu':'Bilim kurgu meraklısı',
+            'polisiye':'Polisiye kurdu','korku':'Karanlığın okuyucusu',
+            'romantik':'Romantik ruh','tarih':'Tarih araştırmacısı',
+            'felsefe':'Düşünür','psikoloji':'İç dünya kaşifi',
+            'mitoloji':'Mitoloji takipçisi','gerilim':'Gerilim avcısı',
+            'deneme':'Deneme dostu','kurgu':'Kurgu sever',
+          }[topGenre] || topGenre+' okuyucusu' : null;
+
+          // Format tercihi
+          const fmtEntries = Object.entries(fmtCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+          const topFmt = fmtEntries[0]?fmtEntries[0][0]:null;
+          const fmtLabel = {'kitap':'Fiziksel kitap sever','ekitap':'E-kitap tutkunu','sesli':'Sesli kitap dinleyicisi','cizgi':'Çizgi roman okuyucusu'}[topFmt]||null;
+
+          // Okuma davranışı
+          const seriesBooks = books.filter(b=>b.series).length;
+          const seriesPct = books.length?Math.round(seriesBooks/books.length*100):0;
+          const behaviorLabel = seriesPct>=60?'Seri odaklı okuyucu':seriesPct>=30?'Seri ve tekil karışık':'Tekil kitap okuyucusu';
+
+          // En sadık yazar
+          const topAuthor = topAuthors[0]?topAuthors[0]:null;
+
+          // Ortalama puan
+          const ratedBooks = books.filter(b=>b.rating);
+          const avgRating = ratedBooks.length?Math.round(ratedBooks.reduce((s,b)=>s+b.rating,0)/ratedBooks.length*10)/10:null;
+
+          const chip = (icon,text) => `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.15);border-radius:8px">
+            <span style="font-size:1.2rem">${icon}</span>
+            <span style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink)">${text}</span>
+          </div>`;
+
+          return statsSection('stats-profile','🪞 Okuma Profili',`
+            <div style="display:flex;flex-direction:column;gap:.5rem;max-width:420px">
+              ${genreLabel?chip('📚',genreLabel):''}
+              ${fmtLabel?chip('📖',fmtLabel):''}
+              ${chip('🔖',behaviorLabel)}
+              ${topAuthor?chip('✍️',`En sadık: <strong>${topAuthor[0]}</strong> (${topAuthor[1]} kitap)`):''}
+              ${avgRating?chip('⭐',`Ortalama puan: <strong>${avgRating}</strong> / 5`):''}
+            </div>
+          `);
+        })()}
+
         ${statsSection('stats-format','📖 Format & Çeşitlilik',`
           <div class="stats-grid">
             ${fmtCount.kitap?`<div class="stats-big-card"><div class="stats-big-num">${fmtCount.kitap}</div><div class="stats-big-label">📖 Fiziksel</div></div>`:''}
