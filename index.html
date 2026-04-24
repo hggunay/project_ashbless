@@ -8095,7 +8095,7 @@ function renderStatsPanel(){
     ${isV?`<div class="card" style="margin-bottom:.75rem">
       <div class="card-body" style="padding:.75rem">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
-          ${(()=>{const av=user?.avatar||'📚';if(av.startsWith('avatar_'))return`<img src="avatars/${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;return`<span style="font-size:2.5rem">${av}</span>`;})()}
+          ${(()=>{const av=user?.avatar||'📚';if(av.startsWith('avatar_'))return`<img src="avatars/${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;if(av.startsWith('data:'))return`<img src="${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;return`<span style="font-size:2.5rem">${av}</span>`;})()}
           <div>
             <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);font-weight:700">${user?.displayName||target}</div>
             <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7">${books.length} kitap · ${badgeCount} rozet · ${countries.size} ülke</div>
