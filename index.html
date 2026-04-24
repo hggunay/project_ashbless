@@ -7951,7 +7951,7 @@ function renderStatsPanel(){
             if(!earned.length) return'';
             const icons=earned.map(e=>`<span title="${e.name}" style="font-size:1.1rem;cursor:default">${e.icon}</span>`).join('');
             return`<div style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
-              <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--rust);min-width:2.5rem">${yr}</span>
+              <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--ink);opacity:.85;min-width:2.5rem">${yr}</span>
               <div style="display:flex;gap:.3rem">${icons}</div>
             </div>`;
           }).filter(Boolean).join('');
@@ -7988,11 +7988,11 @@ function renderStatsPanel(){
               </div>`;
             })()}
             ${yearRows?`<div style="margin-top:.75rem">
-              <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em">Yıllık Rozet Geçmişi</div>
+              <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--ink);opacity:.85;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em">Yıllık Rozet Geçmişi</div>
               ${yearRows}
-              <div style="font-size:.72rem;color:var(--rust);opacity:.7;font-style:italic;margin-top:.4rem">🥉 3 ay · 🥈 6 ay · 🥇 12 ay — üzerine gel, rozet adını gör</div>
+              <div style="font-size:.72rem;color:var(--ink);opacity:.8;font-style:italic;margin-top:.4rem">🥉 3 ay · 🥈 6 ay · 🥇 12 ay — üzerine gel, rozet adını gör</div>
             </div>`:''}
-            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.7">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--ink);opacity:.85">
               <div style="width:10px;height:10px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
               <div style="width:10px;height:10px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.4rem"></div><span>Kitap yok</span>
             </div>
