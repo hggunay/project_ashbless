@@ -9739,8 +9739,20 @@ function toggleSeriesBooks(id){
   const el = document.getElementById('seriesBooks_'+id);
   if(!el) return;
   el.classList.toggle('open');
+  const isOpen = el.classList.contains('open');
   const btn = document.getElementById('seriesToggleBtn_'+id);
-  if(btn) btn.textContent = el.classList.contains('open') ? '▲ Gizle' : '▼ Kitaplar';
+  const closeBtn = document.getElementById('seriesCloseBtn_'+id);
+  if(btn) btn.textContent = isOpen ? '▲ Gizle' : '▼ Kitaplar';
+  if(closeBtn) closeBtn.style.display = isOpen ? '' : 'none';
+}
+
+function closeSeriesCard(id){
+  const el = document.getElementById('seriesBooks_'+id);
+  if(el) el.classList.remove('open');
+  const btn = document.getElementById('seriesToggleBtn_'+id);
+  const closeBtn = document.getElementById('seriesCloseBtn_'+id);
+  if(btn) btn.textContent = '▼ Kitaplar';
+  if(closeBtn) closeBtn.style.display = 'none';
 }
 
 function renderSeriesList(){
@@ -9978,6 +9990,9 @@ function renderSeriesList(){
         <button class="btn btn-sm" id="seriesToggleBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
           onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${books.length})</button>
+        <button class="btn btn-sm" id="seriesCloseBtn_${ser.id}" 
+          style="font-size:.7rem;background:rgba(139,0,0,.1);color:var(--rust);border:1px solid rgba(139,0,0,.2);display:none"
+          onclick="closeSeriesCard('${ser.id}')">✕ Kapat</button>
       </div>
       <div class="series-books-list" id="seriesBooks_${ser.id}">
         ${bookListHtml}
@@ -9989,15 +10004,17 @@ function renderSeriesList(){
     </div>`;
   }).join('')+(hasMoreSeries?`<button class="load-more-btn" onclick="seriesPage++;renderSeriesList()">↓ Daha fazla yükle (${allSeries.length-seriesPage*PAGE_SIZE} kaldı)</button>`:'');
   } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--rust)">Render hatası: '+e.message+'</div>'; }
-  // Açık kartları geri aç
+  // Grup kartlarını üste ekle
+  renderGroupCards(container);
+  // Açık kartları geri aç — renderGroupCards'tan sonra çalışmalı
   openIds.forEach(id=>{
     const el = document.getElementById('seriesBooks_'+id);
     const btn = document.getElementById('seriesToggleBtn_'+id);
+    const closeBtn = document.getElementById('seriesCloseBtn_'+id);
     if(el){ el.classList.add('open'); }
     if(btn){ btn.textContent='▲ Gizle'; }
+    if(closeBtn){ closeBtn.style.display=''; }
   });
-  // Grup kartlarını üste ekle
-  renderGroupCards(container);
 }
 
 function renderGroupCards(seriesContainer){
