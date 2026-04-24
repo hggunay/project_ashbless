@@ -3165,6 +3165,60 @@ function toggleAddMore(){
 }
 
 // Genel accordion toggle — localStorage'a kaydeder
+// ── SERİ KIRILMA ANİMASYONU ──
+function checkStreakBreak(books){
+  const now = new Date();
+  const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
+
+  // Bu ay kitap var mı?
+  const hasThisMonth = books.some(b=>(b.endDate||b.month||'').startsWith(curMonth));
+  // Geçen ay kitap var mıydı?
+  const hadLastMonth = books.some(b=>(b.endDate||b.month||'').startsWith(prevMonth));
+
+  // Seri kırılma: geçen ay vardı, bu ay yok
+  if(!hasThisMonth && hadLastMonth){
+    const key = 'streakBreakShown_'+curMonth;
+    try{ if(localStorage.getItem(key)) return; }catch(e){}
+    try{ localStorage.setItem(key,'1'); }catch(e){}
+    setTimeout(()=>showStreakBreak(), 800);
+  }
+}
+
+function showStreakBreak(){
+  const overlay = document.getElementById('streakBreakOverlay');
+  const emoji = document.getElementById('streakBreakEmoji');
+  const msg = document.getElementById('streakBreakMsg');
+  const btn = document.getElementById('streakBreakBtn');
+  if(!overlay) return;
+
+  overlay.style.display='flex';
+
+  // Emoji animasyonu: 😄 → 😮 → 😔 → 🔥
+  const steps = [
+    {e:'😄', delay:0},
+    {e:'😮', delay:600},
+    {e:'😔', delay:1200},
+    {e:'🔥', delay:2000},
+  ];
+  steps.forEach(({e, delay})=>{
+    setTimeout(()=>{ emoji.textContent=e; }, delay);
+  });
+
+  // Mesaj ve buton
+  setTimeout(()=>{
+    msg.textContent='Bu ay henüz kitap bitmedi. Seri bekleniyor...';
+    msg.style.opacity='1';
+  }, 2200);
+  setTimeout(()=>{ btn.style.opacity='1'; }, 2600);
+}
+
+function closeStreakBreak(){
+  const overlay = document.getElementById('streakBreakOverlay');
+  if(overlay){ overlay.style.opacity='0'; overlay.style.transition='opacity .3s'; setTimeout(()=>{ overlay.style.display='none'; overlay.style.opacity=''; overlay.style.transition=''; },300); }
+}
+
 // ── DAĞILIM ANALİZİ SEKME DEĞİŞTİRİCİ ──
 function switchDagilimTab(tab){
   ['genre','author','country'].forEach(t=>{
@@ -7914,6 +7968,9 @@ function renderStatsPanel(){
     </div>`;
   }
 
+  // Seri kırılma kontrolü — sadece kendi profilinde
+  if(!viewing) checkStreakBreak(books);
+
   document.getElementById('statsContainer').innerHTML=`
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">📊 ${isV?(user?.displayName||target)+' — ':''}Okuma İstatistikleri</div>
@@ -10825,6 +10882,11 @@ document.addEventListener("visibilitychange", () => {
     </div>
     <div id="barcodeStatus" style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);text-align:center;margin-top:.6rem;opacity:.7">Barkodu kameraya göster</div>
   </div>
+</div>
+<div id="streakBreakOverlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);align-items:center;justify-content:center;flex-direction:column">
+  <div id="streakBreakEmoji" style="font-size:4rem;line-height:1;transition:all .4s ease">😄</div>
+  <div id="streakBreakMsg" style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--parchment);margin-top:1rem;opacity:0;transition:opacity .4s ease;text-align:center;padding:0 2rem"></div>
+  <button onclick="closeStreakBreak()" style="margin-top:1.5rem;padding:.5rem 1.5rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:20px;color:var(--gold);font-family:'Space Mono',monospace;font-size:.75rem;cursor:pointer;opacity:0;transition:opacity .4s ease" id="streakBreakBtn">🔥 Yeniden başla</button>
 </div>
 </body>
 </html>
