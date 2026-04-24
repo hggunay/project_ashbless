@@ -7857,13 +7857,13 @@ function renderStatsPanel(){
   const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
 
   function listRows(data, total){
-    return data.map(([label,val],i)=>`
+    return `<div style="max-width:420px">`+data.map(([label,val],i)=>`
       <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.06)">
         <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1rem;text-align:right;opacity:.5">${i+1}</span>
         <span style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink);flex:1">${label}</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust)">${val}</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.5">${total?Math.round(val/total*100)+'%':''}</span>
-      </div>`).join('');
+        <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);min-width:1.5rem;text-align:right">${val}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;min-width:2.5rem;text-align:right">${total?Math.round(val/total*100)+'%':''}</span>
+      </div>`).join('')+'</div>';
   }
 
   const monthLabels=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
