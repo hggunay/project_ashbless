@@ -9428,19 +9428,11 @@ function hideSeriesAc(seriesId){
 }
 
 function confirmRemoveBookFromSeries(evt, seriesId, bookId, isPlanned, manualTitle){
-  const item = evt.target.closest('.series-book-item');
-  if(!item) return;
-  const existId = 'removeConfirm_'+seriesId+'_'+(bookId||manualTitle||'');
-  const exist = document.getElementById(existId);
-  if(exist){ exist.remove(); return; }
-  const box = document.createElement('div');
-  box.id = existId;
-  box.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.3rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--rust);flex-wrap:wrap;margin-top:.2rem';
-  const args = isPlanned ? `'${seriesId}',null,true,'${(manualTitle||'').replace(/'/g,"\\'")}'` : `'${seriesId}',${bookId},false`;
-  box.innerHTML = `Kitabı seriden çıkar?
-    <button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="removeBookFromSeries(${args})">Evet</button>
-    <button class="btn btn-sm" style="font-size:.68rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="this.closest('div[id]').remove()">İptal</button>`;
-  item.insertAdjacentElement('afterend', box);
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  const bookTitle = isPlanned ? manualTitle : (ser&&(ser.books||[]).find(b=>b.bookId===bookId)&&myBooks().find(b=>b.id===bookId)||{}).title || 'Bu kitap';
+  if(!confirm(`"${bookTitle}" seriden çıkarılsın mı?`)) return;
+  removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle);
 }
 function removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle){
   const data = mySeriesData();
@@ -9452,7 +9444,7 @@ function removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle){
     ser.books = (ser.books||[]).filter(b=>b.bookId!==bookId);
   }
   saveDb();
-  renderSeriesList();
+  _refreshSeriesBookList(seriesId);
 }
 
 function updateSeriesTotal(seriesId, val){
@@ -10078,7 +10070,7 @@ function renderGroupCards(seriesContainer){
               ?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${lb.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`
               :`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${st.ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`):'';
             const removeKey=bk.planned?`'${st.ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' `:`'${st.ser.id}',${lb.id||'null'},false`;
-            return `<div style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${startBtn}${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="goToFullSeriesCard('${st.ser.id}')">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}</div></div>`;
+            return `<div style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${startBtn}</div></div>`;
           }).join('');
           const serOpenKey='serInGrp_'+st.ser.id;
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
@@ -10131,19 +10123,23 @@ function toggleSeriesInGroup(seriesId, headerEl){
 
 function goToFullSeriesCard(seriesId){
   if(viewing) return;
-  const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
-  if(!card) return;
-  card.style.display='';
-  card.dataset.pinned='1';
-  const booksEl = document.getElementById('seriesBooks_'+seriesId);
-  const btn = document.getElementById('seriesToggleBtn_'+seriesId);
-  if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
-  card.scrollIntoView({behavior:'smooth',block:'center'});
-  card.style.outline='2px solid var(--moss)';
-  setTimeout(()=>card.style.outline='',1500);
-  // Kullanıcı sayfanın başka yerine tıklayınca pin kaldır
-  function unpin(e){ if(!card.contains(e.target)){ delete card.dataset.pinned; card.style.display='none'; document.removeEventListener('click',unpin,true); } }
-  setTimeout(()=>document.addEventListener('click',unpin,true),300);
+  // Seriler sekmesine geç
+  const seriesTab = document.querySelector('[onclick*="showPanel(\'series\'"]') || document.querySelector('[onclick*='showPanel(\'series\'']');
+  const seriesPanel = document.getElementById('series');
+  if(seriesPanel && !seriesPanel.classList.contains('active')){
+    showPanel('series', document.querySelector('[onclick*="series"]'));
+  }
+  setTimeout(()=>{
+    const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
+    if(!card) return;
+    card.style.display='';
+    const booksEl = document.getElementById('seriesBooks_'+seriesId);
+    const btn = document.getElementById('seriesToggleBtn_'+seriesId);
+    if(booksEl&&!booksEl.classList.contains('open')){ booksEl.classList.add('open'); if(btn) btn.textContent='▲ Gizle'; }
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.style.outline='2px solid var(--moss)';
+    setTimeout(()=>card.style.outline='',2000);
+  },150);
 }
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
@@ -10243,6 +10239,9 @@ function removeStepFromPath(pathId, seriesId){
   const data = mySeriesData();
   const path = data.paths[pathId];
   if(!path) return;
+  const ser = data.series[seriesId];
+  const serName = ser ? ser.name : 'Bu seri';
+  if(!confirm(`"${serName}" gruptan çıkarılsın mı?`)) return;
   path.steps = (path.steps||[]).filter(s=>s.seriesId!==seriesId);
   saveDb();
   renderSeriesList();
