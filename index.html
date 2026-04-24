@@ -8290,6 +8290,7 @@ function renderBookList(){
             <span class="series-accordion-title">📚 ${serName}</span>
             <span style="display:flex;align-items:center;gap:.4rem">
               <span class="series-accordion-count">${serBooks.length} kitap</span>
+              <button onclick="event.stopPropagation();exportToSeriesTab('${serName.replace(/'/g,String.fromCharCode(39))}')" style="font-size:.6rem;padding:.15rem .4rem;background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-family:'Space Mono',monospace">📥 Seriler'e Aktar</button>
               <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
             </span>
           </div>
@@ -9073,6 +9074,60 @@ function togglePw(id,btn){const el=document.getElementById(id);el.type=el.type==
 let seriesSubTab = 'series'; // 'series' | 'paths'
 
 function switchSeriesTab(tab, el){
+  renderSeriesList();
+}
+
+
+// ── KİTAPLARIM → SERİLER AKTARMA ──
+// Kitaplarım'daki seri grubunu Seriler sekmesine aktarır.
+// Seri zaten varsa eksik kitapları tamamlar, yoksa yeni oluşturur.
+function exportToSeriesTab(serName){
+  const normName = normalizeSeries(serName);
+  const data = mySeriesData();
+
+  // Kitaplarım'daki bu serinin kitaplarını bul, seri nosuna göre sırala
+  const booksInLib = myBooks()
+    .filter(b => normalizeSeries(b.series||'') === normName)
+    .sort((a,b) => (a.seriesNum||999) - (b.seriesNum||999));
+
+  if(!booksInLib.length){
+    notify('⚠️','Bu seriye ait kitap bulunamadı.');
+    return;
+  }
+
+  // Seriler'de aynı isimli seri var mı?
+  const existingEntry = Object.entries(data.series)
+    .find(([,s]) => normalizeSeries(s.name||'') === normName);
+
+  if(existingEntry){
+    // Var — eksik kitapları ekle
+    const [existId, existSer] = existingEntry;
+    const existingBookIds = new Set((existSer.books||[]).map(b=>b.bookId).filter(Boolean));
+    let added = 0;
+    booksInLib.forEach(b => {
+      if(!existingBookIds.has(b.id)){
+        existSer.books = existSer.books||[];
+        existSer.books.push({ bookId: b.id, num: b.seriesNum||null });
+        added++;
+      }
+    });
+    saveDb();
+    notify('✅', added > 0 ? `${added} kitap eklendi: ${existSer.name}` : `Tüm kitaplar zaten mevcut: ${existSer.name}`);
+  } else {
+    // Yok — yeni seri oluştur
+    const id = 'ser_' + Date.now();
+    const books = booksInLib.map(b => ({ bookId: b.id, num: b.seriesNum||null }));
+    data.series[id] = {
+      id,
+      name: serName,
+      total: null,
+      books,
+      groupId: null,
+      createdAt: new Date().toISOString()
+    };
+    saveDb();
+    notify('✅', `Seri oluşturuldu: ${serName} · ${books.length} kitap`);
+  }
   renderSeriesList();
 }
 
