@@ -3219,18 +3219,22 @@ function playStreakBreak(){
     msg.style.opacity='0';
   }, 3800);
 
-  // Sahne 5 — 🔥 yeniden doğuş
+  // Sahne 5 — 🔥 yeniden doğuş (küçükten büyüye, yavaş)
   setTimeout(()=>{
     emoji.textContent='🔥';
-    emoji.style.transform='scale(0.5)';
+    emoji.style.transition='transform 1.2s cubic-bezier(.34,1.56,.64,1), opacity .4s ease';
+    emoji.style.transform='scale(0.1)';
     emoji.style.opacity='1';
     setTimeout(()=>{
+      emoji.style.transform='scale(1.1)';
+    }, 50);
+    setTimeout(()=>{
       emoji.style.transform='scale(1)';
-    }, 100);
+    }, 1000);
     setTimeout(()=>{
       msg.textContent='Bugün bir sayfa yeter.';
       msg.style.opacity='1';
-    }, 500);
+    }, 900);
   }, 4600);
 
   // Kapat butonu
