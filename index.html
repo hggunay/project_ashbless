@@ -7811,9 +7811,9 @@ function renderStatsPanel(){
 
   // Zaman filtresi uygula
   const tf = window._statsTimeFilter||'all';
-  const now = new Date();
-  const curYearStr = String(now.getFullYear());
-  const curMonthStr = `${curYearStr}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const _tfNow = new Date();
+  const curYearStr = String(_tfNow.getFullYear());
+  const curMonthStr = `${curYearStr}-${String(_tfNow.getMonth()+1).padStart(2,'0')}`;
   if(tf==='year'){
     books = books.filter(b=>{
       const d = b.endDate||b.month||b.yearOnly||'';
