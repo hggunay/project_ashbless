@@ -9,8 +9,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Armchair">
-<link rel="apple-touch-icon" href="ikon.jpg">
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22ikon.jpg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D">
+<link rel="apple-touch-icon" href="images/ikon.jpg">
+<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22images/ikon.jpg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D">
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20fill%3D'%231a0f00'%2F%3E%3Ctext%20y%3D'.9em'%20font-size%3D'80'%20x%3D'10'%3E%F0%9F%93%9A%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
@@ -83,7 +83,7 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 #appScreen{display:none;}
 .header{text-align:center;padding:2.5rem 2rem 1.5rem;position:relative;}
 .header::before{content:'';display:block;width:120px;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:0 auto 1.2rem;}
-.club-name{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 2px 20px rgba(201,162,39,.3);line-height:1.1;}
+.club-name{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 2px 20px rgba(201,162,39,.3);line-height:1.1;white-space:nowrap;}
 .club-subtitle{font-family:'Crimson Pro',serif;font-style:italic;color:var(--parchment-dark);font-size:1rem;margin-top:.4rem;opacity:.7;}
 .header-user{position:absolute;top:1.5rem;right:1.5rem;display:flex;align-items:center;gap:.5rem;}
 .header-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;overflow:hidden;}
@@ -1877,10 +1877,10 @@ const BADGE_CATS = [
       {id:'sci4',tier:'diamond',icon:'🧬', name:'Bilim İnsanı',  desc:'30 popüler bilim kitabı oku.', check:b=>genre(b,'bilim',30)},
     ]},
     {id:'kc_rom',    label:'💕 Romantik',          badges:[
-      {id:'rom1',tier:'bronze', icon:'💘', name:'Romantik Ruh',         desc:'3 romantik kitap oku.',  imgSrc:'badge_rom1.png', check:b=>genre(b,'romantik',3)},
-      {id:'rom2',tier:'silver', icon:'💝', name:'Aşk Hikayeleri Dostu', desc:'7 romantik kitap oku.',  imgSrc:'badge_rom2.png', check:b=>genre(b,'romantik',7)},
-      {id:'rom3',tier:'gold',   icon:'💖', name:'Kalp Koleksiyoncusu',  desc:'15 romantik kitap oku.', imgSrc:'badge_rom3.png', check:b=>genre(b,'romantik',15)},
-      {id:'rom4',tier:'diamond',icon:'💜', name:'Romantizm Ustası',     desc:'30 romantik kitap oku.', imgSrc:'badge_rom4.png', check:b=>genre(b,'romantik',30)},
+      {id:'rom1',tier:'bronze', icon:'💘', name:'Romantik Ruh',         desc:'3 romantik kitap oku.',  imgSrc:'badges/badge_rom1.png', check:b=>genre(b,'romantik',3)},
+      {id:'rom2',tier:'silver', icon:'💝', name:'Aşk Hikayeleri Dostu', desc:'7 romantik kitap oku.',  imgSrc:'badges/badge_rom2.png', check:b=>genre(b,'romantik',7)},
+      {id:'rom3',tier:'gold',   icon:'💖', name:'Kalp Koleksiyoncusu',  desc:'15 romantik kitap oku.', imgSrc:'badges/badge_rom3.png', check:b=>genre(b,'romantik',15)},
+      {id:'rom4',tier:'diamond',icon:'💜', name:'Romantizm Ustası',     desc:'30 romantik kitap oku.', imgSrc:'badges/badge_rom4.png', check:b=>genre(b,'romantik',30)},
     ]},
     {id:'kc_bio',    label:'🧬 Biyografi',        badges:[
       {id:'bio1',tier:'bronze', icon:'🧬', name:'Hayat Hikayesi Okuru',  desc:'3 biyografi/otobiyografi oku.',  check:b=>genre(b,'biyografi',3)},
@@ -2006,17 +2006,17 @@ const BADGE_CATS = [
       {id:'aud3',tier:'gold',  icon:'🎼', name:'Kulak Okuyucu',    desc:'10 sesli kitap dinle.', check:b=>cap(b.filter(x=>(x.formats||[]).includes('sesli')).length,10)},
     ]},
     {id:'seri_rozetleri', label:'📖 Özel Seri Rozetleri', badges:[
-      {id:'badge_dune',     tier:'diamond', icon:'🏜️', name:'Altın Yolun Tanığı',          desc:'Frank Herbert\'in Dune serisini tamamla (6 kitap).', imgSrc:'badge_dune.png',
+      {id:'badge_dune',     tier:'diamond', icon:'🏜️', name:'Altın Yolun Tanığı',          desc:'Frank Herbert\'in Dune serisini tamamla (6 kitap).', imgSrc:'badges/badge_dune.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('herbert')&&(x.series||'').toLowerCase().includes('dune')).length>=6)},
-      {id:'badge_vakif',    tier:'diamond', icon:'🤖', name:'Psikotarihin Ustası',          desc:'Asimov\'un Vakıf serisini tamamla (7 kitap).', imgSrc:'badge_vakif.png',
+      {id:'badge_vakif',    tier:'diamond', icon:'🤖', name:'Psikotarihin Ustası',          desc:'Asimov\'un Vakıf serisini tamamla (7 kitap).', imgSrc:'badges/badge_vakif.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('asimov')&&((x.series||'').toLowerCase().includes('vakıf')||(x.series||'').toLowerCase().includes('foundation'))).length>=7)},
-      {id:'badge_hp',       tier:'diamond', icon:'🧙', name:'Ölüm Yadigarlarının Efendisi', desc:'Harry Potter serisini tamamla (7 kitap).', imgSrc:'badge_hp.png',
+      {id:'badge_hp',       tier:'diamond', icon:'🧙', name:'Ölüm Yadigarlarının Efendisi', desc:'Harry Potter serisini tamamla (7 kitap).', imgSrc:'badges/badge_hp.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('rowling')&&(x.series||'').toLowerCase().includes('harry potter')).length>=7)},
-      {id:'badge_ye',       tier:'diamond', icon:'💍', name:'Tek Yüzüğün Taşıyıcısı',      desc:'Yüzüklerin Efendisi üçlemesini tamamla (3 kitap).', imgSrc:'badge_ye.png',
+      {id:'badge_ye',       tier:'diamond', icon:'💍', name:'Tek Yüzüğün Taşıyıcısı',      desc:'Yüzüklerin Efendisi üçlemesini tamamla (3 kitap).', imgSrc:'badges/badge_ye.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('tolkien')&&((x.series||'').toLowerCase().includes('yüzük')||(x.series||'').toLowerCase().includes('lord of the rings')||(x.series||'').toLowerCase().includes('lotr'))).length>=3)},
-      {id:'badge_earthsea', tier:'diamond', icon:'🐉', name:'Gerçek Adların Ustası',        desc:'Le Guin\'in Yerdeniz serisini tamamla (6 kitap).', imgSrc:'badge_earthsea.png',
+      {id:'badge_earthsea', tier:'diamond', icon:'🐉', name:'Gerçek Adların Ustası',        desc:'Le Guin\'in Yerdeniz serisini tamamla (6 kitap).', imgSrc:'badges/badge_earthsea.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('yerdeniz')||(x.series||'').toLowerCase().includes('earthsea'))).length>=6)},
-      {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Ekumen Yolcusu',               desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badge_hainish.png',
+      {id:'badge_hainish',  tier:'diamond', icon:'🌌', name:'Ekumen Yolcusu',               desc:'Le Guin\'in Hainli Döngüsü serisini tamamla (8 kitap).', imgSrc:'badges/badge_hainish.png',
         check:b=>flag(b.filter(x=>(x.readingStatus==='new'||x.retroactive)&&(x.author||'').toLowerCase().includes('le guin')&&((x.series||'').toLowerCase().includes('hainl')||(x.series||'').toLowerCase().includes('hainish'))).length>=8)},
     ]},
   ], badges:[]},
@@ -2042,7 +2042,7 @@ const BADGE_CATS = [
   // ── 8. GİZLİ ROZETLER ─────────────────────────────────────────
   {label:'🔮 Gizli Rozetler', chains:[
     {id:'gizli', label:'🔮 Gizli', badges:[
-      {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', imgSrc:'badge_ashbless.png', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
+      {id:'secret_ashbless',tier:'diamond',icon:'🗝️', name:'Project Ashbless', imgSrc:'badges/badge_ashbless.png', desc:'Uygulamanın tüm bölümlerini keşfet.', check:b=>{
         const hasBook=b.length>0;
         const hasRead=b.some(x=>x.readingStatus==='new'||x.readingStatus==='past');
         const hasSeries=Object.keys(mySeriesData().series||{}).length>0;
@@ -2051,7 +2051,7 @@ const BADGE_CATS = [
         const hasCountry=b.some(x=>x.country&&(x.readingStatus==='new'||x.readingStatus==='past'));
         return flag([hasBook,hasRead,hasSeries,hasStory,hasShelf,hasCountry].filter(Boolean).length>=5);
       }},
-      {id:'secret_bedside',tier:'diamond',icon:'🌙', name:'Başucu Seçkisi', imgSrc:'basucuseckisi.png', desc:'25 kitap oku, 5 farklı ülkeden yazar oku, 5 tür rozeti kazan ve 1 seriyi tamamla.',
+      {id:'secret_bedside',tier:'diamond',icon:'🌙', name:'Başucu Seçkisi', imgSrc:'images/basucuseckisi.png', desc:'25 kitap oku, 5 farklı ülkeden yazar oku, 5 tür rozeti kazan ve 1 seriyi tamamla.',
         check:b=>{
           const books25=b.length>=25;
           const countries5=uniqueCountries(b)>=5;
@@ -2063,16 +2063,16 @@ const BADGE_CATS = [
           const genres5=genreRozetCount>=5;
           return flag(books25&&countries5&&series1&&genres5);
         }},
-      {id:'secret_forbidden',tier:'diamond',icon:'⛓️', name:'Yasaklı Bilgi', imgSrc:'yasaklibilgi.png', desc:'Korku, Felsefe ve Mitoloji türlerinden her birinde en az 3 kitap oku.',
+      {id:'secret_forbidden',tier:'diamond',icon:'⛓️', name:'Yasaklı Bilgi', imgSrc:'images/yasaklibilgi.png', desc:'Korku, Felsefe ve Mitoloji türlerinden her birinde en az 3 kitap oku.',
         check:b=>flag(genre(b,'korku',3).cur>=3&&genre(b,'felsefe',3).cur>=3&&genre(b,'mitoloji',3).cur>=3)},
-      {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Zamanın çizgisel olmadığını fark ettin. Ashbless\'in izini sürerken, aslında kendi izine rastladın.\nBazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.\n\nGecenin On İki Saati\n\n"Ve bir nehir uzanır\nAlacakaranlıkla şafak arasında.\nVe saatler mesafedir, değişken gecenin\nEngin gelgitinde ölçülen —\nKorku duymayacak kadar felakete mahkûm,\nİhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor\nGözkamaştırıcı bir ışık gibi parlayan karanlığın içine\nGecenin On İki Saati\'nde."\n— William Ashbless (buluntu metin)', imgSrc:'badge_anubis.png',
+      {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Zamanın çizgisel olmadığını fark ettin. Ashbless\'in izini sürerken, aslında kendi izine rastladın.\nBazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.\n\nGecenin On İki Saati\n\n"Ve bir nehir uzanır\nAlacakaranlıkla şafak arasında.\nVe saatler mesafedir, değişken gecenin\nEngin gelgitinde ölçülen —\nKorku duymayacak kadar felakete mahkûm,\nİhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor\nGözkamaştırıcı bir ışık gibi parlayan karanlığın içine\nGecenin On İki Saati\'nde."\n— William Ashbless (buluntu metin)', imgSrc:'badges/badge_anubis.png',
         check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
       {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag(b.some(x=>x.hundredPages))},
       {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
-      {id:'secret_creator',tier:'diamond',icon:'✨', name:'Yaratıcının Tanığı', imgSrc:'yaraticinintanigi.png', desc:'Her şey görünenlerden ibaret değildi. Satır aralarını okudun. Sistemin ardındaki sesi duydun. Yaratıcının izine rastladın.\n\nGeliştirici: Claude (Anthropic) + hggunay aka Gweluien (Elf adıyla bilinen) · 8 Mart 2026\'dan bu yana devam ediyor...',
+      {id:'secret_creator',tier:'diamond',icon:'✨', name:'Yaratıcının Tanığı', imgSrc:'images/yaraticinintanigi.png', desc:'Her şey görünenlerden ibaret değildi. Satır aralarını okudun. Sistemin ardındaki sesi duydun. Yaratıcının izine rastladın.\n\nGeliştirici: Claude (Anthropic) + hggunay aka Gweluien (Elf adıyla bilinen) · 8 Mart 2026\'dan bu yana devam ediyor...',
         check:b=>{
           const books=validBooks();
           const hasAshbless=bstat({id:'secret_ashbless',check:BADGE_CATS.flatMap(c=>c.chains||[]).flatMap(ch=>ch.badges||[]).find(bg=>bg.id==='secret_ashbless')?.check||flag.bind(null,false)},books).earned;
@@ -4031,7 +4031,7 @@ function renderSpecialShelfHtml(type){
   const isMe=!viewing;
   const maxBooks=SP_MAX[type];
   const canAdd=isMe&&books.length<maxBooks;
-  const bgImg=isBedside?'bedside_bg.png':'forbidden_bg.png';
+  const bgImg=isBedside?'images/bedside_bg.png':'images/forbidden_bg.png';
   const bgCss=isBedside?'background-color:#1a0f00;':'background-color:#0d0010;';
   const titleColor=isBedside?'var(--gold)':'#c084fc';
   const accentColor=isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)';
