@@ -9464,12 +9464,16 @@ function seriesAcSearch(seriesId){
 
   if(!matches.length){ dropdown.style.display='none'; return; }
 
-  dropdown.innerHTML = matches.map(b=>`
-    <div class="series-ac-item" onclick="selectSeriesAc('${seriesId}',${JSON.stringify(b.title).replace(/'/g,"&#39;")},${JSON.stringify(b.author||'').replace(/'/g,"&#39;")})">
-      <span style="font-size:.88rem;color:var(--ink);font-weight:600">${b.title}</span>
+
+  dropdown.innerHTML = matches.map(b=>{
+    const titleAttr = (b.title||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    const authorAttr = (b.author||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return `<div class="series-ac-item" data-sid="${seriesId}" data-title="${titleAttr}" data-author="${authorAttr}" onclick="var el=this;selectSeriesAc(el.dataset.sid,el.dataset.title,el.dataset.author)">
+      <span style="font-size:.88rem;color:var(--parchment);font-weight:600">${b.title}</span>
       ${b.author?`<span style="font-size:.75rem;color:var(--rust);opacity:.8"> — ${b.author}</span>`:''}
       ${b.series?`<span style="font-size:.65rem;color:var(--moss);font-family:'Space Mono',monospace"> · ${b.series}</span>`:''}
-    </div>`).join('');
+    </div>`;
+  }).join('');
   dropdown.style.display='block';
 }
 
