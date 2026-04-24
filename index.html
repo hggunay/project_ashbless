@@ -8092,6 +8092,30 @@ function renderStatsPanel(){
   }
 
   document.getElementById('statsContainer').innerHTML=`
+    ${isV?`<div class="card" style="margin-bottom:.75rem">
+      <div class="card-body" style="padding:.75rem">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
+          ${(()=>{const av=user?.avatar||'📚';if(av.startsWith('avatar_'))return`<img src="avatars/${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;return`<span style="font-size:2.5rem">${av}</span>`;})()}
+          <div>
+            <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);font-weight:700">${user?.displayName||target}</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7">${books.length} kitap · ${badgeCount} rozet · ${countries.size} ülke</div>
+          </div>
+        </div>
+        <div style="font-family:'Playfair Display',serif;font-size:.88rem;color:var(--ink);line-height:1.5;padding:.6rem .75rem;background:linear-gradient(135deg,rgba(91,58,138,0.2),rgba(201,162,39,0.1));background-size:200% 200%;animation:oraclePulse 4s ease-in-out infinite;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-style:italic">
+          ${(()=>{
+            const eksenler={evren:['fantastik','bilimkurgu','distopya','mitoloji'],gerilim:['polisiye','gerilim','korku'],dusunce:['felsefe','psikoloji','deneme','bilim'],insan:['romantik','biyografi','oyku','genclik'],gercek:['tarih','gezi','siir']};
+            const eksenPuan={evren:0,gerilim:0,dusunce:0,insan:0,gercek:0};
+            books.forEach(b=>(b.genres||[]).forEach(g=>{const gn=g.toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ç/g,'c');Object.entries(eksenler).forEach(([e,l])=>{if(l.some(x=>gn.includes(x)))eksenPuan[e]++;});}));
+            const sira=Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+            const ana=sira[0]?sira[0][0]:null;
+            const etiket={evren:'farklı dünyalara yönelen',gerilim:'bilinmeyeni çözmeyi seven',dusunce:'anlam arayışında olan',insan:'insan hikâyelerine yakın duran',gercek:'gerçeklik odaklı'};
+            const streak=streakMonths(books,new Date().getFullYear());
+            const ritim=streak>=6?'Akış stabil.':streak>=3?'Ritmini yakalamış.':streak>=1?'Okuma alışkanlığı oluşuyor.':'';
+            return ana?`${etiket[ana]} bir okuyucu.${ritim?' '+ritim:''}`:target+' henüz okuma profilini oluşturuyor.';
+          })()}
+        </div>
+      </div>
+    </div>`:''}
     <div class="card" style="margin-bottom:1rem">
       <div class="card-header">📊 ${isV?(user?.displayName||target)+' — ':''}Okuma İstatistikleri</div>
       <div class="card-body">
