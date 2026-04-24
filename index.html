@@ -5654,6 +5654,7 @@ function closeModal(){document.getElementById('modalOverlay').classList.remove('
 function titleSparkle(el){
   if(el._animating) return;
   el._animating=true;
+  const originalHTML=el.innerHTML;
   const text=el.textContent;
   el.innerHTML='';
   [...text].forEach((ch,i)=>{
@@ -5677,7 +5678,7 @@ function titleSparkle(el){
       setTimeout(()=>p.remove(),900);
     },j*20);
   }
-  setTimeout(()=>{el._animating=false;},1500);
+  setTimeout(()=>{el._animating=false;el.innerHTML=originalHTML;},1500);
 }
 let _modalMouseDownPos=null;
 let _modalMouseDownTime=null;
