@@ -9375,13 +9375,14 @@ function addBookToSeries(seriesId){
 }
 
 function _refreshSeriesBookList(seriesId){
-  // Sadece kitap listesi kısmını güncelle, form alanlarına dokunma
   renderSeriesList();
-  // Kartı açık tut
-  const booksEl = document.getElementById('seriesBooks_'+seriesId);
-  const btn = document.getElementById('seriesToggleBtn_'+seriesId);
-  if(booksEl){ booksEl.classList.add('open'); }
-  if(btn){ btn.textContent='▲ Gizle'; }
+  // renderSeriesList DOM'u yeniden yazar, setTimeout ile yeni elementleri bul
+  setTimeout(()=>{
+    const booksEl = document.getElementById('seriesBooks_'+seriesId);
+    const btn = document.getElementById('seriesToggleBtn_'+seriesId);
+    if(booksEl){ booksEl.classList.add('open'); }
+    if(btn){ btn.textContent='▲ Gizle'; }
+  }, 50);
 }
 
 function seriesAcSearch(seriesId){
@@ -9406,7 +9407,7 @@ function seriesAcSearch(seriesId){
   if(!matches.length){ dropdown.style.display='none'; return; }
 
   dropdown.innerHTML = matches.map(b=>`
-    <div class="series-ac-item" onmousedown="selectSeriesAc('${seriesId}',${JSON.stringify(b.title).replace(/'/g,"&#39;")},${JSON.stringify(b.author||'').replace(/'/g,"&#39;")})">
+    <div class="series-ac-item" onmousedown="event.preventDefault();selectSeriesAc('${seriesId}',${JSON.stringify(b.title).replace(/'/g,"&#39;")},${JSON.stringify(b.author||'').replace(/'/g,"&#39;")})">
       <span style="font-size:.88rem;color:var(--ink);font-weight:600">${b.title}</span>
       ${b.author?`<span style="font-size:.75rem;color:var(--rust);opacity:.8"> — ${b.author}</span>`:''}
       ${b.series?`<span style="font-size:.65rem;color:var(--moss);font-family:'Space Mono',monospace"> · ${b.series}</span>`:''}
@@ -9428,11 +9429,23 @@ function hideSeriesAc(seriesId){
 }
 
 function confirmRemoveBookFromSeries(evt, seriesId, bookId, isPlanned, manualTitle){
+  evt.stopPropagation();
   const data = mySeriesData();
   const ser = data.series[seriesId];
-  const bookTitle = isPlanned ? manualTitle : (ser&&(ser.books||[]).find(b=>b.bookId===bookId)&&myBooks().find(b=>b.id===bookId)||{}).title || 'Bu kitap';
-  if(!confirm(`"${bookTitle}" seriden çıkarılsın mı?`)) return;
-  removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle);
+  const bookTitle = isPlanned ? manualTitle : (myBooks().find(b=>b.id===bookId)||{}).title || 'Bu kitap';
+  const existId = 'rmConf_'+seriesId+'_'+(bookId||manualTitle||'').toString().replace(/[^a-z0-9]/gi,'_');
+  const exist = document.getElementById(existId);
+  if(exist){ exist.remove(); return; }
+  const item = evt.target.closest('.series-book-item');
+  if(!item) return;
+  const args = isPlanned ? `'${seriesId}',null,true,'${(manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${bookId},false`;
+  const box = document.createElement('div');
+  box.id = existId;
+  box.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--rust);flex-wrap:wrap;margin-top:.2rem';
+  box.innerHTML = `"${bookTitle}" seriden çıkar?
+    <button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="removeBookFromSeries(${args})">Evet</button>
+    <button class="btn btn-sm" style="font-size:.68rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="this.closest('div[id^=rmConf]').remove()">İptal</button>`;
+  item.insertAdjacentElement('afterend', box);
 }
 function removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle){
   const data = mySeriesData();
@@ -9906,7 +9919,7 @@ function renderSeriesList(){
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
             style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),400)"/>
+            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),500)"/>
           <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
