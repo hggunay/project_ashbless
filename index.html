@@ -8191,7 +8191,7 @@ function renderStatsPanel(){
               <div style="width:10px;height:10px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
               <div style="width:10px;height:10px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.4rem"></div><span>Kitap yok</span>
             </div>
-            ${hasBreak?`<div onclick="playStreakBreak()" style="margin-top:.85rem;display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:rgba(26,18,8,.35);border:1px solid rgba(201,162,39,.2);border-radius:8px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(201,162,39,.08)'" onmouseout="this.style.background='rgba(26,18,8,.35)'">
+            ${hasBreak&&!viewing?`<div onclick="playStreakBreak()" style="margin-top:.85rem;display:flex;align-items:center;gap:.75rem;padding:.6rem .9rem;background:rgba(26,18,8,.35);border:1px solid rgba(201,162,39,.2);border-radius:8px;cursor:pointer;transition:background .2s" onmouseover="this.style.background='rgba(201,162,39,.08)'" onmouseout="this.style.background='rgba(26,18,8,.35)'">
               <span style="font-size:1.4rem;animation:nmPulse 2s ease-in-out infinite">🔥</span>
               <div style="flex:1">
                 <div style="font-family:'Playfair Display',serif;font-size:.88rem;color:var(--parchment)">Serin kesildi</div>
