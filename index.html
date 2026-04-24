@@ -9815,10 +9815,7 @@ function toggleSeriesBooks(id){
 function closeSeriesCard(id){
   const el = document.getElementById('seriesBooks_'+id);
   if(el) el.classList.remove('open');
-  const btn = document.getElementById('seriesToggleBtn_'+id);
-  const closeBtn = document.getElementById('seriesCloseBtn_'+id);
-  if(btn) btn.textContent = '▼ Kitaplar';
-  if(closeBtn) closeBtn.style.display = 'none';
+  renderSeriesList();
 }
 
 function renderSeriesList(){
@@ -10058,7 +10055,7 @@ function renderSeriesList(){
           onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${books.length})</button>
         <button class="btn btn-sm" id="seriesCloseBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(139,0,0,.1);color:var(--rust);border:1px solid rgba(139,0,0,.2);display:none"
-          onclick="closeSeriesCard('${ser.id}')">✕ Kapat</button>
+          onclick="closeSeriesCard('${ser.id}')">✓ Bitti</button>
       </div>
       <div class="series-books-list" id="seriesBooks_${ser.id}">
         <div class="series-book-list-inner">${bookListHtml}</div>
