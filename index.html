@@ -3884,6 +3884,20 @@ function triggerGlitch(titleEl){
   setTimeout(()=>bg.classList.remove('glitch-bg-active'),420);
 }
 
+// ── SERİ DROPDOWN KAPAT ──
+// Input dışına tıklayınca dropdown kapanır
+document.addEventListener('click', function(e){
+  const activeId = window._activeSeriesAc;
+  if(!activeId) return;
+  const input = document.getElementById('seriesBookTitle_'+activeId);
+  const dropdown = document.getElementById('seriesAcList_'+activeId);
+  if(!input || !dropdown) return;
+  if(!input.contains(e.target) && !dropdown.contains(e.target)){
+    dropdown.style.display='none';
+    window._activeSeriesAc = null;
+  }
+});
+
 // ── SHADOW EFEKT TETİKLEYİCİ ──
 // Korku (hor) ve Gerilim (ger) rozetleri kazanılınca çağrılır.
 // prefix: 'hor' veya 'ger' — ilgili rozet kartına 3 saniyelik
@@ -9931,7 +9945,7 @@ function renderSeriesList(){
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
             style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),500)"/>
+            oninput="seriesAcSearch('${ser.id}')" onfocus="window._activeSeriesAc='${ser.id}'"/>
           <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
@@ -10035,9 +10049,16 @@ function renderGroupCards(seriesContainer){
   });
   // Seri kaydındaki groupId de kontrol et
   Object.values(allSeries).forEach(s=>{ if(s.groupId) groupedSeriesIds.add(s.id); });
+  // Render öncesi hangi kartların açık olduğunu hatırla
+  const openSeriesIds = new Set(
+    [...seriesContainer.querySelectorAll('.series-books-list.open')]
+      .map(el=>el.id.replace('seriesBooks_',''))
+  );
   seriesContainer.querySelectorAll('.series-card[data-sid]').forEach(card=>{
     const sid = card.dataset.sid;
     if(card.dataset.pinned) return;
+    // Kart açıksa gruba bağlı olsa bile gizleme
+    if(openSeriesIds.has(sid)) return;
     card.style.display = groupedSeriesIds.has(sid) ? 'none' : '';
   });
 
