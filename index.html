@@ -9091,7 +9091,7 @@ function exportToSeriesTab(serName){
     .sort((a,b) => (a.seriesNum||999) - (b.seriesNum||999));
 
   if(!booksInLib.length){
-    notify('⚠️','Bu seriye ait kitap bulunamadı.');
+    notify('⚠️','Bu seriye ait kitap bulunamadı.',true);
     return;
   }
 
@@ -9112,7 +9112,7 @@ function exportToSeriesTab(serName){
       }
     });
     saveDb();
-    notify('✅', added > 0 ? `${added} kitap eklendi: ${existSer.name}` : `Tüm kitaplar zaten mevcut: ${existSer.name}`);
+    notify('✅', added > 0 ? `${added} kitap eklendi: ${existSer.name}` : `Tüm kitaplar zaten mevcut: ${existSer.name}`,true);
   } else {
     // Yok — yeni seri oluştur
     const id = 'ser_' + Date.now();
@@ -9126,7 +9126,7 @@ function exportToSeriesTab(serName){
       createdAt: new Date().toISOString()
     };
     saveDb();
-    notify('✅', `Seri oluşturuldu: ${serName} · ${books.length} kitap`);
+    notify('✅', `Seri oluşturuldu: ${serName} · ${books.length} kitap`,true);
   }
   renderSeriesList();
 }
@@ -9369,7 +9369,19 @@ function addBookToSeries(seriesId){
   if(pagesEl) pagesEl.value='';
   if(pubEl) pubEl.value='';
   hideSeriesAc(seriesId);
+  // Tüm listeyi render etmek yerine sadece bu kartın kitap listesini güncelle
+  // böylece düzenleme formu açık kalır
+  _refreshSeriesBookList(seriesId);
+}
+
+function _refreshSeriesBookList(seriesId){
+  // Sadece kitap listesi kısmını güncelle, form alanlarına dokunma
   renderSeriesList();
+  // Kartı açık tut
+  const booksEl = document.getElementById('seriesBooks_'+seriesId);
+  const btn = document.getElementById('seriesToggleBtn_'+seriesId);
+  if(booksEl){ booksEl.classList.add('open'); }
+  if(btn){ btn.textContent='▲ Gizle'; }
 }
 
 function seriesAcSearch(seriesId){
@@ -9865,8 +9877,7 @@ function renderSeriesList(){
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedStartBtn}
-          ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}
+          ${''}
         </div>
       </div>`;
     }
@@ -9902,7 +9913,7 @@ function renderSeriesList(){
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
             style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),200)"/>
+            oninput="seriesAcSearch('${ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${ser.id}'),400)"/>
           <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
