@@ -8228,35 +8228,89 @@ function renderStatsPanel(){
             'deneme':'Deneme dostu','kurgu':'Kurgu sever',
           }[topGenre] || topGenre+' okuyucusu' : null;
 
-          // Format tercihi
-          const fmtEntries = Object.entries(fmtCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-          const topFmt = fmtEntries[0]?fmtEntries[0][0]:null;
-          const fmtLabel = {'kitap':'Fiziksel kitap sever','ekitap':'E-kitap tutkunu','sesli':'Sesli kitap dinleyicisi','cizgi':'Çizgi roman okuyucusu'}[topFmt]||null;
+          // ── OKUYUCU FALI ALGORİTMASI ──
+
+          // 5 zihinsel eksen ağırlıkları
+          const eksenler = {
+            evren:    ['fantastik','bilimkurgu','distopya','mitoloji'],
+            gerilim:  ['polisiye','gerilim','korku'],
+            dusunce:  ['felsefe','psikoloji','deneme','bilim'],
+            insan:    ['romantik','biyografi','oyku','genclik'],
+            gercek:   ['tarih','gezi','siir'],
+          };
+          const eksenPuan = {evren:0, gerilim:0, dusunce:0, insan:0, gercek:0};
+          books.forEach(b=>(b.genres||[]).forEach(g=>{
+            const gn = g.toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ç/g,'c');
+            Object.entries(eksenler).forEach(([eksen,liste])=>{
+              if(liste.some(l=>gn.includes(l))) eksenPuan[eksen]++;
+            });
+          }));
+          const siraliEksen = Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
+          const anaEksen = siraliEksen[0]?siraliEksen[0][0]:null;
+          const ikinciEksen = siraliEksen[1]?siraliEksen[1][0]:null;
+
+          // Eksen etiketleri
+          const eksenEtiket = {
+            evren:   'evrenlerin sınırlarını zorlayan',
+            gerilim: 'bilinmeyeni çözmeye çalışan',
+            dusunce: 'derinliklerde anlam arayan',
+            insan:   'insan hikâyelerine kulak veren',
+            gercek:  'gerçek dünyayı keşfeden',
+          };
 
           // Okuma davranışı
           const seriesBooks = books.filter(b=>b.series).length;
           const seriesPct = books.length?Math.round(seriesBooks/books.length*100):0;
-          const behaviorLabel = seriesPct>=60?'Seri odaklı okuyucu':seriesPct>=30?'Seri ve tekil karışık':'Tekil kitap okuyucusu';
+          const davranisList = [
+            seriesPct>=60 ? 'serileri yarım bırakmayan' : seriesPct>=30 ? 'hikâyeleri takip eden' : 'kitaplar arasında gezinen',
+          ];
+
+          // Zihinsel stil
+          const ratedBooks = books.filter(b=>b.rating);
+          const avgRating = ratedBooks.length?Math.round(ratedBooks.reduce((s,b)=>s+b.rating,0)/ratedBooks.length*10)/10:null;
+          const stilList = avgRating>=4.5?'kolay beğenmeyen':avgRating>=3.5?'seçici':'keşfetmeyi seven';
+
+          // Ritim
+          const curStreakForProfile = streakMonths(books, new Date().getFullYear());
+          const ritmList = [
+            'Okumak artık bir alışkanlık.',
+            'Ritmini yakalamışsın.',
+            'Akıştasın.',
+            'Ritmin dağılmış ama geri dönebilir.',
+            'Yeni bir başlangıç için hazır.',
+          ];
+          const ritim = curStreakForProfile>=6?ritmList[2]:curStreakForProfile>=3?ritmList[1]:curStreakForProfile>=1?ritmList[0]:ritmList[3];
+
+          // Ana cümle
+          const anaKisim = anaEksen?eksenEtiket[anaEksen]:'okuyan';
+          const ikinciKisim = ikinciEksen&&ikinciEksen!==anaEksen?', '+eksenEtiket[ikinciEksen]:'';
+          const anaCumle = `Sen ${anaKisim}${ikinciKisim}, ${davranisList[0]} ve ${stilList} bir okuyucusun. ${ritim}`;
+
+          // Format tercihi
+          const fmtEntries = Object.entries(fmtCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+          const topFmt = fmtEntries[0]?fmtEntries[0][0]:null;
+          const fmtEtiket = {'kitap':'Fiziksel kitap','ekitap':'E-kitap','sesli':'Sesli kitap','cizgi':'Çizgi roman'}[topFmt]||null;
 
           // En sadık yazar
           const topAuthor = topAuthors[0]?topAuthors[0]:null;
 
-          // Ortalama puan
-          const ratedBooks = books.filter(b=>b.rating);
-          const avgRating = ratedBooks.length?Math.round(ratedBooks.reduce((s,b)=>s+b.rating,0)/ratedBooks.length*10)/10:null;
-
-          const chip = (icon,text) => `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem .75rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.15);border-radius:8px">
-            <span style="font-size:1.2rem">${icon}</span>
-            <span style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink)">${text}</span>
+          const madde = (text) => `<div style="display:flex;align-items:flex-start;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
+            <span style="color:var(--gold);font-size:.8rem;margin-top:.1rem">▸</span>
+            <span style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink)">${text}</span>
           </div>`;
 
-          return statsSection('stats-profile','🪞 Okuma Profili',`
-            <div style="display:flex;flex-direction:column;gap:.5rem;max-width:420px">
-              ${genreLabel?chip('📚',genreLabel):''}
-              ${fmtLabel?chip('📖',fmtLabel):''}
-              ${chip('🔖',behaviorLabel)}
-              ${topAuthor?chip('✍️',`En sadık: <strong>${topAuthor[0]}</strong> (${topAuthor[1]} kitap)`):''}
-              ${avgRating?chip('⭐',`Ortalama puan: <strong>${avgRating}</strong> / 5`):''}
+          return statsSection('stats-profile','🔮 Okuyucu Falın',`
+            <div style="max-width:440px">
+              <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--parchment);line-height:1.6;padding:.75rem;background:rgba(201,162,39,.06);border-left:2px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:.85rem;font-style:italic">
+                ${anaCumle}
+              </div>
+              <div style="display:flex;flex-direction:column;gap:.1rem">
+                ${topGenres[0]?madde(`Tür eğilimi: <strong>${topGenres[0][0]}</strong> ağırlıklı`):''}
+                ${madde(`Okuma tarzı: <strong>${seriesPct>=60?'seri odaklı':seriesPct>=30?'karma':'tekil kitap'}</strong>`)}
+                ${fmtEtiket?madde(`Format: <strong>${fmtEtiket}</strong>`):''}
+                ${topAuthor?madde(`En sadık yazar: <strong>${topAuthor[0]}</strong> (${topAuthor[1]} kitap)`):''}
+                ${avgRating?madde(`Ortalama puan: <strong>${avgRating} / 5</strong> — ${avgRating>=4.5?'seçici okur':avgRating>=3.5?'dengeli':'geniş yelpazeli'}`):''}
+              </div>
             </div>
           `);
         })()}
