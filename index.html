@@ -8230,7 +8230,12 @@ function renderStatsPanel(){
 
           // ── OKUYUCU FALI ALGORİTMASI ──
 
-          // 5 zihinsel eksen ağırlıkları
+          // Günlük seed — aynı gün aynı varyasyon, farklı gün farklı
+          const _today = new Date();
+          const _seed = _today.getFullYear()*10000+(_today.getMonth()+1)*100+_today.getDate();
+          const _pick = (arr, offset=0) => arr[(_seed+offset) % arr.length];
+
+          // 5 zihinsel eksen
           const eksenler = {
             evren:    ['fantastik','bilimkurgu','distopya','mitoloji'],
             gerilim:  ['polisiye','gerilim','korku'],
@@ -8247,46 +8252,54 @@ function renderStatsPanel(){
           }));
           const siraliEksen = Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
           const anaEksen = siraliEksen[0]?siraliEksen[0][0]:null;
-          const ikinciEksen = siraliEksen[1]?siraliEksen[1][0]:null;
+          const ikinciEksen = siraliEksen[1]&&siraliEksen[1][0]!==anaEksen?siraliEksen[1][0]:null;
 
-          // Eksen etiketleri
-          const eksenEtiket = {
-            evren:   'evrenlerin sınırlarını zorlayan',
-            gerilim: 'bilinmeyeni çözmeye çalışan',
-            dusunce: 'derinliklerde anlam arayan',
-            insan:   'insan hikâyelerine kulak veren',
-            gercek:  'gerçek dünyayı keşfeden',
+          // Varyasyon havuzları
+          const eksenVaryasyon = {
+            evren:   ['gerçekliğin sınırlarını genişleten','farklı dünyalara yönelen','evrenler arasında dolaşan','hayal gücü güçlü'],
+            gerilim: ['bilinmeyeni çözmeyi seven','detaylara odaklanan','zihinsel bulmacaları seven'],
+            dusunce: ['anlam arayışına yönelen','düşünmeyi önemseyen','metinlerde derinlik arayan'],
+            insan:   ['insan hikâyelerine yakın duran','duygusal bağları önemseyen','yaşanmışlıklara odaklanan'],
+            gercek:  ['deneyim ve gerçeklik odaklı','yaşamın izini süren','dönüşümü önemseyen'],
           };
 
-          // Okuma davranışı
+          // Davranış
           const seriesBooks = books.filter(b=>b.series).length;
           const seriesPct = books.length?Math.round(seriesBooks/books.length*100):0;
-          const davranisList = [
-            seriesPct>=60 ? 'serileri yarım bırakmayan' : seriesPct>=30 ? 'hikâyeleri takip eden' : 'kitaplar arasında gezinen',
-          ];
+          const davranisList = seriesPct>=60
+            ?['serileri yarım bırakmayan','hikâyeleri takip eden','seri bağımlısı']
+            :seriesPct>=30
+            ?['hikâyeleri takip eden','seri ve tekil dengeleyen']
+            :['kitaplar arasında gezinen','keşifçi bir yaklaşımla ilerleyen'];
+          const davranis = _pick(davranisList, 1);
 
           // Zihinsel stil
           const ratedBooks = books.filter(b=>b.rating);
           const avgRating = ratedBooks.length?Math.round(ratedBooks.reduce((s,b)=>s+b.rating,0)/ratedBooks.length*10)/10:null;
-          const stilList = avgRating>=4.5?'kolay beğenmeyen':avgRating>=3.5?'seçici':'keşfetmeyi seven';
+          const stilHavuz = avgRating>=4.5
+            ?['kolay beğenmeyen','seçici','standartları yüksek']
+            :avgRating>=3.5
+            ?['istikrarlı seçimler yapan','dengeli','seçici']
+            :['keşfetmeyi seven','derinlik arayan','geniş yelpazeli'];
+          const stil = _pick(stilHavuz, 2);
 
           // Ritim
           const curStreakForProfile = streakMonths(books, new Date().getFullYear());
-          const ritmList = [
-            'Okumak artık bir alışkanlık.',
-            'Ritmini yakalamışsın.',
-            'Akıştasın.',
-            'Ritmin dağılmış ama geri dönebilir.',
-            'Yeni bir başlangıç için hazır.',
-          ];
-          const ritim = curStreakForProfile>=6?ritmList[2]:curStreakForProfile>=3?ritmList[1]:curStreakForProfile>=1?ritmList[0]:ritmList[3];
+          const ritmHavuz = curStreakForProfile>=6
+            ?['Akış stabil.','Ritmini yakalamışsın.','Okuma düzenin oturmuş.']
+            :curStreakForProfile>=3
+            ?['Ritim oluşuyor.','Düzenin şekilleniyor.','Ritmini yakalamışsın.']
+            :curStreakForProfile>=1
+            ?['Okumak artık bir alışkanlık.','Ritim oluşuyor.']
+            :['Ritim dağılmış.','Yeniden başlamak için uygun bir dönem.'];
+          const ritim = _pick(ritmHavuz, 3);
 
           // Ana cümle
-          const anaKisim = anaEksen?eksenEtiket[anaEksen]:'okuyan';
-          const ikinciKisim = ikinciEksen&&ikinciEksen!==anaEksen?', '+eksenEtiket[ikinciEksen]:'';
-          const anaCumle = `Sen ${anaKisim}${ikinciKisim}, ${davranisList[0]} ve ${stilList} bir okuyucusun. ${ritim}`;
+          const anaKisim = anaEksen?_pick(eksenVaryasyon[anaEksen]||['okuyan']):'okuyan';
+          const ikinciKisim = ikinciEksen?', '+_pick(eksenVaryasyon[ikinciEksen]||[], 1):'';
+          const anaCumle = `Sen ${anaKisim}${ikinciKisim}, ${davranis} ve ${stil} bir okuyucusun. ${ritim}`;
 
-          // Format tercihi
+          // Format
           const fmtEntries = Object.entries(fmtCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
           const topFmt = fmtEntries[0]?fmtEntries[0][0]:null;
           const fmtEtiket = {'kitap':'Fiziksel kitap','ekitap':'E-kitap','sesli':'Sesli kitap','cizgi':'Çizgi roman'}[topFmt]||null;
