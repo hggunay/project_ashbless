@@ -3168,6 +3168,62 @@ function toggleAddMore(){
 // Genel accordion toggle — localStorage'a kaydeder
 // ── SERİ KIRILMA ANİMASYONU ──
 // ── SERİ KIRILMA SİSTEMİ ──
+function checkStreakMilestone(books, curStreak){
+  if(curStreak < 3) return;
+  const milestones = [
+    {months:3,  emoji:'🕊️', label:'3 Aylık Seri!',  badge:'🥉 Düzenli Okuyucu'},
+    {months:6,  emoji:'🦅', label:'6 Aylık Seri!',  badge:'🥈 Okuma Alışkanlığı'},
+    {months:12, emoji:'🦅✨', label:'12 Aylık Seri!', badge:'🥇 Yılın Okuyucusu'},
+  ];
+  const hit = [...milestones].reverse().find(m=>curStreak>=m.months);
+  if(!hit) return;
+  const key = 'streakMilestoneShown_'+hit.months+'_'+new Date().getFullYear();
+  try{ if(localStorage.getItem(key)) return; }catch(e){}
+  try{ localStorage.setItem(key,'1'); }catch(e){}
+  setTimeout(()=>playStreakMilestone(hit), 2000);
+}
+
+function playStreakMilestone(hit){
+  const modal = document.getElementById('streakBreakModal');
+  if(!modal) return;
+  const emoji = modal.querySelector('.sb-emoji');
+  const msg = modal.querySelector('.sb-msg');
+  const closeBtn = modal.querySelector('.sb-close');
+
+  // Sıfırla
+  emoji.style.animation='none';
+  emoji.style.transition='none';
+  emoji.style.opacity='0';
+  emoji.style.transform='scaleY(0)';
+  emoji.style.transformOrigin='bottom center';
+  emoji.style.fontSize='4.5rem';
+  emoji.textContent=hit.emoji;
+  msg.style.opacity='0';
+  msg.textContent='';
+  if(closeBtn){ closeBtn.style.opacity='0'; closeBtn.textContent='Harika! →'; }
+  modal.style.opacity='0';
+  modal.style.display='flex';
+  setTimeout(()=>modal.style.opacity='1', 30);
+
+  // Emoji tabandan büyüsün
+  requestAnimationFrame(()=>{
+    requestAnimationFrame(()=>{
+      emoji.style.transition='opacity 0.5s ease, transform 1.2s cubic-bezier(.34,1.56,.64,1)';
+      emoji.style.opacity='1';
+      emoji.style.transform='scaleY(1)';
+    });
+  });
+
+  // Metin
+  setTimeout(()=>{
+    msg.innerHTML=`<strong>${hit.label}</strong><br><span style="font-size:.85rem;opacity:.8">${hit.badge} kazanıldı!</span>`;
+    msg.style.opacity='1';
+  }, 1400);
+
+  // Kapat butonu
+  if(closeBtn) setTimeout(()=>closeBtn.style.opacity='1', 2200);
+}
+
 function checkStreakBreak(books){
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -8013,7 +8069,13 @@ function renderStatsPanel(){
   }
 
   // Seri kırılma kontrolü — sadece kendi profilinde
-  if(!viewing) checkStreakBreak(books); // Seri kırılma kontrolü
+  if(!viewing){
+    checkStreakBreak(books);
+    // Milestone kontrolü — streak devam ediyorsa
+    const _csNow = new Date();
+    const _csCurStreak = streakMonths(books, _csNow.getFullYear());
+    checkStreakMilestone(books, _csCurStreak);
+  }
 
   document.getElementById('statsContainer').innerHTML=`
     <div class="card" style="margin-bottom:1rem">
