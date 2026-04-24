@@ -10123,11 +10123,10 @@ function toggleSeriesInGroup(seriesId, headerEl){
 
 function goToFullSeriesCard(seriesId){
   if(viewing) return;
-  // Seriler sekmesine geç
-  const seriesTab = document.querySelector('[onclick*="showPanel(\'series\'"]') || document.querySelector('[onclick*='showPanel(\'series\'']');
   const seriesPanel = document.getElementById('series');
   if(seriesPanel && !seriesPanel.classList.contains('active')){
-    showPanel('series', document.querySelector('[onclick*="series"]'));
+    const seriesNavTab = [...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'series'"));
+    showPanel('series', seriesNavTab);
   }
   setTimeout(()=>{
     const card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
