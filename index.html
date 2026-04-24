@@ -2339,7 +2339,8 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};
+  if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
       // Avatar'ları ayrı node'dan yükle
@@ -3194,6 +3195,15 @@ function checkStreakMilestone(books, curStreak){
   const key = 'streakMilestoneShown_'+hit.months+'_'+new Date().getFullYear();
   try{ if(localStorage.getItem(key)) return; }catch(e){}
   try{ localStorage.setItem(key,'1'); }catch(e){}
+  // Feed'e milestone kartı ekle
+  if(!db.streakEvents) db.streakEvents={};
+  if(!db.streakEvents[me]) db.streakEvents[me]=[];
+  db.streakEvents[me].push({
+    id:'sm_'+Date.now(),
+    months:hit.months, emoji:hit.emoji, badge:hit.badge,
+    ts:Date.now(), reactions:{}
+  });
+  saveDb();
   setTimeout(()=>playStreakMilestone(hit), 2000);
 }
 
@@ -6414,6 +6424,13 @@ function getFeedCards(){
         ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
+    const streakEvs=(db.streakEvents&&db.streakEvents[u])||[];
+    streakEvs.forEach(ev=>{
+      cards.push({
+        type:'streak_milestone', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        months:ev.months, emoji:ev.emoji, badge:ev.badge, ts:ev.ts||0, reactions:ev.reactions||{},
+      });
+    });
   });
   return cards;
 }
@@ -6516,11 +6533,13 @@ function renderFeed(append=false){
       ?`story_${card.u}_${card.storyId}`
       :card.type==='country_event'
         ?`countryev_${card.u}_${card.countryEventId}`
-        :card.type==='quote'
-          ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-          :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':(card.type==='series_event'||card.type==='country_event')?'journal-type-series':'journal-type-quote';
-    const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':'💬 alıntı';
+        :card.type==='streak_milestone'
+          ?`streakm_${card.u}_${card.months}_${card.ts}`
+          :card.type==='quote'
+            ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+            :`review_${card.u}_${card.bookId}`;
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone')?'journal-type-series':'journal-type-quote';
+    const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${card.country||'—'}</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
@@ -6558,6 +6577,14 @@ function renderFeed(append=false){
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           🌍 <strong>${card.userName}</strong>, <strong>${card.country}</strong>'yı haritasına ekledi!
           ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
+        </div>
+      `:card.type==='streak_milestone'?`
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+          <span style="font-size:2rem">${card.emoji}</span>
+          <div>
+            <strong>${card.userName}</strong>, <strong>${card.months} aylık okuma serisine</strong> ulaştı!<br>
+            <span style="font-size:.8rem;color:var(--gold)">${card.badge}</span>
+          </div>
         </div>
       `:`
         <div class="journal-quote">
