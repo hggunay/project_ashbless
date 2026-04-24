@@ -3193,25 +3193,39 @@ function showStreakBreak(){
   const btn = document.getElementById('streakBreakBtn');
   if(!overlay) return;
 
+  // Sıfırla
+  emoji.textContent='😄';
+  msg.style.opacity='0';
+  msg.textContent='';
+  btn.style.opacity='0';
+  overlay.style.opacity='0';
   overlay.style.display='flex';
+  overlay.style.transition='opacity .5s';
+  setTimeout(()=>overlay.style.opacity='1', 50);
 
-  // Emoji animasyonu: 😄 → 😮 → 😔 → 🔥
+  // Emoji + mesaj adımları
   const steps = [
-    {e:'😄', delay:0},
-    {e:'😮', delay:600},
-    {e:'😔', delay:1200},
-    {e:'🔥', delay:2000},
+    {e:'😄', text:'Geçen ay harika gidiyordu...', delay:600},
+    {e:'😮', text:'Ama bu ay henüz kitap bitmedi.', delay:2000},
+    {e:'😔', text:'Seri bekleniyor...', delay:3400},
+    {e:'🔥', text:'Yeniden başlamak için bugün bir kitap bitir!', delay:5000},
   ];
-  steps.forEach(({e, delay})=>{
-    setTimeout(()=>{ emoji.textContent=e; }, delay);
+
+  steps.forEach(({e, text, delay})=>{
+    setTimeout(()=>{
+      emoji.style.transform='scale(1.3)';
+      emoji.style.transition='transform .2s';
+      setTimeout(()=>{ emoji.style.transform='scale(1)'; }, 200);
+      emoji.textContent=e;
+      msg.style.opacity='0';
+      setTimeout(()=>{
+        msg.textContent=text;
+        msg.style.opacity='1';
+      }, 300);
+    }, delay);
   });
 
-  // Mesaj ve buton
-  setTimeout(()=>{
-    msg.textContent='Bu ay henüz kitap bitmedi. Seri bekleniyor...';
-    msg.style.opacity='1';
-  }, 2200);
-  setTimeout(()=>{ btn.style.opacity='1'; }, 2600);
+  setTimeout(()=>{ btn.style.opacity='1'; }, 5800);
 }
 
 function closeStreakBreak(){
