@@ -3884,20 +3884,6 @@ function triggerGlitch(titleEl){
   setTimeout(()=>bg.classList.remove('glitch-bg-active'),420);
 }
 
-// ── SERİ DROPDOWN KAPAT ──
-// Input dışına tıklayınca dropdown kapanır
-document.addEventListener('click', function(e){
-  const activeId = window._activeSeriesAc;
-  if(!activeId) return;
-  const input = document.getElementById('seriesBookTitle_'+activeId);
-  const dropdown = document.getElementById('seriesAcList_'+activeId);
-  if(!input || !dropdown) return;
-  if(!input.contains(e.target) && !dropdown.contains(e.target)){
-    dropdown.style.display='none';
-    window._activeSeriesAc = null;
-  }
-});
-
 // ── SHADOW EFEKT TETİKLEYİCİ ──
 // Korku (hor) ve Gerilim (ger) rozetleri kazanılınca çağrılır.
 // prefix: 'hor' veya 'ger' — ilgili rozet kartına 3 saniyelik
@@ -9389,14 +9375,78 @@ function addBookToSeries(seriesId){
 }
 
 function _refreshSeriesBookList(seriesId){
-  renderSeriesList();
-  // renderSeriesList DOM'u yeniden yazar, setTimeout ile yeni elementleri bul
-  setTimeout(()=>{
-    const booksEl = document.getElementById('seriesBooks_'+seriesId);
-    const btn = document.getElementById('seriesToggleBtn_'+seriesId);
-    if(booksEl){ booksEl.classList.add('open'); }
-    if(btn){ btn.textContent='▲ Gizle'; }
-  }, 50);
+  // renderSeriesList çağırmak yerine sadece bu kartın kitap listesini güncelle
+  const booksContainer = document.getElementById('seriesBooks_'+seriesId);
+  if(!booksContainer){ renderSeriesList(); return; }
+
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  if(!ser){ renderSeriesList(); return; }
+
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const seriesBkMap = {};
+
+  const books = (ser.books||[]).map(bk=>{
+    if(bk.planned){
+      const linked = myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
+      if(linked) return {...bk, book:linked, planned:false};
+      return {...bk, book:{id:null,title:bk.manualTitle,author:bk.manualAuthor||'',readingStatus:'planned'}};
+    }
+    const book = myBooksList.find(b=>b.id===bk.bookId);
+    return book ? {...bk, book} : null;
+  }).filter(Boolean);
+
+  const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
+  const booksRead = books.filter(bk=>{
+    const s=bk.book.readingStatus;
+    if(!s) return !!bk.bookId;
+    return s!=='reading'&&s!=='paused'&&s!=='wishlist'&&s!=='planned';
+  });
+  const booksPaused = books.filter(bk=>bk.book.readingStatus==='paused');
+  const booksPlanned = books.filter(bk=>{
+    const s=bk.book.readingStatus;
+    if(!s) return !bk.bookId;
+    return s==='wishlist'||s==='planned';
+  });
+
+  const statusIcon = b => b.readingStatus==='reading'?'📖':b.readingStatus==='paused'?'🚧':'✅';
+
+  const bookItemHtml = (bk) => {
+    const b = bk.book;
+    const isReading = b.readingStatus==='reading';
+    const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned'&&b.readingStatus!=='new';
+    const isPlanned = !isReading&&!isRead&&b.readingStatus!=='paused';
+    const ico = isReading?'📖':b.readingStatus==='paused'?'🚧':isRead?'✅':'⏳';
+    const removeKey = bk.planned ? `'${seriesId}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${b.id},false`;
+    const canStart = !isReading&&b.id&&!viewing;
+    const plannedBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${seriesId}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
+    return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>      <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>      <span class="series-book-status">${ico}</span>      <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>      ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}      <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">        ${canStart?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedBtn}        ${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}',${books.indexOf(bk)})">✏️</button>        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}      </div>    </div>`;
+  };
+
+  const groupHtml = (label, icon, items) => items.length ? `
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
+    ${items.map(bookItemHtml).join('')}
+  ` : '';
+
+  const listHtml = groupHtml('Şu An Okunuyor','📖',booksReading) +
+    groupHtml('Okundu','✅',booksRead) +
+    groupHtml('Yarım Bırakıldı','🚧',booksPaused) +
+    groupHtml('Okunacak / Planlanan','⏳',booksPlanned);
+
+  // Sadece kitap listesi kısmını güncelle, form alanlarına dokunma
+  const listContainer = booksContainer.querySelector('.series-book-list-inner');
+  if(listContainer){
+    listContainer.innerHTML = listHtml;
+  } else {
+    // Wrapper yoksa ekle
+    const wrapper = document.createElement('div');
+    wrapper.className = 'series-book-list-inner';
+    wrapper.innerHTML = listHtml;
+    booksContainer.insertBefore(wrapper, booksContainer.firstChild);
+  }
+  // Buton metnini güncelle
+  const btn = document.getElementById('seriesToggleBtn_'+seriesId);
+  if(btn) btn.textContent = '▲ Gizle';
 }
 
 function seriesAcSearch(seriesId){
@@ -9406,14 +9456,8 @@ function seriesAcSearch(seriesId){
   const q = input.value.trim().toLowerCase();
   if(q.length < 2){ dropdown.style.display='none'; return; }
 
-  // Sadece seri işaretli kitaplar
-  const myBooksList = myBooks().filter(b=>
-    b.title && !b.title.startsWith('ISBN:') && b.series && b.series.trim()
-  );
-  const data = mySeriesData();
-  const ser = Object.values(data.series||{}).find(s=>
-    document.getElementById('seriesBookTitle_'+seriesId) !== null
-  );
+  // Tüm kitaplarda ara (seri filtresi yok)
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   const matches = myBooksList.filter(b=>
     b.title.toLowerCase().includes(q) || (b.author||'').toLowerCase().includes(q)
   ).slice(0,6);
@@ -9945,7 +9989,7 @@ function renderSeriesList(){
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
             style="width:100%;font-size:.85rem;padding:.4rem .6rem"
-            oninput="seriesAcSearch('${ser.id}')" onfocus="window._activeSeriesAc='${ser.id}'"/>
+            oninput="seriesAcSearch('${ser.id}')"/>
           <div id="seriesAcList_${ser.id}" class="series-ac-dropdown" style="display:none"></div>
         </div>
         <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
@@ -10009,7 +10053,7 @@ function renderSeriesList(){
           onclick="closeSeriesCard('${ser.id}')">✕ Kapat</button>
       </div>
       <div class="series-books-list" id="seriesBooks_${ser.id}">
-        ${bookListHtml}
+        <div class="series-book-list-inner">${bookListHtml}</div>
         <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(201,162,39,.1)">
           <div style="font-size:.75rem;color:var(--rust);opacity:.7;margin-bottom:.3rem">Kitap Ekle</div>
           ${bookSelectHtml}
