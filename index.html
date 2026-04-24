@@ -9384,7 +9384,8 @@ function _refreshSeriesBookList(seriesId){
   if(!ser){ renderSeriesList(); return; }
 
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
-  const seriesBkMap = {};
+  // Global map'i güncelle — openEditSeriesBook buraya bakıyor
+  Object.keys(seriesBkMap).forEach(k=>{ if(k.startsWith(seriesId+'_')) delete seriesBkMap[k]; });
 
   const books = (ser.books||[]).map(bk=>{
     if(bk.planned){
@@ -9413,6 +9414,8 @@ function _refreshSeriesBookList(seriesId){
 
   const bookItemHtml = (bk) => {
     const b = bk.book;
+    const mapKey = seriesId+'_'+books.indexOf(bk);
+    seriesBkMap[mapKey] = bk;
     const isReading = b.readingStatus==='reading';
     const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned'&&b.readingStatus!=='new';
     const isPlanned = !isReading&&!isRead&&b.readingStatus!=='paused';
@@ -9776,7 +9779,8 @@ function saveEditSeriesBook(seriesId, idx, containerId, isPlanned){
   }
   ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
   saveDb();
-  renderSeriesList();
+  document.getElementById(containerId)?.remove();
+  _refreshSeriesBookList(seriesId);
 }
 
 function toggleSeriesMode(seriesId){
@@ -10182,7 +10186,7 @@ function renderGroupCards(seriesContainer){
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="goToFullSeriesCard('${st.ser.id}')" title="Tam kartı göster">✏️</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
-                <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+                <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}',event)">✕</button>
               </div>`:`<div onclick="event.stopPropagation()"><button class="btn btn-sm btn-primary" style="font-size:.55rem;padding:.1rem .3rem" onclick="copySeriesToMyList('${st.ser.id}')">📚 Ekle</button></div>`}
               <span style="font-size:.7rem;color:var(--moss)">${serIsOpen?'▲':'▼'}</span>
             </div>
@@ -10334,13 +10338,29 @@ function addSeriesToPath(pathId){
   renderSeriesList();
 }
 
-function removeStepFromPath(pathId, seriesId){
+function removeStepFromPath(pathId, seriesId, evt){
+  const confirmId = 'stepRemoveConf_'+pathId+'_'+seriesId;
+  const existing = document.getElementById(confirmId);
+  if(existing){ existing.remove(); return; }
+  const data = mySeriesData();
+  const ser = data.series[seriesId];
+  const serName = ser ? ser.name : 'Bu seri';
+  const btn = evt ? evt.target.closest('button') : null;
+  if(!btn) { _doRemoveStep(pathId, seriesId); return; }
+  const box = document.createElement('div');
+  box.id = confirmId;
+  box.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .4rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.75rem;color:var(--rust)';
+  box.innerHTML = `"${serName}" gruptan çıkar?
+    <button class="btn btn-sm btn-danger" style="font-size:.65rem;padding:.1rem .35rem" onclick="_doRemoveStep('${pathId}','${seriesId}')">Evet</button>
+    <button class="btn btn-sm" style="font-size:.65rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById('${confirmId}').remove()">İptal</button>`;
+  btn.insertAdjacentElement('afterend', box);
+}
+function _doRemoveStep(pathId, seriesId){
+  const confirmId = 'stepRemoveConf_'+pathId+'_'+seriesId;
+  document.getElementById(confirmId)?.remove();
   const data = mySeriesData();
   const path = data.paths[pathId];
   if(!path) return;
-  const ser = data.series[seriesId];
-  const serName = ser ? ser.name : 'Bu seri';
-  if(!confirm(`"${serName}" gruptan çıkarılsın mı?`)) return;
   path.steps = (path.steps||[]).filter(s=>s.seriesId!==seriesId);
   saveDb();
   renderSeriesList();
@@ -10437,7 +10457,7 @@ function renderPathsList(){
           <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" 
             onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
           <button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.15rem .35rem" 
-            onclick="removeStepFromPath('${path.id}','${st.seriesId}')">✕</button>
+            onclick="removeStepFromPath('${path.id}','${st.seriesId}',event)">✕</button>
         </div>
       </div>`).join('');
 
