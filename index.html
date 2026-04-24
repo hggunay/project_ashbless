@@ -3182,7 +3182,7 @@ function checkStreakBreak(books){
     const key = 'streakBreakShown_'+curMonth;
     try{ if(localStorage.getItem(key)) return; }catch(e){}
     try{ localStorage.setItem(key,'1'); }catch(e){}
-    setTimeout(()=>showStreakBreak(), 800);
+    setTimeout(()=>showStreakBreak(), 2000);
   }
 }
 
@@ -8043,6 +8043,7 @@ function renderStatsPanel(){
               <div style="display:flex;gap:.3rem">${icons}</div>
             </div>`;
           }).filter(Boolean).join('');
+          const hasBreak = !books.some(b=>(b.endDate||b.month||'').startsWith(curMonthStr)) && books.some(b=>{ const prevDate=new Date(streakNow.getFullYear(),streakNow.getMonth()-1,1); const pm=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`; return (b.endDate||b.month||'').startsWith(pm); });
           return statsSection('stats-streak','🔥 Okuma Serisi',`
             <div style="display:flex;gap:.35rem;align-items:flex-start;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding:1.2rem 0 .4rem">
               ${cells}
@@ -8084,6 +8085,7 @@ function renderStatsPanel(){
               <div style="width:10px;height:10px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
               <div style="width:10px;height:10px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.4rem"></div><span>Kitap yok</span>
             </div>
+            ${hasBreak?`<button onclick="showStreakBreak()" style="margin-top:.75rem;padding:.3rem .9rem;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.25);border-radius:20px;color:var(--rust);font-family:'Space Mono',monospace;font-size:.65rem;cursor:pointer">😔 Seri kırılma animasyonunu göster</button>`:''}
           `,false);
         })()}
 
