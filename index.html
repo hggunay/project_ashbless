@@ -5657,12 +5657,26 @@ function titleSparkle(el){
   const originalHTML=el.innerHTML;
   const text=el.textContent;
   el.innerHTML='';
-  [...text].forEach((ch,i)=>{
-    const span=document.createElement('span');
-    span.textContent=ch===' '?'\u00A0':ch;
-    span.style.cssText=`display:inline-block;animation:nmLetterIn 0.3s ease both;animation-delay:${i*40}ms;`;
-    el.appendChild(span);
-  });
+  // "Adventurers" kelimesinin animasyon sırasında da bölünmemesi için
+  // iki grup: "The Armchair " ve "Adventurers" — ikincisi nowrap kapsayıcı içinde
+  const breakIdx=text.indexOf('Adventurers');
+  const part1=breakIdx>0?text.slice(0,breakIdx):text;
+  const part2=breakIdx>0?text.slice(breakIdx):'';
+  const addLetters=(str,startIdx,container)=>{
+    [...str].forEach((ch,i)=>{
+      const span=document.createElement('span');
+      span.textContent=ch===' '?'\u00A0':ch;
+      span.style.cssText=`display:inline-block;animation:nmLetterIn 0.3s ease both;animation-delay:${(startIdx+i)*40}ms;`;
+      container.appendChild(span);
+    });
+  };
+  addLetters(part1,0,el);
+  if(part2){
+    const wrap=document.createElement('span');
+    wrap.style.whiteSpace='nowrap';
+    addLetters(part2,part1.length,wrap);
+    el.appendChild(wrap);
+  }
   const rect=el.getBoundingClientRect();
   for(let j=0;j<40;j++){
     setTimeout(()=>{
