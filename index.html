@@ -551,7 +551,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .reading-progress-fill{height:100%;background:linear-gradient(90deg,var(--moss),#7ab870);border-radius:20px;transition:width .4s;}
 .reading-progress-text{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--moss);margin-top:.2rem;}
 .book-item-wishlist{opacity:.75;border-left:3px solid rgba(201,162,39,.35);}
-.stats-section{margin-bottom:1.5rem;}
+.stats-section{margin-bottom:.3rem;border-radius:6px;padding:.4rem .6rem;}
+.stats-section:nth-child(odd){background:rgba(26,18,8,.1);}
+.stats-section:nth-child(even){background:transparent;}
 .stats-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid rgba(201,162,39,.2);}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:.75rem;margin-bottom:1rem;}
 .stats-big-card{background:linear-gradient(135deg,var(--parchment-dark),var(--parchment));border:1px solid rgba(201,162,39,.3);border-radius:4px;padding:1rem;text-align:center;}
@@ -7902,7 +7904,7 @@ function renderStatsPanel(){
               <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">
                 ${d.n>0?`<div style="font-size:.55rem;font-family:'Space Mono',monospace;color:var(--rust);margin-bottom:2px">${d.n}</div>`:''}
                 <div style="width:100%;background:${d.n?'linear-gradient(180deg,var(--gold),var(--leather))':'rgba(138,69,19,.1)'};border-radius:2px 2px 0 0;height:${d.n?Math.max(8,Math.round(d.n/maxMonth*60)):4}px"></div>
-                <div style="font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:18px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
+                <div style="font-size:.62rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:20px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
               </div>`).join('')}
           </div>
           ${years.length>1?`<div style="margin-top:.5rem">${years.map(([y,n])=>`<span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-right:1rem">${y}: <strong>${n} kitap</strong></span>`).join('')}</div>`:''}
@@ -7949,7 +7951,7 @@ function renderStatsPanel(){
             if(!earned.length) return'';
             const icons=earned.map(e=>`<span title="${e.name}" style="font-size:1.1rem;cursor:default">${e.icon}</span>`).join('');
             return`<div style="display:flex;align-items:center;gap:.6rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
-              <span style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);min-width:2.5rem">${yr}</span>
+              <span style="font-family:'Space Mono',monospace;font-size:.78rem;color:var(--rust);min-width:2.5rem">${yr}</span>
               <div style="display:flex;gap:.3rem">${icons}</div>
             </div>`;
           }).filter(Boolean).join('');
@@ -7972,12 +7974,12 @@ function renderStatsPanel(){
                 <div style="display:flex;gap:1.5rem;justify-content:center;margin-top:.5rem">
                   <div style="text-align:center">
                     <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--leather)">${curStreak}</div>
-                    <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--rust);text-transform:uppercase">Bu Yıl Seri</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);text-transform:uppercase">Bu Yıl Seri</div>
                   </div>
                   <div style="width:1px;background:rgba(201,162,39,.2)"></div>
                   <div style="text-align:center">
                     <div style="font-family:'Playfair Display',serif;font-size:1.8rem;font-weight:900;color:var(--leather)">${cal12.filter(c=>c.has).length}</div>
-                    <div style="font-family:'Space Mono',monospace;font-size:.52rem;color:var(--rust);text-transform:uppercase">Son 12 Ayda</div>
+                    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);text-transform:uppercase">Son 12 Ayda</div>
                   </div>
                 </div>
                 ${nextTarget?`<div style="margin-top:.6rem;padding:.4rem .75rem;background:rgba(74,103,65,.1);border-radius:4px;border:1px solid rgba(74,103,65,.2);font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss)">
@@ -7988,9 +7990,9 @@ function renderStatsPanel(){
             ${yearRows?`<div style="margin-top:.75rem">
               <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.05em">Yıllık Rozet Geçmişi</div>
               ${yearRows}
-              <div style="font-size:.6rem;color:#555;font-style:italic;margin-top:.4rem">🥉 3 ay · 🥈 6 ay · 🥇 12 ay — üzerine gel, rozet adını gör</div>
+              <div style="font-size:.72rem;color:var(--rust);opacity:.7;font-style:italic;margin-top:.4rem">🥉 3 ay · 🥈 6 ay · 🥇 12 ay — üzerine gel, rozet adını gör</div>
             </div>`:''}
-            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.55rem;color:#555">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.7">
               <div style="width:10px;height:10px;background:linear-gradient(135deg,var(--gold),var(--leather));border-radius:2px"></div><span>Kitap bitirildi</span>
               <div style="width:10px;height:10px;background:rgba(138,69,19,.06);border:1.5px solid rgba(201,162,39,.2);border-radius:2px;margin-left:.4rem"></div><span>Kitap yok</span>
             </div>
