@@ -2982,19 +2982,10 @@ function enterApp(){
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
-  // Gece yarısı mesajı — 30 saniye sonra, sekme aktifse göster
-  setTimeout(()=>{
+  // Gece yarısı mesajı — her dakika kontrol et, sadece sekme aktifken
+  setInterval(()=>{
     if(document.visibilityState==='visible') tryShowNightMessage();
-    else{
-      const onVisible=()=>{
-        if(document.visibilityState==='visible'){
-          tryShowNightMessage();
-          document.removeEventListener('visibilitychange',onVisible);
-        }
-      };
-      document.addEventListener('visibilitychange',onVisible);
-    }
-  }, 30000);
+  }, 60000);
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
