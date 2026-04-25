@@ -6478,7 +6478,8 @@ function renderFeed(append=false){
     return;
   }
 
-  const reactionList=card.type==='streak_milestone'?['🎉 Tebrikler','🔥 Bende de var','💪 Ben de başaracağım','👏 Harika']:['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
+  const defaultReactionList=['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
+  const milestoneReactionList=['🎉 Tebrikler','🔥 Bende de var','💪 Ben de başaracağım','👏 Harika'];
 
   function fmtDate(ts){
     if(!ts) return '';
@@ -6497,6 +6498,7 @@ function renderFeed(append=false){
           :card.type==='quote'
             ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
             :`review_${card.u}_${card.bookId}`;
+    const reactionList=card.type==='streak_milestone'?milestoneReactionList:defaultReactionList;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
