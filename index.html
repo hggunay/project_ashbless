@@ -6518,6 +6518,12 @@ function renderFeed(append=false){
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
+      if(card.type==='streak_milestone'){
+        const evId=`sm_${card.u}_${card.months}_${card.ts}`;
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStreakMilestoneReaction('${card.u}','${evId}','${rEsc}')">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
       const qi=card.type==='quote'?card.quoteIdx:-1;
       return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}${names}`:''}
@@ -6685,6 +6691,21 @@ function toggleStoryReaction(storyOwner,storyId,reaction){
   else{
     story.reactions[me].push(reaction);
     if(storyOwner!==me) pushReactionNotif(storyOwner,me,reaction,story.title||'hikâye');
+  }
+  saveDb();renderFeed();
+}
+
+function toggleStreakMilestoneReaction(owner,eventId,reaction){
+  if(!db.streakEvents||!db.streakEvents[owner]) return;
+  const ev=db.streakEvents[owner].find(e=>`sm_${owner}_${e.months}_${e.ts}`===eventId);
+  if(!ev) return;
+  if(!ev.reactions) ev.reactions={};
+  if(!ev.reactions[me]) ev.reactions[me]=[];
+  const idx=ev.reactions[me].indexOf(reaction);
+  if(idx>-1) ev.reactions[me].splice(idx,1);
+  else{
+    ev.reactions[me].push(reaction);
+    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.months+' aylık seri');
   }
   saveDb();renderFeed();
 }
