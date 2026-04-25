@@ -6478,7 +6478,7 @@ function renderFeed(append=false){
     return;
   }
 
-  const reactionList=['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
+  const reactionList=card.type==='streak_milestone'?['🎉 Tebrikler','🔥 Bende de var','💪 Ben de başaracağım','👏 Harika']:['📖 Okumak istiyorum','✅ Ben de okudum','💬 Konuşalım','👍'];
 
   function fmtDate(ts){
     if(!ts) return '';
