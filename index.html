@@ -5192,6 +5192,15 @@ async function addBook(){
 
   if(!db.books[me])db.books[me]=[];
   db.books[me].push(book);
+if(book.country && book.readingStatus==='new'){
+  const iso=countryToISO(book.country);
+  if(iso){
+    if(!db.countryEvents) db.countryEvents={};
+    if(!db.countryEvents[me]) db.countryEvents[me]=[];
+    db.countryEvents[me].push({iso,ts:book.addedAt||new Date().toISOString(),title:book.title});
+  }
+}
+
   propagateSeriesInfo(book); // eksik seri bilgilerini diğer kitaplara yay
   await saveDb();
 
