@@ -6261,8 +6261,17 @@ function confirmRemoveStory(storyId){
 }
 
 function removeStory(storyId){
-  db.stories[me]=(db.stories[me]||[]).filter(s=>s.id!==storyId);
-  saveDb();closeModal();renderStories();renderJournal();
+  const btn=document.querySelector(`[onclick="removeStory(${storyId})"]`);
+  if(!btn) return;
+  if(btn.dataset.confirming==='1'){
+    db.stories[me]=(db.stories[me]||[]).filter(s=>s.id!==storyId);
+    saveDb();closeModal();renderStories();renderJournal();
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='Emin misin?';
+  btn.style.fontSize='.55rem';
+  setTimeout(()=>{btn.textContent='✕';btn.dataset.confirming='';btn.style.fontSize='';},3000);
 }
 
 function renderStories(){
