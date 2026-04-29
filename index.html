@@ -5322,6 +5322,10 @@ function confirmRemoveBookFinal(id, deleteNote){
     });
   }
   db.books[me]=myBooks().filter(b=>b.id!==id);
+  if(book.country&&db.countryEvents&&db.countryEvents[me]){
+  db.countryEvents[me]=db.countryEvents[me].filter(e=>e.bookTitle!==book.title);
+  if(!db.countryEvents[me].length) delete db.countryEvents[me];
+}
   saveDb();closeModal();renderSafe();
   notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
 }
