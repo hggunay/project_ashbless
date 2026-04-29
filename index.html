@@ -5589,6 +5589,16 @@ function dFieldSeries(label,field,val,editable,bookId){
 function dField(label,field,val,type,editable,placeholder){
   const display=val!==null&&val!==undefined&&val!==''?val:'—';
   const ph=placeholder||(type==='date'?'YYYY-AA-GG':type==='number'?'—':'—');
+  if(field==='country'&&editable){
+  const allCountries=Object.keys(COUNTRY_ISO).filter(k=>k.length>2).map(k=>k.charAt(0).toUpperCase()+k.slice(1));
+  const unique=[...new Set(allCountries)].sort();
+  const dlId='dl_country_'+modalBookId;
+  return`<div class="detail-field">
+    <span class="detail-field-label">${label}</span>
+    <datalist id="${dlId}">${unique.map(c=>`<option value="${c}">`).join('')}</datalist>
+    <input class="detail-input" type="text" list="${dlId}" value="${val??''}" placeholder="Ülke adı..." onchange="saveFieldTyped(${modalBookId},'country','text',this.value)"/>
+  </div>`;
+}
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
     ${editable
