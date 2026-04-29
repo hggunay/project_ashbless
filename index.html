@@ -5686,6 +5686,7 @@ function saveFieldTyped(bookId,field,type,rawVal){
   if(field==='series'||field==='seriesNum'||field==='seriesTotal'){
     recalcSeriesCompletion(bookId);
   }
+  if(field==='country') checkAndAddCountryEvent(book);
   saveDb();renderSafe();
 }
 
