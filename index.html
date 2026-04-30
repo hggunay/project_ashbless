@@ -9619,7 +9619,7 @@ function exportToSeriesTab(serName){
     data.series[id] = {
       id,
       name: serName,
-      total: null,
+      total: booksInLib[0]?.seriesTotal || null,
       books,
       groupId: null,
       createdAt: new Date().toISOString()
