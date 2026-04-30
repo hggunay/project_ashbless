@@ -9616,10 +9616,11 @@ if(existingEntry){
     // Yok — yeni seri oluştur
     const id = 'ser_' + Date.now();
     const books = booksInLib.map(b => ({ bookId: b.id, num: b.seriesNum||null }));
-    data.series[id] = {
+ data.series[id] = {
       id,
       name: serName,
       total: booksInLib[0]?.seriesTotal || null,
+      ongoing: booksInLib[0]?.seriesOngoing || false,
       books,
       groupId: null,
       createdAt: new Date().toISOString()
