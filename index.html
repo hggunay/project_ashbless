@@ -2225,13 +2225,7 @@ const REGIONS={
 const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis','secret_ashbless','secret_creator']);
 
 function isRetroactive(b){
-  if(b.retroactive) return true;
-  if(b.endDate){
-    const today=new Date();today.setHours(0,0,0,0);
-    const end=new Date(b.endDate);
-    if(!isNaN(end)&&end<today) return true;
-  }
-  return false;
+  return b.retroactive===true;
 }
 function bstat(badge,books){
   const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
@@ -5760,7 +5754,7 @@ function applyToWholeSeries(bookId){
     if(best.bigSeriesComplete){b.bigSeriesComplete=true;}
   });
   saveDb();renderSafe();
-  if(count>0) notify('✅ Seri güncellendi','Seri bilgileri tüm kitaplara aktarıldı.');
+  if(count>0) notify('✅ Seri güncellendi','Seri bilgileri tüm kitaplara aktarıldı.',true);
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
 
