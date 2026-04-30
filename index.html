@@ -5404,7 +5404,7 @@ function openBook(bookId,fromShelf=false){
           ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
 		  ${isMe?`<div class="detail-field">
   <span class="detail-field-label">Devam Ediyor</span>
-  <input type="checkbox" ${(()=>{const s=Object.values((db.series&&db.series[me])||{}).find(s=>normalizeSeries(s.name||'')=== normalizeSeries(book.series||''));return s&&s.ongoing?'checked':''})()}
+ <input type="checkbox" ${(()=>{const s=Object.values((db.seriesData&&db.seriesData[me]&&db.seriesData[me].series)||{}).find(s=>normalizeSeries(s.name||'')=== normalizeSeries(book.series||''));return s&&s.ongoing?'checked':''})()}
     style="accent-color:var(--gold);width:18px;height:18px"
     onchange="toggleSeriesOngoing('${book.series}',this.checked)"/>
 </div>`:''}
