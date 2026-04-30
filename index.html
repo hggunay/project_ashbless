@@ -9593,12 +9593,10 @@ function exportToSeriesTab(serName){
     notify('⚠️','Bu seriye ait kitap bulunamadı.',true);
     return;
   }
-
-  // Seriler'de aynı isimli seri var mı?
-  const existingEntry = Object.entries(data.series)
+// Seriler'de aynı isimli seri var mı?
+const existingEntry = Object.entries(data.series)
     .find(([,s]) => normalizeSeries(s.name||'') === normName);
-
-  if(existingEntry){
+if(existingEntry){
     // Var — eksik kitapları ekle
     const [existId, existSer] = existingEntry;
     const existingBookIds = new Set((existSer.books||[]).map(b=>b.bookId).filter(Boolean));
@@ -9610,6 +9608,8 @@ function exportToSeriesTab(serName){
         added++;
       }
     });
+    if(!existSer.total && booksInLib[0]?.seriesTotal) existSer.total = booksInLib[0].seriesTotal;
+	if(!existSer.ongoing && booksInLib[0]?.seriesOngoing) existSer.ongoing = booksInLib[0].seriesOngoing;
     saveDb();
     notify('✅', added > 0 ? `${added} kitap eklendi: ${existSer.name}` : `Tüm kitaplar zaten mevcut: ${existSer.name}`,true);
   } else {
@@ -10035,6 +10035,9 @@ function toggleSeriesOngoing(seriesName, val){
   const data = mySeriesData();
   const entry = Object.values(data.series||{}).find(s=>normalizeSeries(s.name||'')===normalizeSeries(seriesName||''));
   if(entry) entry.ongoing = val;
+  (db.books[me]||[]).forEach(b=>{
+    if(normalizeSeries(b.series||'')===normalizeSeries(seriesName||'')) b.seriesOngoing = val;
+  });
   saveDb();
 }
 
