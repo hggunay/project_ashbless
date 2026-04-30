@@ -2238,7 +2238,7 @@ function bstat(badge,books){
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
 function booksForBadge(badge,books){
-  const filtered=books;
+  const filtered=SERIES_BADGE_IDS.has(badge.id)?books:books.filter(b=>!isRetroactive(b));
   const id=badge.id;
   // Okuma Miktarı
   if(['b5','b10','b25','b50','b100','b250'].includes(id)) return filtered;
