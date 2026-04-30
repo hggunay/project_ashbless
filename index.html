@@ -1213,6 +1213,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <div class="field-label" style="margin-bottom:.3rem">Toplam</div>
               <input class="book-input" id="newSeriesTotal" type="number" min="1" placeholder="6"/>
             </div>
+			<div style="display:flex;align-items:center;gap:.3rem;margin-top:.3rem">
+  <input type="checkbox" id="newSeriesOngoing" style="accent-color:var(--gold)"/>
+  <label for="newSeriesOngoing" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);cursor:pointer">devam ediyor</label>
+</div>
             <div style="flex:1;min-width:150px">
               <div class="field-label" style="margin-bottom:.3rem">Grup (opsiyonel)</div>
               <select class="book-input" id="newSeriesGroupId" style="font-size:.82rem;padding:.35rem .5rem">
@@ -5398,6 +5402,12 @@ function openBook(bookId,fromShelf=false){
           ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
           ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
           ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
+		  ${isMe?`<div class="detail-field">
+  <span class="detail-field-label">Devam Ediyor</span>
+  <input type="checkbox" ${(()=>{const s=Object.values((db.series&&db.series[me])||{}).find(s=>normalizeSeries(s.name||'')=== normalizeSeries(book.series||''));return s&&s.ongoing?'checked':''})()}
+    style="accent-color:var(--gold);width:18px;height:18px"
+    onchange="toggleSeriesOngoing('${book.series}',this.checked)"/>
+</div>`:''}
           ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
         </div>
       </div>
@@ -9681,6 +9691,7 @@ function autoImportSeries(){
 function createSeries(){
   const name = document.getElementById('newSeriesName').value.trim();
   const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
+  const ongoing = document.getElementById('newSeriesOngoing')?.checked||false;
   const bulkText = document.getElementById('newSeriesBulkBooks').value.trim();
   const bulkAuthor = document.getElementById('newSeriesBulkAuthor').value.trim();
   const groupId = (document.getElementById('newSeriesGroupId')||{}).value||'';
@@ -9703,7 +9714,7 @@ function createSeries(){
       }
     });
   }
-  data.series[id] = { id, name, total:total||books.length||null, books, groupId:groupId||null, createdAt: new Date().toISOString() };
+ data.series[id] = { id, name, total:total||books.length||null, books, groupId:groupId||null, ongoing, createdAt: new Date().toISOString() };
   if(groupId && data.paths[groupId]){
     data.paths[groupId].steps = data.paths[groupId].steps||[];
     data.paths[groupId].steps.push({seriesId:id});
@@ -9711,6 +9722,7 @@ function createSeries(){
   saveDb();
   document.getElementById('newSeriesName').value='';
   document.getElementById('newSeriesTotal').value='';
+  const ongoingEl=document.getElementById('newSeriesOngoing'); if(ongoingEl) ongoingEl.checked=false;
   document.getElementById('newSeriesBulkBooks').value='';
   document.getElementById('newSeriesBulkAuthor').value='';
   document.getElementById('seriesMatchBanner').style.display='none';
@@ -10017,6 +10029,12 @@ function removeBookFromSeries(seriesId, bookId, isPlanned, manualTitle){
 function updateSeriesTotal(seriesId, val){
   const data = mySeriesData();
   if(data.series[seriesId]) data.series[seriesId].total = parseInt(val)||null;
+  saveDb();
+}
+function toggleSeriesOngoing(seriesName, val){
+  const data = mySeriesData();
+  const entry = Object.values(data.series||{}).find(s=>normalizeSeries(s.name||'')===normalizeSeries(seriesName||''));
+  if(entry) entry.ongoing = val;
   saveDb();
 }
 
@@ -10374,6 +10392,8 @@ function renderSeriesList(){
       const b=bk.book; if(!b||b.readingStatus==="planned"||b.readingStatus==="reading"||b.readingStatus==="paused"||b.readingStatus==="wishlist") return false; return true;
     }).length;
     const total = ser.total || books.length || 1;
+	const ongoing = ser.ongoing||false;
+const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
 
@@ -10398,17 +10418,17 @@ function renderSeriesList(){
     const displayPct = progressMode==="pages" ? pagePct : pct;
     const displayLabel = progressMode==="pages"
       ? readPages.toLocaleString("tr")+" / "+totalPages.toLocaleString("tr")+" sayfa · %"+pagePct
-      : readCount+" / "+total+" kitap · %"+pct+(isDone?" · ✅ Tamamlandı":"");
+      : readCount+" / "+totalDisplay+" kitap · %"+pct+(isDone?" · ✅ Tamamlandı":"");
 
     // Şu an okunan kitap
     const currentlyReading = books.find(bk=>bk.book.readingStatus==='reading');
 
     // Sıradaki okunmamış
-    const nextUnread = books.find(bk=>
-      bk.book.readingStatus==='wishlist'||
-      (!bk.book.readingStatus||bk.book.readingStatus==='new'||bk.book.readingStatus==='past')&&
-      bk.book.readingStatus!=='reading'&&readCount<total
-    );
+   const nextUnread = books.find(bk=>
+  bk.book.readingStatus==='wishlist'||
+  bk.book.readingStatus==='planned'||
+  (!bk.book.readingStatus)
+);
 
     // Kitap listesi HTML — gruplara ayır
     const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
