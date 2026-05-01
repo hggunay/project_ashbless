@@ -2127,7 +2127,7 @@ function streakMonths(books,year){
   const now=new Date();
   const yr=year||now.getFullYear();
   const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
-  const maxMonth=yr===now.getFullYear()?now.getMonth():11;
+  const maxMonth=yr===now.getFullYear()?now.getMonth()-1:11;
   let streak=0;
   for(let m=0;m<=maxMonth;m++){
     const key=`${yr}-${String(m+1).padStart(2,'0')}`;
