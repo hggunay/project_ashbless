@@ -8296,7 +8296,7 @@ function renderStatsPanel(){
               <div style="display:flex;gap:.3rem">${icons}</div>
             </div>`;
           }).filter(Boolean).join('');
-          const hasBreak = !books.some(b=>bookMonth(b)===curMonthStr.substring(0,7)) && books.some(b=>{ const prevDate=new Date(streakNow.getFullYear(),streakNow.getMonth()-1,1); const pm=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`; return bookMonth(b)===pm; });
+          const thisMonth=curMonthStr.substring(0,7); const prevDate=new Date(streakNow.getFullYear(),streakNow.getMonth()-1,1); const pm=`${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`; const hasBreak = !books.some(b=>bookMonth(b)===thisMonth) && !books.some(b=>bookMonth(b)===pm);
           return statsSection('stats-streak','🔥 Okuma Serisi',`
             <div style="display:flex;gap:.35rem;align-items:flex-start;justify-content:center;flex-wrap:nowrap;overflow-x:auto;padding:1.2rem 0 .4rem">
               ${cells}
