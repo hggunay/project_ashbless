@@ -8117,13 +8117,13 @@ function renderStatsPanel(){
     months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
   const monthCounts={};
-  books.forEach(b=>{if(b.month)monthCounts[b.month]=(monthCounts[b.month]||0)+1;});
+  books.forEach(b=>{const m=(b.endDate||b.month||'').substring(0,7);if(m)monthCounts[m]=(monthCounts[m]||0)+1;});
   const monthData=months.map(m=>({m,n:monthCounts[m]||0}));
   const maxMonth=Math.max(1,...monthData.map(d=>d.n));
 
   // Yıllık okuma
   const yearCount={};
-  books.forEach(b=>{if(b.month){const y=b.month.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
+ books.forEach(b=>{const m=(b.endDate||b.month||'').substring(0,7);if(m){const y=m.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
   const years=Object.entries(yearCount).sort((a,b)=>a[0].localeCompare(b[0]));
 
   // Kadın/erkek yazar
