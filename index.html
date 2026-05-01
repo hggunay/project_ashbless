@@ -2126,7 +2126,7 @@ function allContinents(books){const isos=uniqueISOs(books);const conts=new Set([
 function streakMonths(books,year){
   const now=new Date();
   const yr=year||now.getFullYear();
-  const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
+  const months=new Set(books.map(b=>bookMonth(b)).filter(Boolean));
   const maxMonth=yr===now.getFullYear()?now.getMonth()-1:11;
   let streak=0;
   for(let m=0;m<=maxMonth;m++){
@@ -3251,8 +3251,8 @@ function checkStreakBreak(books){
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
-  const hasThisMonth = books.some(b=>(b.endDate||b.month||'').startsWith(curMonth));
-  const hadLastMonth = books.some(b=>(b.endDate||b.month||'').startsWith(prevMonth));
+  const hasThisMonth = books.some(b=>bookMonth(b)===curMonth);
+const hadLastMonth = books.some(b=>bookMonth(b)===prevMonth);
   if(!hadLastMonth){
     const key = 'streakBreakShown_'+curMonth;
     try{ if(localStorage.getItem(key)) return; }catch(e){}
@@ -5055,6 +5055,28 @@ function acSelect(title,author){
 }
 function acHide(){document.getElementById('acList').style.display='none';}
 
+// ── TARİH YARDIMCI FONKSİYONLARI ─────────────────────────────
+function normalizeDate(s){
+  if(!s) return null;
+  s=s.trim().replace(/[,\/]/g,'.').replace(/\s+/g,'');
+  // YYYY-MM-DD veya YYYY.MM.DD
+  let m=s.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
+  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  // DD.MM.YYYY veya DD-MM-YYYY
+  m=s.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
+  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  // YYYY.MM (ay bazlı)
+  m=s.match(/^(\d{4})[-.](\d{2})$/);
+  if(m) return `${m[1]}-${m[2]}-01`;
+  return null;
+}
+
+function bookMonth(b){
+  const d=normalizeDate(b.endDate)||normalizeDate(b.month);
+  return d?d.substring(0,7):null;
+}
+
+
 // ── ADD BOOK ──────────────────────────────────────────────────
 async function addBook(){
   const rawInput=document.getElementById('bookTitle').value.trim();
@@ -5180,7 +5202,7 @@ async function addBook(){
     publisher:publisher||null,
     isbn:isbn||null,
     retroactive:getReadingTime()==='past',
-    month:endDate?endDate.substring(0,7):month,addedAt:now.toISOString(),startDate,endDate,
+    month:endDate?normalizeDate(endDate)?.substring(0,7):month,addedAt:now.toISOString(),startDate:normalizeDate(startDate)||startDate,endDate:normalizeDate(endDate)||endDate,
     currentPage:null, // şu an okunan sayfa
     // manual flags
     nightReading:false,reread:false,challenging:false,
@@ -8117,13 +8139,13 @@ function renderStatsPanel(){
     months.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`);
   }
   const monthCounts={};
-  books.forEach(b=>{const m=(b.endDate||b.month||'').substring(0,7);if(m)monthCounts[m]=(monthCounts[m]||0)+1;});
+  books.forEach(b=>{const m=bookMonth(b);if(m)monthCounts[m]=(monthCounts[m]||0)+1;});
   const monthData=months.map(m=>({m,n:monthCounts[m]||0}));
   const maxMonth=Math.max(1,...monthData.map(d=>d.n));
 
   // Yıllık okuma
   const yearCount={};
- books.forEach(b=>{const m=(b.endDate||b.month||'').substring(0,7);if(m){const y=m.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
+ books.forEach(b=>{const m=bookMonth(b);if(m){const y=m.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
   const years=Object.entries(yearCount).sort((a,b)=>a[0].localeCompare(b[0]));
 
   // Kadın/erkek yazar
