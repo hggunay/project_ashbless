@@ -9504,19 +9504,28 @@ function filterGenreDropdown(bookId, query){
   dd.dataset.bookId=bookId;
 
   let html='';
-  for(const cat of GENRE_TREE){
-    const allChildren=flatChildren(cat);
-    const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
-    if(!filtered.length) continue;
-    html+=`<div class="genre-dd-group">${cat.label}</div>`;
-    for(const item of filtered){
-     const depth=getDepth(cat,item.id);
-const isSub = (item.label === 'Kurgu Dışı') ? false : (depth > 1);
-      const isSel=selected.has(item.id);
-      html+=`<div class="genre-dd-item ${isSub?'sub':''} ${isSel?'selected':''}" onclick="addGenre(${bookId},'${item.id}')">${isSel?'✓ ':''} ${item.label}</div>`;
-    }
+for(const cat of GENRE_TREE){
+  const allChildren=flatChildren(cat);
+  const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
+  if(!filtered.length) continue;
+
+  html+=`<div class="genre-dd-group">${cat.label}</div>`;
+  
+  for(const item of filtered){
+    const depth = getDepth(cat, item.id);
+    const isSub = (depth > 1);
+    const indent = (depth > 1) ? (depth - 1) * 20 : 0;
+    const isSel = selected.has(item.id); // Tik işareti için bu lazım
+
+    // Bu kısım html değişkenine eklenmeli:
+    html += `<div class="genre-dd-item ${isSub ? 'sub' : 'main-genre'} ${isSel ? 'selected' : ''}" 
+                  style="padding-left: ${indent + 12}px !important;" 
+                  onclick="addGenre(${bookId},'${item.id}')">
+                  ${isSel ? '✓ ' : ''} ${item.label}
+             </div>`;
   }
-  dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
+}
+dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
 
   // Input konumuna göre yerleştir
   const r=inp.getBoundingClientRect();
