@@ -8280,7 +8280,7 @@ function renderStatsPanel(){
         ${statsSection('stats-monthly','📅 Son 12 Ay',`
           <div style="display:flex;gap:.3rem;align-items:flex-end;height:90px;padding-bottom:1.4rem;position:relative">
             ${monthData.map((d,i)=>`
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;position:relative" onclick="showMonthBooks('${d.m}',this)"
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;position:relative" onclick="showMonthBooks('${d.m}')">
                 ${d.n>0?`<div style="font-size:.55rem;font-family:'Space Mono',monospace;color:var(--rust);margin-bottom:2px">${d.n}</div>`:''}
                 <div style="width:100%;background:${d.n?'linear-gradient(180deg,var(--gold),var(--leather))':'rgba(138,69,19,.1)'};border-radius:2px 2px 0 0;height:${d.n?Math.max(8,Math.round(d.n/maxMonth*60)):4}px"></div>
                 <div style="font-size:.62rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:20px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
