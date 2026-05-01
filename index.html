@@ -3253,7 +3253,7 @@ function checkStreakBreak(books){
   const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
   const hasThisMonth = books.some(b=>(b.endDate||b.month||'').startsWith(curMonth));
   const hadLastMonth = books.some(b=>(b.endDate||b.month||'').startsWith(prevMonth));
-  if(!hasThisMonth && hadLastMonth){
+  if(!hadLastMonth){
     const key = 'streakBreakShown_'+curMonth;
     try{ if(localStorage.getItem(key)) return; }catch(e){}
     try{ localStorage.setItem(key,'1'); }catch(e){}
