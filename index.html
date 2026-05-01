@@ -1653,34 +1653,40 @@ const GENRE_TREE = [
     {id:'cocuk',      label:'Çocuk'},
     {id:'absurt',     label:'Absürt'},
   ]},
-  {id:'kurgu_disi', label:'📚 Kurgu Dışı', children:[
-    {id:'tarih',      label:'Tarih'},
-    {id:'felsefe',    label:'Felsefe'},
-    {id:'psikoloji',  label:'Psikoloji'},
-    {id:'sosyoloji',  label:'Sosyoloji'},
-    {id:'bilim',      label:'Bilim'},
-    {id:'teknoloji',  label:'Teknoloji'},
-    {id:'ekonomi',    label:'Ekonomi'},
-    {id:'is_dunyasi', label:'İş Dünyası'},
-    {id:'siyaset',    label:'Siyaset'},
-    {id:'biyografi',  label:'Biyografi'},
-    {id:'otobiyografi',label:'Otobiyografi'},
-    {id:'ani',        label:'Anı'},
-    {id:'gezi',       label:'Gezi & Seyahat'},
-    {id:'doga',       label:'Doğa & Çevre'},
-    {id:'din',        label:'Din & Maneviyat', children:[
-      {id:'kutsal',      label:'Kutsal Metin (Semavi)'},
-      {id:'kutsal_meta', label:'Kutsal Metin (Dünya Dinleri)'},
+  {id:'kurgu_disi_ust', label:'📚 Kurgu Dışı', children:[
+    {id:'kurgu_disi', label:'Kurgu Dışı', children:[
+      {id:'tarih',      label:'Tarih'},
+      {id:'felsefe',    label:'Felsefe'},
+      {id:'psikoloji',  label:'Psikoloji'},
+      {id:'sosyoloji',  label:'Sosyoloji'},
+      {id:'bilim',      label:'Bilim'},
+      {id:'teknoloji',  label:'Teknoloji'},
+      {id:'ekonomi',    label:'Ekonomi', children:[
+        {id:'is_dunyasi', label:'İş Dünyası'},
+      ]},
+      {id:'siyaset',    label:'Siyaset'},
+      {id:'biyografi',  label:'Biyografi', children:[
+        {id:'otobiyografi',label:'Otobiyografi'},
+        {id:'ani',        label:'Anı'},
+      ]},
+      {id:'gezi',       label:'Gezi & Seyahat'},
+      {id:'doga',       label:'Doğa & Çevre'},
+      {id:'din',        label:'Din & Maneviyat', children:[
+        {id:'kutsal',      label:'Kutsal Metin (Semavi)'},
+        {id:'kutsal_meta', label:'Kutsal Metin (Dünya Dinleri)'},
+      ]},
+      {id:'sanat',      label:'Sanat', children:[
+        {id:'muzik',      label:'Müzik'},
+        {id:'mimari',     label:'Mimari'},
+      ]},
+      {id:'kisisel_gelisim', label:'Kişisel Gelişim', children:[
+        {id:'liderlik',   label:'Liderlik'},
+        {id:'saglik',     label:'Sağlık & Wellness'},
+        {id:'spor',       label:'Spor'},
+        {id:'yemek',      label:'Yemek'},
+      ]},
+      {id:'mitoloji',   label:'Mitoloji'},
     ]},
-    {id:'sanat',      label:'Sanat'},
-    {id:'muzik',      label:'Müzik'},
-    {id:'mimari',     label:'Mimari'},
-    {id:'kisisel_gelisim', label:'Kişisel Gelişim'},
-    {id:'liderlik',   label:'Liderlik'},
-    {id:'saglik',     label:'Sağlık & Wellness'},
-    {id:'spor',       label:'Spor'},
-    {id:'yemek',      label:'Yemek'},
-    {id:'mitoloji',   label:'Mitoloji'},
   ]},
   {id:'siir_edebiyat', label:'✒️ Şiir & Edebiyat', children:[
     {id:'siir',       label:'Şiir'},
@@ -9495,8 +9501,7 @@ function filterGenreDropdown(bookId, query){
     const allChildren=flatChildren(cat);
     const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
     if(!filtered.length) continue;
-    const isCatSel=selected.has(cat.id);
-html+=`<div class="genre-dd-group ${isCatSel?'selected':''}" style="cursor:pointer" onclick="addGenre(${bookId},'${cat.id}')">${isCatSel?'✓ ':''} ${cat.label}</div>`;
+    html+=`<div class="genre-dd-group">${cat.label}</div>`;
     for(const item of filtered){
       const isSub=!cat.children?.some(c=>c.id===item.id);
       const isSel=selected.has(item.id);
