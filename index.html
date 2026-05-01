@@ -5739,6 +5739,13 @@ function saveFieldTyped(bookId,field,type,rawVal){
   if(field==='series'||field==='seriesNum'||field==='seriesTotal'){
     recalcSeriesCompletion(bookId);
   }
+  if((field==='endDate'||field==='startDate')&&value){
+    const nd=normalizeDate(value);
+    if(nd){
+      book[field]=nd;
+      if(field==='endDate') book.month=nd.substring(0,7);
+    }
+  }
   if(field==='country') checkAndAddCountryEvent(book);
   saveDb();renderSafe();
 }
