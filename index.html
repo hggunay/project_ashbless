@@ -9486,7 +9486,14 @@ function getGenreDropdown(){
   }
   return _genreDropdown;
 }
-
+function getDepth(node,targetId,d=0){
+  if(node.id===targetId) return d;
+  for(const c of node.children||[]){
+    const r=getDepth(c,targetId,d+1);
+    if(r>=0) return r;
+  }
+  return -1;
+}
 function filterGenreDropdown(bookId, query){
   const dd=getGenreDropdown();
   const inp=document.getElementById('gs-'+bookId);
@@ -9503,7 +9510,8 @@ function filterGenreDropdown(bookId, query){
     if(!filtered.length) continue;
     html+=`<div class="genre-dd-group">${cat.label}</div>`;
     for(const item of filtered){
-      const isSub=!cat.children?.some(c=>c.id===item.id);
+     const depth=getDepth(cat,item.id);
+const isSub=depth>1;
       const isSel=selected.has(item.id);
       html+=`<div class="genre-dd-item ${isSub?'sub':''} ${isSel?'selected':''}" onclick="addGenre(${bookId},'${item.id}')">${isSel?'✓ ':''} ${item.label}</div>`;
     }
