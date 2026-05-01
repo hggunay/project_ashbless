@@ -9495,7 +9495,8 @@ function filterGenreDropdown(bookId, query){
     const allChildren=flatChildren(cat);
     const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
     if(!filtered.length) continue;
-    html+=`<div class="genre-dd-group">${cat.label}</div>`;
+    const isCatSel=selected.has(cat.id);
+html+=`<div class="genre-dd-group ${isCatSel?'selected':''}" style="cursor:pointer" onclick="addGenre(${bookId},'${cat.id}')">${isCatSel?'✓ ':''} ${cat.label}</div>`;
     for(const item of filtered){
       const isSub=!cat.children?.some(c=>c.id===item.id);
       const isSel=selected.has(item.id);
