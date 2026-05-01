@@ -8103,26 +8103,18 @@ function showMonthBooks(monthStr, el){
   if(pop) pop.remove();
   pop = document.createElement('div');
   pop.id = 'month-books-pop';
-  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:180px;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,.3);';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:180px;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Crimson Pro,serif;';
   document.body.appendChild(pop);
-  const title = document.createElement('div');
-  title.style.cssText = "font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem";
-  title.textContent = '📅 '+label+' · '+books.length+' kitap';
-  pop.appendChild(title);
-  books.forEach(b=>{
-    const row = document.createElement('div');
-    row.style.cssText = 'font-size:.85rem;color:var(--ink);padding:.2rem 0;border-bottom:1px solid rgba(201,162,39,.15);cursor:pointer;font-family:Crimson Pro,serif';
-    row.textContent = b.title+(b.author?' — '+b.author:'');
-    row.onclick = ()=>{ openModal(b.id); pop.remove(); };
-    pop.appendChild(row);
-  });
+  pop.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem">📅 ${label} · ${books.length} kitap</div>`
+    + books.map(b=>`<div style="font-size:.85rem;color:var(--ink);padding:.2rem 0;border-bottom:1px solid rgba(201,162,39,.15);cursor:pointer" onclick="openModal(${b.id});document.getElementById('month-books-pop').remove()">${b.title}${b.author?' <span style="opacity:.6;font-size:.75rem">— '+b.author+'</span>':''}</div>`).join('');
   const rect = el.getBoundingClientRect();
   const popW = 260;
   let left = rect.left + rect.width/2 - popW/2;
   if(left < 8) left = 8;
   if(left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
   pop.style.left = left+'px';
-  pop.style.top = (rect.top - 10)+'px';
+  pop.style.top = (rect.top - pop.offsetHeight - 10)+'px';
+  pop.style.display = 'block';
   setTimeout(()=>{ document.addEventListener('click', ()=>pop.remove(), {once:true}); }, 50);
 }
 
@@ -8288,7 +8280,7 @@ function renderStatsPanel(){
         ${statsSection('stats-monthly','📅 Son 12 Ay',`
           <div style="display:flex;gap:.3rem;align-items:flex-end;height:90px;padding-bottom:1.4rem;position:relative">
             ${monthData.map((d,i)=>`
-              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;position:relative" onclick="showMonthBooks('${d.m}',this)"
+              <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;cursor:pointer;position:relative" onclick="showMonthBooks('${d.m}')">
                 ${d.n>0?`<div style="font-size:.55rem;font-family:'Space Mono',monospace;color:var(--rust);margin-bottom:2px">${d.n}</div>`:''}
                 <div style="width:100%;background:${d.n?'linear-gradient(180deg,var(--gold),var(--leather))':'rgba(138,69,19,.1)'};border-radius:2px 2px 0 0;height:${d.n?Math.max(8,Math.round(d.n/maxMonth*60)):4}px"></div>
                 <div style="font-size:.62rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6;margin-top:3px;writing-mode:vertical-lr;transform:rotate(180deg);height:20px">${monthLabels[parseInt(d.m.split('-')[1])-1]}</div>
