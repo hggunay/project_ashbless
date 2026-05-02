@@ -3005,12 +3005,7 @@ function enterApp(){
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
   updateAdminBadge();
-  // Tarih migration — tüm kitapların tarihlerini normalize et
-(db.books[me]||[]).forEach(b=>{
-  if(b.startDate){const nd=normalizeDate(b.startDate);if(nd)b.startDate=nd;}
-  if(b.endDate){const nd=normalizeDate(b.endDate);if(nd){b.endDate=nd;b.month=nd.substring(0,7);}}
-});
-saveDb();
+  
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   showSpecialDayBanner();
   setTimeout(()=>checkNotifications(),1200);
