@@ -5404,7 +5404,7 @@ function openBook(bookId,fromShelf=false){
       <div class="detail-acc-body" id="mSec-info-${book.id}">
         <div class="detail-grid" style="margin-top:.5rem">
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe)}
-          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'YYYY-AA-GG veya sadece YYYY')}
+          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'gg.aa.yyyy veya sadece yyyy')}
           ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
