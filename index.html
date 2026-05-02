@@ -8263,7 +8263,7 @@ function renderStatsPanel(){
         </div>
         <div style="font-family:'Playfair Display',serif;font-size:.88rem;color:var(--ink);line-height:1.5;padding:.6rem .75rem;background:linear-gradient(135deg,rgba(91,58,138,0.2),rgba(201,162,39,0.1));background-size:200% 200%;animation:oraclePulse 4s ease-in-out infinite;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-style:italic">
           ${(()=>{
-            const eksenler={evren:['fantastik','bilimkurgu','distopya','mitoloji'],gerilim:['polisiye','gerilim','korku'],dusunce:['felsefe','psikoloji','deneme','bilim'],insan:['romantik','biyografi','oyku','genclik'],gercek:['tarih','gezi','siir']};
+            const eksenler={evren:['fantastik','bilimkurgu','distopya','mitoloji'],gerilim:['polisiye','gerilim','korku'],dusunce:['felsefe','psikoloji','deneme','bilim'],insan:['romantik','biyografi','oyku','genclik','roman','kurgu'],gercek:['tarih','gezi','siir']};
             const eksenPuan={evren:0,gerilim:0,dusunce:0,insan:0,gercek:0};
             books.forEach(b=>(b.genres||[]).forEach(g=>{const gn=g.toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ç/g,'c');Object.entries(eksenler).forEach(([e,l])=>{if(l.some(x=>gn.includes(x)))eksenPuan[e]++;});}));
             const sira=Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
