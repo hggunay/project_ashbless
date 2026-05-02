@@ -2907,7 +2907,8 @@ function saveProfile(){
 
 function logout(){me=null;viewing=null;try{localStorage.removeItem('aa-session');}catch(e){}document.getElementById('appScreen').style.display='none';document.getElementById('authScreen').style.display='flex';renderPills();}
 function setTodayDate(){
-  const today=new Date().toISOString().split('T')[0];
+  const d=new Date();
+  const today=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
   const sd=document.getElementById('bookStartDate');
   if(sd&&!sd.value)sd.value=today;
 }
