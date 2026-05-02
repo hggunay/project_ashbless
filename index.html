@@ -2364,11 +2364,24 @@ async function loadDb(){
   if(!db.countryEvents)db.countryEvents={};
   if(!db.notifications)db.notifications={};
 }
-
+// ── VERİ KORUMA ──────────────────────────────────────────────
 async function saveDb(){
   // Firebase'e kaydet — shelf ayrı node'a
-  try{
-    const {shelf,...dbWithoutShelf}=db;
+ 
+    try{
+    // Timestamp kontrolü — eski veri yeni verinin üzerine yazmasın
+    const remoteRaw = await fbGet('aa-v4');
+    const remoteTs = remoteRaw?.savedAt||0;
+    const localTs = db.savedAt||0;
+    if(remoteTs > localTs){
+      console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
+      // Uzak veriyi yükle
+      Object.assign(db, remoteRaw);
+      renderSafe();
+      return;
+    }
+    db.savedAt = Date.now();
+    const {shelf,...dbWithoutShelf}={...db};
     await fbSet('aa-v4',dbWithoutShelf);
     if(shelf&&Object.keys(shelf).length) await fbSet('aa-shelf',shelf);
   }catch(e){}
