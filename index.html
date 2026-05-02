@@ -8465,10 +8465,10 @@ function renderStatsPanel(){
           const seriesBooks = books.filter(b=>b.series).length;
           const seriesPct = books.length?Math.round(seriesBooks/books.length*100):0;
           const davranisList = seriesPct>=60
-            ?['serileri yarım bırakmayan','hikâyeleri takip eden','seri bağımlısı']
+            ?['serilerde ilerlemeyi seven','uzun evrenleri tercih eden','bir karakterle birlikte hikâyeyi taşımayı seven','bir evrenin içinde uzun süre kaybolmayı seven','bir hikâyenin tamamını kesintisiz takip eden']
             :seriesPct>=30
-            ?['hikâyeleri takip eden','seri ve tekil dengeleyen']
-            :['kitaplar arasında gezinen','keşifçi bir yaklaşımla ilerleyen'];
+            ?['hikâyeleri takip eden','seri ve tekil dengeleyen','uzun soluklu hikayelere zaman zaman yönelen']
+            :['kitaplar arasında gezinen','keşifçi bir yaklaşımla ilerleyen','tekil kitaplarda derinleşmeyi seven'];
           const davranis = _pick(davranisList, 1);
 
           // Zihinsel stil
