@@ -8509,22 +8509,45 @@ function renderStatsPanel(){
             <span style="color:var(--gold);font-size:.8rem;margin-top:.1rem">▸</span>
             <span style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink)">${text}</span>
           </div>`;
-
+		  
+// ── FAL PANELİ BAŞLANGICI ──
           return statsSection('stats-profile','🔮 Okuyucu Falın',`
-            <div style="max-width:440px">
-              <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--ink);line-height:1.6;padding:.75rem;background:linear-gradient(135deg,rgba(91,58,138,0.35),rgba(201,162,39,0.18),rgba(91,58,138,0.35));background-size:200% 200%;animation:oraclePulse 4s ease-in-out infinite;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;margin-bottom:.85rem;font-style:italic;box-shadow:0 0 0 1px rgba(91,58,138,0.15)">
-                ${anaCumle}
-              </div>
-              <div style="display:flex;flex-direction:column;gap:.1rem">
+            <div style="max-width:500px">
+
+              <div style="display:flex;flex-direction:column;gap:.1rem;margin-bottom:1rem">
                 ${topGenres[0]?madde(`Tür eğilimi: <strong>${topGenres[0][0]}</strong> ağırlıklı`):''}
                 ${madde(`Okuma tarzı: <strong>${seriesPct>=60?'seri odaklı':seriesPct>=30?'karma':'tekil kitap'}</strong>`)}
                 ${fmtEtiket?madde(`Format: <strong>${fmtEtiket}</strong>`):''}
                 ${topAuthor?madde(`En sadık yazar: <strong>${topAuthor[0]}</strong> (${topAuthor[1]} kitap)`):''}
                 ${avgRating?madde(`Ortalama puan: <strong>${avgRating} / 5</strong> — ${avgRating>=4.5?'seçici okur':avgRating>=3.5?'dengeli':'geniş yelpazeli'}`):''}
               </div>
+
+              <div style="text-align:center;margin-bottom:.5rem">
+                <button onclick="falPanelAc(this)" class="fal-ac-btn" style="background:linear-gradient(135deg,rgba(91,58,138,0.8),rgba(201,162,39,0.6));color:#fff;border:1px solid var(--gold);border-radius:8px;padding:.6rem 1.6rem;font-family:'Playfair Display',serif;font-size:.95rem;cursor:pointer;letter-spacing:.03em;transition:opacity .3s,transform .3s">
+                  ✨ Falını görmek için tıkla ✨
+                </button>
+              </div>
+
+              <div id="falPanel" style="max-height:0;overflow:hidden;transition:max-height 1.2s ease">
+                <div style="position:relative;max-width:500px;margin:0 auto;border-radius:12px;overflow:hidden">
+                 <img src="https://raw.githubusercontent.com/hggunay/project_ashbless/main/images/fal_ayna.png" style="width:100%;display:block">
+<img src="https://raw.githubusercontent.com/hggunay/project_ashbless/main/images/fal_on.png" style="width:100%;display:block;position:absolute;top:0;left:0;pointer-events:none;z-index:10">
+				 <div style="text-align:center;margin-top:.75rem">
+  <button onclick="falKapat()" style="background:transparent;color:var(--gold);border:1px solid var(--gold);border-radius:8px;padding:.4rem 1.2rem;font-family:'Playfair Display',serif;font-size:.85rem;cursor:pointer;opacity:.8">
+    ✦ Kapat ✦
+  </button>
+</div>
+                
+             <div id="falMetin" data-original="${anaCumle}" style="position:absolute;top:18%;left:58%;transform:translateX(-50%);width:28%;max-height:55%;overflow:visible;text-align:center;font-family:'Playfair Display',serif;font-style:italic;font-size:.85rem;line-height:1.6;color:#fff;opacity:1;filter:blur(0px)">
+                    ${anaCumle}
+                  </div>
+                </div>
+              </div>
+
             </div>
           `);
         })()}
+
 
         ${statsSection('stats-format','📖 Format & Çeşitlilik',`
           <div class="stats-grid">
@@ -8547,6 +8570,90 @@ function renderStatsPanel(){
     </div>`;
 }
 
+// ── FAL PANELİ FONKSİYONU ──
+function falHarfle(el) {
+  const metin = el.getAttribute('data-original') || el.innerText;
+  el.innerHTML = '';
+  const kelimeler = metin.split(' ');
+  kelimeler.forEach((kelime, i) => {
+    const span = document.createElement('span');
+    span.textContent = kelime;
+    span.style.cssText = `
+      display:inline-block;
+      opacity:0;
+      margin-right:0.3em;
+      transform:translate(${(Math.random()-0.5)*80}px, ${(Math.random()-0.5)*80}px) rotate(${(Math.random()-0.5)*30}deg);
+      transition: opacity 0.7s ease ${i*0.08}s, transform 0.9s cubic-bezier(.17,.67,.35,1.2) ${i*0.08}s;
+      text-shadow: 0 0 8px rgba(0,0,0,0.9), 0 2px 4px rgba(0,0,0,0.8), 1px 1px 0 rgba(0,0,0,0.6);
+      font-weight:600;
+    `;
+    el.appendChild(span);
+    if(i < kelimeler.length - 1) {
+      // boşluk için ayrı span değil, margin-right kullandık
+    }
+  });
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      [...el.querySelectorAll('span')].forEach((s, i) => {
+        s.style.opacity = '1';
+        s.style.transform = 'translate(0,0) rotate(0deg)';
+        setTimeout(() => falTitret(s), 900 + i*80 + Math.random()*1000);
+      });
+    });
+  });
+}
+
+function falTitret(span) {
+  if(!span.isConnected) return;
+  const x = (Math.random()-0.5)*4;
+  const y = (Math.random()-0.5)*4;
+  span.style.transition = 'transform 0.15s ease';
+  span.style.transform = `translate(${x}px,${y}px)`;
+  setTimeout(() => {
+    if(!span.isConnected) return;
+    span.style.transform = 'translate(0,0)';
+    setTimeout(() => falTitret(span), 3000 + Math.random()*8000);
+  }, 150);
+}
+
+function falPanelAc(btn) {
+  const panel = document.getElementById('falPanel');
+  const metin = document.getElementById('falMetin');
+  btn.style.opacity = '0';
+  btn.style.pointerEvents = 'none';
+  panel.style.maxHeight = '700px';
+  metin.style.opacity = '1';
+  metin.style.filter = 'blur(0px)';
+  setTimeout(() => falHarfle(metin), 400);
+  setTimeout(() => {
+    const bottom = panel.getBoundingClientRect().bottom + window.scrollY;
+    window.scrollTo({ top: bottom - window.innerHeight + 50, behavior: 'smooth' });
+  }, 600);
+}
+
+function falSisKaldir() {
+  const metin = document.getElementById('falMetin');
+  falHarfle(metin);
+}
+
+function falKapat() {
+  const panel = document.getElementById('falPanel');
+  const metin = document.getElementById('falMetin');
+  const btn   = document.querySelector('.fal-ac-btn');
+  metin.style.transition = 'opacity 1.6s ease, filter 1.6s ease';
+  metin.style.opacity = '0';
+  metin.style.filter = 'blur(6px)';
+  setTimeout(() => {
+    panel.style.maxHeight = '0';
+    metin.innerHTML = metin.getAttribute('data-original') || '';
+  }, 1200);
+  setTimeout(() => {
+    if(btn){ 
+      btn.style.opacity = '1'; 
+      btn.style.pointerEvents = 'auto';
+    }
+  }, 2000);
+}
 function render(){
   renderBanners();renderStats();renderBookList();renderBadges();renderMembers();
 }
