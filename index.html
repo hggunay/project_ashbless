@@ -5658,7 +5658,7 @@ function dField(label,field,val,type,editable,placeholder){
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
     ${editable
-      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${val??''}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
+      ?`<input class="detail-input" type="${type==='date'?'text':type}" value="${display==='—'?'':display}" placeholder="${ph}" onchange="saveFieldTyped(${modalBookId},'${field}','${type}',this.value)"/>`
       :`<span style="font-size:.9rem;color:var(--ink);padding:.2rem 0">${display}</span>`}
   </div>`;
 }
