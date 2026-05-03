@@ -8125,19 +8125,61 @@ function showMonthBooks(monthStr, el){
   if(pop) pop.remove();
   pop = document.createElement('div');
   pop.id = 'month-books-pop';
-  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:180px;max-width:260px;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Crimson Pro,serif;';
+  pop.style.cssText = 'position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;width:260px;box-shadow:0 4px 20px rgba(0,0,0,.3);font-family:Crimson Pro,serif;';
+  
+  const listHtml = books.map(b=>`<div style="font-size:.85rem;color:var(--ink);padding:.2rem 0;border-bottom:1px solid rgba(201,162,39,.15);cursor:pointer" onclick="openModal(${b.id});document.getElementById('month-books-pop').remove()">${b.title}${b.author?' <span style="opacity:.6;font-size:.75rem">— '+b.author+'</span>':''}</div>`).join('');
+  
+  pop.innerHTML = `
+    <div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem">📅 ${label} · ${books.length} kitap</div>
+    <div style="max-height:220px;overflow-y:auto;">${listHtml}</div>`;
+  
   document.body.appendChild(pop);
-  pop.innerHTML = `<div style="font-family:'Space Mono',monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.1em;color:var(--rust);opacity:.7;margin-bottom:.4rem">📅 ${label} · ${books.length} kitap</div>`
-    + books.map(b=>`<div style="font-size:.85rem;color:var(--ink);padding:.2rem 0;border-bottom:1px solid rgba(201,162,39,.15);cursor:pointer" onclick="openModal(${b.id});document.getElementById('month-books-pop').remove()">${b.title}${b.author?' <span style="opacity:.6;font-size:.75rem">— '+b.author+'</span>':''}</div>`).join('');
+
+  // Konum — popup body'e eklendikten sonra hesaplanıyor
   const rect = el.getBoundingClientRect();
   const popW = 260;
+  const popH = pop.offsetHeight;
+  const margin = 8;
+
   let left = rect.left + rect.width/2 - popW/2;
-  if(left < 8) left = 8;
-  if(left + popW > window.innerWidth - 8) left = window.innerWidth - popW - 8;
-  pop.style.left = left+'px';
-  pop.style.top = (rect.top - pop.offsetHeight - 10)+'px';
-  pop.style.display = 'block';
-  setTimeout(()=>{ document.addEventListener('click', ()=>pop.remove(), {once:true}); }, 50);
+  if(left < margin) left = margin;
+  if(left + popW > window.innerWidth - margin) left = window.innerWidth - popW - margin;
+
+  // Yukarı mı aşağı mı açılsın
+  const spaceAbove = rect.top;
+  const spaceBelow = window.innerHeight - rect.bottom;
+  let top;
+  if(spaceAbove >= popH + 10 || spaceAbove >= spaceBelow){
+    top = rect.top - popH - 8;
+  } else {
+    top = rect.bottom + 8;
+  }
+  // Ekran dışına çıkmasın
+  if(top < margin) top = margin;
+  if(top + popH > window.innerHeight - margin) top = window.innerHeight - popH - margin;
+
+  pop.style.left = left + 'px';
+  pop.style.top = top + 'px';
+
+  // Dışarı tıklayınca kapat
+  setTimeout(()=>{
+    document.addEventListener('click', function handler(e){
+      if(!pop.contains(e.target)){
+        pop.remove();
+        document.removeEventListener('click', handler);
+      }
+    });
+  }, 50);
+
+  // Scroll'da kapat — çubuk ekrandan çıkınca
+  const scrollHandler = ()=>{
+    const r = el.getBoundingClientRect();
+    if(r.bottom < 0 || r.top > window.innerHeight){
+      pop.remove();
+      window.removeEventListener('scroll', scrollHandler, true);
+    }
+  };
+  window.addEventListener('scroll', scrollHandler, true);
 }
 
 function renderStatsPanel(){
@@ -9640,15 +9682,22 @@ function closeBadgeTooltip(){
 
 // ── TÜR DROPDOWN FONKSİYONLARI ─────────────────────────────
 function showGenreDropdown(bookId){
+  const dd = getGenreDropdown();
+  if(dd.style.display==='block' && dd.dataset.bookId==bookId) return;
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
-  setTimeout(()=>{
-    document.addEventListener('click', function handler(e){
-      if(!e.target.closest('#gca-'+bookId)&&!e.target.closest('.genre-dropdown')){
-        getGenreDropdown().style.display='none';
-        document.removeEventListener('click',handler);
-      }
-    });
-  },100);
+  if(dd._clickHandler) document.removeEventListener('click', dd._clickHandler);
+  dd._clickHandler = function(e){
+    if(!e.target.closest('#gca-'+bookId) && !e.target.closest('.genre-dropdown')){
+      dd.style.display='none';
+      document.removeEventListener('click', dd._clickHandler);
+      dd._clickHandler = null;
+	 if(dd._positionHandler){
+  window.removeEventListener('scroll',dd._positionHandler,true);
+  dd._positionHandler=null;
+} 
+    }
+  };
+  setTimeout(()=>{ document.addEventListener('click', dd._clickHandler); }, 100);
 }
 
 // Global genre dropdown - body'de tek bir dropdown
@@ -9703,12 +9752,18 @@ for(const cat of GENRE_TREE){
   }
 }
 dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
-
-  // Input konumuna göre yerleştir
-  const r=inp.getBoundingClientRect();
-  dd.style.left=r.left+'px';
-  dd.style.top=(r.bottom+2)+'px';
-  dd.style.width=r.width+'px';
+  if(dd.style.display!=='block'){
+    const r=inp.getBoundingClientRect();
+    dd.style.left=r.left+'px';
+    dd.style.top=(r.bottom+2)+'px';
+    dd.style.width=r.width+'px';
+    dd._positionHandler=()=>{
+      const r2=inp.getBoundingClientRect();
+      dd.style.left=r2.left+'px';
+      dd.style.top=(r2.bottom+2)+'px';
+    };
+    window.addEventListener('scroll',dd._positionHandler,true);
+  }
   dd.style.display='block';
 }
 
@@ -9733,11 +9788,9 @@ function addGenre(bookId, genreId){
     book.genres=genres;
     saveDb();
     renderGenreChips(bookId);
-    renderSafeNoModal();
   }
   const inp=document.getElementById('gs-'+bookId);
-  if(inp){inp.value='';inp.focus();}
-  getGenreDropdown().style.display='none';
+  if(inp) inp.value='';
 }
 
 function removeGenre(bookId, genreId){
@@ -9746,7 +9799,8 @@ function removeGenre(bookId, genreId){
   book.genres=(book.genres||[]).filter(g=>normalizeGenre(g)!==genreId);
   saveDb();
   renderGenreChips(bookId);
-  renderSafeNoModal();
+  renderStats();
+  renderBadges(); 
 }
 
 function renderGenreChips(bookId){
