@@ -2772,7 +2772,7 @@ function clearMapAvatar(){
 }
 
 function getGBooksKey(){
-  return 'AIzaSyCkFaZdPHGYqL2G9U7VyIO1yGWOo88o7T4';
+  return 'AIzaSyC2jWGPvgf6dAV8OQDsUbIWU4BY3VWVgJ4';
 }
 function saveGBooksKey(){
   const key=document.getElementById('settingGBooksKey')?.value.trim()||'';
@@ -3646,7 +3646,7 @@ async function fetchBookInfo(title, author, isbn=''){
       if(isbn) gbUrl=`https://www.googleapis.com/books/v1/volumes?q=isbn:${isbn}&key=${gKey}`;
       else {
         const q=encodeURIComponent(isbn||(author?`intitle:${title}+inauthor:${author}`:`intitle:${title}`));
-        gbUrl=`https://www.googleapis.com/books/v1/volumes?q=${q}&langRestrict=tr&maxResults=5&key=${gKey}`;
+        gbUrl=`https://www.googleapis.com/books/v1/volumes?q=${q}&maxResults=5&key=${gKey}`;
       }
       try {
         const gr=await fetch(gbUrl);
@@ -5048,6 +5048,10 @@ async function acSearch(q){
         const r=await fetch(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(q)}&maxResults=6&key=${gKey}`);
         const d=await r.json();
         if(d.items&&d.items.length){
+          d.items=d.items.filter(it=>{
+            const t=(it.volumeInfo?.title||'').toLowerCase();
+            return q.toLowerCase().split(' ').some(w=>w.length>2&&t.includes(w));
+          });
           items=d.items.map(it=>({
             title:it.volumeInfo?.title||'',
             author:(it.volumeInfo?.authors&&it.volumeInfo.authors[0])||'',
