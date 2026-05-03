@@ -8581,6 +8581,21 @@ function renderStatsPanel(){
 
 // ── FAL PANELİ FONKSİYONU ──
 function falHarfle(el) {
+// Ses efekti
+  const ctx = new AudioContext();
+  [2093, 2637, 1976, 2349, 2794, 2093, 3136, 3729, 4186].forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15);
+    gain.gain.setValueAtTime(0, ctx.currentTime + i * 0.15);
+    gain.gain.linearRampToValueAtTime(0.1, ctx.currentTime + i * 0.15 + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.15 + 1.8);
+    osc.start(ctx.currentTime + i * 0.15);
+    osc.stop(ctx.currentTime + i * 0.15 + 1.8);
+  });
   const metin = el.getAttribute('data-original') || el.innerText;
   el.innerHTML = '';
   const kelimeler = metin.split(' ');
