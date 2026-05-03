@@ -8177,6 +8177,16 @@ function showMonthBooks(monthStr, el){
     if(r.bottom < 0 || r.top > window.innerHeight){
       pop.remove();
       window.removeEventListener('scroll', scrollHandler, true);
+    } else {
+      let l2 = r.left + r.width/2 - popW/2;
+      if(l2 < margin) l2 = margin;
+      if(l2 + popW > window.innerWidth - margin) l2 = window.innerWidth - popW - margin;
+      const pH = pop.offsetHeight;
+      let t2 = r.top >= pH + 10 ? r.top - pH - 8 : r.bottom + 8;
+      if(t2 < margin) t2 = margin;
+      if(t2 + pH > window.innerHeight - margin) t2 = window.innerHeight - pH - margin;
+      pop.style.left = l2 + 'px';
+      pop.style.top = t2 + 'px';
     }
   };
   window.addEventListener('scroll', scrollHandler, true);
