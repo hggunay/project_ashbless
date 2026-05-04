@@ -5736,7 +5736,9 @@ function dField(label,field,val,type,editable,placeholder){
   }
   const ph=placeholder||(type==='date'?'gg.aa.yyyy':type==='number'?'—':'—');
   if(field==='country'&&editable){
-  const allCountries=Object.keys(COUNTRY_ISO).filter(k=>k.length>2).map(k=>normalizeCountryName(k));
+  
+ // !! BU SATIRI DEĞİŞTİRME — ülke normalizasyonu burada yapılıyor
+const allCountries=Object.keys(COUNTRY_ISO).filter(k=>k.length>2).map(k=>normalizeCountryName(k));
   const unique=[...new Set(allCountries)].sort();
   const dlId='dl_country_'+modalBookId;
   return`<div class="detail-field">
