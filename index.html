@@ -1711,6 +1711,15 @@ const GENRE_TREE = [
   ]},
 ];
 
+function buildParentMap(nodes, map={}, parentId=null){
+  for(const node of nodes){
+    map[node.id] = parentId;
+    if(node.children) buildParentMap(node.children, map, node.id);
+  }
+  return map;
+}
+const PARENT_MAP = buildParentMap(GENRE_TREE);
+
 // Normalizasyon tablosu — API'den veya eski girişlerden gelen türleri normalize et
 const GENRE_NORMALIZE = {
   'kurgu':'roman','fiction':'roman','roman':'roman',
@@ -1760,7 +1769,45 @@ function normalizeSeries(s){
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
     .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
 }
+function listRows(data, total){
+  return `<div style="max-width:420px">`+data.map((item,i)=>{
+    const isObj = typeof item==='object' && !Array.isArray(item) && 'id' in item;
+    const isChild = isObj && item.isParent===false;
+    const label = isObj ? genreLabel(item.id) : item[0];
+    const val = isObj ? item.count : item[1];
+    return `
+      <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.06);${isChild?'padding-left:1.2rem;opacity:.85':''}">
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1rem;text-align:right;opacity:.5">${isChild?'↳':''}</span>
+        <span style="font-family:'Crimson Pro',serif;font-size:${isChild?'.85':'.92'}rem;color:var(--ink);flex:1">${label}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);min-width:1.5rem;text-align:right">${val}</span>
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;min-width:2.5rem;text-align:right">${total?Math.round(val/total*100)+'%':''}</span>
+      </div>`;
+  }).join('')+'</div>';
+}
 
+function listRowsPaged(data, total, key){
+  window['_paged_'+key]={data:data,shown:5};
+  function render(shown){
+    const el=document.getElementById('paged-'+key);
+    const btn=document.getElementById('paged-btn-'+key);
+    if(!el) return;
+    el.innerHTML=listRows(data.slice(0,shown),total);
+    if(btn){
+      btn.dataset.shown=shown;
+      btn.textContent=shown>=data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,data.length-shown))+')';
+      btn.style.display=data.length<=5?'none':'inline-block';
+    }
+  }
+  setTimeout(()=>render(5),0);
+  return `<div id="paged-${key}"></div>${data.length>5?`<button id="paged-btn-${key}" data-shown="5" onclick="
+    const state=window['_paged_${key}'];
+    let s=parseInt(this.dataset.shown||'5');
+    if(s>=state.data.length){s=5;}else{s=Math.min(s+10,state.data.length);}
+    this.dataset.shown=s;
+    document.getElementById('paged-${key}').innerHTML=listRows(state.data.slice(0,s),${total});
+    this.textContent=s>=state.data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,state.data.length-s))+')';
+  " style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .7rem;border:1px solid rgba(201,162,39,.3);border-radius:20px;background:transparent;color:var(--gold);cursor:pointer">↓ Daha fazla</button>`:''}`;
+}
 // Tür ID'sinden görüntü adı al
 function genreLabel(id){
   function search(nodes){
@@ -8236,18 +8283,45 @@ function renderStatsPanel(){
 
   // Tür dağılımı
   const genreCount={};
-  books.forEach(b=>(b.genres||[]).forEach(g=>{genreCount[g]=(genreCount[g]||0)+1;}));
-  const topGenres=Object.entries(genreCount).sort((a,b)=>b[1]-a[1]).slice(0,8);
+books.forEach(b=>(b.genres||[]).forEach(g=>{
+  const id=normalizeGenre(g);
+  genreCount[id]=(genreCount[id]||0)+1;
+}));
+
+// Ana türleri ve alt türlerini grupla
+const genreRows=[];
+const addedChildren=new Set();
+
+// Önce ana türleri bul (parentı olan ama parentı genreCount'ta olmayan, veya direkt üst düzey)
+const allIds=Object.keys(genreCount);
+allIds.forEach(id=>{
+  const parent=PARENT_MAP[id];
+  // Bu id bir ana tür mü? (ya parentı yok, ya da parentı genreCount'ta yok)
+  if(!parent || !genreCount[parent]){
+    if(!addedChildren.has(id)){
+      genreRows.push({id, count:genreCount[id], isParent:true});
+      // Alt türlerini ekle
+      allIds.filter(cid=>PARENT_MAP[cid]===id).sort((a,b)=>genreCount[b]-genreCount[a]).forEach(cid=>{
+        genreRows.push({id:cid, count:genreCount[cid], isParent:false});
+        addedChildren.add(cid);
+      });
+      addedChildren.add(id);
+    }
+  }
+});
+
+// Ana türleri sayıya göre sırala (alt türleri yerinde bırak)
+const topGenres=genreRows;
 
   // Yazar dağılımı
   const authorCount={};
   books.forEach(b=>{if(b.author)authorCount[b.author]=(authorCount[b.author]||0)+1;});
-  const topAuthors=Object.entries(authorCount).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>1).slice(0,6);
+  const topAuthors=Object.entries(authorCount).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'));
 
   // Ülke dağılımı
   const countryCount={};
   books.forEach(b=>{if(b.country){const c=b.country.trim();countryCount[c]=(countryCount[c]||0)+1;}});
-  const topCountries=Object.entries(countryCount).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const topCountries=Object.entries(countryCount).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'));
 
   // Format dağılımı
   const fmtCount={'kitap':0,'ekitap':0,'sesli':0,'cizgi':0};
@@ -8279,16 +8353,8 @@ function renderStatsPanel(){
   books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:b.seriesComplete};seriesMap[b.series].count++;}});
   const seriesStarted=Object.keys(seriesMap).length;
   const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
+  
 
-  function listRows(data, total){
-    return `<div style="max-width:420px">`+data.map(([label,val],i)=>`
-      <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.06)">
-        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1rem;text-align:right;opacity:.5">${i+1}</span>
-        <span style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink);flex:1">${label}</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);min-width:1.5rem;text-align:right">${val}</span>
-        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;min-width:2.5rem;text-align:right">${total?Math.round(val/total*100)+'%':''}</span>
-      </div>`).join('')+'</div>';
-  }
 
   const monthLabels=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
 
@@ -8472,8 +8538,8 @@ function renderStatsPanel(){
             <button id="dtab-country" onclick="switchDagilimTab('country')" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .6rem;border:1px solid rgba(201,162,39,.15);border-radius:20px;background:transparent;color:var(--rust);cursor:pointer">🌍 Ülke</button>
           </div>
           <div id="dtab-content-genre">${topGenres.length?listRows(topGenres,books.length):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
-          <div id="dtab-content-author" style="display:none">${topAuthors.length?listRows(topAuthors.slice(0,8),books.length):'<div style="opacity:.5;font-size:.85rem">Birden fazla kitap okunan yazar yok</div>'}</div>
-          <div id="dtab-content-country" style="display:none">${topCountries.length?listRows(topCountries,books.length):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
+          <div id="dtab-content-author" style="display:none">${topAuthors.length?listRowsPaged(topAuthors,books.length,'author'):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
+<div id="dtab-content-country" style="display:none">${topCountries.length?listRowsPaged(topCountries,books.length,'country'):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
         `):''}
 
         ${(()=>{
