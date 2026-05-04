@@ -1769,13 +1769,14 @@ function normalizeSeries(s){
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
     .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
 }
-function listRows(data, total){
+function listRows(data, total, showDivider=false, dividerAt=5){
   return `<div style="max-width:420px">`+data.map((item,i)=>{
     const isObj = typeof item==='object' && !Array.isArray(item) && 'id' in item;
     const isChild = isObj && item.isParent===false;
     const label = isObj ? genreLabel(item.id) : item[0];
     const val = isObj ? item.count : item[1];
-    return `
+    const divider = (showDivider && i===dividerAt)?`<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;margin:.2rem 0"><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span><span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.5">diğerleri</span><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span></div>`:'';
+    return divider+`
       <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.06);${isChild?'padding-left:1.2rem;opacity:.85':''}">
         <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1rem;text-align:right;opacity:.5">${isChild?'↳':''}</span>
         <span style="font-family:'Crimson Pro',serif;font-size:${isChild?'.85':'.92'}rem;color:var(--ink);flex:1">${label}</span>
@@ -1786,12 +1787,12 @@ function listRows(data, total){
 }
 
 function listRowsPaged(data, total, key){
-  window['_paged_'+key]={data:data,shown:5};
+  window['_paged_'+key]={data:data,shown:5,total:total};
   function render(shown){
     const el=document.getElementById('paged-'+key);
     const btn=document.getElementById('paged-btn-'+key);
     if(!el) return;
-    el.innerHTML=listRows(data.slice(0,shown),total);
+    el.innerHTML=listRows(data.slice(0,shown),total,shown>5,5);
     if(btn){
       btn.dataset.shown=shown;
       btn.textContent=shown>=data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,data.length-shown))+')';
@@ -1799,15 +1800,16 @@ function listRowsPaged(data, total, key){
     }
   }
   setTimeout(()=>render(5),0);
-  return `<div id="paged-${key}"></div>${data.length>5?`<button id="paged-btn-${key}" data-shown="5" onclick="
+  return `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--gold);opacity:.6;letter-spacing:.08em;padding-bottom:.3rem;border-bottom:1px solid rgba(201,162,39,.15);margin-bottom:.2rem">EN ÇOK OKUNAN</div><div id="paged-${key}"></div>${data.length>5?`<button id="paged-btn-${key}" data-shown="5" onclick="
     const state=window['_paged_${key}'];
     let s=parseInt(this.dataset.shown||'5');
     if(s>=state.data.length){s=5;}else{s=Math.min(s+10,state.data.length);}
     this.dataset.shown=s;
-    document.getElementById('paged-${key}').innerHTML=listRows(state.data.slice(0,s),${total});
+    document.getElementById('paged-${key}').innerHTML=listRows(state.data.slice(0,s),window['_paged_${key}'].total,s>5,5);
     this.textContent=s>=state.data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,state.data.length-s))+')';
   " style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .7rem;border:1px solid rgba(201,162,39,.3);border-radius:20px;background:transparent;color:var(--gold);cursor:pointer">↓ Daha fazla</button>`:''}`;
 }
+
 // Tür ID'sinden görüntü adı al
 function genreLabel(id){
   function search(nodes){
@@ -8537,7 +8539,7 @@ const topGenres=genreRows;
             <button id="dtab-author" onclick="switchDagilimTab('author')" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .6rem;border:1px solid rgba(201,162,39,.15);border-radius:20px;background:transparent;color:var(--rust);cursor:pointer">✍️ Yazar</button>
             <button id="dtab-country" onclick="switchDagilimTab('country')" style="font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .6rem;border:1px solid rgba(201,162,39,.15);border-radius:20px;background:transparent;color:var(--rust);cursor:pointer">🌍 Ülke</button>
           </div>
-          <div id="dtab-content-genre">${topGenres.length?listRows(topGenres,books.length):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
+          <div id="dtab-content-genre">${topGenres.length?listRowsPaged(topGenres,books.length,'genre'):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
           <div id="dtab-content-author" style="display:none">${topAuthors.length?listRowsPaged(topAuthors,books.length,'author'):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
 <div id="dtab-content-country" style="display:none">${topCountries.length?listRowsPaged(topCountries,books.length,'country'):'<div style="opacity:.5;font-size:.85rem">Veri yok</div>'}</div>
         `):''}
