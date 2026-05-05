@@ -6840,7 +6840,7 @@ function renderFeed(append=false){
             <span class="journal-entry-user">${card.userName}</span>
             <span class="journal-entry-book">👥 Birlikte Okuyalım</span>
           </div>
-          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${relativeTime(card.ts)}</span>
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${formatTimeAgo(new Date(card.ts).toISOString())}</span>
         </div>
         <div style="margin:.75rem 0;font-family:'Crimson Pro',serif;font-size:1.05rem;color:var(--parchment)">
           <strong>${card.bookTitle}</strong>${card.author?` — <em>${card.author}</em>`:''}
