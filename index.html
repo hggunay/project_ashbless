@@ -5446,6 +5446,7 @@ async function cancelCoreading(sessionId){
   if(db.readingSessions[sessionId].initiator!==me) return;
   db.readingSessions[sessionId].status='cancelled';
   await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
+  delete db.readingSessions[sessionId];
   renderSafe();
 }
 function confirmCancelCoreading(btn, sessionId){
