@@ -6776,6 +6776,10 @@ function renderFeed(append=false){
   else if(feedFilter==='stories') cards=cards.filter(c=>c.type==='story');
 
   cards.sort((a,b)=>{
+    // Birlikte okuma kartları aktifse en üste
+    if(a.type==='coreading_invite'&&b.type!=='coreading_invite') return -1;
+    if(b.type==='coreading_invite'&&a.type!=='coreading_invite') return 1;
+    // İkisi de coreading ise kendi aralarında tarihe göre
     const ta=typeof a.ts==='number'?a.ts:new Date(a.ts||0).getTime();
     const tb=typeof b.ts==='number'?b.ts:new Date(b.ts||0).getTime();
     return tb-ta;
