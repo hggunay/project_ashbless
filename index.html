@@ -9799,19 +9799,19 @@ function showGenreDropdown(bookId){
   const dd = getGenreDropdown();
   if(dd.style.display==='block' && dd.dataset.bookId==bookId) return;
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
-  if(dd._clickHandler) document.removeEventListener('click', dd._clickHandler);
+  if(dd._clickHandler) document.removeEventListener('mousedown', dd._clickHandler);
   dd._clickHandler = function(e){
     if(!e.target.closest('#gca-'+bookId) && !e.target.closest('.genre-dropdown')){
       dd.style.display='none';
-      document.removeEventListener('click', dd._clickHandler);
+      document.removeEventListener('mousedown', dd._clickHandler);
       dd._clickHandler = null;
-	 if(dd._positionHandler){
-  window.removeEventListener('scroll',dd._positionHandler,true);
-  dd._positionHandler=null;
-} 
+      if(dd._positionHandler){
+        window.removeEventListener('scroll',dd._positionHandler,true);
+        dd._positionHandler=null;
+      }
     }
   };
-  setTimeout(()=>{ document.addEventListener('click', dd._clickHandler); }, 100);
+  setTimeout(()=>{ document.addEventListener('mousedown', dd._clickHandler); }, 300);
 }
 
 // Global genre dropdown - body'de tek bir dropdown
@@ -9841,31 +9841,101 @@ function filterGenreDropdown(bookId, query){
   const selected=new Set((book?.genres||[]).map(g=>normalizeGenre(g)));
   const q=query.toLowerCase().trim();
   dd.dataset.bookId=bookId;
+  const activeCat=dd.dataset.activeCat||null;
+
+  const THEME_GENRES=['mitoloji','tarih','felsefe','psikoloji','din','doga','bilim','siyaset','sosyoloji'];
+
+  const KURGU_CAT = GENRE_TREE.find(c=>c.id==='kurgu');
+  const KURGUDISI_CAT = GENRE_TREE.find(c=>c.id==='kurgu_disi_ust');
+
+  function itemRow(item, catNode, isSel){
+    const depth=getDepth(catNode,item.id);
+    const indent=Math.max(0,(depth-1)*16);
+    return `<div class="genre-dd-item ${depth>2?'sub-sub':depth>1?'sub':'main-genre'} ${isSel?'selected':''}"
+      style="padding-left:${indent+12}px !important;"
+      onclick="addGenre(${bookId},'${item.id}')">
+      ${isSel?'✓ ':''}${item.label}
+    </div>`;
+  }
+
+  function groupHeader(label){
+    return `<div class="genre-dd-group" style="font-size:.65rem;letter-spacing:.08em;opacity:.7">${label}</div>`;
+  }
 
   let html='';
-for(const cat of GENRE_TREE){
-  const allChildren=flatChildren(cat);
-  const filtered=allChildren.filter(item=>!q||item.label.toLowerCase().includes(q)||item.id.includes(q));
-  if(!filtered.length) continue;
 
-  html+=`<div class="genre-dd-group">${cat.label}</div>`;
-  
-  for(const item of filtered){
-    const depth = getDepth(cat, item.id);
-    const isSub=depth>1;
-    const isSubSub=depth>2;
-    const indent = (depth > 1) ? (depth - 1) * 20 : 0;
-    const isSel = selected.has(item.id); // Tik işareti için bu lazım
+  if(!q){
+    const mainCats=[
+      {id:'kurgu',         label:'📖 Kurgu'},
+      {id:'kurgu_disi_ust',label:'📚 Kurgu Dışı'},
+      {id:'siir_edebiyat', label:'✒️ Şiir & Edebiyat'},
+      {id:'gorsel_format', label:'🎨 Görsel & Format'},
+    ];
 
-    // Bu kısım html değişkenine eklenmeli:
-    html += `<div class="genre-dd-item ${isSubSub ? 'sub-sub' : isSub ? 'sub' : 'main-genre'} ${isSel ? 'selected' : ''}"
-                  style="padding-left: ${indent + 12}px !important;" 
-                  onclick="addGenre(${bookId},'${item.id}')">
-                  ${isSel ? '✓ ' : ''} ${item.label}
-             </div>`;
+    html+=`<div style="display:flex;flex-wrap:wrap;gap:.4rem;padding:.5rem .6rem .3rem">`;
+    for(const cat of mainCats){
+      const isActive=activeCat===cat.id;
+      html+=`<button onclick="setGenreCat('${bookId}','${cat.id}')" style="
+        font-family:'Crimson Pro',serif;font-size:.85rem;padding:.3rem .7rem;
+        border-radius:20px;cursor:pointer;border:1px solid rgba(201,162,39,.4);
+        background:${isActive?'rgba(201,162,39,.25)':'rgba(201,162,39,.08)'};
+        color:var(--ink);font-weight:${isActive?'600':'400'};
+        transition:all .15s">${cat.label}</button>`;
+    }
+    html+=`</div>`;
+
+    if(activeCat==='kurgu'||activeCat==='kurgu_disi_ust'){
+      const isCat=activeCat==='kurgu';
+      const catNode=isCat?KURGU_CAT:KURGUDISI_CAT;
+      const allItems=flatChildren(catNode);
+      const mainItems=allItems.filter(item=>!THEME_GENRES.includes(item.id));
+      const themeItems=isCat
+        ? flatChildren(KURGUDISI_CAT).filter(item=>THEME_GENRES.includes(item.id))
+        : allItems.filter(item=>THEME_GENRES.includes(item.id));
+
+      html+=groupHeader(isCat?'TÜR':'TÜR');
+      for(const item of mainItems){
+        html+=itemRow(item,catNode,selected.has(item.id));
+      }
+
+      if(themeItems.length){
+        html+=groupHeader('TEMA & İÇERİK');
+        for(const item of themeItems){
+          const refCat=isCat?KURGUDISI_CAT:catNode;
+          html+=itemRow(item,refCat,selected.has(item.id));
+        }
+      }
+
+    } else if(activeCat){
+      const catNode=GENRE_TREE.find(c=>c.id===activeCat);
+      if(catNode){
+        const children=flatChildren(catNode);
+        for(const item of children){
+          html+=itemRow(item,catNode,selected.has(item.id));
+        }
+      }
+    } else {
+      html+=`<div style="font-family:'Crimson Pro',serif;font-size:.8rem;color:var(--rust);opacity:.6;padding:.3rem .8rem .6rem">
+        Önce bir kategori seç</div>`;
+    }
+
+  } else {
+    for(const cat of GENRE_TREE){
+      const allChildren=flatChildren(cat);
+      const filtered=allChildren.filter(item=>
+        item.label.toLowerCase().includes(q)||item.id.includes(q)
+      );
+      if(!filtered.length) continue;
+      html+=groupHeader(cat.label);
+      for(const item of filtered){
+        html+=itemRow(item,cat,selected.has(item.id));
+      }
+    }
+    if(!html) html='<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
   }
-}
-dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunamadı</div>';
+
+  dd.innerHTML=html;
+
   if(dd.style.display!=='block'){
     const r=inp.getBoundingClientRect();
     dd.style.left=r.left+'px';
@@ -9879,6 +9949,12 @@ dd.innerHTML=html||'<div class="genre-dd-item" style="opacity:.5">Sonuç bulunam
     window.addEventListener('scroll',dd._positionHandler,true);
   }
   dd.style.display='block';
+}
+
+function setGenreCat(bookId, catId){
+  const dd=getGenreDropdown();
+  dd.dataset.activeCat = catId;
+  filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
 }
 
 function flatChildren(node){
@@ -9904,7 +9980,8 @@ function addGenre(bookId, genreId){
     renderGenreChips(bookId);
   }
   const inp=document.getElementById('gs-'+bookId);
-  if(inp) inp.value='';
+  if(inp){ inp.value=''; inp.focus(); }
+  filterGenreDropdown(bookId,'');
 }
 
 function removeGenre(bookId, genreId){
