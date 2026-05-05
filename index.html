@@ -7724,7 +7724,13 @@ function renderNotifPanel(){
   list.innerHTML=sorted.map(n=>{
     const timeAgo=formatTimeAgo(n.ts);
     if(n.type==='coreading_start'){
-	if(n.responded) return'';
+	if(n.responded) return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08)">
+  <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${n.fromName}</strong>: <em>${n.bookTitle}</em></div>
+  <div style="display:flex;gap:.5rem;margin-top:.4rem">
+    <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker('${n.sessionId}')">🔄 Kitabı değiştir</button>
+  </div>
+  <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+</div>`;
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
         <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${n.fromName}</strong> birlikte okuma başlattı: <em>${n.bookTitle}</em>${n.author?' — '+n.author:''}</div>
         <div style="display:flex;gap:.5rem;margin-top:.4rem">
