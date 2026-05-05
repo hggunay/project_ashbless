@@ -5450,6 +5450,41 @@ async function cancelCoreading(sessionId){
   document.getElementById('cancelConfirm')?.remove();
   renderSafe();
 }
+async function startCoreadingRead(sessionId){
+  if(!me) return;
+  const session=db.readingSessions&&db.readingSessions[sessionId];
+  if(!session) return;
+  if(session.initiator!==me) return;
+  const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
+  if(!accepted.length){ alert('Henüz kimse katılmadı.'); return; }
+  // Her katılımcı için kitap ekle veya mevcut kaydı güncelle
+  for(const u of accepted){
+    const userBooks=db.books[u]||[];
+    const existing=userBooks.find(b=>b.title&&session.bookTitle&&b.title.toLowerCase()===session.bookTitle.toLowerCase());
+    if(existing){
+      existing.coreadingSession=sessionId;
+      existing.coreadingStatus='reading';
+    } else {
+      const newBook={
+        id: Date.now()+Math.random(),
+        title: session.bookTitle,
+        author: session.author||'',
+        pages: session.pages||0,
+        readingStatus:'reading',
+        addedAt: Date.now(),
+        coreadingSession: sessionId,
+        coreadingStatus:'reading',
+      };
+      if(!db.books[u]) db.books[u]=[];
+      db.books[u].push(newBook);
+    }
+  }
+  db.readingSessions[sessionId].status='active';
+  db.readingSessions[sessionId].startedAt=Date.now();
+  await saveDb();
+  notify('📖 Okuma başladı!', session.bookTitle+' için birlikte okuma oturumu başladı.');
+  renderSafe();
+}
 function confirmCancelCoreading(btn, sessionId){
   btn.outerHTML=`<span id="cancelConfirm" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin? 
     <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="cancelCoreading('${sessionId}')">Evet</button> 
@@ -6877,6 +6912,7 @@ function renderFeed(append=false){
           <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="respondCoreading('${card.sessionId}','rejected')">✗ Katılmıyorum</button>
         </div>`:''}
         ${isInitiator?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
+  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startCoreadingRead('${card.sessionId}')">📖 Okumayı Başlat</button>
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
