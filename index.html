@@ -2441,7 +2441,7 @@ async function loadDb(){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
-    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};
+    if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.readingSessions)db.readingSessions={};
   if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
@@ -5425,7 +5425,21 @@ async function startCoreadingSession(titleRaw, author){
     alert('Oturum başlatılamadı, tekrar dene.');
   }
 }
-
+async function respondCoreading(sessionId, response){
+  if(!me) return;
+  const session=db.readingSessions&&db.readingSessions[sessionId];
+  if(!session) return;
+  const path='aa-v4/readingSessions/'+sessionId+'/participants/'+me;
+  await fbSet(path,{status:response, joinedAt:Date.now()});
+  if(!db.readingSessions) db.readingSessions={};
+  if(!db.readingSessions[sessionId]) db.readingSessions[sessionId]=session;
+  if(!db.readingSessions[sessionId].participants) db.readingSessions[sessionId].participants={};
+  db.readingSessions[sessionId].participants[me]={status:response, joinedAt:Date.now()};
+  if(response==='accepted'){
+    notify('👥 Katıldın!', session.bookTitle+' için birlikte okuma oturumuna katıldın.');
+  }
+  renderSafe();
+}
 function addBookConfirmed(){
   closeDupConfirm();
   window._skipDupCheck=true;
@@ -6685,6 +6699,27 @@ function getFeedCards(){
       });
     });
   });
+  // Birlikte okuma davetleri
+  const sessions=db.readingSessions||{};
+  const now=Date.now();
+  Object.values(sessions).forEach(s=>{
+    if(s.status==='cancelled') return;
+    if(s.expiresAt&&s.expiresAt<now) return;
+    const initiatorUser=db.users[s.initiator]||{};
+    cards.push({
+      type:'coreading_invite',
+      sessionId:s.id,
+      u:s.initiator,
+      userName:initiatorUser.displayName||s.initiator,
+      userAvatar:initiatorUser.avatar||'📚',
+      bookTitle:s.bookTitle,
+      author:s.author||'',
+      pages:s.pages||0,
+      participants:s.participants||{},
+      ts:s.createdAt||0,
+      expiresAt:s.expiresAt||0,
+    });
+  });
   return cards;
 }
 
@@ -6790,6 +6825,37 @@ function renderFeed(append=false){
     const stars=card.rating?'⭐'.repeat(Math.floor(card.rating))+(card.rating%1?'½':''):'';
     const ts=typeof card.ts==='number'?card.ts:new Date(card.ts||0).getTime();
     const isNewCard=ts>lastFeedVisit&&card.u!==me;
+	// Birlikte okuma davet kartı — ayrı render
+    if(card.type==='coreading_invite'){
+      const myStatus=(card.participants[me]||{}).status;
+      const alreadyResponded=myStatus==='accepted'||myStatus==='rejected';
+      const isInitiator=card.u===me;
+      const participantNames=Object.keys(card.participants)
+        .filter(u=>card.participants[u].status==='accepted')
+        .map(u=>(db.users[u]||{}).displayName||u).join(', ');
+      return`<div class="journal-entry" style="border-left:3px solid var(--gold);">
+        <div class="journal-entry-header">
+          <span style="font-size:1.3rem">${avatarHtml(card.userAvatar,"1.5rem")}</span>
+          <div class="journal-entry-meta">
+            <span class="journal-entry-user">${card.userName}</span>
+            <span class="journal-entry-book">👥 Birlikte Okuyalım</span>
+          </div>
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${relativeTime(card.ts)}</span>
+        </div>
+        <div style="margin:.75rem 0;font-family:'Crimson Pro',serif;font-size:1.05rem;color:var(--parchment)">
+          <strong>${card.bookTitle}</strong>${card.author?` — <em>${card.author}</em>`:''}
+          ${card.pages?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(245,237,214,.5);margin-left:.5rem">${card.pages} sayfa</span>`:''}
+        </div>
+        ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
+        ${!isInitiator&&!alreadyResponded?`
+        <div style="display:flex;gap:.5rem;margin-top:.5rem">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">✓ Katıl</button>
+          <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="respondCoreading('${card.sessionId}','rejected')">✗ Katılmıyorum</button>
+        </div>`:''}
+        ${isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.4);margin-top:.5rem">Senin davetин · 7 gün görünür</div>`:''}
+        ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
+      </div>`;
+    }
     const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
       :card.type==='country_event'
