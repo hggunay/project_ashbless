@@ -6842,7 +6842,7 @@ function renderFeed(append=false){
           </div>
           <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${formatTimeAgo(new Date(card.ts).toISOString())}</span>
         </div>
-        <div style="margin:.75rem 0;font-family:'Crimson Pro',serif;font-size:1.05rem;color:var(--parchment)">
+        <div style="margin:.75rem 0;font-family:'Crimson Pro',serif;font-size:1.05rem;color:var(--ink)">
           <strong>${card.bookTitle}</strong>${card.author?` — <em>${card.author}</em>`:''}
           ${card.pages?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(245,237,214,.5);margin-left:.5rem">${card.pages} sayfa</span>`:''}
         </div>
@@ -6852,7 +6852,7 @@ function renderFeed(append=false){
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">✓ Katıl</button>
           <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="respondCoreading('${card.sessionId}','rejected')">✗ Katılmıyorum</button>
         </div>`:''}
-        ${isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.4);margin-top:.5rem">Senin davetин · 7 gün görünür</div>`:''}
+        ${isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.4);margin-top:.5rem">Senin davetin · 7 gün görünür</div>`:''}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
