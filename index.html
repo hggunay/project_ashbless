@@ -5476,6 +5476,8 @@ async function startCoreadingRead(sessionId){
       fromName: (db.users[me]||{}).displayName||me,
       ts: new Date().toISOString(),
       seen: false,
+	  reaction: '📖',
+      context: session.bookTitle,
     };
     if(!db.notifications[u]) db.notifications[u]=[];
     db.notifications[u].push(notif);
