@@ -7724,6 +7724,7 @@ function renderNotifPanel(){
   list.innerHTML=sorted.map(n=>{
     const timeAgo=formatTimeAgo(n.ts);
     if(n.type==='coreading_start'){
+	if(n.responded) return'';
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
         <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${n.fromName}</strong> birlikte okuma başlattı: <em>${n.bookTitle}</em>${n.author?' — '+n.author:''}</div>
         <div style="display:flex;gap:.5rem;margin-top:.4rem">
