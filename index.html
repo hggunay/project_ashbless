@@ -5530,9 +5530,11 @@ function showCoreadingBookPicker(sessionId){
   const panel=document.createElement('div');
   panel.id='coreadingPicker';
   panel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--cream);border:1px solid var(--gold);border-radius:4px;padding:1.25rem;z-index:9999;max-height:70vh;overflow-y:auto;min-width:300px;max-width:90vw';
+  panel.dataset.sessionId=sessionId;
   panel.innerHTML=`
     <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:.75rem">Hangi kitabı bağlamak istersin?</div>
-    ${options||'<div style="color:#888;font-size:.85rem">Kitap bulunamadı.</div>'}
+    <input type="text" placeholder="Kitap ara..." oninput="filterCoreadingPicker(this.value)" style="width:100%;padding:.5rem .75rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--ink);font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem;box-sizing:border-box"/>
+    <div id="coreadingPickerList">${options||'<div style="color:#888;font-size:.85rem">Kitap bulunamadı.</div>'}</div>
     <button class="btn btn-sm" style="margin-top:.75rem" onclick="document.getElementById('coreadingPicker').remove()">İptal</button>
   `;
   document.body.appendChild(panel);
@@ -5547,6 +5549,19 @@ async function linkCoreadingBook(sessionId, bookId){
     const n=db.notifications[me].find(n=>n.sessionId===sessionId&&n.type==='coreading_start');
     if(n) n.responded=true;
   }
+  function filterCoreadingPicker(query){
+  const list=document.getElementById('coreadingPickerList');
+  if(!list) return;
+  const q=query.toLowerCase().trim();
+  const myBooks=(db.books[me]||[]).filter(b=>b.title&&b.readingStatus!=='wishlist');
+  const filtered=q?myBooks.filter(b=>b.title.toLowerCase().includes(q)||(b.author||'').toLowerCase().includes(q)):myBooks;
+  const sessionId=list.closest('#coreadingPicker').dataset.sessionId;
+  list.innerHTML=filtered.map(b=>`
+    <div style="padding:.5rem .75rem;border:1px solid rgba(201,162,39,.2);border-radius:2px;margin-bottom:.4rem;cursor:pointer;font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)"
+      onclick="linkCoreadingBook('${sessionId}',${b.id})">
+      ${b.title}${b.author?' — <em>'+b.author+'</em>':''}
+    </div>`).join('')||'<div style="color:#888;font-size:.85rem">Sonuç bulunamadı.</div>';
+}
   document.getElementById('coreadingPicker')?.remove();
   await saveDb();
   notify('📖 Kitap bağlandı!', book.title+' birlikte okuma oturumuna bağlandı.');
