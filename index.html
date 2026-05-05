@@ -5562,11 +5562,7 @@ async function linkCoreadingBook(sessionId, bookId){
       ${b.title}${b.author?' — <em>'+b.author+'</em>':''}
     </div>`).join('')||'<div style="color:#888;font-size:.85rem">Sonuç bulunamadı.</div>';
 }
-  document.getElementById('coreadingPicker')?.remove();
-  await saveDb();
-  notify('📖 Kitap bağlandı!', book.title+' birlikte okuma oturumuna bağlandı.');
-  renderSafe();
-}
+  
 function confirmCancelCoreading(btn, sessionId){
   btn.outerHTML=`<span id="cancelConfirm" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin? 
     <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="cancelCoreading('${sessionId}')">Evet</button> 
