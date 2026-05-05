@@ -867,8 +867,19 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım</span>
           <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Eskiden okudum</span>
           <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Listeye ekle</span>
+		  <span class="chip" data-val="coreading" onclick="selectReadingTime(this)">👥 Birlikte Okuyalım</span>
         </div>
-
+		
+<!-- Birlikte okuma alanı -->
+        <div id="addFields-coreading" style="display:none;margin-bottom:.75rem">
+          <div class="field-group">
+            <span class="field-label">📄 Toplam Sayfa Sayısı <span style="opacity:.5">(biliniyorsa)</span></span>
+            <input class="book-input" id="coreadingPages" type="number" placeholder="örn: 348" min="1"/>
+          </div>
+          <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5);margin-top:.5rem">
+            Davet akışta 7 gün görünür. Arkadaşların kabul ederse birlikte okunuyor işareti alırsınız.
+          </div>
+        </div>
         <!-- Dinamik alanlar — okuma durumuna göre -->
         <div id="addFormFields">
           <!-- Başlama tarihi: okuyorum + yarım -->
@@ -3517,9 +3528,13 @@ function updateAddFormFields(){
   // Seri + yayınevi + format
   const extra=document.getElementById('addFields-extra');
   const format=document.getElementById('addFields-format');
-  if(extra) extra.style.display=isWishlist?'none':'';
-  if(format) format.style.display=isWishlist?'none':'';
-
+  if(extra) extra.style.display=(isWishlist||val==='coreading')?'none':'';
+  if(format) format.style.display=(isWishlist||val==='coreading')?'none':'';
+  
+// Birlikte okuma alanı
+  const coreading=document.getElementById('addFields-coreading');
+  if(coreading) coreading.style.display=val==='coreading'?'':'none';
+  
   // Yayınevi sadece okudum/eskiden
   const pub=document.getElementById('addField-publisher');
   if(pub) pub.style.display=isDone?'':'none';
@@ -5204,7 +5219,12 @@ async function addBook(){
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
   if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
-
+  
+// Birlikte okuma oturumu başlat
+  if(getReadingTime()==='coreading'){
+    await startCoreadingSession(rawInput,author);
+    return;
+  }
   const st=document.getElementById('addStatus');
   st.textContent='Kitap bilgileri alınıyor';st.className='status-msg loading';
 
@@ -5373,6 +5393,37 @@ function closeDupConfirm(){
   const bar=document.getElementById('dupConfirmBar');
   if(bar) bar.classList.remove('show');
   window._skipDupCheck=false;
+}
+// ── BİRLİKTE OKUMA ───────────────────────────────────────────
+async function startCoreadingSession(titleRaw, author){
+  if(!me){ alert('Giriş yapman gerekiyor.'); return; }
+  const pages=parseInt(document.getElementById('coreadingPages').value)||0;
+  const sessionId='cs_'+Date.now();
+  const session={
+    id: sessionId,
+    initiator: me,
+    bookTitle: titleRaw,
+    author: author||'',
+    pages: pages,
+    status: 'pending',
+    createdAt: Date.now(),
+    expiresAt: Date.now()+(7*24*60*60*1000),
+    participants: {},
+  };
+  session.participants[me]={status:'accepted', joinedAt: Date.now()};
+  try{
+    await fbSet('aa-v4/readingSessions/'+sessionId, session);
+    notify('👥 Davet gönderildi!', titleRaw+' için birlikte okuma daveti akışa düştü.');
+    // Formu sıfırla
+    document.getElementById('bookTitle').value='';
+    document.getElementById('bookAuthor').value='';
+    document.getElementById('coreadingPages').value='';
+    document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));
+    document.querySelector('#readingTimeChips .chip').classList.add('active');
+    updateAddFormFields();
+  }catch(e){
+    alert('Oturum başlatılamadı, tekrar dene.');
+  }
 }
 
 function addBookConfirmed(){
