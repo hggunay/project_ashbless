@@ -5442,12 +5442,22 @@ async function respondCoreading(sessionId, response){
 }
 async function cancelCoreading(sessionId){
   if(!me) return;
-  if(!confirm('Birlikte okuma davetini iptal etmek istediğine emin misin?')) return;
-  await fbSet('aa-v4/readingSessions/'+sessionId+'/status','cancelled');
-  if(db.readingSessions&&db.readingSessions[sessionId]){
-    db.readingSessions[sessionId].status='cancelled';
-  }
+  if(!db.readingSessions||!db.readingSessions[sessionId]) return;
+  if(db.readingSessions[sessionId].initiator!==me) return;
+  db.readingSessions[sessionId].status='cancelled';
+  await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
   renderSafe();
+}
+function confirmCancelCoreading(btn, sessionId){
+  const original=btn.outerHTML;
+  btn.outerHTML=`<span id="cancelConfirm_${sessionId}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin? 
+    <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="cancelCoreading('${sessionId}')">Evet</button> 
+    <button class="btn btn-sm" onclick="renderSafe()">Hayır</button>
+  </span>`;
+  setTimeout(()=>{
+    const el=document.getElementById('cancelConfirm_${sessionId}');
+    if(el) renderSafe();
+  },5000);
 }
 function addBookConfirmed(){
   closeDupConfirm();
@@ -6863,7 +6873,7 @@ function renderFeed(append=false){
         </div>`:''}
         ${isInitiator?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
-  <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="cancelCoreading('${card.sessionId}')">✗ İptal et</button>
+  <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
