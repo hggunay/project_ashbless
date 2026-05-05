@@ -5449,13 +5449,12 @@ async function cancelCoreading(sessionId){
   renderSafe();
 }
 function confirmCancelCoreading(btn, sessionId){
-  const original=btn.outerHTML;
-  btn.outerHTML=`<span id="cancelConfirm_${sessionId}" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin? 
+  btn.outerHTML=`<span id="cancelConfirm" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin? 
     <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="cancelCoreading('${sessionId}')">Evet</button> 
     <button class="btn btn-sm" onclick="renderSafe()">Hayır</button>
   </span>`;
   setTimeout(()=>{
-    const el=document.getElementById('cancelConfirm_${sessionId}');
+    const el=document.getElementById('cancelConfirm');
     if(el) renderSafe();
   },5000);
 }
