@@ -5454,10 +5454,19 @@ function confirmRemoveBookFinal(id, deleteNote){
     });
   }
   db.books[me]=myBooks().filter(b=>b.id!==id);
-  if(book.country&&db.countryEvents&&db.countryEvents[me]){
-  db.countryEvents[me]=db.countryEvents[me].filter(e=>e.bookTitle!==book.title);
-  if(!db.countryEvents[me].length) delete db.countryEvents[me];
+ if(book.country&&db.countryEvents&&db.countryEvents[me]){
+  const otherBooksWithSameCountry=(db.books[me]||[]).filter(
+    b=>b.id!==id&&b.country&&b.country.toLowerCase()===book.country.toLowerCase()
+    &&b.readingStatus==='new'&&!b.retroactive
+  );
+  if(otherBooksWithSameCountry.length===0){
+    db.countryEvents[me]=db.countryEvents[me].filter(
+      e=>e.country.toLowerCase()!==book.country.toLowerCase()
+    );
+    if(!db.countryEvents[me].length) delete db.countryEvents[me];
+  }
 }
+
   saveDb();closeModal();renderSafe();
   notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
 }
@@ -5777,6 +5786,22 @@ function toggleRetroactive(bookId,el){
   book.retroactive=el.classList.contains('active');
   if(!book.retroactive&&book.readingStatus==='past') book.readingStatus='new';
   if(book.retroactive) book.readingStatus='past';
+  // retroactive açıldıysa countryEvent'i sil
+  if(book.retroactive&&book.country&&db.countryEvents&&db.countryEvents[me]){
+    const otherBooks=(db.books[me]||[]).filter(
+      b=>b.id!==bookId&&b.country&&b.country.toLowerCase()===book.country.toLowerCase()
+      &&b.readingStatus==='new'&&!b.retroactive
+    );
+    if(otherBooks.length===0){
+      db.countryEvents[me]=db.countryEvents[me].filter(
+        e=>e.country.toLowerCase()!==book.country.toLowerCase()
+      );
+    }
+  }
+  // retroactive kapandıysa countryEvent'i yeniden ekle
+  if(!book.retroactive&&book.country){
+    checkAndAddCountryEvent(book);
+  }
   saveDb();renderSafe();
 }
 
@@ -7972,7 +7997,13 @@ function _placeAvatarStatic(){
   if(!svg) return;
   const coords=window._mapCountryCoords||{};
   const target=window._mapTarget||me;
-  const allEvents=(db.countryEvents&&db.countryEvents[target])||[];
+  const validCountries=new Set(
+  (db.books[target]||[]).filter(b=>b.country&&b.readingStatus==='new'&&!b.retroactive)
+  .map(b=>b.country.toLowerCase())
+);
+const allEvents=((db.countryEvents&&db.countryEvents[target])||[]).filter(
+  e=>validCountries.has(e.country.toLowerCase())
+);
   let lastISO='TR';
   if(allEvents.length>0){
     const last=allEvents[allEvents.length-1];
