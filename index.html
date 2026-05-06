@@ -1617,6 +1617,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div>
         <div class="modal-title" id="modalTitle"></div>
         <div class="modal-subtitle" id="modalSubtitle"></div>
+		<div id="modalCoreadingBadge" style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.3rem;display:none"></div>
       </div>
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
@@ -5718,7 +5719,19 @@ function openBook(bookId,fromShelf=false){
 
   document.getElementById('modalTitle').textContent=book.title;
   document.getElementById('modalSubtitle').textContent=book.author?`— ${book.author}`:'';
-
+  const coreadingEl=document.getElementById('modalCoreadingBadge');
+if(coreadingEl){
+  const sid=book.coreadingSession;
+  const session=sid&&db.readingSessions&&db.readingSessions[sid];
+  const isParticipant=session&&session.participants&&session.participants[me]&&session.participants[me].status==='accepted';
+  if(session&&session.status==='active'&&isParticipant){
+    const names=Object.keys(session.participants).filter(u=>session.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', ');
+    coreadingEl.style.display='';
+    coreadingEl.innerHTML=`<span style="cursor:pointer" onclick="closeModal();scrollToCoreadingCard('${sid}')">👥 ${names} ile birlikte okunuyor</span>`;
+  } else {
+    coreadingEl.style.display='none';
+  }
+}
   const fmtMap={'kitap':'📖 Fiziksel','ekitap':'📱 E-Kitap','sesli':'🎧 Sesli','cizgi':'🎨 Çizgi/Manga'};
 
   document.getElementById('modalBody').innerHTML=`
