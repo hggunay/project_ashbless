@@ -6881,7 +6881,7 @@ function getFeedCards(){
       bookTitle:s.bookTitle,
       author:s.author||'',
       pages:s.pages||0,
-      participants:s.participants||{},
+      participants: JSON.parse(JSON.stringify(s.participants||{})),
       ts:s.createdAt||0,
       expiresAt:s.expiresAt||0,
 	  status: s.status||'pending',
