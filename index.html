@@ -5580,6 +5580,13 @@ function confirmCancelCoreading(btn, sessionId){
     if(el) renderSafe();
   },5000);
 }
+function scrollToCoreadingCard(sessionId){
+  showPanel('feed');
+  setTimeout(()=>{
+    const el=document.getElementById('coreading_'+sessionId);
+    if(el) el.scrollIntoView({behavior:'smooth',block:'center'});
+  },300);
+}
 function confirmLeaveCoreading(btn, sessionId){
   btn.outerHTML=`<span id="leaveConfirm" style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Ayrılmak istediğine emin misin? 
     <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="leaveCoreading('${sessionId}')">Evet</button> 
@@ -7006,7 +7013,7 @@ function renderFeed(append=false){
       const participantNames=Object.keys(card.participants)
         .filter(u=>card.participants[u].status==='accepted')
         .map(u=>(db.users[u]||{}).displayName||u).join(', ');
-      return`<div class="journal-entry" style="border-left:3px solid var(--gold);">
+      return`<div class="journal-entry" id="coreading_${card.sessionId}" style="border-left:3px solid var(--gold);">
         <div class="journal-entry-header">
           <span style="font-size:1.3rem">${avatarHtml(card.userAvatar,"1.5rem")}</span>
           <div class="journal-entry-meta">
@@ -9341,6 +9348,7 @@ function renderBookList(){
             ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
             ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', ')}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
           </div>
         </div>`;
