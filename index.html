@@ -5549,7 +5549,12 @@ async function linkCoreadingBook(sessionId, bookId){
     const n=db.notifications[me].find(n=>n.sessionId===sessionId&&n.type==='coreading_start');
     if(n) n.responded=true;
   }
-  function filterCoreadingPicker(query){
+  document.getElementById('coreadingPicker')?.remove();
+  await saveDb();
+  notify('📖 Kitap bağlandı!', book.title+' birlikte okuma oturumuna bağlandı.');
+  renderSafe();
+}
+function filterCoreadingPicker(query){
   const list=document.getElementById('coreadingPickerList');
   if(!list) return;
   const q=query.toLowerCase().trim();
