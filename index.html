@@ -6226,7 +6226,7 @@ function saveField(bookId,field,value){
   saveDb();renderSafe();
 }
 
-function saveFieldTyped(bookId,field,type,rawVal){
+async function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
   if(field==='endDate'&&type==='date'&&rawVal){
