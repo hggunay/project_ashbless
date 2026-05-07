@@ -7146,7 +7146,7 @@ ${isActive?`<div style="margin-top:.5rem">
     ${Object.keys(card.progress||{}).map(u=>{
       const p=card.progress[u];
       const uName=(db.users[u]||{}).displayName||u;
-      return (p.history||[]).map(h=>`<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.5);margin-bottom:.15rem">${h.date} ${uName} • ${h.msg||'%'+h.milestone}</div>`).join('');
+      return (p.history||[]).map(h=>'<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:rgba(26,18,8,.5);margin-bottom:.15rem">'+h.date+' '+uName+' • '+(h.msg||'%'+h.milestone)+'</div>').join('');
     }).join('')}
   </div>
 </div>`:''}
