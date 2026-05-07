@@ -5641,8 +5641,24 @@ async function checkCoreadingMilestone(book){
   if(lastMilestone<=prevMilestone) return;
   // Yeni milestone — kaydet ve bildirim gönder
   session.progress[me].lastMilestone=lastMilestone;
+  const msgPool={
+  25:['hikâyeye adım attı','ilk çeyreği tamamladı','hikâyenin içine çekilmeye başladı'],
+  50:['yolun yarısına ulaştı','kitabın tam ortasına geldi','artık hikâyenin merkezinde'],
+  75:['finale yaklaşıyor','son bölümlere geçti','artık son sayfalara yakın'],
+  100:['son sayfayı çevirdi','kitabı tamamladı','bu yolculuğun sonuna ulaştı']
+};
+const pool=msgPool[lastMilestone]||[];
+session.progress[me].milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
+  if(!session.progress[me].history) session.progress[me].history=[];
+session.progress[me].history=session.progress[me].history.filter(h=>h.milestone<=lastMilestone);
+session.progress[me].history.push({
+  milestone:lastMilestone,
+  msg:session.progress[me].milestoneMsg,
+  date:new Date().toLocaleDateString('tr-TR'),
+  ts:Date.now()
+});
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   // Tüm katılımcılara bildirim gönder
   const myName=(db.users[me]||{}).displayName||me;
@@ -5666,12 +5682,23 @@ async function checkCoreadingMilestone(book){
     db.notifications[u].push(notif);
   }
   await saveDb();
+  const milestoneMsg={
+    25:'Hikâye derinleşmeye başladı • %25',
+    50:'Yolun yarısı geride kaldı • %50',
+    75:'Son bölümler yaklaşıyor • %75',
+    100:'Son sayfa kapandı • %100'
+  };
+  const milestoneMsg={
+    25:'Hikâye derinleşmeye başladı • %25',
+    50:'Yolun yarısı geride kaldı • %50',
+    75:'Son bölümler yaklaşıyor • %75',
+    100:'Son sayfa kapandı • %100'
+  };
   if(lastMilestone===100){
-    notify('🎉 Tebrikler!', session.bookTitle+' kitabını bitirdin!');
+    notify('🎉 Tebrikler!', session.bookTitle+' — '+milestoneMsg[100]);
   } else {
-    notify('👥 Milestone!', '%'+lastMilestone+' ye ulaştın!');
+    notify('👥 '+session.bookTitle, milestoneMsg[lastMilestone]);
   }
-}
 function addBookConfirmed(){
   closeDupConfirm();
   window._skipDupCheck=true;
@@ -6964,7 +6991,8 @@ function getFeedCards(){
       expiresAt:s.expiresAt||0,
 	  status: s.status||'pending',
       startedAt: s.startedAt||0,
-    });
+progress: s.progress||{},
+});
   });
   return cards;
 }
@@ -7112,10 +7140,23 @@ ${!isInitiator&&myStatus==='left'?`
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
-${isActive?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
-  <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>
-  <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,'${card.sessionId}')">✗ Ayrıl</button>
+${isActive?`<div style="margin-top:.5rem">
+  <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem">
+    <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>
+    <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,'${card.sessionId}')">✗ Ayrıl</button>
+  </div>
+  ${Object.keys(card.progress||{}).some(u=>card.progress[u].lastMilestone)?`
+<div style="margin-top:.4rem">
+  <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▸')?'📖 Okuma günlüğü ▴':'📖 Okuma günlüğü ▸'">📖 Okuma günlüğü ▸</span>
+  <div style="display:none;margin-top:.3rem">
+    ${Object.keys(card.progress||{}).map(u=>{
+      const p=card.progress[u];
+      const uName=(db.users[u]||{}).displayName||u;
+      return (p.history||[]).map(h=>`<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.5);margin-bottom:.15rem">${h.date} ${uName} • ${h.msg||'%'+h.milestone}</div>`).join('');
+    }).join('')}
+  </div>
 </div>`:''}
+
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
