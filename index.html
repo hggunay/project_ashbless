@@ -5614,6 +5614,64 @@ db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()
   console.log('db participants:', JSON.stringify(db.readingSessions[sessionId].participants));
   renderSafe();
 }
+// ── İLERLEME MİLESTONE ──
+async function checkCoreadingMilestone(book){
+  if(!book.coreadingSession) return;
+  const sessionId=book.coreadingSession;
+  const session=db.readingSessions&&db.readingSessions[sessionId];
+  if(!session||session.status!=='active') return;
+  if(!book.currentPage||!book.pages) return;
+  const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
+  const milestones=[25,50,75,100];
+  const reached=milestones.filter(m=>pct>=m);
+  if(!reached.length) return;
+  const lastMilestone=reached[reached.length-1];
+  // Daha önce bu milestone kaydedilmiş mi?
+  if(!session.progress) session.progress={};
+  if(!session.progress[me]) session.progress[me]={};
+  const prevMilestone=session.progress[me].lastMilestone||0;
+  // Geri gidilmiş mi kontrol et
+  if(pct<prevMilestone){
+    // Milestone'u güncelle, önceki milestone'ları temizle
+    session.progress[me].lastMilestone=lastMilestone||0;
+    session.progress[me].pct=pct;
+    await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
+    return;
+  }
+  if(lastMilestone<=prevMilestone) return;
+  // Yeni milestone — kaydet ve bildirim gönder
+  session.progress[me].lastMilestone=lastMilestone;
+  session.progress[me].pct=pct;
+  session.progress[me].updatedAt=Date.now();
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
+  // Tüm katılımcılara bildirim gönder
+  const myName=(db.users[me]||{}).displayName||me;
+  const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
+  for(const u of accepted){
+    const notifId='crm_'+sessionId+'_'+me+'_'+lastMilestone+'_'+Date.now();
+    const notif={
+      id:notifId,
+      type:'coreading_milestone',
+      sessionId:sessionId,
+      bookTitle:session.bookTitle,
+      fromUser:me,
+      fromName:myName,
+      milestone:lastMilestone,
+      ts:new Date().toISOString(),
+      seen:false,
+      reaction:'👥',
+      context:session.bookTitle,
+    };
+    if(!db.notifications[u]) db.notifications[u]=[];
+    db.notifications[u].push(notif);
+  }
+  await saveDb();
+  if(lastMilestone===100){
+    notify('🎉 Tebrikler!', session.bookTitle+' kitabını bitirdin!');
+  } else {
+    notify('👥 Milestone!', '%'+lastMilestone+' ye ulaştın!');
+  }
+}
 function addBookConfirmed(){
   closeDupConfirm();
   window._skipDupCheck=true;
@@ -6128,9 +6186,9 @@ function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   if(field==='country') checkAndAddCountryEvent(book);
+  if(field==='currentPage') checkCoreadingMilestone(book);
   saveDb();renderSafe();
 }
-
 function recalcSeriesCompletion(bookId){
   const books=db.books[me]||[];
   const book=books.find(b=>b.id===bookId);if(!book||!book.series)return;
@@ -7026,7 +7084,7 @@ function renderFeed(append=false){
       const participantNames=Object.keys(card.participants)
         .filter(u=>card.participants[u].status==='accepted')
         .map(u=>(db.users[u]||{}).displayName||u).join(', ');
-      return`<div class="journal-entry" id="coreading_${card.sessionId}" style="border-left:3px solid var(--gold);">
+      return`<div class="journal-entry" id="coreading_${card.sessionId}" style="border-left:4px solid var(--gold);background:rgba(201,162,39,.13);">
         <div class="journal-entry-header">
           <span style="font-size:1.3rem">${avatarHtml(card.userAvatar,"1.5rem")}</span>
           <div class="journal-entry-meta">
