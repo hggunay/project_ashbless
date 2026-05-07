@@ -5614,6 +5614,29 @@ db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()
   console.log('db participants:', JSON.stringify(db.readingSessions[sessionId].participants));
   renderSafe();
 }
+function buildActiveCoreadingSection(card){
+  let html='<div style="margin-top:.5rem">';
+  html+='<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem">';
+  html+='<span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>';
+  html+='<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+card.sessionId+'\')">✗ Ayrıl</button>';
+  html+='</div>';
+  const hasProgress=Object.keys(card.progress||{}).some(u=>card.progress[u].lastMilestone);
+  if(hasProgress){
+    html+='<div style="margin-top:.4rem">';
+    html+='<span style="font-family:\'Space Mono\',monospace;font-size:.6rem;color:var(--gold);cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.textContent.includes(\'▸\')?\'📖 Okuma günlüğü ▴\':\'📖 Okuma günlüğü ▸\'">📖 Okuma günlüğü ▸</span>';
+    html+='<div style="display:none;margin-top:.3rem">';
+    Object.keys(card.progress||{}).forEach(u=>{
+      const p=card.progress[u];
+      const uName=(db.users[u]||{}).displayName||u;
+      (p.history||[]).forEach(h=>{
+        html+='<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:rgba(26,18,8,.5);margin-bottom:.15rem">'+h.date+' '+uName+' \u2022 '+(h.msg||'%'+h.milestone)+'</div>';
+      });
+    });
+    html+='</div></div>';
+  }
+  html+='</div>';
+  return html;
+}
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
   if(!book.coreadingSession) return;
@@ -7135,29 +7158,7 @@ ${!isInitiator&&myStatus==='left'?`
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
 ${isActive?buildActiveCoreadingSection(card):''}
-function buildActiveCoreadingSection(card){
-  let html='<div style="margin-top:.5rem">';
-  html+='<div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.4rem">';
-  html+='<span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>';
-  html+='<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+card.sessionId+'\')">✗ Ayrıl</button>';
-  html+='</div>';
-  const hasProgress=Object.keys(card.progress||{}).some(u=>card.progress[u].lastMilestone);
-  if(hasProgress){
-    html+='<div style="margin-top:.4rem">';
-    html+='<span style="font-family:\'Space Mono\',monospace;font-size:.6rem;color:var(--gold);cursor:pointer" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display===\'none\'?\'block\':\'none\';this.textContent=this.textContent.includes(\'▸\')?\'📖 Okuma günlüğü ▴\':\'📖 Okuma günlüğü ▸\'">📖 Okuma günlüğü ▸</span>';
-    html+='<div style="display:none;margin-top:.3rem">';
-    Object.keys(card.progress||{}).forEach(u=>{
-      const p=card.progress[u];
-      const uName=(db.users[u]||{}).displayName||u;
-      (p.history||[]).forEach(h=>{
-        html+='<div style="font-family:\'Space Mono\',monospace;font-size:.58rem;color:rgba(26,18,8,.5);margin-bottom:.15rem">'+h.date+' '+uName+' \u2022 '+(h.msg||'%'+h.milestone)+'</div>';
-      });
-    });
-    html+='</div></div>';
-  }
-  html+='</div>';
-  return html;
-}
+
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
