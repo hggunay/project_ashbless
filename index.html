@@ -7039,6 +7039,7 @@ function getFeedCards(){
       expiresAt:s.expiresAt||0,
 	  status: s.status||'pending',
       startedAt: s.startedAt||0,
+	  progress: JSON.parse(JSON.stringify(s.progress||{})),
     });
   });
   return cards;
@@ -7173,6 +7174,7 @@ function renderFeed(append=false){
           ${card.pages?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(245,237,214,.5);margin-left:.5rem">${card.pages} sayfa</span>`:''}
         </div>
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
+		${Object.keys(card.progress||{}).length?`<div style="font-family:'Space Mono',monospace;font-size:.63rem;color:rgba(26,18,8,.5);margin-bottom:.4rem">${Object.keys(card.progress).map(u=>{const p=card.progress[u];const name=(db.users[u]||{}).displayName||u;return`${name}: %${p.pct||0}`;}).join(' · ')}</div>`:''}
         ${!isInitiator&&!alreadyResponded&&myStatus!=='left'?`
 <div style="display:flex;gap:.5rem;margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">✓ Katıl</button>
