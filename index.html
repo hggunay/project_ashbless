@@ -7948,6 +7948,13 @@ function renderNotifPanel(){
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
+	if(n.type==='coreading_milestone'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">👥 <strong>${n.fromName}</strong> — <em>${n.bookTitle}</em></div>
+        <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.25rem">%${n.milestone} tamamladı</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
     return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
       <div style="font-size:.88rem;color:var(--ink)">${n.reaction} <strong>${n.fromName}</strong> — "${n.context}"</div>
       <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
