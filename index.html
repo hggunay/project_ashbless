@@ -5696,8 +5696,8 @@ async function checkCoreadingMilestone(book){
   if(!book.coreadingSession) return;
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
-  if(!session||session.status!=='active') return;
-  if(!book.currentPage||!book.pages) return;
+  if(!session||session.status!=='active'){console.log('session yok veya aktif değil', session?.status); return;}
+  if(!book.currentPage||!book.pages){console.log('sayfa bilgisi yok', book.currentPage, book.pages); return;}
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
