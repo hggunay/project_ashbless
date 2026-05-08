@@ -5702,6 +5702,7 @@ console.log('checkCoreadingMilestone başladı', book.coreadingSession);
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
+  console.log('pct:', pct, 'reached:', reached);
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
   // Daha önce bu milestone kaydedilmiş mi?
