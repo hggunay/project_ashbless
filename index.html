@@ -5429,6 +5429,7 @@ async function checkCoreadingMilestone(book){
     100:['son sayfayı çevirdi','kitabı tamamladı','bu yolculuğun sonuna ulaştı']
   };
   const pool=msgPool[lastMilestone]||[];
+  console.log('pool:', pool, 'lastMilestone:', lastMilestone, 'msg:', pool[Math.floor(Math.random()*pool.length)]);
   session.progress[me].milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
   if(!session.progress[me].history) session.progress[me].history=[];
   session.progress[me].history=session.progress[me].history.filter(h=>h.milestone<=lastMilestone);
