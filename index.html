@@ -5693,6 +5693,7 @@ db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()
 }
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
+console.log('checkCoreadingMilestone başladı', book.coreadingSession);
   if(!book.coreadingSession) return;
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
