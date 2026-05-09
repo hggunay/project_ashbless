@@ -5411,8 +5411,11 @@ async function checkCoreadingMilestone(book){
   const lastMilestone=reached[reached.length-1];
   console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
   if(!session.progress) session.progress={};
-  if(!session.progress[me]) session.progress[me]={};
-  const prevMilestone=session.progress[me].lastMilestone||0;
+if(!session.progress[me]) session.progress[me]={};
+try{
+const prevMilestone=session.progress[me].lastMilestone||0;
+console.log('pct:', pct, 'lastMilestone:', lastMilestone, 'prevMilestone:', prevMilestone);
+}catch(e){console.error('prevMilestone hatası:', e);}
   console.log('pct:', pct, 'lastMilestone:', lastMilestone, 'prevMilestone:', prevMilestone);
   if(pct<prevMilestone){
     session.progress[me].lastMilestone=lastMilestone||0;
