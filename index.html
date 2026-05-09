@@ -5409,6 +5409,7 @@ async function checkCoreadingMilestone(book){
   const reached=milestones.filter(m=>pct>=m);
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
+  console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
   if(!session.progress) session.progress={};
   if(!session.progress[me]) session.progress[me]={};
   const prevMilestone=session.progress[me].lastMilestone||0;
