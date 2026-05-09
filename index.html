@@ -5409,11 +5409,11 @@ async function checkCoreadingMilestone(book){
   const reached=milestones.filter(m=>pct>=m);
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
-  console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
+
   if(!session.progress) session.progress={};
 if(!session.progress[me]) session.progress[me]={};
 const prevMilestone=session.progress[me].lastMilestone||0;
-console.log('pct:', pct, 'lastMilestone:', lastMilestone, 'prevMilestone:', prevMilestone);
+
   if(pct<prevMilestone){
     session.progress[me].lastMilestone=lastMilestone||0;
     session.progress[me].pct=pct;
@@ -5421,7 +5421,7 @@ console.log('pct:', pct, 'lastMilestone:', lastMilestone, 'prevMilestone:', prev
     return;
   }
   if(lastMilestone<=prevMilestone) return;
-  console.log('milestone geçildi, msg yazılacak');
+  
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
@@ -5695,7 +5695,7 @@ db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()
 }
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
-console.log('checkCoreadingMilestone başladı', book.coreadingSession);
+
   if(!book.coreadingSession) return;
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
@@ -5704,7 +5704,7 @@ console.log('checkCoreadingMilestone başladı', book.coreadingSession);
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
-  console.log('pct:', pct, 'reached:', reached);
+
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
   console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
@@ -6269,7 +6269,7 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   if(field==='country') checkAndAddCountryEvent(book);
-  if(field==='currentPage'){console.log('milestone check', book.coreadingSession, book.currentPage, book.pages); await checkCoreadingMilestone(book);}
+  if(field==='currentPage'){ await checkCoreadingMilestone(book);}
   saveDb();renderSafe();
 }
 function recalcSeriesCompletion(bookId){
