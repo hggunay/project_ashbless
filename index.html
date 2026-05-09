@@ -23,7 +23,6 @@
 .pw-toggle:hover{opacity:1;}
 
 /* --- SHADOW / KARANLIK AİLESİ --- */
-	
 .badge-aura-hor.active-unlock {
     position: relative;
     overflow: visible !important;
@@ -5410,22 +5409,10 @@ async function checkCoreadingMilestone(book){
   const reached=milestones.filter(m=>pct>=m);
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
-
   if(!session.progress) session.progress={};
-if(!session.progress[me]) session.progress[me]={};
-const prevMilestone=session.progress[me].lastMilestone||0;
-
-  if(pct<prevMilestone){
-    session.progress[me].lastMilestone=lastMilestone||0;
-    session.progress[me].pct=pct;
-    await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
-    return;
-  }
+  if(!session.progress[me]) session.progress[me]={};
+  const prevMilestone=session.progress[me].lastMilestone||0;
   if(lastMilestone<=prevMilestone) return;
-  
-  session.progress[me].lastMilestone=lastMilestone;
-  session.progress[me].pct=pct;
-  session.progress[me].updatedAt=Date.now();
   const msgPool={
     25:['hikâyeye adım attı','ilk çeyreği tamamladı','hikâyenin içine çekilmeye başladı'],
     50:['yolun yarısına ulaştı','kitabın tam ortasına geldi','artık hikâyenin merkezinde'],
@@ -5433,16 +5420,10 @@ const prevMilestone=session.progress[me].lastMilestone||0;
     100:['son sayfayı çevirdi','kitabı tamamladı','bu yolculuğun sonuna ulaştı']
   };
   const pool=msgPool[lastMilestone]||[];
-  console.log('pool:', pool, 'lastMilestone:', lastMilestone, 'msg:', pool[Math.floor(Math.random()*pool.length)]);
+  session.progress[me].lastMilestone=lastMilestone;
+  session.progress[me].pct=pct;
+  session.progress[me].updatedAt=Date.now();
   session.progress[me].milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
-  if(!session.progress[me].history) session.progress[me].history=[];
-  session.progress[me].history=session.progress[me].history.filter(h=>h.milestone<=lastMilestone);
-  session.progress[me].history.push({
-    milestone:lastMilestone,
-    msg:session.progress[me].milestoneMsg,
-    date:new Date().toLocaleDateString('tr-TR'),
-    ts:Date.now()
-  });
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   const myName=(db.users[me]||{}).displayName||me;
   const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
@@ -5456,6 +5437,7 @@ const prevMilestone=session.progress[me].lastMilestone||0;
       fromUser:me,
       fromName:myName,
       milestone:lastMilestone,
+      milestoneMsg:session.progress[me].milestoneMsg,
       ts:new Date().toISOString(),
       seen:false,
       reaction:'👥',
@@ -5465,16 +5447,16 @@ const prevMilestone=session.progress[me].lastMilestone||0;
     db.notifications[u].push(notif);
   }
   await saveDb();
-  const milestoneMsg={
+  const milestoneLabels={
     25:'Hikâye derinleşmeye başladı • %25',
     50:'Yolun yarısı geride kaldı • %50',
     75:'Son bölümler yaklaşıyor • %75',
     100:'Son sayfa kapandı • %100'
   };
   if(lastMilestone===100){
-    notify('🎉 Tebrikler!', session.bookTitle+' — '+milestoneMsg[100]);
+    notify('🎉 Tebrikler!', session.bookTitle+' — '+milestoneLabels[100]);
   } else {
-    notify('👥 '+session.bookTitle, milestoneMsg[lastMilestone]);
+    notify('👥 '+session.bookTitle, milestoneLabels[lastMilestone]);
   }
 }
 // ── BİRLİKTE OKUMA ───────────────────────────────────────────
@@ -5708,7 +5690,6 @@ async function checkCoreadingMilestone(book){
 
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
-  console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
   
   // Daha önce bu milestone kaydedilmiş mi?
   if(!session.progress) session.progress={};
