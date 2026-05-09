@@ -5706,6 +5706,7 @@ console.log('checkCoreadingMilestone başladı', book.coreadingSession);
   console.log('pct:', pct, 'reached:', reached);
   if(!reached.length) return;
   const lastMilestone=reached[reached.length-1];
+  console.log('lm:', lastMilestone, 'sp:', JSON.stringify(session.progress));
   
   // Daha önce bu milestone kaydedilmiş mi?
   if(!session.progress) session.progress={};
