@@ -5421,6 +5421,7 @@ async function checkCoreadingMilestone(book){
     return;
   }
   if(lastMilestone<=prevMilestone) return;
+  console.log('milestone geçildi, msg yazılacak');
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
