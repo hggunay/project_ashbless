@@ -6391,7 +6391,8 @@ function confirmMarkAsUnread(bookId, status){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
   // Önceki konuma dön — previousStatus varsa oraya, yoksa wishlist
-  const targetStatus = book.previousStatus && book.previousStatus!=='reading' ? book.previousStatus : status;
+  // 'new'(okundu) listesinden geri alınıyorsa reading'e dön
+  const targetStatus = book.readingStatus==='new' ? 'reading' : (book.previousStatus && book.previousStatus!=='reading' ? book.previousStatus : status);
   book.readingStatus=targetStatus;
   book.previousStatus=null;
   // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle
@@ -7178,7 +7179,7 @@ ${!isInitiator&&myStatus==='left'?`
 <div style="margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">↩ Tekrar Katıl</button>
 </div>`:''}
-        ${isInitiator&&!isActive?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
+        ${isInitiator&&!isActive&&!isCompleted?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startCoreadingRead('${card.sessionId}')">📖 Okumayı Başlat</button>
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
@@ -9609,7 +9610,7 @@ function renderBookList(){
     const zebraClass=idx%2===1?'zebra-dark':'';
     return`<div class="book-item${noTitle?' book-item-warn':''} ${zebraClass}" onclick="openBook(${b.id})">
       <div class="book-info">
-        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}</span>
+        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}${b.coreadingSession?' 👥':''}</span>
         ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
         ${dateDisplay?`<span class="book-meta">${dateDisplay}</span>`:''}
         ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
