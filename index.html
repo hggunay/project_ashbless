@@ -5693,6 +5693,27 @@ async function checkCoreadingMilestone(book){
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
     notify('🎉 '+session.bookTitle, myName+' — '+msg);
+    // Tamamlanma kontrolü
+    const allParticipants=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'||session.participants[u].status==='left');
+    const activeReaders=allParticipants.filter(u=>session.progress&&session.progress[u]);
+    const allDone=activeReaders.length>0&&activeReaders.every(u=>session.progress[u].lastMilestone===100||session.participants[u].status==='left');
+    if(allDone){
+      session.status='completed';
+      session.completedAt=Date.now();
+      if(!session.history) session.history=[];
+      session.history.push({type:'completed',ts:Date.now()});
+      await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
+      await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',session.completedAt);
+      await fbSet('aa-v4/readingSessions/'+sessionId+'/history',session.history);
+      // Herkese tebrik bildirimi
+      const allAccepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
+      for(const u of allAccepted){
+        if(!db.notifications[u]) db.notifications[u]=[];
+        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:session.bookTitle,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:session.bookTitle});
+      }
+      await saveDb();
+      notify('🎉 Tebrikler!', session.bookTitle+' birlikte tamamlandı!');
+    }
   } else {
     notify('👥 '+session.bookTitle, myName+' — '+msg);
   }
@@ -5764,9 +5785,11 @@ function confirmRemoveBook(id){
   confirmRemoveBookFinal(id, true);
 }
 
-function confirmRemoveBookFinal(id, deleteNote){
+async function confirmRemoveBookFinal(id, deleteNote){
   const book=myBooks().find(b=>b.id===id);
   if(!book) return;
+  // Birlikte okuma oturumundan çık
+  if(book.coreadingSession) await leaveCoreading(book.coreadingSession);
   if(!deleteNote && book.comment){
     // Notu arşive taşı
     if(!db.archivedNotes) db.archivedNotes={};
@@ -7111,6 +7134,7 @@ function renderFeed(append=false){
 	// Birlikte okuma davet kartı — ayrı render
     if(card.type==='coreading_invite'){
 	const isActive = card.status === 'active';
+	const isCompleted = card.status === 'completed';
       const myStatus=(card.participants[me]||{}).status;
       const alreadyResponded=myStatus==='accepted'||myStatus==='rejected';
       const isInitiator=card.u===me;
@@ -7154,10 +7178,10 @@ ${!isInitiator&&myStatus==='left'?`
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
-${isActive?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
+${isCompleted?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>`:(isActive?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,'${card.sessionId}')">✗ Ayrıl</button>
-</div>`:''}
+</div>`:'')}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
