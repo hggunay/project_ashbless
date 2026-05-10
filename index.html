@@ -6197,7 +6197,12 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   if(field==='country') checkAndAddCountryEvent(book);
-  if(field==='currentPage'){ await checkCoreadingMilestone(book, rawVal);}
+  if(field==='currentPage'){
+    // book[field] zaten value ile güncellendi; ama güvence için rawVal'dan da set et
+    const cpVal=Number(rawVal);
+    if(cpVal>0) book.currentPage=cpVal;
+    await checkCoreadingMilestone(book);
+  }
   saveDb();renderSafe();
 }
 function recalcSeriesCompletion(bookId){
