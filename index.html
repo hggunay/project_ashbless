@@ -2446,6 +2446,8 @@ async function loadDb(){
     const data=await fbGet('aa-v4');
     if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.readingSessions)db.readingSessions={};
   if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
+      // readingSessions ayrı path'ten yükle
+      try{const rs=await fbGet('aa-v4/readingSessions');if(rs)db.readingSessions=rs;}catch(e){}
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
       // Avatar'ları ayrı node'dan yükle
@@ -5620,20 +5622,20 @@ async function checkCoreadingMilestone(book){
   if(!book.coreadingSession){console.log('❌ coreadingSession yok'); return;}
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
-  if(!session||session.status!=='active'){console.log('session yok veya aktif değil', session?.status); return;}
-  if(!book.currentPage||!book.pages){console.log('sayfa bilgisi yok', book.currentPage, book.pages); return;}
+  console.log('🔵 session status:', session?.status, 'sessionId:', sessionId);
+  if(!session||session.status!=='active'){console.log('❌ session aktif değil', session?.status); return;}
+  if(!book.currentPage||!book.pages){console.log('❌ sayfa bilgisi yok', book.currentPage, book.pages); return;}
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
+  console.log('🔵 pct:', pct);
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
-
-  if(!reached.length) return;
+  console.log('🔵 reached:', reached);
+  if(!reached.length){console.log('❌ milestone yok'); return;}
   const lastMilestone=reached[reached.length-1];
-  
-  // Daha önce bu milestone kaydedilmiş mi?
   if(!session.progress) session.progress={};
   if(!session.progress[me]) session.progress[me]={};
   const prevMilestone=session.progress[me].lastMilestone||0;
-  // Geri gidilmiş mi kontrol et
+  console.log('🔵 lastMilestone:', lastMilestone, 'prevMilestone:', prevMilestone, 'me:', me);
   if(pct<prevMilestone){
     // Milestone'u güncelle, önceki milestone'ları temizle
     session.progress[me].lastMilestone=lastMilestone||0;
