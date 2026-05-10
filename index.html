@@ -6996,6 +6996,7 @@ function getFeedCards(){
 	  status: s.status||'pending',
       startedAt: s.startedAt||0,
 	  progress: JSON.parse(JSON.stringify(s.progress||{})),
+      history: JSON.parse(JSON.stringify(s.history||[])),
     });
   });
   return cards;
