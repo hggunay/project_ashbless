@@ -5419,7 +5419,7 @@ async function checkCoreadingMilestone(book){
     75:['finale yaklaşıyor','son bölümlere geçti','artık son sayfalara yakın'],
     100:['son sayfayı çevirdi','kitabı tamamladı','bu yolculuğun sonuna ulaştı']
   };
-  const pool=msgPool[lastMilestone]||[];
+  
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
