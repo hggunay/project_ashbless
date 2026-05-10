@@ -5616,8 +5616,8 @@ db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()
 }
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
-
-  if(!book.coreadingSession) return;
+  console.log('🔵 checkCoreadingMilestone çağrıldı', book?.id, 'coreadingSession:', book?.coreadingSession, 'currentPage:', book?.currentPage, 'pages:', book?.pages);
+  if(!book.coreadingSession){console.log('❌ coreadingSession yok'); return;}
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session||session.status!=='active'){console.log('session yok veya aktif değil', session?.status); return;}
