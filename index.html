@@ -5423,6 +5423,7 @@ async function checkCoreadingMilestone(book){
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
+  const pool=['başladı','çeyrek yolda','yarı yolda','finale yaklaşıyor','bitirdi'];
   session.progress[me].milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   const myName=(db.users[me]||{}).displayName||me;
