@@ -5679,10 +5679,11 @@ async function checkCoreadingMilestone(book){
     db.notifications[u].push(notif);
   }
   await saveDb();
+  const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
-    notify('🎉 Tebrikler!', session.bookTitle+' kitabını bitirdin!');
+    notify('🎉 '+session.bookTitle, myName+' — '+msg);
   } else {
-    notify('👥 Milestone!', '%'+lastMilestone+' ye ulaştın!');
+    notify('👥 '+session.bookTitle, myName+' — '+msg);
   }
 }
 function addBookConfirmed(){
