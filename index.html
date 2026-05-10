@@ -6322,9 +6322,14 @@ function pauseReading(bookId){
   notify('🚧 Yarım bırakıldı',`"${book.title}" yarım bırakılanlar listesine taşındı.`);
 }
 
-function finishReading(bookId){
+async function finishReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  // Birlikte okuma varsa %100 milestone tetikle
+  if(book.coreadingSession&&book.pages){
+    book.currentPage=book.pages;
+    await checkCoreadingMilestone(book);
+  }
   // Daha önce okunmuşsa yeniden okuma say
   if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
