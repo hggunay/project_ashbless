@@ -6251,7 +6251,7 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     }
   }
   if(field==='country') checkAndAddCountryEvent(book);
-  if(field==='currentPage'){ await checkCoreadingMilestone(book);}
+  if(field==='currentPage'){ await checkCoreadingMilestone(book, rawVal);}
   saveDb();renderSafe();
 }
 function recalcSeriesCompletion(bookId){
