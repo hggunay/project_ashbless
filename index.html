@@ -5416,6 +5416,7 @@ async function startCoreadingSession(titleRaw, author){
     participants: {},
   };
   session.participants[me]={status:'accepted', joinedAt: Date.now()};
+  session.history=[{type:'started',user:me,ts:Date.now()}];
   try{
     await fbSet('aa-v4/readingSessions/'+sessionId, session);
     notify('👥 Davet gönderildi!', titleRaw+' için birlikte okuma daveti akışa düştü.');
@@ -5440,6 +5441,10 @@ async function respondCoreading(sessionId, response){
   if(!db.readingSessions[sessionId]) db.readingSessions[sessionId]=session;
   if(!db.readingSessions[sessionId].participants) db.readingSessions[sessionId].participants={};
   db.readingSessions[sessionId].participants[me]={status:response, joinedAt:Date.now()};
+  // history ekle
+  if(!db.readingSessions[sessionId].history) db.readingSessions[sessionId].history=[];
+  db.readingSessions[sessionId].history.push({type:response==='accepted'?'joined':'rejected',user:me,ts:Date.now()});
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', db.readingSessions[sessionId].history);
   if(response==='accepted'){
     notify('👥 Katıldın!', session.bookTitle+' için birlikte okuma oturumuna katıldın.');
   }
@@ -5465,6 +5470,8 @@ async function startCoreadingRead(sessionId){
   // Oturumu active yap
   db.readingSessions[sessionId].status='active';
   db.readingSessions[sessionId].startedAt=Date.now();
+  if(!db.readingSessions[sessionId].history) db.readingSessions[sessionId].history=[];
+  db.readingSessions[sessionId].history.push({type:'reading_started',user:me,ts:Date.now()});
   await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
   // Her katılımcıya bildirim gönder
   const others=accepted.filter(u=>u!==me);
@@ -5652,11 +5659,15 @@ async function checkCoreadingMilestone(book){
     100:['son sayfayı çevirdi','kitabı tamamladı','bu yolculuğun sonuna ulaştı']
   };
   const pool=msgPool[lastMilestone]||[];
-  session.progress[me].milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
+  const milestoneMsg=pool[Math.floor(Math.random()*pool.length)]||'';
+  session.progress[me].milestoneMsg=milestoneMsg;
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
+  if(!session.history) session.history=[];
+  session.history.push({type:'milestone',user:me,ts:Date.now(),pct:pct,msg:milestoneMsg});
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', session.history);
   // Tüm katılımcılara bildirim gönder
   const myName=(db.users[me]||{}).displayName||me;
   const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
@@ -7118,7 +7129,15 @@ function renderFeed(append=false){
           ${card.pages?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(245,237,214,.5);margin-left:.5rem">${card.pages} sayfa</span>`:''}
         </div>
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
-		${Object.keys(card.progress||{}).length?`<div style="font-family:'Space Mono',monospace;font-size:.63rem;color:rgba(26,18,8,.5);margin-bottom:.4rem">${Object.keys(card.progress).map(u=>{const p=card.progress[u];const name=(db.users[u]||{}).displayName||u;return`${name} ${p.milestoneMsg?'— '+p.milestoneMsg:'%'+(p.pct||0)}`;}).join(' · ')}</div>`:''}
+		${(()=>{
+  const hist=card.history||[];
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');return ds+' — '+name;};
+  if(!hist.length) return '';
+  const recent=hist.slice(-2);
+  const older=hist.slice(0,-2);
+  const sid=card.sessionId;
+  return `<div style="font-family:'Space Mono',monospace;font-size:.63rem;color:rgba(26,18,8,.6);margin-bottom:.4rem;line-height:1.6">${recent.map(fmt).join('<br>')}</div>${older.length?`<details style="margin-bottom:.4rem"><summary style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.4);cursor:pointer;list-style:none">▾ Geçmişi gör (${older.length})</summary><div style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.4);margin-top:.3rem;line-height:1.7">${older.map(fmt).join('<br>')}</div></details>`:''}`;
+})()}
         ${!isInitiator&&!alreadyResponded&&myStatus!=='left'?`
 <div style="display:flex;gap:.5rem;margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">✓ Katıl</button>
