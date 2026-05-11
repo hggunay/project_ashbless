@@ -5696,17 +5696,7 @@ function launchCoreadingConfetti(big=false){
     else canvas.remove();
   }
   draw();
-  // Ses
-  try{
-    const ctx2=new AudioContext();
-    const o=ctx2.createOscillator();const g=ctx2.createGain();
-    o.connect(g);g.connect(ctx2.destination);
-    o.frequency.setValueAtTime(big?880:660,ctx2.currentTime);
-    o.frequency.exponentialRampToValueAtTime(big?1760:1320,ctx2.currentTime+0.3);
-    g.gain.setValueAtTime(0.3,ctx2.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,ctx2.currentTime+0.5);
-    o.start();o.stop(ctx2.currentTime+0.5);
-  }catch(e){}
+
 }
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
@@ -6419,11 +6409,11 @@ async function finishReading(bookId){
     book.currentPage=book.pages;
     await checkCoreadingMilestone(book);
   }
+  book.currentPage=null;
   // Daha önce okunmuşsa yeniden okuma say
   if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
   book.endDate=book.endDate||new Date().toISOString().split('T')[0];
-  book.currentPage=null;
   book.rereadStarted=false;
   const month=book.endDate.substring(0,7);
   book.month=month;
@@ -7242,7 +7232,7 @@ function renderFeed(append=false){
           <span style="font-size:1.3rem">${avatarHtml(card.userAvatar,"1.5rem")}</span>
           <div class="journal-entry-meta">
             <span class="journal-entry-user">${card.userName}</span>
-            <span class="journal-entry-book">👥 Birlikte Okuyalım</span>
+            <span class="journal-entry-book" onclick="${isCompleted?'launchCoreadingConfetti(true)':''}" style="${isCompleted?'cursor:pointer':''}" title="${isCompleted?'🎉 Tıkla!':''}" >👥 Birlikte Okuyalım</span>
           </div>
           <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${formatTimeAgo(new Date(card.ts).toISOString())}</span>
         </div>
@@ -7253,7 +7243,7 @@ function renderFeed(append=false){
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';return ds+' — '+name;};
   if(!hist.length) return '';
   const recent=hist.slice(-2);
   const older=hist.slice(0,-2);
@@ -7277,7 +7267,7 @@ ${!isInitiator&&myStatus==='left'?`
 ${(()=>{
   const sid=card.sessionId;
   const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
-  if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>';
+  if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte okuma tamamlandı!</div>';
   if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
   if(isActive) return '<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem"><span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span><button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div>';
   return '';
