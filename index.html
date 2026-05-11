@@ -5418,6 +5418,8 @@ async function startCoreadingSession(titleRaw, author){
   session.participants[me]={status:'accepted', joinedAt: Date.now()};
   session.history=[{type:'started',user:me,ts:Date.now()}];
   try{
+    if(!db.readingSessions) db.readingSessions={};
+    db.readingSessions[sessionId]=session;
     await fbSet('aa-v4/readingSessions/'+sessionId, session);
     notify('👥 Davet gönderildi!', titleRaw+' için birlikte okuma daveti akışa düştü.');
     // Formu sıfırla
@@ -5548,8 +5550,12 @@ function showCoreadingBookPicker(sessionId){
   panel.dataset.sessionId=sessionId;
   panel.innerHTML=`
     <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:.75rem">Hangi kitabı bağlamak istersin?</div>
+    <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+      <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="acceptCoreadingBook('${sessionId}','new');document.getElementById('coreadingPicker').remove()">📖 Yeni kitap olarak ekle</button>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-bottom:.5rem">— ya da listedeki bir kitabı bağla —</div>
     <input type="text" placeholder="Kitap ara..." oninput="filterCoreadingPicker(this.value)" style="width:100%;padding:.5rem .75rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--ink);font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem;box-sizing:border-box"/>
-    <div id="coreadingPickerList">${options||'<div style="color:#888;font-size:.85rem">Kitap bulunamadı.</div>'}</div>
+    <div id="coreadingPickerList">${options||'<div style="color:#888;font-size:.85rem">Listende başka kitap yok.</div>'}</div>
     <button class="btn btn-sm" style="margin-top:.75rem" onclick="document.getElementById('coreadingPicker').remove()">İptal</button>
   `;
   document.body.appendChild(panel);
@@ -5610,6 +5616,21 @@ function confirmLeaveCoreading(btn, sessionId){
     if(el) renderSafe();
   },5000);
 }
+
+async function confirmEndCoreading(sessionId){
+  if(!confirm('Oturumu sonlandırmak istediğine emin misin? Tüm katılımcılar için kapanacak.')) return;
+  const session=db.readingSessions&&db.readingSessions[sessionId];
+  if(!session) return;
+  session.status='ended';
+  session.endedAt=Date.now();
+  if(!session.history) session.history=[];
+  session.history.push({type:'ended',user:me,ts:Date.now()});
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/endedAt',session.endedAt);
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/history',session.history);
+  notify('⏹ Oturum sonlandırıldı', session.bookTitle+' birlikte okuma oturumu kapatıldı.');
+  renderSafe();
+}
 async function leaveCoreading(sessionId){
   if(!me) return;
   const session=db.readingSessions&&db.readingSessions[sessionId];
@@ -5617,7 +5638,15 @@ async function leaveCoreading(sessionId){
   const path='aa-v4/readingSessions/'+sessionId+'/participants/'+me;
   await fbSet(path,{status:'left', leftAt:Date.now()});
   if(!db.readingSessions[sessionId].participants) db.readingSessions[sessionId].participants={};
-db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()};
+  db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()};
+  // Admin devri — initiator ayrılıyorsa en eski accepted kişi admin olsun
+  if(session.initiator===me){
+    const others=Object.keys(session.participants||{}).filter(u=>u!==me&&session.participants[u].status==='accepted');
+    if(others.length>0){
+      db.readingSessions[sessionId].initiator=others[0];
+      await fbSet('aa-v4/readingSessions/'+sessionId+'/initiator',others[0]);
+    }
+  }
   // Kullanıcının kitabındaki coreadingSession bağını kaldır
   const myBook=(db.books[me]||[]).find(b=>b.coreadingSession===sessionId);
   if(myBook) delete myBook.coreadingSession;
@@ -7145,6 +7174,7 @@ function renderFeed(append=false){
     if(card.type==='coreading_invite'){
 	const isActive = card.status === 'active';
 	const isCompleted = card.status === 'completed';
+	const isEnded = card.status === 'ended';
       const myStatus=(card.participants[me]||{}).status;
       const alreadyResponded=myStatus==='accepted'||myStatus==='rejected';
       const isInitiator=card.u===me;
@@ -7167,7 +7197,7 @@ function renderFeed(append=false){
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte tamamlandı!';return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';return ds+' — '+name;};
   if(!hist.length) return '';
   const recent=hist.slice(-2);
   const older=hist.slice(0,-2);
@@ -7188,10 +7218,11 @@ ${!isInitiator&&myStatus==='left'?`
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
-${isCompleted?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>`:(isActive?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
+${isCompleted?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>`:(isActive&&myStatus!=='left'?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,'${card.sessionId}')">✗ Ayrıl</button>
-</div>`:'')}
+  ${isInitiator?`<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading('${card.sessionId}')">⏹ Sonlandır</button>`:''}
+</div>`:(isActive&&myStatus==='left'?`<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">↩ Tekrar Katıl</button></div>`:'')`}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
