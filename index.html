@@ -5768,7 +5768,7 @@ async function checkCoreadingMilestone(book){
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
     notify('🎉 '+session.bookTitle, myName+' — '+msg);
-    launchCoreadingConfetti(false);
+    if(!book._fromFinish) launchCoreadingConfetti(false);
     // Tamamlanma kontrolü
     const allParticipants=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'||session.participants[u].status==='left');
     const activeReaders=allParticipants.filter(u=>session.progress&&session.progress[u]);
@@ -5794,8 +5794,8 @@ async function checkCoreadingMilestone(book){
     }
   } else {
     notify('👥 '+session.bookTitle, myName+' — '+msg);
+    renderSafe();
   }
-  renderSafe();
 }
 function addBookConfirmed(){
   closeDupConfirm();
@@ -6407,7 +6407,9 @@ async function finishReading(bookId){
   // Birlikte okuma varsa %100 milestone tetikle
   if(book.coreadingSession&&book.pages){
     book.currentPage=book.pages;
+    book._fromFinish=true;
     await checkCoreadingMilestone(book);
+    delete book._fromFinish;
   }
   book.currentPage=null;
   // Daha önce okunmuşsa yeniden okuma say
