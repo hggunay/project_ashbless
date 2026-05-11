@@ -5427,6 +5427,7 @@ async function startCoreadingSession(titleRaw, author){
     document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));
     document.querySelector('#readingTimeChips .chip').classList.add('active');
     updateAddFormFields();
+    renderSafe();
   }catch(e){
     alert('Oturum başlatılamadı, tekrar dene.');
   }
@@ -5497,6 +5498,8 @@ async function startCoreadingRead(sessionId){
   await saveDb();
   notify('📖 Okuma başladı!', session.bookTitle+' için birlikte okuma oturumu başladı.');
   renderSafe();
+  // Initiator için kitap bağlama
+  showCoreadingBookPicker(sessionId);
 }
 async function acceptCoreadingBook(sessionId, mode){
   if(!me) return;
@@ -5709,9 +5712,10 @@ async function checkCoreadingMilestone(book){
       const allAccepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
       for(const u of allAccepted){
         if(!db.notifications[u]) db.notifications[u]=[];
-        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:session.bookTitle,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:session.bookTitle});
+        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:session.bookTitle,fromName:completedByName,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:session.bookTitle});
       }
       await saveDb();
+      const completedByName=(db.users[me]||{}).displayName||me;
       notify('🎉 Tebrikler!', session.bookTitle+' birlikte tamamlandı!');
     }
   } else {
@@ -7163,7 +7167,7 @@ function renderFeed(append=false){
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte tamamlandı!';return ds+' — '+name;};
   if(!hist.length) return '';
   const recent=hist.slice(-2);
   const older=hist.slice(0,-2);
