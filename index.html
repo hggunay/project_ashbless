@@ -7218,11 +7218,14 @@ ${!isInitiator&&myStatus==='left'?`
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
-${isCompleted?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>`:(isActive&&myStatus!=='left'?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
-  <span style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>
-  <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,'${card.sessionId}')">✗ Ayrıl</button>
-  ${isInitiator?`<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading('${card.sessionId}')">⏹ Sonlandır</button>`:''}
-</div>`:(isActive&&myStatus==='left'?`<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">↩ Tekrar Katıl</button></div>`:'')}}
+${(()=>{
+  const sid=card.sessionId;
+  const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
+  if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte tamamlandı!</div>';
+  if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
+  if(isActive) return '<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem"><span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span><button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div>';
+  return '';
+})()}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
       </div>`;
     }
