@@ -5451,6 +5451,14 @@ async function respondCoreading(sessionId, response){
   if(response==='accepted'){
     notify('👥 Katıldın!', session.bookTitle+' için birlikte okuma oturumuna katıldın.');
   }
+  // Initiator'a bildirim gönder
+  const initiator=session.initiator;
+  if(initiator&&initiator!==me){
+    const myName=(db.users[me]||{}).displayName||me;
+    if(!db.notifications[initiator]) db.notifications[initiator]=[];
+    db.notifications[initiator].push({id:'crr_'+sessionId+'_'+me+'_'+Date.now(),type:'coreading_response',sessionId,bookTitle:session.bookTitle,fromUser:me,fromName:myName,response,ts:new Date().toISOString(),seen:false,reaction:response==='accepted'?'✓':'✗',context:session.bookTitle});
+    await saveDb();
+  }
   renderSafe();
 }
 async function cancelCoreading(sessionId){
@@ -5508,7 +5516,10 @@ async function acceptCoreadingBook(sessionId, mode){
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session) return;
   if(mode==='new'){
-    // Yeni kitap kaydı oluştur
+    // Duplicate kontrolü
+    if(!db.books[me]) db.books[me]=[];
+    const existing=db.books[me].find(b=>b.coreadingSession===sessionId);
+    if(existing){ notify('📖 Zaten eklendi', session.bookTitle+' zaten listenizde.'); return; }
     const newBook={
       id: Date.now()+Math.random(),
       title: session.bookTitle,
@@ -5518,7 +5529,6 @@ async function acceptCoreadingBook(sessionId, mode){
       addedAt: Date.now(),
       coreadingSession: sessionId,
     };
-    if(!db.books[me]) db.books[me]=[];
     db.books[me].push(newBook);
     await saveDb();
     notify('📖 Kitap eklendi!', session.bookTitle+' okuyorum listene eklendi.');
@@ -5655,6 +5665,49 @@ async function leaveCoreading(sessionId){
   console.log('db participants:', JSON.stringify(db.readingSessions[sessionId].participants));
   renderSafe();
 }
+
+function launchCoreadingConfetti(big=false){
+  const count=big?200:80;
+  const colors=['#c9a227','#4a6741','#a0522d','#e8d5a3','#2d4a27'];
+  const canvas=document.createElement('canvas');
+  canvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999';
+  document.body.appendChild(canvas);
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  const particles=Array.from({length:count},()=>({
+    x:Math.random()*canvas.width,y:-10,
+    w:Math.random()*10+4,h:Math.random()*6+3,
+    color:colors[Math.floor(Math.random()*colors.length)],
+    rot:Math.random()*360,
+    vx:(Math.random()-0.5)*4,
+    vy:Math.random()*3+2,
+    vr:(Math.random()-0.5)*6
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;p.vy+=0.05;
+      ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.rot*Math.PI/180);
+      ctx.fillStyle=p.color;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);ctx.restore();
+    });
+    frame++;
+    if(frame<(big?180:120)) requestAnimationFrame(draw);
+    else canvas.remove();
+  }
+  draw();
+  // Ses
+  try{
+    const ctx2=new AudioContext();
+    const o=ctx2.createOscillator();const g=ctx2.createGain();
+    o.connect(g);g.connect(ctx2.destination);
+    o.frequency.setValueAtTime(big?880:660,ctx2.currentTime);
+    o.frequency.exponentialRampToValueAtTime(big?1760:1320,ctx2.currentTime+0.3);
+    g.gain.setValueAtTime(0.3,ctx2.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx2.currentTime+0.5);
+    o.start();o.stop(ctx2.currentTime+0.5);
+  }catch(e){}
+}
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
   console.log('🔵 checkCoreadingMilestone çağrıldı', book?.id, 'coreadingSession:', book?.coreadingSession, 'currentPage:', book?.currentPage, 'pages:', book?.pages);
@@ -5725,6 +5778,7 @@ async function checkCoreadingMilestone(book){
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
     notify('🎉 '+session.bookTitle, myName+' — '+msg);
+    launchCoreadingConfetti(false);
     // Tamamlanma kontrolü
     const allParticipants=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'||session.participants[u].status==='left');
     const activeReaders=allParticipants.filter(u=>session.progress&&session.progress[u]);
@@ -5746,6 +5800,7 @@ async function checkCoreadingMilestone(book){
       await saveDb();
       const completedByName=(db.users[me]||{}).displayName||me;
       notify('🎉 Tebrikler!', session.bookTitle+' birlikte tamamlandı!');
+      launchCoreadingConfetti(true);
     }
   } else {
     notify('👥 '+session.bookTitle, myName+' — '+msg);
@@ -5864,10 +5919,11 @@ if(coreadingEl){
   const sid=book.coreadingSession;
   const session=sid&&db.readingSessions&&db.readingSessions[sid];
   const isParticipant=session&&session.participants&&session.participants[me]&&session.participants[me].status==='accepted';
-  if(session&&session.status==='active'&&isParticipant){
+  if(session&&(session.status==='active'||session.status==='completed')&&isParticipant){
     const names=Object.keys(session.participants).filter(u=>session.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', ');
+    const label=session.status==='completed'?'🎉 '+names+' ile birlikte tamamlandı':'👥 '+names+' ile birlikte okunuyor';
     coreadingEl.style.display='';
-    coreadingEl.innerHTML=`<span style="cursor:pointer" onclick="closeModal();scrollToCoreadingCard('${sid}')">👥 ${names} ile birlikte okunuyor</span>`;
+    coreadingEl.innerHTML=`<span style="cursor:pointer" onclick="closeModal();scrollToCoreadingCard('${sid}')">${label}</span>`;
   } else {
     coreadingEl.style.display='none';
   }
@@ -7202,7 +7258,7 @@ function renderFeed(append=false){
   const recent=hist.slice(-2);
   const older=hist.slice(0,-2);
   const sid=card.sessionId;
-  return `<div style="font-family:'Space Mono',monospace;font-size:.63rem;color:rgba(26,18,8,.6);margin-bottom:.4rem;line-height:1.6">${recent.map(fmt).join('<br>')}</div>${older.length?`<details style="margin-bottom:.4rem"><summary style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.4);cursor:pointer;list-style:none">▾ Geçmişi gör (${older.length})</summary><div style="font-family:'Space Mono',monospace;font-size:.58rem;color:rgba(26,18,8,.4);margin-top:.3rem;line-height:1.7">${older.map(fmt).join('<br>')}</div></details>`:''}`;
+  return `<div style="font-family:'Space Mono',monospace;font-size:.72rem;color:rgba(26,18,8,.75);margin-bottom:.4rem;line-height:1.7">${recent.map(fmt).join('<br>')}</div>${older.length?`<details style="margin-bottom:.4rem"><summary style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(26,18,8,.55);cursor:pointer;list-style:none">▾ Geçmişi gör (${older.length})</summary><div style="font-family:'Space Mono',monospace;font-size:.67rem;color:rgba(26,18,8,.6);margin-top:.3rem;line-height:1.7">${older.map(fmt).join('<br>')}</div></details>`:''}`;
 })()}
         ${!isInitiator&&!alreadyResponded&&myStatus!=='left'?`
 <div style="display:flex;gap:.5rem;margin-top:.5rem">
@@ -7980,6 +8036,18 @@ function renderNotifPanel(){
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="acceptCoreadingBook('${n.sessionId}','new')">+ Kitabımı ekle</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="acceptCoreadingBook('${n.sessionId}','existing')">📚 Mevcut kitabımı bağla</button>
         </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	if(n.type==='coreading_response'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">${n.response==='accepted'?'✓':'✗'} <strong>${n.fromName}</strong> — <em>${n.bookTitle}</em> ${n.response==='accepted'?'oturumuna katıldı':'davetini reddetti'}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	if(n.type==='coreading_completed'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05')"}">
+        <div style="font-size:.88rem;color:var(--ink)">🎉 <em>${n.bookTitle}</em> — Birlikte tamamladınız!</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
