@@ -6408,7 +6408,7 @@ async function finishReading(bookId){
   if(book.coreadingSession&&book.pages){
     book.currentPage=book.pages;
     book._fromFinish=true;
-    await checkCoreadingMilestone(book);
+    try{ await checkCoreadingMilestone(book); }catch(e){ console.error('milestone hata',e); }
     delete book._fromFinish;
   }
   book.currentPage=null;
