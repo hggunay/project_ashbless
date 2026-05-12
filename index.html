@@ -6448,6 +6448,7 @@ async function finishReading(bookId){
   );
   const _isNewCountry=book.country&&!_otherCountries.has(book.country.toLowerCase());
   checkAndAddCountryEvent(book);
+  closeModal();
   render();
   const baseDelay=_isNewCountry?2200:0;
   if(_isNewCountry){
