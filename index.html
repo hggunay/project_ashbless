@@ -5538,6 +5538,9 @@ async function acceptCoreadingBook(sessionId, mode){
     db.books[me].push(newBook);
     await saveDb();
     notify('📖 Kitap eklendi!', session.bookTitle+' okuyorum listene eklendi.');
+    // Bildirim panelini kapat
+    const np=document.getElementById('notifPanel');
+    if(np) np.style.display='none';
   } else {
     // Mevcut kitap seçimi — modal aç
     showCoreadingBookPicker(sessionId);
@@ -5633,8 +5636,21 @@ function confirmLeaveCoreading(btn, sessionId){
   },5000);
 }
 
-async function confirmEndCoreading(sessionId){
-  if(!confirm('Oturumu sonlandırmak istediğine emin misin? Tüm katılımcılar için kapanacak.')) return;
+function confirmEndCoreading(sessionId){
+  // Inline onay — kart içinde göster
+  const btn=document.querySelector(`[onclick="confirmEndCoreading('${sessionId}')"]`);
+  if(!btn) return;
+  const existing=document.getElementById('endConfirm_'+sessionId);
+  if(existing){existing.remove();return;}
+  const div=document.createElement('div');
+  div.id='endConfirm_'+sessionId;
+  div.style.cssText='display:inline-flex;align-items:center;gap:.4rem;margin-left:.4rem';
+  div.innerHTML=`<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust)">Emin misin?</span>
+    <button class="btn btn-sm" style="background:rgba(160,82,45,.3);color:var(--rust);font-size:.6rem;padding:.1rem .4rem" onclick="doEndCoreading('${sessionId}')">Evet</button>
+    <button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .4rem" onclick="document.getElementById('endConfirm_${sessionId}').remove()">Hayır</button>`;
+  btn.parentNode.insertBefore(div,btn.nextSibling);
+}
+async function doEndCoreading(sessionId){
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session) return;
   session.status='ended';
@@ -5791,6 +5807,7 @@ async function checkCoreadingMilestone(book){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
       await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',session.completedAt);
       await fbSet('aa-v4/readingSessions/'+sessionId+'/history',session.history);
+      const completedByName=(db.users[me]||{}).displayName||me;
       // Herkese tebrik bildirimi
       const allAccepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
       for(const u of allAccepted){
@@ -5798,9 +5815,9 @@ async function checkCoreadingMilestone(book){
         db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:session.bookTitle,fromName:completedByName,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:session.bookTitle});
       }
       await saveDb();
-      const completedByName=(db.users[me]||{}).displayName||me;
       notify('🎉 Tebrikler!', session.bookTitle+' birlikte tamamlandı!');
       launchCoreadingConfetti(true);
+      updateNotifDot();
     }
   } else {
     notify('👥 '+session.bookTitle, myName+' — '+msg);
