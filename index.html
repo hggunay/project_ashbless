@@ -827,6 +827,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <button class="filter-tab" onclick="filterFeed('reviews',this)">Değerlendirme</button>
               <button class="filter-tab" onclick="filterFeed('quotes',this)">Alıntı</button>
               <button class="filter-tab" onclick="filterFeed('stories',this)">Hikâye</button>
+              <button class="filter-tab" onclick="filterFeed('coreading',this)">👥 Birlikte</button>
             </div>
           </div>
         </div>
@@ -931,6 +932,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <button class="book-subtab" id="bst-bitti" onclick="switchBookTab('bitti')">✅ Okudum <span id="bst-bitti-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-yarim" onclick="switchBookTab('yarim')">🚧 Yarım Bıraktım <span id="bst-yarim-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Okumak İstiyorum <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
+            <button class="book-subtab" id="bst-coreading" onclick="switchBookTab('coreading')">👥 Birlikte <span id="bst-coreading-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
 
           <!-- Bitti -->
@@ -986,6 +988,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
           <div class="book-subpanel" id="bsp-liste">
             <div id="wishlistList"></div>
             <div id="bsp-liste-empty" class="empty-state" style="display:none">Okuma listesi boş.</div>
+          </div>
+          <div class="book-subpanel" id="bsp-coreading">
+            <div id="coreadingBookList"></div>
+            <div id="bsp-coreading-empty" class="empty-state" style="display:none">Henüz birlikte okunan kitap yok.</div>
           </div>
         </div>
       </div>
@@ -3268,7 +3274,7 @@ function toggleJournalFilter(){
 
 function switchBookTab(tab){
   try{localStorage.setItem('aa-booktab',tab);}catch(e){}
-  ['bitti','okuyor','yarim','liste'].forEach(t=>{
+  ['bitti','okuyor','yarim','liste','coreading'].forEach(t=>{
     document.getElementById('bst-'+t)?.classList.toggle('active',t===tab);
     document.getElementById('bsp-'+t)?.classList.toggle('active',t===tab);
   });
@@ -5741,8 +5747,10 @@ async function checkCoreadingMilestone(book){
   session.progress[me].updatedAt=Date.now();
   if(!session.history) session.history=[];
   session.history.push({type:'milestone',user:me,ts:Date.now(),pct:pct,msg:milestoneMsg});
+  session.lastActivityAt=Date.now();
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   await fbSet('aa-v4/readingSessions/'+sessionId+'/history', session.history);
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/lastActivityAt', session.lastActivityAt);
   // Tüm katılımcılara bildirim gönder
   const myName=(db.users[me]||{}).displayName||me;
   const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
@@ -7144,11 +7152,23 @@ function renderFeed(append=false){
   if(feedFilter==='reviews') cards=cards.filter(c=>c.type==='review');
   else if(feedFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
   else if(feedFilter==='stories') cards=cards.filter(c=>c.type==='story');
+  else if(feedFilter==='coreading') cards=cards.filter(c=>c.type==='coreading_invite');
 
   cards.sort((a,b)=>{
     // Birlikte okuma kartları aktifse en üste
     if(a.type==='coreading_invite'&&b.type!=='coreading_invite') return -1;
     if(b.type==='coreading_invite'&&a.type!=='coreading_invite') return 1;
+    if(a.type==='coreading_invite'&&b.type==='coreading_invite'){
+      const now=Date.now();
+      const score=s=>{
+        const act=s.lastActivityAt||s.ts||0;
+        const age=now-act;
+        if(age<7*24*60*60*1000) return now+1e12; // ilk 7 gün en üstte
+        if(age<30*24*60*60*1000) return act; // 7-30 gün normal sıra
+        return act-1e12; // 30+ gün alta
+      };
+      return score(b)-score(a);
+    }
     // İkisi de coreading ise kendi aralarında tarihe göre
     const ta=typeof a.ts==='number'?a.ts:new Date(a.ts||0).getTime();
     const tb=typeof b.ts==='number'?b.ts:new Date(b.ts||0).getTime();
@@ -8106,7 +8126,25 @@ function checkNotifications(){
   if(!unseen.length) return;
   const n=unseen[unseen.length-1];
   const extra=unseen.length>1?` (+${unseen.length-1} daha)`:'';
-  notify(`${n.reaction} Reaksiyon`,`${n.fromName} — "${n.context}"${extra}`);
+  // Bildirim tipine göre farklı metin
+  let notifTitle, notifBody;
+  if(n.type==='coreading_milestone'){
+    notifTitle='👥 '+n.bookTitle;
+    notifBody=(n.fromName||'')+(n.milestoneMsg?' — '+n.milestoneMsg:'');
+  } else if(n.type==='coreading_completed'){
+    notifTitle='🎉 Birlikte okuma tamamlandı!';
+    notifBody=n.bookTitle||'';
+  } else if(n.type==='coreading_response'){
+    notifTitle=n.response==='accepted'?'✓ Daveti kabul etti':'✗ Daveti reddetti';
+    notifBody=(n.fromName||'')+' — '+(n.bookTitle||'');
+  } else if(n.type==='coreading_start'){
+    notifTitle='📖 Okuma başladı!';
+    notifBody=n.bookTitle||'';
+  } else {
+    notifTitle=`${n.reaction} Reaksiyon`;
+    notifBody=`${n.fromName} — "${n.context}"${extra}`;
+  }
+  notify(notifTitle, notifBody);
   // Sağ üst zil sesi
   try{
     const ctx=_getNmAudioCtx();
@@ -9577,6 +9615,26 @@ function renderBookList(){
   if(oc) oc.textContent=reading.length?`(${reading.length})`:'';
   if(yc) yc.textContent=paused.length?`(${paused.length})`:'';
   if(lc) lc.textContent=wishlist.length?`(${wishlist.length})`:'';
+  // Birlikte okunan kitaplar
+  const allBooks=db.books[me]||[];
+  const coreadingBooks=allBooks.filter(b=>b.coreadingSession);
+  const cc=document.getElementById('bst-coreading-count');
+  if(cc) cc.textContent=coreadingBooks.length?`(${coreadingBooks.length})`:'';
+  const crBookList=document.getElementById('coreadingBookList');
+  const crBookEmpty=document.getElementById('bsp-coreading-empty');
+  if(crBookList){
+    crBookList.innerHTML=coreadingBooks.map(b=>{
+      const s=db.readingSessions&&db.readingSessions[b.coreadingSession];
+      const status=s?s.status:'?';
+      const label=status==='completed'?'🎉 Tamamlandı':status==='active'?'📖 Devam ediyor':'⏸ Bekliyor';
+      const names=s?Object.keys(s.participants||{}).filter(u=>s.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', '):'';
+      return`<div class="book-list-item" onclick="openBook(${b.id})" style="cursor:pointer;padding:.5rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
+        <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600">${b.title} 👥</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.5);margin-top:.2rem">${b.author||''} · ${label}${names?' · '+names:''}</div>
+      </div>`;
+    }).join('');
+    if(crBookEmpty) crBookEmpty.style.display=coreadingBooks.length?'none':'block';
+  }
 
   // Aktif sekmeyi localStorage'dan yükle
   const activeTab=getBookTab();
