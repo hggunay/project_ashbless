@@ -9616,8 +9616,7 @@ function renderBookList(){
   if(yc) yc.textContent=paused.length?`(${paused.length})`:'';
   if(lc) lc.textContent=wishlist.length?`(${wishlist.length})`:'';
   // Birlikte okunan kitaplar
-  const allBooks=db.books[me]||[];
-  const coreadingBooks=allBooks.filter(b=>b.coreadingSession);
+  const coreadingBooks=(db.books[me]||[]).filter(b=>b.coreadingSession);
   const cc=document.getElementById('bst-coreading-count');
   if(cc) cc.textContent=coreadingBooks.length?`(${coreadingBooks.length})`:'';
   const crBookList=document.getElementById('coreadingBookList');
