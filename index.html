@@ -5795,10 +5795,12 @@ async function checkCoreadingMilestone(book){
   if(lastMilestone===100){
     notify('🎉 '+session.bookTitle, myName+' — '+msg);
     if(!book._fromFinish) launchCoreadingConfetti(false);
-    // Tamamlanma kontrolü
-    const allParticipants=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'||session.participants[u].status==='left');
-    const activeReaders=allParticipants.filter(u=>session.progress&&session.progress[u]);
-    const allDone=activeReaders.length>0&&activeReaders.every(u=>session.progress[u].lastMilestone===100||session.participants[u].status==='left');
+    // Tamamlanma kontrolü — accepted olan herkes ya %100'e ulaşmış ya da left olmalı
+    const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
+    const allDone=accepted.length>0&&accepted.every(u=>
+      (session.progress&&session.progress[u]&&session.progress[u].lastMilestone===100)
+      ||session.participants[u].status==='left'
+    );
     if(allDone){
       session.status='completed';
       session.completedAt=Date.now();
@@ -7311,7 +7313,7 @@ ${(()=>{
   const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
   if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte okuma tamamlandı!</div>';
   if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
-  if(isActive) return '<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem"><span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span><button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div>';
+  if(isActive){const myBooks_=(db.books&&db.books[me])||[];const myBound=myBooks_.find(b=>b.coreadingSession===sid);const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';return '<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem;flex-wrap:wrap"><span style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss)">📖 Okuma devam ediyor</span>'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div>';}
   return '';
 })()}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
@@ -12161,9 +12163,16 @@ async function init(){
         const fresh=await fbGet('aa-v4');
         if(fresh&&fresh.users){
           const oldBooks=JSON.stringify(db.books);
+          const oldNotifs=JSON.stringify((db.notifications||{})[me]);
           db={...db,...fresh};
           if(!db.shelf) db.shelf={};
           try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
+          try{const rs=await fbGet('aa-v4/readingSessions');if(rs)db.readingSessions=rs;}catch(e){}
+          const newNotifs=JSON.stringify((db.notifications||{})[me]);
+          if(newNotifs!==oldNotifs){
+            updateNotifDot();
+            checkNotifications();
+          }
           if(JSON.stringify(db.books)!==oldBooks) render();
           else renderBanners();
         }
