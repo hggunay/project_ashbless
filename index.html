@@ -12243,10 +12243,9 @@ async function init(){
       const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
       if(modalOpen) return; // Düzenleme varsa yenileme
       try{
-        fbGet
-          if(JSON.stringify(db.books)!==oldBooks) render();
-          else renderBanners();
-        }
+        await fbGet('aa-v4');
+        if(JSON.stringify(db.books)!==oldBooks) render();
+        else renderBanners();
       }catch(e){}
     }
   });
