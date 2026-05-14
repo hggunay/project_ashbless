@@ -5872,7 +5872,7 @@ async function checkCoreadingMilestone(book){
       const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
       for(const u of allAccepted){
         if(!db.notifications[u]) db.notifications[u]=[];
-        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:freshSession.bookTitle});
+        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:u===me,reaction:'🎉',context:freshSession.bookTitle});
       }
       await saveDb();
       notify('🎉 Herkesle birlikte!', freshSession.bookTitle+' birlikte tamamlandı!');
@@ -8221,6 +8221,7 @@ function checkNotifications(){
   } else if(n.type==='coreading_completed'){
     notifTitle='🎉 Birlikte okuma tamamlandı!';
     notifBody=n.bookTitle||'';
+    launchCoreadingConfetti(true);
   } else if(n.type==='coreading_response'){
     notifTitle=n.response==='accepted'?'✓ Daveti kabul etti':'✗ Daveti reddetti';
     notifBody=(n.fromName||'')+' — '+(n.bookTitle||'');
