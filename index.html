@@ -5429,7 +5429,7 @@ async function startCoreadingSession(titleRaw, author){
     (s.status==='pending'||s.status==='active') &&
     s.bookTitle.toLowerCase()===titleRaw.toLowerCase()
   );
-  if(duplicate){ alert('Bu kitap için zaten aktif bir oturumun var.'); return; }
+  if(duplicate){ notify('⚠️ Uyarı','Bu kitap için zaten aktif bir oturumun var.'); return; }
   const pages=parseInt(document.getElementById('coreadingPages').value)||0;
   const sessionId='cs_'+Date.now();
   const session={
@@ -5712,6 +5712,14 @@ async function leaveCoreading(sessionId){
   const myBook=(db.books[me]||[]).find(b=>b.coreadingSession===sessionId);
   if(myBook) delete myBook.coreadingSession;
   await saveDb();
+  // Pending oturumda kimse kalmadıysa oturumu kapat
+  if(session.status==='pending'){
+    const remaining=Object.keys(session.participants||{}).filter(u=>u!==me&&session.participants[u].status!=='left');
+    if(remaining.length===0){
+      await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
+      if(db.readingSessions[sessionId]) db.readingSessions[sessionId].status='ended';
+    }
+  }
   notify('👋 Ayrıldın', session.bookTitle+' birlikte okuma oturumundan ayrıldın.');
   console.log('db participants:', JSON.stringify(db.readingSessions[sessionId].participants));
   // Ayrılma sonrası allDone kontrolü — kalan herkes bitirdiyse oturumu kapat
@@ -7358,6 +7366,7 @@ function renderFeed(append=false){
           ${card.pages?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(245,237,214,.5);margin-left:.5rem">${card.pages} sayfa</span>`:''}
         </div>
         ${participantNames?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.5rem">✓ Katılan: ${participantNames}</div>`:''}
+		${(()=>{const leftNames=Object.keys(card.participants).filter(u=>card.participants[u].status==='left').map(u=>(db.users[u]||{}).displayName||u);return leftNames.length?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.5rem">👤 ${leftNames.length} kişi ayrıldı</div>`:''})()}
 		${(()=>{
   const hist=card.history||[];
   const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';return ds+' — '+name;};
@@ -7380,7 +7389,8 @@ function renderFeed(append=false){
 </div>`:''}
 ${(()=>{
   const sid=card.sessionId;
-  const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
+  const isIn=myStatus==='accepted';
+const endBtn=(isInitiator||isIn)?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
   if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte okuma tamamlandı!</div>';
   if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
   if(isActive){const myBooks_=(db.books&&db.books[me])||[];const myBound=myBooks_.find(b=>b.coreadingSession===sid);const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';return '<div style="margin-top:.5rem"><div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.4rem">📖 Okuma devam ediyor</div><div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div></div>';}
