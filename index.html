@@ -5423,6 +5423,13 @@ function closeDupConfirm(){
 // ── BİRLİKTE OKUMA ───────────────────────────────────────────
 async function startCoreadingSession(titleRaw, author){
   if(!me){ alert('Giriş yapman gerekiyor.'); return; }
+  const sessions=Object.values(db.readingSessions||{});
+  const duplicate=sessions.find(s=>
+    s.initiator===me &&
+    (s.status==='pending'||s.status==='active') &&
+    s.bookTitle.toLowerCase()===titleRaw.toLowerCase()
+  );
+  if(duplicate){ alert('Bu kitap için zaten aktif bir oturumun var.'); return; }
   const pages=parseInt(document.getElementById('coreadingPages').value)||0;
   const sessionId='cs_'+Date.now();
   const session={
