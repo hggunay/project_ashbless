@@ -5841,15 +5841,19 @@ async function checkCoreadingMilestone(book){
   await saveDb();
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
-    // Kişisel bildirim + küçük konfeti
-    notify('✅ Tebrikler!', session.bookTitle+' kitabını bitirdiniz!');
-    launchCoreadingConfetti(false);
+    // Kişisel bildirim + küçük konfeti (finishReading'den gelmiyorsa)
+    if(!book._fromFinish){
+      notify('✅ Tebrikler!', session.bookTitle+' kitabını bitirdiniz!');
+      launchCoreadingConfetti(false);
+    }
     // Firebase'den güncel session çek — allDone için doğru veri
     let freshSession=session;
     try{
       const snap=await fetch(FB_URL+'/aa-v4/readingSessions/'+sessionId+'.json');
       freshSession=await snap.json();
     }catch(e){}
+    // Zaten completed ise tekrar tetiklenme
+    if(freshSession.status==='completed'){ renderSafe(); return; }
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
     const allDone=accepted.length>0&&accepted.every(u=>
       (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
@@ -5863,6 +5867,8 @@ async function checkCoreadingMilestone(book){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
       await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',freshSession.completedAt);
       await fbSet('aa-v4/readingSessions/'+sessionId+'/history',freshSession.history);
+      // Local kopyayı güncelle — renderSafe doğru göstersin
+      if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].status='completed';
       const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
       for(const u of allAccepted){
         if(!db.notifications[u]) db.notifications[u]=[];
