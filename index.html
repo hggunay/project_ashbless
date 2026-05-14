@@ -5714,8 +5714,9 @@ async function leaveCoreading(sessionId){
   await saveDb();
   // Pending oturumda kimse kalmadıysa oturumu kapat
   if(session.status==='pending'||session.status==='active'){
-    const allParticipants=Object.keys(db.readingSessions[sessionId].participants||{});
-    const remaining=allParticipants.filter(u=>db.readingSessions[sessionId].participants[u].status!=='left');
+    const freshSession=(await fbGet('aa-v4/readingSessions/'+sessionId))||{};
+    const allParticipants=Object.keys(freshSession.participants||{});
+    const remaining=allParticipants.filter(u=>freshSession.participants[u].status!=='left');
     if(remaining.length===0){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
       if(db.readingSessions[sessionId]) db.readingSessions[sessionId].status='ended';
@@ -12242,19 +12243,7 @@ async function init(){
       const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
       if(modalOpen) return; // Düzenleme varsa yenileme
       try{
-        const fresh=await fbGet('aa-v4');
-        if(fresh&&fresh.users){
-          const oldBooks=JSON.stringify(db.books);
-          const oldNotifs=JSON.stringify((db.notifications||{})[me]);
-          db={...db,...fresh};
-          if(!db.shelf) db.shelf={};
-          try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
-          try{const rs=await fbGet('aa-v4/readingSessions');if(rs)db.readingSessions=rs;}catch(e){}
-          const newNotifs=JSON.stringify((db.notifications||{})[me]);
-          if(newNotifs!==oldNotifs){
-            updateNotifDot();
-            checkNotifications();
-          }
+        fbGet
           if(JSON.stringify(db.books)!==oldBooks) render();
           else renderBanners();
         }
