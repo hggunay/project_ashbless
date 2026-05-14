@@ -7365,10 +7365,7 @@ function renderFeed(append=false){
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">✓ Katıl</button>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="respondCoreading('${card.sessionId}','rejected')">✗ Katılmıyorum</button>
 </div>`:''}
-${!isInitiator&&myStatus==='left'&&isActive?`
-<div style="margin-top:.5rem">
-  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading('${card.sessionId}','accepted')">↩ Tekrar Katıl</button>
-</div>`:''}
+
         ${isInitiator&&!isActive&&!isCompleted?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startCoreadingRead('${card.sessionId}')">📖 Okumayı Başlat</button>
   <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
