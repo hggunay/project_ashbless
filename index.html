@@ -5702,7 +5702,7 @@ async function leaveCoreading(sessionId){
   db.readingSessions[sessionId].participants[me]={status:'left', leftAt:Date.now()};
   // Admin devri — initiator ayrılıyorsa en eski accepted kişi admin olsun
   if(session.initiator===me){
-    const others=Object.keys(session.participants||{}).filter(u=>u!==me&&session.participants[u].status==='accepted');
+    const others=Object.keys(db.readingSessions[sessionId].participants||{}).filter(u=>u!==me&&db.readingSessions[sessionId].participants[u].status!=='left');
     if(others.length>0){
       db.readingSessions[sessionId].initiator=others[0];
       await fbSet('aa-v4/readingSessions/'+sessionId+'/initiator',others[0]);
