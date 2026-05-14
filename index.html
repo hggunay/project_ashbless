@@ -5714,7 +5714,8 @@ async function leaveCoreading(sessionId){
   await saveDb();
   // Pending oturumda kimse kalmadıysa oturumu kapat
   if(session.status==='pending'||session.status==='active'){
-    const remaining=Object.keys(session.participants||{}).filter(u=>u!==me&&session.participants[u].status!=='left');
+    const allParticipants=Object.keys(db.readingSessions[sessionId].participants||{});
+    const remaining=allParticipants.filter(u=>db.readingSessions[sessionId].participants[u].status!=='left');
     if(remaining.length===0){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
       if(db.readingSessions[sessionId]) db.readingSessions[sessionId].status='ended';
