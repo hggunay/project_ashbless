@@ -5954,8 +5954,14 @@ function confirmRemoveBook(id){
 async function confirmRemoveBookFinal(id, deleteNote){
   const book=myBooks().find(b=>b.id===id);
   if(!book) return;
-  // Birlikte okuma oturumundan çık
-  if(book.coreadingSession) await leaveCoreading(book.coreadingSession);
+  if(book.coreadingSession){
+    // Kitap silinince oturumdan sessizce çık — allDone tetiklenmemeli
+    const sid=book.coreadingSession;
+    const path='aa-v4/readingSessions/'+sid+'/participants/'+me;
+    await fbSet(path,{status:'left', leftAt:Date.now()});
+    if(db.readingSessions&&db.readingSessions[sid]&&db.readingSessions[sid].participants)
+      db.readingSessions[sid].participants[me]={status:'left', leftAt:Date.now()};
+  }
   if(!deleteNote && book.comment){
     // Notu arşive taşı
     if(!db.archivedNotes) db.archivedNotes={};
