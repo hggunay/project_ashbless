@@ -5713,7 +5713,7 @@ async function leaveCoreading(sessionId){
   if(myBook) delete myBook.coreadingSession;
   await saveDb();
   // Pending oturumda kimse kalmadıysa oturumu kapat
-  if(session.status==='pending'){
+  if(session.status==='pending'||session.status==='active'){
     const remaining=Object.keys(session.participants||{}).filter(u=>u!==me&&session.participants[u].status!=='left');
     if(remaining.length===0){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
