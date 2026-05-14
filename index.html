@@ -5512,7 +5512,7 @@ async function startCoreadingRead(sessionId){
   if(!session) return;
   if(session.initiator!==me) return;
   const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
-  if(!accepted.length){ alert('Henüz kimse katılmadı.'); return; }
+  if(!accepted.length){ notify('⚠️ Uyarı','Henüz kimse katılmadı.'); return; }
   // Oturumu active yap
   db.readingSessions[sessionId].status='active';
   db.readingSessions[sessionId].startedAt=Date.now();
