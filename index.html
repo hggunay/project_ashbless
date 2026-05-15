@@ -9794,7 +9794,7 @@ function renderBookList(){
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${b.title||'İsimsiz'}</span>
             ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-            ${isMe?`<span class="book-meta">📄 <input type="number" min="0" max="${b.pages||9999}" value="${b.currentPage||''}" placeholder="Sayfa no" style="width:4rem;background:transparent;border:none;border-bottom:1px solid var(--gold);color:var(--ink);font-family:'Space Mono',monospace;font-size:.7rem;text-align:center" onclick="event.stopPropagation()" onchange="savePausedPage(${b.id},this.value)">. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:(b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:'')}
+            ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
           </div>
