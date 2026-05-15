@@ -7421,9 +7421,9 @@ ${(()=>{
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
-        <span style="font-size:1.3rem;display:inline-flex;align-items:center">${avatarHtml(card.userAvatar,"1.5rem")}</span>
+        <span style="font-size:1.3rem;display:inline-flex;align-items:center;cursor:pointer" onclick="viewMember('${card.u}')">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
-          <span class="journal-entry-user">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
+          <span class="journal-entry-user" style="cursor:pointer" onclick="viewMember('${card.u}')">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
           ${headerBook}
           <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
         </div>
