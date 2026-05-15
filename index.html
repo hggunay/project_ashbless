@@ -5854,6 +5854,7 @@ async function checkCoreadingMilestone(book){
     if(!db.notifications[u]) db.notifications[u]=[];
     db.notifications[u].push(notif);
   }
+ await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   await saveDb();
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
