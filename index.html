@@ -5648,6 +5648,11 @@ function confirmCancelCoreading(btn, sessionId){
   },5000);
 }
 function scrollToCoreadingCard(sessionId){
+  if(viewing){
+    viewing=null;
+    renderSafe();
+    notify('👤 Kendi profilin','Kendi profiline döndün.');
+  }
   showPanel('feed');
   setTimeout(()=>{
     const el=document.getElementById('coreading_'+sessionId);
