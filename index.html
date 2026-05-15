@@ -5716,6 +5716,7 @@ async function leaveCoreading(sessionId){
   if(db.readingSessions[sessionId].status==='pending'||db.readingSessions[sessionId].status==='active'){
     const updatedParticipants=db.readingSessions[sessionId].participants||{};
     const remaining=Object.keys(updatedParticipants).filter(u=>updatedParticipants[u].status!=='left');
+    console.log('LEAVE CHECK — remaining:', remaining, 'participants:', JSON.stringify(updatedParticipants));
     if(remaining.length===0){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
       if(db.readingSessions[sessionId]) db.readingSessions[sessionId].status='ended';
