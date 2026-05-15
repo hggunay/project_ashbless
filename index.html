@@ -8249,6 +8249,8 @@ function checkNotifications(){
     notifTitle=`${n.reaction} Reaksiyon`;
     notifBody=`${n.fromName} — "${n.context}"${extra}`;
   }
+  n.seen=true;
+  saveDb();
   notify(notifTitle, notifBody);
   // Sağ üst zil sesi
   try{
