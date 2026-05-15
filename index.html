@@ -7201,7 +7201,7 @@ function getFeedCards(){
   const sessions=db.readingSessions||{};
   const now=Date.now();
   Object.values(sessions).forEach(s=>{
-    if(s.status==='cancelled') return;
+    if(s.status==='cancelled'||s.status==='ended') return;
     if(s.expiresAt&&s.expiresAt<now) return;
     const initiatorUser=db.users[s.initiator]||{};
     cards.push({
