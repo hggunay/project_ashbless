@@ -8985,6 +8985,9 @@ document.addEventListener('touchstart',e=>{
     tt.style.display='none';
   }
 });
+document.addEventListener('touchstart', ()=>{
+  if(_nmAudioCtx && _nmAudioCtx.state === 'suspended') _nmAudioCtx.resume();
+}, {once: false});
 // ─────────────────────────────────────────────────────────────
 
 function setStatsTimeFilter(filter){
@@ -12430,8 +12433,8 @@ function showWeatherMessage(msg, type) {
   const chimeStart = 2.5;
 
   const chimeEnd = type==='rain'
-    ? chimeStart + 5*0.2 + 1.2
-    : chimeStart + 8*0.22 + 1.2;
+    ? 4.5 + 2
+    : 4.26 + 2;
   const noiseFadeEnd = chimeEnd + 4;
 
   const bufferSize = ctx.sampleRate * noiseFadeEnd;
@@ -12454,7 +12457,7 @@ function showWeatherMessage(msg, type) {
   noise.start(); noise.stop(ctx.currentTime+noiseFadeEnd);
 
   if(type==='rain') {
-    [[4186,2.5],[4699,2.7],[5274,2.9],[6272,3.1],[7040,3.3],[7902,3.5]].forEach(([freq,delay])=>{
+    [[4186,2.5],[4699,2.9],[5274,3.3],[6272,3.7],[7040,4.1],[7902,4.5]].forEach(([freq,delay])=>{
       const o=ctx.createOscillator(), g=ctx.createGain();
       o.type='sine'; o.frequency.value=freq;
       g.gain.setValueAtTime(0, ctx.currentTime+delay);
