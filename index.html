@@ -6231,7 +6231,7 @@ if(coreadingEl){
       </div>
     </div>
 
-    ${book.readingStatus==='reading'&&isMe?`
+    ${(book.readingStatus==='reading'||book.readingStatus==='paused')&&isMe?`
     <div class="detail-section" style="border:1px solid rgba(74,103,65,.3);border-radius:4px;padding:.75rem;background:rgba(74,103,65,.05)">
       <div class="detail-section-title" style="color:var(--moss)">📖 Okuma İlerlemesi</div>
       <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
