@@ -865,7 +865,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <span class="field-label">Kitap Adı veya ISBN *</span>
             <div style="display:flex;gap:.4rem;align-items:flex-start">
               <div style="flex:1;position:relative">
-                <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value);checkISBNInput(this.value)" onblur="setTimeout(()=>acHide(),200)" onkeydown="if(event.key==='Enter'&&isISBN(this.value)){event.preventDefault();fillFormFromISBN(this.value.replace(/[^0-9X]/gi,''))}"/>
+                <input class="book-input" id="bookTitle" type="text" placeholder="Kitap adı veya ISBN (örn: 9786050963434)" autocomplete="off" oninput="acSearch(this.value);checkISBNInput(this.value)" onblur="setTimeout(()=>acHide(),300)" onkeydown="if(event.key==='Enter'&&isISBN(this.value)){event.preventDefault();fillFormFromISBN(this.value.replace(/[^0-9X]/gi,''))}"/>
                 <div class="autocomplete-list" id="acList" style="display:none"></div>
                 <div id="isbnHint" style="display:none;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold);opacity:.7;margin-top:.2rem">↵ Enter — kitabı otomatik bul</div>
               </div>
@@ -5207,7 +5207,11 @@ function acSelect(title,author){
   acHide();
 }
 function acHide(){document.getElementById('acList').style.display='none';}
-
+document.addEventListener('click',function(e){
+  if(!e.target.closest('#acList')&&e.target.id!=='bookTitle'){
+    acHide();
+  }
+});
 // ── TARİH YARDIMCI FONKSİYONLARI ─────────────────────────────
 function normalizeDate(s){
   if(!s) return null;
