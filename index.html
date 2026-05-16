@@ -12446,23 +12446,22 @@ function showWeatherMessage(msg, type) {
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.setValueAtTime(300, ctx.currentTime);
-  filter.frequency.linearRampToValueAtTime(type==='rain'?4000:2500, ctx.currentTime+3);
-  filter.frequency.linearRampToValueAtTime(type==='rain'?800:400, ctx.currentTime+noiseFadeEnd);
-  filter.Q.value = type==='rain' ? 8 : 5;
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.001, ctx.currentTime);
-  gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeStart);
-  gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeEnd);
-  gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime+noiseFadeEnd);
-  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  filter.frequency.linearRampToValueAtTime(4000, ctx.currentTime+3);
+  filter.frequency.linearRampToValueAtTime(1500, ctx.currentTime+noiseFadeEnd);
+  filter.Q.value = 8;
+  const noiseGain = ctx.createGain();
+  noiseGain.gain.setValueAtTime(0.001, ctx.currentTime);
+  noiseGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime+chimeStart);
+  noiseGain.gain.linearRampToValueAtTime(0.25, ctx.currentTime+chimeEnd);
+  noiseGain.gain.linearRampToValueAtTime(0.001, ctx.currentTime+noiseFadeEnd);
+  noise.connect(filter); filter.connect(noiseGain); noiseGain.connect(ctx.destination);
   noise.start(); noise.stop(ctx.currentTime+noiseFadeEnd);
-
   if(type==='rain') {
     [[2093,2.5],[2637,2.65],[3136,2.8],[3951,2.95],[4186,3.1],[4699,3.25],[5274,3.4],[6272,3.55],[7040,3.7],[7902,3.85]].forEach(([freq,delay])=>{
       const o=ctx.createOscillator(), g=ctx.createGain();
       o.type='sine'; o.frequency.value=freq;
       g.gain.setValueAtTime(0, ctx.currentTime+delay);
-      g.gain.linearRampToValueAtTime(0.04, ctx.currentTime+delay+0.01);
+      g.gain.linearRampToValueAtTime(0.12, ctx.currentTime+delay+0.01);
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+2);
       o.connect(g); g.connect(ctx.destination);
       o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+2);
