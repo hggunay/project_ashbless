@@ -12446,9 +12446,9 @@ function showWeatherMessage(msg, type) {
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.setValueAtTime(300, ctx.currentTime);
-  filter.frequency.linearRampToValueAtTime(type==='rain'?4000:1200, ctx.currentTime+3);
+  filter.frequency.linearRampToValueAtTime(type==='rain'?4000:2500, ctx.currentTime+3);
   filter.frequency.linearRampToValueAtTime(type==='rain'?800:400, ctx.currentTime+noiseFadeEnd);
-  filter.Q.value = type==='rain' ? 8 : 0;
+  filter.Q.value = type==='rain' ? 8 : 5;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.001, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeStart);
