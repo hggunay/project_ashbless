@@ -12340,7 +12340,7 @@ async function tryShowWeatherMessage() {
       const messages = weatherMessages[type];
       const msg = messages[Math.floor(Math.random()*messages.length)];
       localStorage.setItem('weatherMessageDate', today);
-      showNightMessage(msg);
+      showWeatherMessage(msg, type);
     }catch(e){}
   }, ()=>{}, {timeout:5000});
 }
@@ -12369,8 +12369,110 @@ function isNightTime() {
 }
 
 // 🌙 Ana fonksiyon
+
+function showWeatherMessage(msg, type) {
+  const colors = type==='rain'
+    ? {bg:'rgba(30,60,100,', text:'rgba(168,208,240,'}
+    : {bg:'rgba(200,220,240,', text:'rgba(74,106,138,'};
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `position:fixed;top:40%;left:50%;transform:translateX(-50%);z-index:9990;padding:1rem 2rem;border-radius:8px;background:${colors.bg}0);color:${colors.text}0);font-size:1.4rem;white-space:nowrap;transition:background 1.2s, color 1.2s`;
+
+  const spans = msg.split('').map((ch) => {
+    const span = document.createElement('span');
+    span.style.cssText = `display:inline-block;opacity:0;transition:opacity 1.2s, transform 1.2s ease-out`;
+    span.innerHTML = ch === ' ' ? '&nbsp;' : ch;
+    toast.appendChild(span);
+    return span;
+  });
+  document.body.appendChild(toast);
+
+  if(type==='snow') {
+    spans.forEach((span) => {
+      span.style.transform = `translate(${(Math.random()-0.5)*12}px, ${-(Math.random()*8+4)}px) rotate(${(Math.random()-0.5)*8}deg)`;
+    });
+  } else {
+    spans.forEach((span) => {
+      span.style.transform = `translateY(${-(Math.random()*10+6)}px)`;
+    });
+  }
+
+  const ctx = _getNmAudioCtx();
+  const chimeStart = 2.5;
+
+  const chimeEnd = type==='rain'
+    ? chimeStart + 5*0.2 + 1.2
+    : chimeStart + 8*0.22 + 1.2;
+  const noiseFadeEnd = chimeEnd + 4;
+
+  const bufferSize = ctx.sampleRate * noiseFadeEnd;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0; i<bufferSize; i++) data[i] = (Math.random()*2-1)*(type==='rain'?0.25:0.15);
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(300, ctx.currentTime);
+  filter.frequency.linearRampToValueAtTime(type==='rain'?1800:1200, ctx.currentTime+3);
+  filter.frequency.linearRampToValueAtTime(type==='rain'?800:400, ctx.currentTime+noiseFadeEnd);
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.001, ctx.currentTime);
+  gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeStart);
+  gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeEnd);
+  gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime+noiseFadeEnd);
+  noise.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  noise.start(); noise.stop(ctx.currentTime+noiseFadeEnd);
+
+  if(type==='rain') {
+    [[4186,2.5],[4699,2.7],[5274,2.9],[6272,3.1],[7040,3.3],[7902,3.5]].forEach(([freq,delay])=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=freq;
+      g.gain.setValueAtTime(0, ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.04, ctx.currentTime+delay+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+2);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+2);
+    });
+  } else {
+    const chimeFreqs = [2637,2794,2960,3136,3520,3951,4186,4699,5274,5588,6272,7040];
+    const selected = chimeFreqs.sort(()=>Math.random()-0.5).slice(0,9);
+    selected.forEach((freq,i)=>{
+      const delay = chimeStart + i*0.22;
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type='sine'; o.frequency.value=freq;
+      g.gain.setValueAtTime(0, ctx.currentTime+delay);
+      g.gain.linearRampToValueAtTime(0.03, ctx.currentTime+delay+0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+2);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+2);
+    });
+  }
+
+  setTimeout(()=>{
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      toast.style.background = `${colors.bg}0.85)`;
+      toast.style.color = `${colors.text}1)`;
+      spans.forEach((span,i)=>{
+        setTimeout(()=>{
+          span.style.opacity='1';
+          span.style.transform = type==='snow' ? 'translate(0,0) rotate(0deg)' : 'translateY(0)';
+        }, i*40);
+      });
+    }));
+  }, chimeStart*1000);
+
+  setTimeout(()=>{
+    toast.style.background = `${colors.bg}0)`;
+    toast.style.color = `${colors.text}0)`;
+    spans.forEach(span=>{ span.style.opacity='0'; });
+    setTimeout(()=>toast.remove(), 1200);
+  }, chimeEnd*1000);
+}
+
 function tryShowNightMessage() {
   if (!isNightTime()) return;
+  if(localStorage.getItem('weatherMessageDate') === new Date().toDateString()) return;
 
   const today = new Date().toDateString();
   const lastShownDate = localStorage.getItem("nightMessageDate");
