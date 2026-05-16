@@ -1550,6 +1550,18 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                     <span id="shelfToggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--parchment);border-radius:50%;transition:.3s"></span>
                   </span>
                 </label>
+				<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid rgba(201,162,39,.1);display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap">
+                <div>
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)">Hava durumu animasyonları</div>
+                  <div style="font-size:.8rem;color:#555;font-style:italic;margin-top:.2rem">Yağmurlu veya karlı günlerde açılışta ses ve animasyon gösterilir.</div>
+                </div>
+                <label style="position:relative;display:inline-block;width:44px;height:24px;flex-shrink:0">
+                  <input type="checkbox" id="settingWeather" onchange="toggleWeatherAnim(this.checked)" style="opacity:0;width:0;height:0">
+                  <span id="weatherToggleTrack" style="position:absolute;cursor:pointer;inset:0;background:rgba(138,69,19,.3);border-radius:24px;transition:.3s">
+                    <span id="weatherToggleThumb" style="position:absolute;height:18px;width:18px;left:3px;bottom:3px;background:var(--parchment);border-radius:50%;transition:.3s"></span>
+                  </span>
+                </label>
+              </div>
               </div>
             </div>
           </div>
@@ -2810,6 +2822,16 @@ function renderSettings(){
     if(strack) strack.style.background=isShelfPublic?'var(--moss)':'rgba(138,69,19,.3)';
     if(sthumb) sthumb.style.transform=isShelfPublic?'translateX(20px)':'translateX(0)';
   }
+  // Weather anim toggle
+  const weatherDisabled=localStorage.getItem('weatherAnimDisabled')==='true';
+  const wcb=document.getElementById('settingWeather');
+  const wtrack=document.getElementById('weatherToggleTrack');
+  const wthumb=document.getElementById('weatherToggleThumb');
+  if(wcb){
+    wcb.checked=!weatherDisabled;
+    if(wtrack) wtrack.style.background=!weatherDisabled?'var(--moss)':'rgba(138,69,19,.3)';
+    if(wthumb) wthumb.style.transform=!weatherDisabled?'translateX(20px)':'translateX(0)';
+  }
   // Şifre sıfırlama istekleri
   const reqBox=document.getElementById('forgotRequestsBox');
   const reqList=document.getElementById('forgotRequestsList');
@@ -3004,7 +3026,13 @@ function toggleShelfPublic(val){
   if(thumb) thumb.style.transform=val?'translateX(20px)':'translateX(0)';
   notify(val?'🔓 Kitap Rafı Açık':'🔒 Kitap Rafı Gizli',val?'Diğer üyeler rafını görebilir.':'Rafın sadece sana görünür.');
 }
-
+function toggleWeatherAnim(val) {
+  localStorage.setItem('weatherAnimDisabled', val ? 'false' : 'true');
+  const track=document.getElementById('weatherToggleTrack');
+  const thumb=document.getElementById('weatherToggleThumb');
+  if(track) track.style.background=val?'var(--moss)':'rgba(138,69,19,.3)';
+  if(thumb) thumb.style.transform=val?'translateX(20px)':'translateX(0)';
+}
 function togglePublicProfile(val){
   db.users[me].publicProfile=val;
   saveDb();
@@ -12325,6 +12353,7 @@ const weatherMessages = {
 // 🌦️ Hava durumu kontrolü
 async function tryShowWeatherMessage() {
   if(!navigator.geolocation) return;
+  if(localStorage.getItem('weatherAnimDisabled')==='true') return;
   const today = new Date().toDateString();
   if(localStorage.getItem('weatherMessageDate') === today) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
