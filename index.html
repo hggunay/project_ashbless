@@ -12359,9 +12359,9 @@ async function tryShowWeatherMessage() {
   navigator.geolocation.getCurrentPosition(async pos=>{
     try{
       const {latitude:lat, longitude:lon} = pos.coords;
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weathercode&timezone=auto`);
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&timezone=auto`);
       const d = await r.json();
-      const code = d.current?.weathercode;
+      const code = d.current?.weather_code
       let type = null;
       if(code>=51&&code<=67||code>=80&&code<=82) type='rain';
       else if(code>=71&&code<=77||code>=85&&code<=86) type='snow';
