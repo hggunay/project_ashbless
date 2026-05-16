@@ -12434,7 +12434,7 @@ function showWeatherMessage(msg, type) {
 
   const chimeEnd = type==='rain'
     ? 3.85 + 5
-    : 4.26 + 2;
+    : 3.85 + 5;
   const noiseFadeEnd = chimeEnd + 4;
 
   const bufferSize = ctx.sampleRate * noiseFadeEnd;
@@ -12474,7 +12474,7 @@ function showWeatherMessage(msg, type) {
       const o=ctx.createOscillator(), g=ctx.createGain();
       o.type='sine'; o.frequency.value=freq;
       g.gain.setValueAtTime(0, ctx.currentTime+delay);
-      g.gain.linearRampToValueAtTime(0.03, ctx.currentTime+delay+0.01);
+      g.gain.linearRampToValueAtTime(0.12, ctx.currentTime+delay+0.01);
       g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+delay+2);
       o.connect(g); g.connect(ctx.destination);
       o.start(ctx.currentTime+delay); o.stop(ctx.currentTime+delay+2);
