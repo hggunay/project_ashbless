@@ -3152,6 +3152,10 @@ function enterApp(){
   setInterval(()=>{
     if(document.visibilityState==='visible') tryShowNightMessage();
   }, 60000);
+  
+  // 🌦️ Uygulama açılınca hava durumunu kontrol et
+  tryShowWeatherMessage();
+  
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
@@ -12296,6 +12300,50 @@ async function init(){
   }catch(e){}
 }
 init();
+
+// ══════════════════════════════════════════════
+// 🌦️ HAVA DURUMU SİSTEMİ
+// ══════════════════════════════════════════════
+
+// 🌦️ Hava durumu mesajları
+const weatherMessages = {
+  rain: [
+    "Yağmur ve kitap — mükemmel ikili.",
+    "Dışarısı ıslak, içerisi sıcak.",
+    "Bu yağmurda bir kitap seni bekliyor.",
+    "Yağmur sesi en iyi fon müziğidir.",
+    "Şemsiyeni bırak, kitabını al."
+  ],
+  snow: [
+    "Kar yağıyor — battaniye ve kitap vakti.",
+    "Dışarısı bembeyaz, içerisi sıcacık.",
+    "Bu kar altında bir hikâye seni bekliyor.",
+    "Kışın en iyi arkadaşı bir kitaptır."
+  ]
+};
+
+// 🌦️ Hava durumu kontrolü
+async function tryShowWeatherMessage() {
+  if(!navigator.geolocation) return;
+  const today = new Date().toDateString();
+  if(localStorage.getItem('weatherMessageDate') === today) return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const {latitude:lat, longitude:lon} = pos.coords;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weathercode&timezone=auto`);
+      const d = await r.json();
+      const code = d.current?.weathercode;
+      let type = null;
+      if(code>=51&&code<=67||code>=80&&code<=82) type='rain';
+      else if(code>=71&&code<=77||code>=85&&code<=86) type='snow';
+      if(!type) return;
+      const messages = weatherMessages[type];
+      const msg = messages[Math.floor(Math.random()*messages.length)];
+      localStorage.setItem('weatherMessageDate', today);
+      showNightMessage(msg);
+    }catch(e){}
+  }, ()=>{}, {timeout:5000});
+}
 
 // 🌙 Mesaj listesi
 const nightMessages = [
