@@ -12433,7 +12433,7 @@ function showWeatherMessage(msg, type) {
   const chimeStart = 2.5;
 
   const chimeEnd = type==='rain'
-    ? 4.5 + 2
+    ? 3.85 + 3
     : 4.26 + 2;
   const noiseFadeEnd = chimeEnd + 4;
 
@@ -12446,8 +12446,9 @@ function showWeatherMessage(msg, type) {
   const filter = ctx.createBiquadFilter();
   filter.type = 'lowpass';
   filter.frequency.setValueAtTime(300, ctx.currentTime);
-  filter.frequency.linearRampToValueAtTime(type==='rain'?1800:1200, ctx.currentTime+3);
+  filter.frequency.linearRampToValueAtTime(type==='rain'?4000:1200, ctx.currentTime+3);
   filter.frequency.linearRampToValueAtTime(type==='rain'?800:400, ctx.currentTime+noiseFadeEnd);
+  filter.Q.value = type==='rain' ? 8 : 0;
   const gain = ctx.createGain();
   gain.gain.setValueAtTime(0.001, ctx.currentTime);
   gain.gain.linearRampToValueAtTime(type==='rain'?0.08:0.05, ctx.currentTime+chimeStart);
@@ -12457,7 +12458,7 @@ function showWeatherMessage(msg, type) {
   noise.start(); noise.stop(ctx.currentTime+noiseFadeEnd);
 
   if(type==='rain') {
-    [[4186,2.5],[4699,2.9],[5274,3.3],[6272,3.7],[7040,4.1],[7902,4.5]].forEach(([freq,delay])=>{
+    [[2093,2.5],[2637,2.65],[3136,2.8],[3951,2.95],[4186,3.1],[4699,3.25],[5274,3.4],[6272,3.55],[7040,3.7],[7902,3.85]].forEach(([freq,delay])=>{
       const o=ctx.createOscillator(), g=ctx.createGain();
       o.type='sine'; o.frequency.value=freq;
       g.gain.setValueAtTime(0, ctx.currentTime+delay);
