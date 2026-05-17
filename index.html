@@ -797,6 +797,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   <div class="header">
     <div class="club-name" onclick="titleSparkle(this)" style="cursor:pointer;user-select:none">The Armchair <span style="white-space:nowrap">Adventurers</span></div>
     <div class="club-subtitle">Too lazy for real adventure — too curious to stop reading</div>
+	<div id="greetingMsg" style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.95rem;color:var(--gold);opacity:.8;margin-top:.25rem"></div>
     <div class="header-user">
       <div class="header-avatar" id="headerAvatar">📚</div>
       <span class="header-username" id="headerUsername"></span>
@@ -3183,7 +3184,7 @@ function enterApp(){
   
   // 🌦️ Uygulama açılınca hava durumunu kontrol et
   tryShowWeatherMessage();
-  
+  showGreeting();
   // Son açık sekmeye dön
   let lastPanel='feed';
   try{
@@ -12352,6 +12353,77 @@ const weatherMessages = {
     "Kışın en iyi arkadaşı bir kitaptır."
   ]
 };
+// 🌅 KARŞILAMA MESAJI
+function showGreeting() {
+  const el = document.getElementById('greetingMsg');
+  if(!el) return;
+
+  const now = new Date();
+  const hour = now.getHours();
+  const today = now.toDateString();
+  const lastVisit = localStorage.getItem('lastVisitDate');
+  const lastGreeting = localStorage.getItem('lastGreeting');
+  const lastLongMsg = localStorage.getItem('lastLongAbsenceMsg');
+
+  const messages = {
+    morning:   ['☀️ Sayfalar yeni bir güne açılıyor.','☕ Sessiz bir sabah, okumaya uygun.','☕ Günün ilk satırları seni bekliyor.','🌞 Raflarda sabah sessizliği var.','☕ Kahven yanında bir kitap seni bekliyor.'],
+    afternoon: ['🧋 Okuma için yavaş bir öğleden sonra.','☀️ Hikâyeler gün ışığında farklı görünür.','🧋 Sessiz bir mola için iyi bir saat.','🌞 Bugün kitaplık oldukça sakin.'],
+    evening:   ['🌕 Gün yavaşlıyor, hikâyeler derinleşiyor.','✨ Lambalar yandı, sayfalar açıldı.','🌕 Raflar akşam sessizliğine büründü.','✨ Akşam okumaları için güzel bir saat.'],
+    night:     ['🌝 Gece derinleşiyor.','🌛 Bazı kitaplar gece daha iyi okunur.','🌕 Ay ışığında bir okuma gecesi.','🌚 Raflar hâlâ uyanık.','🛸 Bugün rota: bilinmeyen dünyalar.','🛸 Raflarda hafif bir yıldız tozu hissi var.','🛸 Yıldızlar arasında kısa bir okuma molası.','🛸 Bazı kitaplar başka galaksilerden gelmiş gibi duruyor.'],
+    rain:      ['☔ Sessiz bir yağmur günü için uygun bir kitap seç.','☕ Yağmurlu günler uzun okumaları sever.','☔ Dışarıda yağmur var. Acele etmene gerek yok.','☕ Böyle havalarda hikâyeler daha yavaş akar.','🌧️ Şehir ıslak, raflar huzurlu.','🌧️ Bugün raflar biraz nemli.','🌧️ Dışarısı gri, içerisi hikâye dolu.','☔ Yağmur sesi en iyi fon müziğidir.'],
+    snow:      ['☕ Soğuk bir gün için sıcak bir hikâye iyi gider.','🌨️ Bazı kitaplar kış gecelerine ait gibi durur.','❄️ Camın ardında kış, sayfaların arasında başka dünyalar.','☕ Soğuk havalar okumayı yavaşlatır ama derinleştirir.','☕ Bugün battaniye ve kitap havası var.','❄️ Bugün kitaplar daha sıcak hissettiriyor.','⛄ Kar manzarasına eşlik edecek bir hikâye buldun mu?','❄️ Soğuk bir gün, sıcak bir sayfa.'],
+    longAbsence: ['📖 Raflar uzun zamandır sessizdi… tekrar hoş geldin.','📚 Kitaplar yerinde, hikâyeler sabırlı.','📖 Uzun bir aradan sonra sayfalar yeniden açılıyor.','📚 Raflar aynı yerde. Senin geri dönmeni bekliyordu.','📖 Bir süredir sayfalar kapanmıştı… şimdi yeniden açılıyor.','📚 Okuma arası uzamış… ama hiçbir şey kaybolmamış.','📖 Geri dönüşler bazen en iyi başlangıçtır.','📖 Raflarda toz değil, bekleyiş vardı.','📖 Kitabın tozunu üfle… ve kaldığın yerden devam et.','📚 Raflar seni bekledi. Tozu silkeleyip geri dön.']
+  };
+
+  const colors = {
+    morning: '#e8a44a', afternoon: '#d4956a', evening: '#c9a227',
+    night: '#8899cc', rain: '#7aaccc', snow: '#a8c8e8', longAbsence: '#9aaa88'
+  };
+
+  function pick(arr, last) {
+    const filtered = arr.filter(m => m !== last);
+    return filtered[Math.floor(Math.random() * filtered.length)];
+  }
+
+  // Uzun süre kontrolü
+  let pool, colorKey;
+  if(lastVisit && lastVisit !== today) {
+    const diffDays = Math.floor((now - new Date(lastVisit)) / (1000*60*60*24));
+    if(diffDays >= 30) {
+      pool = messages.longAbsence;
+      colorKey = 'longAbsence';
+      const msg = pick(pool, lastLongMsg);
+      localStorage.setItem('lastLongAbsenceMsg', msg);
+      localStorage.setItem('lastVisitDate', today);
+      localStorage.setItem('lastGreeting', msg);
+      el.textContent = msg;
+      el.style.color = colors[colorKey];
+      return;
+    }
+  }
+
+  // Hava durumu kontrolü
+  const weatherCode = localStorage.getItem('lastWeatherCode');
+  if(weatherCode) {
+    const code = parseInt(weatherCode);
+    if(code>=51&&code<=67||code>=80&&code<=82) { pool='rain'; colorKey='rain'; }
+    else if(code>=71&&code<=77||code>=85&&code<=86) { pool='snow'; colorKey='snow'; }
+  }
+
+  // Saat bazlı
+  if(!pool) {
+    if(hour>=6&&hour<12)       { pool='morning';   colorKey='morning'; }
+    else if(hour>=12&&hour<18) { pool='afternoon'; colorKey='afternoon'; }
+    else if(hour>=18&&hour<22) { pool='evening';   colorKey='evening'; }
+    else                       { pool='night';     colorKey='night'; }
+  }
+
+  const msg = pick(typeof pool==='string' ? messages[pool] : pool, lastGreeting);
+  localStorage.setItem('lastGreeting', msg);
+  localStorage.setItem('lastVisitDate', today);
+  el.textContent = msg;
+  el.style.color = colors[colorKey];
+}
 
 // 🌦️ Hava durumu kontrolü
 async function tryShowWeatherMessage() {
@@ -12371,6 +12443,7 @@ async function tryShowWeatherMessage() {
       if(!type) return;
       const messages = weatherMessages[type];
       const msg = messages[Math.floor(Math.random()*messages.length)];
+	  localStorage.setItem('lastWeatherCode', code);
       localStorage.setItem('weatherMessageDate', today);
       showWeatherMessage(msg, type);
     }catch(e){}
