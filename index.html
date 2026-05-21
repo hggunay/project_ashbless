@@ -3184,6 +3184,7 @@ function enterApp(){
   
   // 🌦️ Uygulama açılınca hava durumunu kontrol et
   tryShowWeatherMessage();
+  updateWeatherCode();
   showGreeting();
   // Son açık sekmeye dön
   let lastPanel='feed';
@@ -12353,6 +12354,19 @@ const weatherMessages = {
     "Kışın en iyi arkadaşı bir kitaptır."
   ]
 };
+// 🌤️ HAVA KODU GÜNCELLEME
+function updateWeatherCode() {
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    try{
+      const {latitude:lat, longitude:lon} = pos.coords;
+      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&timezone=auto`);
+      const d = await r.json();
+      const code = d.current?.weather_code;
+      if(code !== undefined) localStorage.setItem('lastWeatherCode', code);
+    }catch(e){}
+  }, ()=>{}, {timeout:5000});
+}
 // 🌅 KARŞILAMA MESAJI
 function showGreeting() {
   const el = document.getElementById('greetingMsg');
@@ -12440,10 +12454,10 @@ async function tryShowWeatherMessage() {
       let type = null;
       if(code>=51&&code<=67||code>=80&&code<=82) type='rain';
       else if(code>=71&&code<=77||code>=85&&code<=86) type='snow';
+     localStorage.setItem('lastWeatherCode', code);
       if(!type) return;
       const messages = weatherMessages[type];
       const msg = messages[Math.floor(Math.random()*messages.length)];
-	  localStorage.setItem('lastWeatherCode', code);
       localStorage.setItem('weatherMessageDate', today);
       showWeatherMessage(msg, type);
     }catch(e){}
