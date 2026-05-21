@@ -12430,7 +12430,7 @@ async function tryShowWeatherMessage() {
   if(!navigator.geolocation) return;
   if(localStorage.getItem('weatherAnimDisabled')==='true') return;
   const today = new Date().toDateString();
-  //if(localStorage.getItem('weatherMessageDate') === today) return;
+  if(localStorage.getItem('weatherMessageDate') === today) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
     try{
       const {latitude:lat, longitude:lon} = pos.coords;
