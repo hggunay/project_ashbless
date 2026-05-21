@@ -12356,16 +12356,20 @@ const weatherMessages = {
 };
 // 🌤️ HAVA KODU GÜNCELLEME
 function updateWeatherCode() {
-  if(!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(async pos=>{
-    try{
-      const {latitude:lat, longitude:lon} = pos.coords;
-      const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&timezone=auto`);
-      const d = await r.json();
-      const code = d.current?.weather_code;
-      if(code !== undefined) localStorage.setItem('lastWeatherCode', code);
-    }catch(e){}
-  }, ()=>{}, {timeout:5000});
+  fetch('https://ipapi.co/json/')
+    .then(r=>r.json())
+    .then(loc=>{
+      const lat=loc.latitude, lon=loc.longitude;
+      if(!lat||!lon) return;
+      return fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=weather_code&timezone=auto`);
+    })
+    .then(r=>r&&r.json())
+    .then(d=>{
+      if(!d) return;
+      const code=d.current?.weather_code;
+      if(code!==undefined) localStorage.setItem('lastWeatherCode', code);
+    })
+    .catch(e=>{});
 }
 // 🌅 KARŞILAMA MESAJI
 function showGreeting() {
