@@ -6639,12 +6639,9 @@ function confirmMarkAsUnread(bookId, status){
   book.readingStatus=targetStatus;
   book.previousStatus=null;
   // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle
-  if(targetStatus==='wishlist'||targetStatus==='planned'){
+  if(targetStatus!=='new'){
     book.endDate=null;
     book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
-  }
-  if(db.seriesEvents&&db.seriesEvents[me]){
-    db.seriesEvents[me]=db.seriesEvents[me].filter(ev=>ev.bookTitle!==book.title);
   }
   saveDb();
   closeModal();
