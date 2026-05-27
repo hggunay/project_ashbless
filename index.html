@@ -5923,6 +5923,26 @@ if(!alreadyFinished){
   await fbSet('aa-v4/readingSessions/'+sessionId+'/history', freshSession.history);
   if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].history=freshSession.history;
 }
+// Diğer katılımcılara bildirim gönder
+if(!alreadyFinished){
+  const otherParticipants = Object.keys(freshSession.participants||{}).filter(u=>u!==me&&freshSession.participants[u].status==='accepted');
+  for(const u of otherParticipants){
+    if(!db.notifications[u]) db.notifications[u]=[];
+    db.notifications[u].push({
+      id:'crf_'+sessionId+'_'+me+'_'+Date.now(),
+      type:'coreading_finished',
+      sessionId,
+      bookTitle:freshSession.bookTitle,
+      fromName:myName,
+      ts:new Date().toISOString(),
+      seen:false,
+      reaction:'📖',
+      context:myName+' "'+freshSession.bookTitle+'" kitabını bitirdi!'
+    });
+  }
+  await saveDb();
+  updateNotifDot();
+}
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
     const allDone=accepted.length>0&&accepted.every(u=>
       (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
