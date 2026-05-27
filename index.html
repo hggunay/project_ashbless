@@ -5971,6 +5971,29 @@ if(!alreadyFinished){
     renderSafe();
   } else {
     notify('👥 '+session.bookTitle, myName+' — '+msg);
+    // Diğer katılımcılara milestone bildirimi gönder
+    for(const u of accepted){
+      const notifId='crm_'+sessionId+'_'+me+'_'+lastMilestone+'_'+Date.now();
+      const notif={
+        id:notifId,
+        type:'coreading_milestone',
+        sessionId:sessionId,
+        bookTitle:session.bookTitle,
+        fromUser:me,
+        fromName:myName,
+        milestone:lastMilestone,
+        milestoneMsg:milestoneMsg,
+        pct:pct,
+        ts:new Date().toISOString(),
+        seen:false,
+        reaction:'👥',
+        context:session.bookTitle,
+      };
+      if(!db.notifications[u]) db.notifications[u]=[];
+      db.notifications[u].push(notif);
+    }
+    await saveDb();
+    updateNotifDot();
     renderSafe();
   }
 }
