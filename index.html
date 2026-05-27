@@ -5914,6 +5914,15 @@ async function checkCoreadingMilestone(book){
     }catch(e){}
     // Zaten completed ise tekrar tetiklenme
     if(freshSession.status==='completed'){ renderSafe(); return; }
+	// Kişi kitabı bitirdi — history'e yaz
+const finishEntry = {type:'user_finished', user:me, userName:myName, ts:Date.now()};
+if(!freshSession.history) freshSession.history=[];
+const alreadyFinished = freshSession.history.some(h=>h.type==='user_finished'&&h.user===me);
+if(!alreadyFinished){
+  freshSession.history.push(finishEntry);
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', freshSession.history);
+  if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].history=freshSession.history;
+}
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
     const allDone=accepted.length>0&&accepted.every(u=>
       (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
@@ -7418,7 +7427,7 @@ function renderFeed(append=false){
 		${(()=>{const leftNames=Object.keys(card.participants).filter(u=>card.participants[u].status==='left').map(u=>(db.users[u]||{}).displayName||u);return leftNames.length?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.5rem">👤 ${leftNames.length} kişi ayrıldı</div>`:''})()}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';if(ev.type==='user_finished')return ds+' — 📖 '+name+' kitabı bitirdi';return ds+' — '+name;};
   if(!hist.length) return '';
   const recent=hist.slice(-2);
   const older=hist.slice(0,-2);
