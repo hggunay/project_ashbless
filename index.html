@@ -7300,7 +7300,7 @@ function getFeedCards(){
   const now=Date.now();
   Object.values(sessions).forEach(s=>{
     if(s.status==='cancelled') return;
-    if(s.expiresAt&&s.expiresAt<now&&s.status!=='active') return;
+    if(s.expiresAt&&s.expiresAt<now&&s.status!=='active'&&s.status!=='ended'&&s.status!=='completed') return;
     const initiatorUser=db.users[s.initiator]||{};
     cards.push({
       type:'coreading_invite',
