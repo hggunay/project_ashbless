@@ -6703,7 +6703,7 @@ function confirmMarkAsUnread(bookId, status){
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;if(window._creatorCleanup){window._creatorCleanup();window._creatorCleanup=null;}}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;if(window._creatorCleanup){window._creatorCleanup();window._creatorCleanup=null;}const dd=getGenreDropdown();if(dd){dd.style.display='none';}}
 
 function titleSparkle(el){
   if(el._animating) return;
