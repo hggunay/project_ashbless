@@ -7372,11 +7372,12 @@ function renderFeed(append=false){
     if(a.type==='coreading_invite'&&b.type==='coreading_invite'){
       const now=Date.now();
       const score=s=>{
+        if(s.status!=='active') return s.lastActivityAt||s.ts||0;
         const act=s.lastActivityAt||s.ts||0;
         const age=now-act;
-        if(age<7*24*60*60*1000) return now+1e12; // ilk 7 gün en üstte
-        if(age<30*24*60*60*1000) return act; // 7-30 gün normal sıra
-        return act-1e12; // 30+ gün alta
+        if(age<7*24*60*60*1000) return now+1e12;
+        if(age<30*24*60*60*1000) return act;
+        return act-1e12;
       };
       return score(b)-score(a);
     }
