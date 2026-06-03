@@ -6342,19 +6342,19 @@ if(coreadingEl){
         ${book.readingStatus==='reading'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
           <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="pauseReading(${book.id})">🚧 Yarım bırak</button>
-          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
         ${book.readingStatus==='paused'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="resumeReading(${book.id});closeModal()">📖 Devam et</button>
           <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
-          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
         ${book.readingStatus==='wishlist'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>`:''}
         ${book.readingStatus==='planned'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>
-          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
         ${book.readingStatus==='new'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
-          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Okunmadı yap</button>`:''}
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
         ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
         <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="addToShelfFromLibrary(${book.id})">🗄️ Rafa Ekle</button>
         <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
@@ -9236,6 +9236,9 @@ const topGenres=genreRows;
   books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:b.seriesComplete};seriesMap[b.series].count++;}});
   const seriesStarted=Object.keys(seriesMap).length;
   const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
+  const seriesStartedList=Object.keys(seriesMap);
+  const seriesFinishedList=Object.keys(seriesMap).filter(k=>seriesMap[k].complete);
+  const seriesContinueList=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete);
   
 
 
@@ -9576,9 +9579,24 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
 
         ${seriesStarted?statsSection('stats-series','📚 Seri Durumu',`
           <div class="stats-grid">
-            <div class="stats-big-card"><div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
-            <div class="stats-big-card"><div class="stats-big-num">${seriesFinished}</div><div class="stats-big-label">Bitirilen Seri</div></div>
-            <div class="stats-big-card"><div class="stats-big-num">${seriesStarted-seriesFinished}</div><div class="stats-big-label">Devam Eden</div></div>
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-started',event)" style="cursor:pointer">
+              <div class="badge-tooltip" id="tooltip-seri-started" onclick="event.stopPropagation()">
+                <div class="badge-tooltip-title">📚 Başlanan Seriler</div>
+                ${seriesStartedList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join('')}
+              </div>
+              <div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-finished',event)" style="cursor:pointer">
+              <div class="badge-tooltip" id="tooltip-seri-finished" onclick="event.stopPropagation()">
+                <div class="badge-tooltip-title">✅ Bitirilen Seriler</div>
+                ${seriesFinishedList.length?seriesFinishedList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join(''):'<div class="badge-tooltip-more">Henüz tamamlanan seri yok</div>'}
+              </div>
+              <div class="stats-big-num">${seriesFinished}</div><div class="stats-big-label">Bitirilen Seri</div></div>
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-continue',event)" style="cursor:pointer">
+              <div class="badge-tooltip" id="tooltip-seri-continue" onclick="event.stopPropagation()">
+                <div class="badge-tooltip-title">🔖 Devam Eden Seriler</div>
+                ${seriesContinueList.length?seriesContinueList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join(''):'<div class="badge-tooltip-more">Devam eden seri yok</div>'}
+              </div>
+              <div class="stats-big-num">${seriesStarted-seriesFinished}</div><div class="stats-big-label">Devam Eden</div></div>
           </div>`):''}
 
         ${books.length===0?'<div class="empty-state">Henüz yeterli veri yok. Kitap ekledikçe istatistikler burada görünür.</div>':''}
