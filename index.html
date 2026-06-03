@@ -6754,6 +6754,13 @@ let _mouseDownOnModal=false;
 document.addEventListener('mousedown',e=>{
   const modal=document.querySelector('#modalOverlay .modal');
   _mouseDownOnModal=modal&&modal.contains(e.target);
+  const dd=_genreDropdown;
+  if(dd&&dd.style.display==='block'){
+    const gcaEl=document.getElementById('gca-'+dd.dataset.bookId);
+    if(!(gcaEl&&gcaEl.contains(e.target))&&!dd.contains(e.target)){
+      dd.style.display='none';
+    }
+  }
   if(e.target===document.getElementById('modalOverlay')){
     _modalMouseDownPos={x:e.clientX,y:e.clientY};
     _modalMouseDownTime=Date.now();
