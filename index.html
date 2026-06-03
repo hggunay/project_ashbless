@@ -10733,7 +10733,8 @@ function showGenreDropdown(bookId){
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
   if(dd._clickHandler) document.removeEventListener('pointerdown', dd._clickHandler);
   dd._clickHandler = function(e){
-    if(!e.target.closest('#gca-'+bookId) && !e.target.closest('.genre-dropdown')){
+    const gcaEl=document.getElementById('gca-'+bookId);
+    if(!(gcaEl&&gcaEl.contains(e.target)) && !e.target.closest('.genre-dropdown')){
       dd.style.display='none';
       document.removeEventListener('pointerdown', dd._clickHandler);
       dd._clickHandler = null;
