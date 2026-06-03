@@ -7383,9 +7383,11 @@ function renderFeed(append=false){
       return score(b)-score(a);
     }
     // İkisi de coreading ise kendi aralarında tarihe göre
-    const ta=typeof a.ts==='number'?a.ts:new Date(a.ts||0).getTime();
-    const tb=typeof b.ts==='number'?b.ts:new Date(b.ts||0).getTime();
-    return tb-ta;
+    const getTs=c=>{
+      if(c.type==='coreading_invite'&&(c.status==='ended'||c.status==='completed')) return c.lastActivityAt||c.ts||0;
+      return typeof c.ts==='number'?c.ts:new Date(c.ts||0).getTime();
+    };
+    return getTs(b)-getTs(a);
   });
 
   if(!cards.length){
