@@ -10711,12 +10711,15 @@ function toggleStatsTooltip(id,e){
     tooltip.style.top=(wrapRect.top-tooltipH-6)+'px';
   }
   tooltip.style.bottom='auto';
-  const onScroll=()=>{
-    tooltip.style.display='none';
-    openStatsTooltipId=null;
-    window.removeEventListener('scroll',onScroll,true);
-  };
-  window.addEventListener('scroll',onScroll,true);
+  if(window._statsTooltipObserver) window._statsTooltipObserver.disconnect();
+  window._statsTooltipObserver=new IntersectionObserver((entries)=>{
+    if(!entries[0].isIntersecting){
+      tooltip.style.display='none';
+      openStatsTooltipId=null;
+      window._statsTooltipObserver.disconnect();
+    }
+  },{threshold:0.1});
+  window._statsTooltipObserver.observe(wrap);
 }
 function closeBadgeTooltip(){
   openBadgeId=null;
