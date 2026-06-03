@@ -7320,6 +7320,7 @@ function getFeedCards(){
       pages:s.pages||0,
       participants: JSON.parse(JSON.stringify(s.participants||{})),
       ts:s.createdAt||0,
+      lastActivityAt:s.lastActivityAt||s.createdAt||0,
       expiresAt:s.expiresAt||0,
 	  status: s.status||'pending',
       startedAt: s.startedAt||0,
