@@ -7365,8 +7365,10 @@ function renderFeed(append=false){
 
   cards.sort((a,b)=>{
     // Birlikte okuma kartları aktifse en üste
-    if(a.type==='coreading_invite'&&b.type!=='coreading_invite') return -1;
-    if(b.type==='coreading_invite'&&a.type!=='coreading_invite') return 1;
+    const aActive=a.type==='coreading_invite'&&a.session&&a.session.status==='active';
+    const bActive=b.type==='coreading_invite'&&b.session&&b.session.status==='active';
+    if(aActive&&!bActive) return -1;
+    if(bActive&&!aActive) return 1;
     if(a.type==='coreading_invite'&&b.type==='coreading_invite'){
       const now=Date.now();
       const score=s=>{
