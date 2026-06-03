@@ -10731,11 +10731,11 @@ function showGenreDropdown(bookId){
   const dd = getGenreDropdown();
   if(dd.style.display==='block' && dd.dataset.bookId==bookId) return;
   filterGenreDropdown(bookId, document.getElementById('gs-'+bookId)?.value||'');
-  if(dd._clickHandler) document.removeEventListener('mousedown', dd._clickHandler);
+  if(dd._clickHandler) document.removeEventListener('pointerdown', dd._clickHandler);
   dd._clickHandler = function(e){
     if(!e.target.closest('#gca-'+bookId) && !e.target.closest('.genre-dropdown')){
       dd.style.display='none';
-      document.removeEventListener('mousedown', dd._clickHandler);
+      document.removeEventListener('pointerdown', dd._clickHandler);
       dd._clickHandler = null;
       if(dd._positionHandler){
         window.removeEventListener('scroll',dd._positionHandler,true);
@@ -10743,7 +10743,7 @@ function showGenreDropdown(bookId){
       }
     }
   };
-  setTimeout(()=>{ document.addEventListener('mousedown', dd._clickHandler); }, 300);
+  setTimeout(()=>{ document.addEventListener('pointerdown', dd._clickHandler); }, 300);
 }
 
 // Global genre dropdown - body'de tek bir dropdown
