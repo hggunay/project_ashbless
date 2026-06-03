@@ -10711,6 +10711,12 @@ function toggleStatsTooltip(id,e){
     tooltip.style.top=(wrapRect.top-tooltipH-6)+'px';
   }
   tooltip.style.bottom='auto';
+  const onScroll=()=>{
+    tooltip.style.display='none';
+    openStatsTooltipId=null;
+    window.removeEventListener('scroll',onScroll,true);
+  };
+  window.addEventListener('scroll',onScroll,true);
 }
 function closeBadgeTooltip(){
   openBadgeId=null;
