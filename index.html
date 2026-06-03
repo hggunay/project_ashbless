@@ -9579,19 +9579,19 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
 
         ${seriesStarted?statsSection('stats-series','📚 Seri Durumu',`
           <div class="stats-grid">
-            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-started',event)" style="cursor:pointer">
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleStatsTooltip('seri-started',event)" style="cursor:pointer">
               <div class="badge-tooltip" id="tooltip-seri-started" onclick="event.stopPropagation()">
                 <div class="badge-tooltip-title">📚 Başlanan Seriler</div>
                 ${seriesStartedList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join('')}
               </div>
               <div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
-            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-finished',event)" style="cursor:pointer">
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleStatsTooltip('seri-finished',event)" style="cursor:pointer">
               <div class="badge-tooltip" id="tooltip-seri-finished" onclick="event.stopPropagation()">
                 <div class="badge-tooltip-title">✅ Bitirilen Seriler</div>
                 ${seriesFinishedList.length?seriesFinishedList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join(''):'<div class="badge-tooltip-more">Henüz tamamlanan seri yok</div>'}
               </div>
               <div class="stats-big-num">${seriesFinished}</div><div class="stats-big-label">Bitirilen Seri</div></div>
-            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleBadgeTooltip('seri-continue',event)" style="cursor:pointer">
+            <div class="stats-big-card badge-tooltip-wrap" onclick="toggleStatsTooltip('seri-continue',event)" style="cursor:pointer">
               <div class="badge-tooltip" id="tooltip-seri-continue" onclick="event.stopPropagation()">
                 <div class="badge-tooltip-title">🔖 Devam Eden Seriler</div>
                 ${seriesContinueList.length?seriesContinueList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join(''):'<div class="badge-tooltip-more">Devam eden seri yok</div>'}
@@ -10677,7 +10677,41 @@ function toggleBadgeDetail(badgeId){
     },50);
   }
 }
-
+// — İstatistik Tooltip (Seri Durumu kutucukları) —
+let openStatsTooltipId=null;
+function toggleStatsTooltip(id,e){
+  e.stopPropagation();
+  const tooltip=document.getElementById('tooltip-'+id);
+  if(!tooltip) return;
+  if(openStatsTooltipId===id){
+    tooltip.style.display='none';
+    openStatsTooltipId=null;
+    return;
+  }
+  if(openStatsTooltipId){
+    const prev=document.getElementById('tooltip-'+openStatsTooltipId);
+    if(prev) prev.style.display='none';
+  }
+  openStatsTooltipId=id;
+  tooltip.style.display='block';
+  const wrap=tooltip.closest('.badge-tooltip-wrap');
+  const wrapRect=wrap.getBoundingClientRect();
+  const tooltipW=Math.min(280,window.innerWidth-16);
+  const tooltipH=tooltip.offsetHeight||150;
+  let left=wrapRect.left+wrapRect.width/2-tooltipW/2;
+  if(left<8) left=8;
+  if(left+tooltipW>window.innerWidth-8) left=window.innerWidth-tooltipW-8;
+  tooltip.style.left=left+'px';
+  tooltip.style.width=tooltipW+'px';
+  const spaceBelow=window.innerHeight-wrapRect.bottom;
+  const spaceAbove=wrapRect.top;
+  if(spaceBelow>=tooltipH+10||spaceBelow>=spaceAbove){
+    tooltip.style.top=(wrapRect.bottom+6)+'px';
+  } else {
+    tooltip.style.top=(wrapRect.top-tooltipH-6)+'px';
+  }
+  tooltip.style.bottom='auto';
+}
 function closeBadgeTooltip(){
   openBadgeId=null;
   renderBadges();
@@ -12388,6 +12422,11 @@ async function init(){
     if(openBadgeId&&!e.target.closest('.badge-tooltip-wrap')){
       openBadgeId=null;
       renderBadges();
+    }
+    if(openStatsTooltipId&&!e.target.closest('.badge-tooltip-wrap')){
+      const prev=document.getElementById('tooltip-'+openStatsTooltipId);
+      if(prev) prev.style.display='none';
+      openStatsTooltipId=null;
     }
   });
   try{
