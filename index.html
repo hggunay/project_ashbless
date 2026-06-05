@@ -5944,9 +5944,11 @@ if(!alreadyFinished){
   updateNotifDot();
 }
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
+   const hasProgress=u=>freshSession.progress&&freshSession.progress[u]&&(freshSession.progress[u].pct||0)>0;
     const allDone=accepted.length>0&&accepted.every(u=>
       (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
       ||freshSession.participants[u].status==='left'
+      ||!hasProgress(u)
     );
     if(allDone){
       freshSession.status='completed';
