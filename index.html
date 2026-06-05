@@ -5963,7 +5963,9 @@ if(!alreadyFinished){
       const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
       for(const u of allAccepted){
         if(!db.notifications[u]) db.notifications[u]=[];
-        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:u===me,reaction:'🎉',context:freshSession.bookTitle});
+        const notif={id:'crc_'+sessionId+'_'+u+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:u===me,reaction:'🎉',context:freshSession.bookTitle};
+        db.notifications[u].push(notif);
+        await fbSet('aa-v4/notifications/'+u+'/'+db.notifications[u].length-1, notif);
       }
       await saveDb();
       notify('🎉 Herkesle birlikte!', freshSession.bookTitle+' birlikte tamamlandı!');
