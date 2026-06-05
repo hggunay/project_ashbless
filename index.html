@@ -3091,6 +3091,7 @@ const SPECIAL_DAYS = [
   {type:'nth-weekday', month:5, nth:1, weekday:6, icon:'🎨', title:'Ücretsiz Çizgi Roman Günü',  sub:'Free Comic Book Day! Bugün dünyanın dört bir yanında çizgi roman ücretsiz dağıtılıyor.', url:'https://en.wikipedia.org/wiki/Free_Comic_Book_Day'},
   {type:'month-only', month:6, icon:'🎧', title:'Sesli Kitap Takdir Ayı',   sub:'Haziran boyunca sesli kitapları kutluyoruz. Kulaklıkları tak!', url:'https://en.wikipedia.org/wiki/Audiobook'},
   {type:'last-week', month:9, icon:'🚫', title:'Yasaklı Kitaplar Haftası',  sub:'Eylül\'ün son haftası. Yasaklanan kitapları okuma özgürlüğü için bugün!', url:'https://en.wikipedia.org/wiki/Banned_Books_Week'},
+  {month:9, day:15, icon:'💐', title:'Algernon Günü', sub:'Algernon\'a çiçek bırakmayı unutmayınız. 💐', url:'', algernon:true},
 ];
 
 function getSpecialDay(){
@@ -3121,7 +3122,66 @@ function getSpecialDay(){
 
   return matches;
 }
-
+// ── Algernon Günü animasyonu ──
+let _algernonTriggered=false;
+function checkAlgernonDay(){
+  if(_algernonTriggered) return;
+  const now=new Date();
+  const m=now.getMonth()+1;
+  const d=now.getDate();
+  if(m===9&&d>=15&&d<=17){
+    _algernonTriggered=true;
+    if(d===15) launchFlowerConfetti();
+    showAlgernonBanner();
+  }
+}
+function launchFlowerConfetti(){
+  let canvas=document.getElementById('confetti-canvas');
+  if(!canvas){canvas=document.createElement('canvas');canvas.id='confetti-canvas';document.body.appendChild(canvas);}
+  else{document.body.appendChild(canvas);}
+  const ctx=canvas.getContext('2d');
+  canvas.width=window.innerWidth;canvas.height=window.innerHeight;
+  canvas.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99999;';
+  const emojis=['💐','🌸','🌼','🌺','🌻'];
+  const particles=Array.from({length:60},()=>({
+    x:Math.random()*canvas.width,
+    y:-30-Math.random()*100,
+    emoji:emojis[Math.floor(Math.random()*emojis.length)],
+    size:16+Math.random()*14,
+    speed:1.5+Math.random()*2,
+    drift:(Math.random()-.5)*1.5,
+    rot:Math.random()*360,
+    rotSpeed:(Math.random()-.5)*3
+  }));
+  let frame=0;
+  function draw(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    particles.forEach(p=>{
+      ctx.save();
+      ctx.translate(p.x,p.y);
+      ctx.rotate(p.rot*Math.PI/180);
+      ctx.font=p.size+'px serif';
+      ctx.fillText(p.emoji,-p.size/2,-p.size/2);
+      ctx.restore();
+      p.y+=p.speed;p.x+=p.drift;p.rot+=p.rotSpeed;
+    });
+    frame++;
+    if(frame<300) requestAnimationFrame(draw);
+    else canvas.style.display='none';
+  }
+  draw();
+}
+function showAlgernonBanner(){
+  let el=document.getElementById('algernon-banner');
+  if(!el){
+    el=document.createElement('div');
+    el.id='algernon-banner';
+    el.style.cssText='position:fixed;bottom:80px;right:16px;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.4);border-radius:8px;padding:.5rem .8rem;font-family:"Crimson Pro",serif;font-size:.85rem;color:var(--ink);z-index:9998;cursor:pointer;';
+    el.innerHTML='💐 Algernon\'a çiçek bırakmayı unutmayınız';
+    el.onclick=()=>el.remove();
+    document.body.appendChild(el);
+  }
+}
 function showSpecialDayBanner(){
   const wrap=document.getElementById('specialDayBannerWrap');
   if(!wrap) return;
@@ -6756,6 +6816,7 @@ let _modalMouseDownPos=null;
 let _modalMouseDownTime=null;
 let _mouseDownOnModal=false;
 document.addEventListener('mousedown',e=>{
+  checkAlgernonDay();
   const modal=document.querySelector('#modalOverlay .modal');
   _mouseDownOnModal=modal&&modal.contains(e.target);
   const dd=_genreDropdown;
