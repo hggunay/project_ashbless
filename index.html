@@ -6812,7 +6812,7 @@ function _processNotifQueue(){
   _notifBusy=true;
   const {title,body,silent}=_notifQueue.shift();
   _showNotif(title,body,silent);
-  setTimeout(()=>_processNotifQueue(),4700);
+  setTimeout(()=>_processNotifQueue(),5200);
 }
 function _showNotif(title,body,silent=false){
   clearTimeout(nt);document.getElementById('notifTitle').textContent=title;document.getElementById('notifBody').textContent=body;
