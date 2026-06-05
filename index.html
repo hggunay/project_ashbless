@@ -6801,7 +6801,20 @@ function notifyBadgesSequentially(badges){
 
 let _notifSoundPlayed=false;
 const _SOUND_NOTIFS=new Set(['🏅','🌍','✅','🗝️','💎','🥇','🥈','🥉']);
+let _notifQueue=[];
+let _notifBusy=false;
 function notify(title,body,silent=false){
+  _notifQueue.push({title,body,silent});
+  if(!_notifBusy) _processNotifQueue();
+}
+function _processNotifQueue(){
+  if(!_notifQueue.length){_notifBusy=false;return;}
+  _notifBusy=true;
+  const {title,body,silent}=_notifQueue.shift();
+  _showNotif(title,body,silent);
+  setTimeout(()=>_processNotifQueue(),4700);
+}
+function _showNotif(title,body,silent=false){
   clearTimeout(nt);document.getElementById('notifTitle').textContent=title;document.getElementById('notifBody').textContent=body;
   const n=document.getElementById('notification');n.classList.add('show');nt=setTimeout(()=>{n.classList.remove('show');_notifSoundPlayed=false;},4500);
   // Ses: sessiz değilse ve başarı emojisiyse çal
