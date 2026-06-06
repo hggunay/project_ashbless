@@ -3153,11 +3153,19 @@ function launchFlowerConfetti(){
     rot:Math.random()*360,
     rotSpeed:(Math.random()-.5)*3
   }));
+ particles.forEach(p=>{p.life=1;p.decay=0.002+Math.random()*0.003;p.startFrame=Math.floor(Math.random()*120);});
   let frame=0;
   function draw(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    let alive=0;
     particles.forEach(p=>{
+      if(frame<p.startFrame) return;
+      if(p.y>canvas.height+20) p.life-=0.05;
+      else p.life-=p.decay;
+      if(p.life<=0) return;
+      alive++;
       ctx.save();
+      ctx.globalAlpha=Math.max(0,p.life);
       ctx.translate(p.x,p.y);
       ctx.rotate(p.rot*Math.PI/180);
       ctx.font=p.size+'px serif';
@@ -3166,12 +3174,8 @@ function launchFlowerConfetti(){
       p.y+=p.speed;p.x+=p.drift;p.rot+=p.rotSpeed;
     });
     frame++;
-    if(frame<300) requestAnimationFrame(draw);
-    else{
-      canvas.style.transition='opacity 1s';
-      canvas.style.opacity='0';
-      setTimeout(()=>{canvas.style.display='none';canvas.style.opacity='1';canvas.style.transition='';},1000);
-    }
+    if(alive>0||frame<150) requestAnimationFrame(draw);
+    else canvas.style.display='none';
   }
   draw();
 }
@@ -3180,10 +3184,15 @@ function showAlgernonBanner(){
   if(!el){
     el=document.createElement('div');
     el.id='algernon-banner';
-    el.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.4);border-radius:8px;padding:.6rem 1.2rem;font-family:"Crimson Pro",serif;font-size:.9rem;color:var(--ink);z-index:9998;cursor:pointer;white-space:nowrap;';
+    el.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(201,162,39,.95);border:1px solid rgba(139,90,0,.5);border-radius:8px;padding:.6rem 1.2rem;font-family:"Crimson Pro",serif;font-size:.9rem;font-weight:500;color:#1a0f00;z-index:9998;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.2);';
     el.innerHTML='💐 Algernon\'a çiçek bırakmayı unutmayınız';
     el.onclick=()=>el.remove();
     document.body.appendChild(el);
+    setTimeout(()=>{
+      el.style.transition='opacity 2s';
+      el.style.opacity='0';
+      setTimeout(()=>el.remove(),2000);
+    },8000);
   }
 }
 function showSpecialDayBanner(){
