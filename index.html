@@ -3167,7 +3167,11 @@ function launchFlowerConfetti(){
     });
     frame++;
     if(frame<300) requestAnimationFrame(draw);
-    else canvas.style.display='none';
+    else{
+      canvas.style.transition='opacity 1s';
+      canvas.style.opacity='0';
+      setTimeout(()=>{canvas.style.display='none';canvas.style.opacity='1';canvas.style.transition='';},1000);
+    }
   }
   draw();
 }
@@ -3176,7 +3180,7 @@ function showAlgernonBanner(){
   if(!el){
     el=document.createElement('div');
     el.id='algernon-banner';
-    el.style.cssText='position:fixed;bottom:80px;right:16px;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.4);border-radius:8px;padding:.5rem .8rem;font-family:"Crimson Pro",serif;font-size:.85rem;color:var(--ink);z-index:9998;cursor:pointer;';
+    el.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.4);border-radius:8px;padding:.6rem 1.2rem;font-family:"Crimson Pro",serif;font-size:.9rem;color:var(--ink);z-index:9998;cursor:pointer;white-space:nowrap;';
     el.innerHTML='💐 Algernon\'a çiçek bırakmayı unutmayınız';
     el.onclick=()=>el.remove();
     document.body.appendChild(el);
