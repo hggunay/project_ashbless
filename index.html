@@ -6468,8 +6468,7 @@ function dField(label,field,val,type,editable,placeholder){
   if(field==='country'&&editable){
   
  // !! BU SATIRI DEĞİŞTİRME — ülke normalizasyonu burada yapılıyor
-const allCountries=Object.keys(COUNTRY_ISO).filter(k=>k.length>2).map(k=>normalizeCountryName(k));
-  const unique=[...new Set(allCountries)].sort();
+const unique=['Afganistan','Almanya','Amerika Birleşik Devletleri','Angola','Arjantin','Arnavutluk','Avustralya','Avusturya','Azerbaycan','Bangladeş','Belarus','Belçika','Bolivya','Bosna Hersek','Brezilya','Bulgaristan','Burkina Faso','Çad','Çekya','Çin','Cezayir','Demokratik Kongo Cumhuriyeti','Danimarka','Dominik Cumhuriyeti','Ekvador','El Salvador','Endonezya','Ermenistan','Eritre','Estonya','Etiyopya','Fas','Fildişi Sahili','Filipinler','Finlandiya','Fransa','Gana','Guatemala','Güney Afrika','Güney Kore','Güney Sudan','Gürcistan','Haiti','Hindistan','Hırvatistan','Hollanda','Honduras','Irak','İngiltere','İran','İrlanda','İspanya','İsrail','İsveç','İsviçre','İtalya','İzlanda','Jamaika','Japonya','Kamboçya','Kamerun','Kanada','Karadağ','Kazakistan','Kenya','Kıbrıs','Kolombiya','Kongo','Kosta Rika','Kosova','Küba','Letonya','Libya','Litvanya','Lübnan','Lüksemburg','Madagaskar','Makedonya','Malezya','Mali','Malta','Macaristan','Meksika','Mısır','Moldava','Mozambik','Myanmar','Nepal','Nijer','Nijerya','Nikaragua','Norveç','Pakistan','Panama','Paraguay','Peru','Polonya','Portekiz','Romanya','Rusya','Senegal','Sırbistan','Slovenya','Slovakya','Somali','Sri Lanka','Sudan','Suriye','Suudi Arabistan','Şili','Tanzanya','Tayland','Tayvan','Trinidad','Tunus','Uganda','Ukrayna','Uruguay','Venezuela','Vietnam','Yeni Zelanda','Yunanistan','Zambiya','Zimbabve','Ürdün','Özbekistan'].sort();
   const dlId='dl_country_'+modalBookId;
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>
