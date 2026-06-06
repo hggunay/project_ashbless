@@ -3184,10 +3184,11 @@ function showAlgernonBanner(){
   if(!el){
     el=document.createElement('div');
     el.id='algernon-banner';
-    el.style.cssText='position:fixed;bottom:40px;left:50%;transform:translateX(-50%);background:rgba(201,162,39,.95);border:1px solid rgba(139,90,0,.5);border-radius:8px;padding:.6rem 1.2rem;font-family:"Crimson Pro",serif;font-size:.9rem;font-weight:500;color:#1a0f00;z-index:9998;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.2);';
+    el.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(201,162,39,.95);border:1px solid rgba(139,90,0,.5);border-radius:8px;padding:.6rem 1.2rem;font-family:"Crimson Pro",serif;font-size:.9rem;font-weight:500;color:#1a0f00;z-index:9998;cursor:pointer;white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.2);opacity:0;transition:opacity 1.5s;';
     el.innerHTML='💐 Algernon\'a çiçek bırakmayı unutmayınız';
     el.onclick=()=>el.remove();
     document.body.appendChild(el);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>el.style.opacity='1'));
     setTimeout(()=>{
       el.style.transition='opacity 2s';
       el.style.opacity='0';
