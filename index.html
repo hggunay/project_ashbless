@@ -8114,7 +8114,7 @@ function renderPrivateNotes(){
   }
 
   const allMyBooks = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
-  allMyBooks.sort((a,b)=>(b.addedAt||'').localeCompare(a.addedAt||''));
+  allMyBooks.sort((a,b)=>(b.addedAt||0)>(a.addedAt||0)?1:-1);
 
   let filtered = allMyBooks;
   filtered = filtered.filter(b=>b.readingStatus!=='planned'||b.comment);
