@@ -543,6 +543,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .badge-card-hint{font-size:.58rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.35;margin-top:.4rem;letter-spacing:.05em;}
 .badge-card:hover .badge-card-hint{opacity:.65;}
 /* Rozet tooltip popup */
+.modal-more-wrap.open{display:flex!important;}
 .badge-tooltip-wrap{position:relative;}
 .badge-tooltip{display:none;position:fixed;z-index:9999;background:var(--parchment);border:1px solid rgba(201,162,39,.5);border-radius:6px;padding:.6rem .75rem;min-width:200px;max-width:280px;text-align:left;box-shadow:0 4px 20px rgba(0,0,0,.3);}
 .badge-tooltip.open{display:block;}
@@ -6433,9 +6434,12 @@ if(coreadingEl){
         ${book.readingStatus==='new'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
-        ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
-        <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="addToShelfFromLibrary(${book.id})">🗄️ Rafa Ekle</button>
-        <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
+        <button class="btn btn-sm" style="background:rgba(201,162,39,.08);color:var(--rust);border:1px solid rgba(201,162,39,.2);font-size:.7rem" onclick="this.closest('.modal-more-wrap').classList.toggle('open')">▾ Daha fazla</button>
+		<div class="modal-more-wrap" style="flex-wrap:wrap;gap:.5rem;margin-top:.3rem;display:none">
+          ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
+          <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="addToShelfFromLibrary(${book.id})">🗄️ Rafa Ekle</button>
+          <button class="btn btn-danger btn-sm" onclick="removeBook(${book.id})">🗑 Kitabı Sil</button>
+        </div>
         `}
       </div>`
     :'';
