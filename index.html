@@ -7012,6 +7012,12 @@ function confirmMarkAsUnread(bookId, status){
     book.endDate=null;
     book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
   }
+  // Seri tamamlama bayrağını sıfırla
+  if(book.series){
+    const allSeriesBooks=db.books[me].filter(b=>b.series&&normalizeSeries(b.series)===normalizeSeries(book.series));
+    const allRead=allSeriesBooks.every(b=>b.id===book.id?false:b.readingStatus==='new');
+    if(!allRead) allSeriesBooks.forEach(b=>{b.seriesComplete=false;});
+  }
   saveDb();
   closeModal();
   render();
@@ -11972,15 +11978,16 @@ function checkSeriesComplete(seriesId){
   if(!ser) return;
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   const total = ser.total || (ser.books||[]).length;
-  const readCount = (ser.books||[]).filter(b=>{
-    if(!b.bookId) return false;
-    const lb = myBooksList.find(mb=>mb.id===b.bookId);
-    return lb && lb.readingStatus!=='reading'&&lb.readingStatus!=='paused'&&lb.readingStatus!=='wishlist'&&lb.readingStatus!=='planned';
-  }).length;
+  const readCount = myBooksList.filter(b=>
+    b.series && normalizeSeries(b.series)===normalizeSeries(ser.name) &&
+    b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
+    b.readingStatus!=='wishlist'&&b.readingStatus!=='planned'
+  ).length;
   if(total>0 && readCount>=total){
-    addSeriesEvent(seriesId, ser.name, '', 'series_complete');
+    // seriesComplete bayrağını tüm seri kitaplarına set et
+    const myBooksList2=db.books[me]||[];
+    myBooksList2.filter(b=>b.series&&normalizeSeries(b.series)===normalizeSeries(ser.name)).forEach(b=>{b.seriesComplete=true;});
     saveDb();
-    launchConfetti('series');
   }
 }
 
