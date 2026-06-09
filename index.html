@@ -6345,11 +6345,10 @@ const modalEl=document.querySelector('#modalOverlay .modal');
     const btn=document.getElementById('vmScrollTop');
     if(btn) btn.style.display=modalEl.scrollTop>150?'block':'none';
   };
-  document.getElementById('modalFooter').innerHTML=`
-    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:.5rem">
-    ${editBtn}${addBtn}
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-        ${!fromShelf&&isMe?`
+ document.getElementById('modalFooter').innerHTML=`
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;width:100%">
+      ${editBtn}${addBtn}
+      ${!fromShelf&&isMe?`
         ${book.readingStatus==='reading'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="finishReading(${book.id})">✅ Bitirdim!</button>
           <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="pauseReading(${book.id})">🚧 Yarım bırak</button>
@@ -6366,8 +6365,7 @@ const modalEl=document.querySelector('#modalOverlay .modal');
         ${book.readingStatus==='new'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
-        `:''}
-      </div>
+      `:''}
     </div>`;
 }
 function addBookFromVisitor(bookId){
