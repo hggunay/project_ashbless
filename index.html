@@ -6278,7 +6278,10 @@ function renderViewMode(book, fromShelf){
   // Kişisel not
   const noteHtml=isMe&&book.comment?`
     <div class="vm-section">
-      <div class="vm-label">💬 Kişisel not <span style="font-size:.6rem;opacity:.6">— sadece sana görünür</span></div>
+      <div class="vm-label" style="display:flex;justify-content:space-between;align-items:center">
+        <span>💬 Kişisel not <span style="font-size:.6rem;opacity:.6">— sadece sana görünür</span></span>
+        <button onclick="closeModal();showPanel('journal');switchJournalTab('private');setTimeout(()=>{const el=document.getElementById('pnote-${book.id}');if(el){el.style.display='';el.scrollIntoView({behavior:'smooth',block:'center'});}},300)" style="background:none;border:none;cursor:pointer;font-size:.72rem;color:var(--gold);font-family:'Space Mono',monospace;opacity:.8">📓 Deftere git →</button>
+      </div>
       <div style="background:rgba(201,162,39,.06);border-left:3px solid var(--gold);padding:.6rem .75rem;border-radius:0 4px 4px 0;font-size:.88rem;color:var(--ink);font-style:italic;line-height:1.6">${book.comment}</div>
     </div>`:'';
 
