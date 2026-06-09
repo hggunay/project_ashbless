@@ -6308,9 +6308,8 @@ function renderViewMode(book, fromShelf){
       .vm-section{padding:.65rem 0;border-bottom:1px solid rgba(44,26,14,.1);}
       .vm-section:last-child{border-bottom:none;}
       .vm-label{font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:.45rem;font-family:'Space Mono',monospace;}
-      .vm-info-grid{display:grid;grid-template-columns:1fr 1fr;gap:.25rem 0;}
-      @media(max-width:480px){.vm-info-grid{grid-template-columns:1fr;}}
-      .vm-key{font-size:.75rem;color:var(--ink-light);padding:.2rem .4rem .2rem 0;align-self:center;}
+      .vm-info-grid{display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;}
+      .vm-key{font-size:.75rem;color:var(--ink-light);padding:.2rem .4rem .2rem 0;align-self:center;white-space:nowrap;}
       .vm-val{font-size:.85rem;color:var(--ink);padding:.2rem 0;align-self:center;}
       .vm-chip{background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:3px;padding:.2rem .5rem;font-size:.75rem;color:var(--ink-light);display:inline-block;margin:.15rem .15rem 0 0;}
       .vm-chip-flag{background:rgba(74,103,65,.1);border-color:rgba(74,103,65,.3);color:var(--moss);}
