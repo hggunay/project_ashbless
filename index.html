@@ -6302,7 +6302,7 @@ function renderViewMode(book, fromShelf){
 
   // Edit butonu
   const editBtn=isMe?`<button onclick="renderEditMode(${book.id},${fromShelf})" style="background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.5);color:var(--gold);border-radius:4px;padding:.35rem .75rem;font-size:.75rem;cursor:pointer;font-family:'Space Mono',monospace">✏️ Düzenle</button>`:'';
-
+  const addBtn=!isMe?`<button onclick="addBookFromVisitor(${book.id})" style="background:rgba(74,103,65,.2);border:1px solid rgba(74,103,65,.4);color:var(--moss);border-radius:4px;padding:.35rem .75rem;font-size:.75rem;cursor:pointer;font-family:'Space Mono',monospace">📚 Kitabımı Ekle</button>`:'';
   document.getElementById('modalBody').innerHTML=`
     <style>
       .vm-section{padding:.65rem 0;border-bottom:1px solid rgba(44,26,14,.1);}
@@ -6348,7 +6348,7 @@ const modalEl=document.querySelector('#modalOverlay .modal');
   };
   document.getElementById('modalFooter').innerHTML=`
     <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:.5rem">
-      ${editBtn}
+    ${editBtn}${addBtn}
       <div style="display:flex;gap:.5rem;flex-wrap:wrap">
         ${!fromShelf&&isMe?`
         ${book.readingStatus==='reading'?`
@@ -6370,6 +6370,73 @@ const modalEl=document.querySelector('#modalOverlay .modal');
         `:''}
       </div>
     </div>`;
+}
+function addBookFromVisitor(bookId){
+  const srcBooks=(db.books[viewing]||[]);
+  const src=srcBooks.find(b=>b.id===bookId);
+  if(!src){notify('❌ Hata','Kitap bulunamadı.');return;}
+
+  // Liste seçim modalı
+  const overlay=document.createElement('div');
+  overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:500;display:flex;align-items:center;justify-content:center;padding:1rem';
+  overlay.innerHTML=`
+    <div style="background:var(--parchment);border:1px solid rgba(201,162,39,.4);border-radius:6px;padding:1.5rem;max-width:320px;width:100%;font-family:'Crimson Pro',serif">
+      <div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--ink);margin-bottom:1rem">📚 Hangi listeye ekleyelim?</div>
+      <div style="display:flex;flex-direction:column;gap:.5rem">
+        <button onclick="confirmAddFromVisitor(${bookId},'reading',this)" class="btn" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);text-align:left">📖 Okuyorum</button>
+        <button onclick="confirmAddFromVisitor(${bookId},'new',this)" class="btn" style="background:rgba(201,162,39,.1);color:var(--ink);border:1px solid rgba(201,162,39,.3);text-align:left">✅ Okudum</button>
+        <button onclick="confirmAddFromVisitor(${bookId},'wishlist',this)" class="btn" style="background:rgba(201,162,39,.08);color:var(--ink);border:1px solid rgba(201,162,39,.2);text-align:left">📚 Tsundoku</button>
+      </div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="margin-top:1rem;background:none;border:none;color:var(--rust);cursor:pointer;font-size:.85rem">✕ İptal</button>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function confirmAddFromVisitor(bookId, status, el){
+  const srcBooks=(db.books[viewing]||[]);
+  const src=srcBooks.find(b=>b.id===bookId);
+  if(!src) return;
+
+  // Zaten ekli mi?
+  const already=(db.books[me]||[]).find(b=>
+    (b.title||'').toLowerCase()===(src.title||'').toLowerCase()&&
+    (b.author||'').toLowerCase()===(src.author||'').toLowerCase()
+  );
+  if(already){
+    notify('📚 Zaten ekli',`"${src.title}" kitaplığında zaten var.`);
+    el.closest('[style*=fixed]').remove();
+    return;
+  }
+
+  // Kopyala
+  const newBook={
+    id:Date.now(),
+    title:src.title||'',
+    author:src.author||'',
+    publisher:src.publisher||null,
+    pages:src.pages||null,
+    pubYear:src.pubYear||null,
+    authorBirthYear:src.authorBirthYear||null,
+    country:src.country||null,
+    genres:src.genres?[...src.genres]:[],
+    formats:[],
+    series:src.series||null,
+    seriesNum:src.seriesNum||null,
+    seriesTotal:src.seriesTotal||null,
+    femaleAuthor:src.femaleAuthor||false,
+    youngAuthor:src.youngAuthor||false,
+    readingStatus:status,
+    addedAt:Date.now(),
+  };
+  if(status==='reading') newBook.startDate=new Date().toISOString().split('T')[0];
+  if(status==='new') newBook.endDate=new Date().toISOString().split('T')[0];
+
+  if(!db.books[me]) db.books[me]=[];
+  db.books[me].push(newBook);
+  saveDb();
+  renderSafe();
+  el.closest('[style*=fixed]').remove();
+  notify('✅ Eklendi',`"${src.title}" kitaplığına eklendi.`);
 }
 function renderEditMode(bookId, fromShelf){
   const book=targetBooks().find(b=>b.id===bookId);
