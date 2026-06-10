@@ -9596,10 +9596,10 @@ const topGenres=genreRows;
 
   // Seri tamamlama
   const seriesMap={};
-  books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:b.seriesComplete};seriesMap[b.series].count++;}});
-  const seriesStarted=Object.keys(seriesMap).length;
+  books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:false};seriesMap[b.series].count++;if(b.seriesComplete)seriesMap[b.series].complete=true;}});
+  const seriesStarted=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete).length;
   const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
-  const seriesStartedList=Object.keys(seriesMap);
+  const seriesStartedList=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete);
   const seriesFinishedList=Object.keys(seriesMap).filter(k=>seriesMap[k].complete);
   const seriesContinueList=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete);
   
@@ -11991,8 +11991,7 @@ function checkSeriesComplete(seriesId){
   const total = ser.total || (ser.books||[]).length;
   const readCount = myBooksList.filter(b=>
     b.series && normalizeSeries(b.series)===normalizeSeries(ser.name) &&
-    b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&
-    b.readingStatus!=='wishlist'&&b.readingStatus!=='planned'
+    (b.readingStatus==='new'||b.readingStatus==='past'||b.retroactive)
   ).length;
   if(total>0 && readCount>=total){
     // seriesComplete bayrağını tüm seri kitaplarına set et
