@@ -5489,6 +5489,7 @@ async function addBook(){
 
   propagateSeriesInfo(book); // eksik seri bilgilerini diğer kitaplara yay
   await saveDb();
+  checkAndOfferSeriesLink(book);
 
   let msg=`✓ "${book.title}" eklendi`;
   if(book.genres.length)msg+=` · ${book.genres.slice(0,2).join(', ')}`;
@@ -6802,6 +6803,7 @@ function saveField(bookId,field,value){
   if(field==='review'&&!value) book.reviewTs=null;
   // Seri bilgisi değişince diğer kitaplara yay
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
+  if(field==='series'&&value) checkAndOfferSeriesLink(book);
   saveDb();renderSafe();
 }
 
@@ -11452,6 +11454,56 @@ function autoImportSeries(){
   document.getElementById('seriesMatchBanner').style.display='none';
   st.textContent=`✓ ${matches.length} kitap otomatik aktarıldı!`;
   setTimeout(()=>{ st.textContent=''; }, 3000);
+  renderSeriesList();
+}
+
+function checkAndOfferSeriesLink(book){
+  if(!book||!book.series) return;
+  const serName = book.series;
+  const normName = normalizeSeries(serName);
+  const data = mySeriesData();
+  // Serilerim'de aynı isimde seri var mı?
+  const existingSer = Object.values(data.series||{}).find(s=>normalizeSeries(s.name||'')===normName);
+  if(existingSer){
+    // Kitap zaten ekli mi?
+    const alreadyIn = (existingSer.books||[]).some(b=>b.bookId===book.id);
+    if(alreadyIn) return;
+    // Otomatik ekle
+    existingSer.books = existingSer.books||[];
+    existingSer.books.push({ bookId:book.id, num:book.seriesNum||null, pages:book.pages||null });
+    existingSer.books.sort((a,b)=>(a.num||999)-(b.num||999));
+    saveDb();
+    notify('📚', '"'+book.title+'" → "'+existingSer.name+'" serisine eklendi.');
+  } else {
+    // Seri yok — bildirimle sor
+    const notifId = 'serlink_'+book.id;
+    const existing = document.getElementById(notifId);
+    if(existing) return;
+    const bar = document.createElement('div');
+    bar.id = notifId;
+    bar.style.cssText = 'position:fixed;bottom:4.5rem;left:50%;transform:translateX(-50%);z-index:9999;background:rgba(30,45,30,.97);border:1px solid rgba(201,162,39,.35);border-radius:8px;padding:.6rem 1rem;display:flex;align-items:center;gap:.75rem;font-size:.82rem;color:var(--parchment);box-shadow:0 4px 16px rgba(0,0,0,.4);max-width:90vw';
+    bar.innerHTML = '<span>📚 <b style="color:var(--gold)">'+serName+'</b> için serilerim listesi oluşturulsun mu?</span>'
+      + '<div style="display:flex;gap:.4rem;flex-shrink:0">'
+      + '<button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="createSeriesFromBook(' + book.id + ',\'' + notifId + '\')">Oluştur</button>'
+      + '<button class="btn btn-sm" style="font-size:.72rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById(\'' + notifId + '\')?.remove()">Hayır</button>'
+      + '</div>';
+    document.body.appendChild(bar);
+    setTimeout(()=>bar.remove(), 12000);
+  }
+}
+
+function createSeriesFromBook(bookId, notifId){
+  document.getElementById(notifId)?.remove();
+  const book = myBooks().find(b=>b.id===bookId);
+  if(!book||!book.series) return;
+  const data = mySeriesData();
+  const id = 'ser_'+Date.now();
+  const myBooksList = myBooks().filter(b=>b.series===book.series&&!b.title.startsWith('ISBN:'));
+  const books = myBooksList.map(b=>({ bookId:b.id, num:b.seriesNum||null, pages:b.pages||null }))
+    .sort((a,b)=>(a.num||999)-(b.num||999));
+  data.series[id] = { id, name:book.series, total:book.seriesTotal||null, books, ongoing:false, createdAt:new Date().toISOString() };
+  saveDb();
+  notify('📚', '"'+book.series+'" serisi oluşturuldu ve '+books.length+' kitap eklendi.');
   renderSeriesList();
 }
 
