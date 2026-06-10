@@ -7018,6 +7018,17 @@ function confirmMarkAsUnread(bookId, status){
     const allRead=allSeriesBooks.every(b=>b.id===book.id?false:b.readingStatus==='new');
     if(!allRead) allSeriesBooks.forEach(b=>{b.seriesComplete=false;});
   }
+  // Ülke eventini geri al
+  if(book.country&&book.readingStatus==='new'&&db.countryEvents&&db.countryEvents[me]){
+    const otherBooks=(db.books[me]||[]).filter(
+      b=>b.id!==book.id&&b.country&&b.country.toLowerCase()===book.country.toLowerCase()&&b.readingStatus==='new'&&!b.retroactive
+    );
+    if(otherBooks.length===0){
+      db.countryEvents[me]=db.countryEvents[me].filter(
+        e=>e.country.toLowerCase()!==book.country.toLowerCase()
+      );
+    }
+  }
   saveDb();
   closeModal();
   render();
