@@ -5537,6 +5537,8 @@ async function addBook(){
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
     setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
   }
+  setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
+  }
   if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
@@ -5545,8 +5547,17 @@ async function addBook(){
         badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
         ts:Date.now(), reactions:{}
       });
+      if(!db.feedEvents) db.feedEvents={};
+      if(!db.feedEvents[me]) db.feedEvents[me]=[];
+      db.feedEvents[me].push({
+        id:'fe_'+Date.now()+'_'+b.id,
+        type:'badge',
+        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name,
+        ts:Date.now(), reactions:{}
+      });
     });
     saveDb();
+}
 }
 
 function closeDupConfirm(){
