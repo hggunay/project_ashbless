@@ -602,6 +602,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .journal-copy-btn:hover{opacity:1;border-color:var(--gold);}
 .feed-expand-btn{background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;margin-left:.3rem;opacity:.8;transition:opacity .15s;}
 .feed-expand-btn:hover{opacity:1;text-decoration:underline;}
+.badge-feed-card{border-radius:8px;padding:.6rem;position:relative;overflow:hidden;}
+.badge-feed-card.tier-bronze{border-left:3px solid #cd7f32;background:rgba(205,127,50,.08);}
+.badge-feed-card.tier-silver{border-left:3px solid #b0b0b8;background:rgba(176,176,184,.08);}
+.badge-feed-card.tier-gold{border-left:3px solid #d4af37;background:rgba(212,175,55,.1);}
+.badge-feed-card.tier-diamond{border-left:3px solid #4fc3f7;background:rgba(79,195,247,.1);}
+.badge-feed-card::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:badgeShine 1.2s ease;}
+.badge-feed-card:hover::after{animation:badgeShine 1.2s ease;}
+@keyframes badgeShine{0%{left:-100%;}100%{left:150%;}}
 .reaction-more-btn{background:none;border:none;cursor:pointer;font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;opacity:.8;transition:opacity .15s;}
 .reaction-more-btn:hover{opacity:1;text-decoration:underline;}
 .journal-reactions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
@@ -5529,6 +5537,16 @@ async function addBook(){
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
     setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
   }
+  if(!db.badgeEvents) db.badgeEvents={};
+    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
+    newlyEarnedBadges.forEach(b=>{
+      db.badgeEvents[me].push({
+        id:'bd_'+Date.now()+'_'+b.id,
+        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
+        ts:Date.now(), reactions:{}
+      });
+    });
+    saveDb();
 }
 
 function closeDupConfirm(){
@@ -7654,6 +7672,14 @@ function getFeedCards(){
         months:ev.months, emoji:ev.emoji, badge:ev.badge, ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
+	const badgeEvs=(db.badgeEvents&&db.badgeEvents[u])||[];
+    badgeEvs.forEach(ev=>{
+      cards.push({
+        type:'badge', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        badgeId:ev.badgeId, tier:ev.tier, icon:ev.icon, name:ev.name, desc:ev.desc,
+        ts:ev.ts||0, reactions:ev.reactions||{},
+      });
+    });
   });
   // Birlikte okuma davetleri
   const sessions=db.readingSessions||{};
@@ -7759,15 +7785,17 @@ function renderFeed(append=false){
   }
 
   function feedReactionHtml(card){
-    const cardKey=card.type==='story'
+   const cardKey=card.type==='story'
       ?`story_${card.u}_${card.storyId}`
       :card.type==='series_event'
         ?`seriesev_${card.u}_${card.seriesEventId}`
         :card.type==='country_event'
           ?`countryev_${card.u}_${card.countryEventId}`
-          :card.type==='quote'
-            ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-            :`review_${card.u}_${card.bookId}`;
+          :card.type==='badge'
+            ?`badge_${card.u}_${card.badgeId}_${card.ts}`
+            :card.type==='quote'
+              ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+              :`review_${card.u}_${card.bookId}`;
     const reactionList=card.type==='streak_milestone'?milestoneReactionList:defaultReactionList;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
@@ -7874,8 +7902,8 @@ ${(()=>{
           :card.type==='quote'
             ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
             :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone')?'journal-type-series':'journal-type-quote';
-    const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':' 💬 alıntı';
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone')?'journal-type-series':'journal-type-quote';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${card.country||'—'}</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
@@ -7920,6 +7948,14 @@ ${(()=>{
           <div>
             <strong>${card.userName}</strong>, <strong>${card.months} aylık okuma serisine</strong> ulaştı!<br>
             <span style="font-size:.8rem;color:var(--gold)">${card.badge}</span>
+          </div>
+        </div>
+      `:card.type==='badge'?`
+        <div class="badge-feed-card tier-${card.tier}" style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+          <span style="font-size:2rem">${card.icon}</span>
+          <div>
+            <strong>${card.userName}</strong>, <strong>"${card.name}"</strong> rozetini kazandı!<br>
+            <span style="font-size:.8rem;color:var(--gold)">${card.desc}</span>
           </div>
         </div>
       `:`
