@@ -7717,6 +7717,22 @@ function getFeedCards(){
       history: JSON.parse(JSON.stringify(s.history||[])),
     });
   });
+  // Rozet feed kartları
+  Object.keys(db.feedEvents||{}).forEach(u=>{
+    const user=db.users[u]||{};
+    (db.feedEvents[u]||[]).forEach(ev=>{
+      if(ev.type==='badge'){
+        cards.push({
+          type:'badge', u,
+          userName:user.displayName||u,
+          userAvatar:user.avatar||'📚',
+          badgeId:ev.badgeId, tier:ev.tier,
+          icon:ev.icon, name:ev.name,
+          ts:ev.ts, reactions:ev.reactions||{}
+        });
+      }
+    });
+  });
   return cards;
 }
 
@@ -7916,6 +7932,8 @@ ${(()=>{
 const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${card.country||'—'}</span>`
+      :card.type==='badge'
+      ?`<span class="journal-entry-book">—</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
@@ -7961,7 +7979,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
           </div>
         </div>
       `:card.type==='badge'?`
-        <div class="badge-feed-card tier-${card.tier}" style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+        <div class="badge-feed-card tier-${card.tier}" style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
           <span style="font-size:2rem">${card.icon}</span>
           <div>
             <strong>${card.userName}</strong>, <strong>"${card.name}"</strong> rozetini kazandı!<br>
