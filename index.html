@@ -603,13 +603,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .feed-expand-btn{background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;margin-left:.3rem;opacity:.8;transition:opacity .15s;}
 .feed-expand-btn:hover{opacity:1;text-decoration:underline;}
 .badge-feed-card{border-radius:8px;padding:.6rem;position:relative;overflow:hidden;}
-.badge-feed-card.tier-bronze{border-left:3px solid #cd7f32;background:rgba(205,127,50,.08);}
-.badge-feed-card.tier-silver{border-left:3px solid #b0b0b8;background:rgba(176,176,184,.08);}
-.badge-feed-card.tier-gold{border-left:3px solid #d4af37;background:rgba(212,175,55,.1);}
-.badge-feed-card.tier-diamond{border-left:3px solid #4fc3f7;background:rgba(79,195,247,.1);}
-.badge-feed-card::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:badgeShine 1.2s ease;}
-.badge-feed-card:hover::after{animation:badgeShine 1.2s ease;}
-@keyframes badgeShine{0%{left:-100%;}100%{left:150%;}}
+.badge-feed-card.tier-bronze{border-left:3px solid #cd7f32;background:rgba(205,127,50,.08);animation:glowPulseBronze 2s ease-in-out 4;}
+.badge-feed-card.tier-silver{border-left:3px solid #b0b0b8;background:rgba(176,176,184,.08);animation:glowPulseSilver 2s ease-in-out 4;}
+.badge-feed-card.tier-gold{border-left:3px solid #d4af37;background:rgba(212,175,55,.1);animation:glowPulseGold 2s ease-in-out 4;}
+.badge-feed-card.tier-diamond{border-left:3px solid #4fc3f7;background:rgba(79,195,247,.1);animation:glowPulseDiamond 2s ease-in-out 4;}
+@keyframes glowPulseBronze{0%{box-shadow:0 0 4px rgba(205,127,50,.5);}50%{box-shadow:0 0 18px rgba(205,127,50,.5),0 0 30px rgba(205,127,50,.5);}100%{box-shadow:0 0 4px rgba(205,127,50,.5);}}
+@keyframes glowPulseSilver{0%{box-shadow:0 0 4px rgba(176,176,184,.5);}50%{box-shadow:0 0 18px rgba(176,176,184,.5),0 0 30px rgba(176,176,184,.5);}100%{box-shadow:0 0 4px rgba(176,176,184,.5);}}
+@keyframes glowPulseGold{0%{box-shadow:0 0 4px rgba(212,175,55,.5);}50%{box-shadow:0 0 18px rgba(212,175,55,.5),0 0 30px rgba(212,175,55,.5);}100%{box-shadow:0 0 4px rgba(212,175,55,.5);}}
+@keyframes glowPulseDiamond{0%{box-shadow:0 0 4px rgba(79,195,247,.5);}50%{box-shadow:0 0 18px rgba(79,195,247,.5),0 0 30px rgba(79,195,247,.5);}100%{box-shadow:0 0 4px rgba(79,195,247,.5);}}
 .reaction-more-btn{background:none;border:none;cursor:pointer;font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;opacity:.8;transition:opacity .15s;}
 .reaction-more-btn:hover{opacity:1;text-decoration:underline;}
 .journal-reactions{display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.6rem;}
@@ -7025,6 +7026,17 @@ async function finishReading(bookId){
     launchConfetti('badge');
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
     setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges), baseDelay+2000);
+  }
+  if(newlyEarnedBadges.length){
+    if(!db.badgeEvents) db.badgeEvents={};
+    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
+    if(!db.feedEvents) db.feedEvents={};
+    if(!db.feedEvents[me]) db.feedEvents[me]=[];
+    newlyEarnedBadges.forEach(b=>{
+      db.badgeEvents[me].push({id:'bd_'+Date.now()+'_'+b.id,badgeId:b.id,tier:b.tier,icon:b.icon,name:b.name,desc:b.desc,ts:Date.now(),reactions:{}});
+      db.feedEvents[me].push({id:'fe_'+Date.now()+'_'+b.id,type:'badge',badgeId:b.id,tier:b.tier,icon:b.icon,name:b.name,ts:Date.now(),reactions:{}});
+    });
+    saveDb();
   }
 }
 
