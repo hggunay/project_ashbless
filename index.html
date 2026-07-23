@@ -5516,47 +5516,11 @@ async function addBook(){
   document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='reading'));
   updateAddFormFields();
 
-  const newBooks=validBooks();
-  const newlyEarned=[];
-  const newlyEarnedBadges=[];
-  BADGE_CATS.forEach(cat=>{
-    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
-    allB.forEach(b=>{
-      if(!bstat(b,prevBooksValid).earned&&bstat(b,newBooks).earned){
-        newlyEarned.push(b.id);
-        newlyEarnedBadges.push(b);
-      }
-    });
-  });
-
   // Yeni ülke tespiti — kitap eklenirken ülke zaten gelmişse kontrol et
   checkAndAddCountryEvent(book);
 
   render();
-  if(newlyEarned.length){
-    launchConfetti('badge');
-    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
-    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
-  }
-  
-  if(!db.badgeEvents) db.badgeEvents={};
-    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
-    newlyEarnedBadges.forEach(b=>{
-      db.badgeEvents[me].push({
-        id:'bd_'+Date.now()+'_'+b.id,
-        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
-        ts:Date.now(), reactions:{}
-      });
-      if(!db.feedEvents) db.feedEvents={};
-      if(!db.feedEvents[me]) db.feedEvents[me]=[];
-      db.feedEvents[me].push({
-        id:'fe_'+Date.now()+'_'+b.id,
-        type:'badge',
-        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name,
-        ts:Date.now(), reactions:{}
-      });
-    });
-    saveDb();
+  checkAndAwardBadges(prevBooksValid);
 }
 
 
@@ -6824,8 +6788,43 @@ function toggleFlag(bookId,field,el){
   render();
 }
 
+// ── ROZET KONTROLÜ (ortak) ──────────────────────────────────────
+// prevValidBooks: değişiklikten ÖNCE alınmış, validBooks() ile aynı filtreden geçmiş bir klon dizi olmalı.
+// Örn: const prevValid=validBooks().map(b=>({...b}));  ... alanı değiştir ...  checkAndAwardBadges(prevValid);
+function checkAndAwardBadges(prevValidBooks){
+  const newlyEarned=[];
+  const newlyEarnedBadges=[];
+  const newValid=validBooks();
+  BADGE_CATS.forEach(cat=>{
+    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
+    allB.forEach(b=>{
+      if(!bstat(b,prevValidBooks).earned&&bstat(b,newValid).earned){
+        newlyEarned.push(b.id);
+        newlyEarnedBadges.push(b);
+      }
+    });
+  });
+  if(newlyEarned.length){
+    launchConfetti('badge');
+    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
+    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
+    if(!db.badgeEvents) db.badgeEvents={};
+    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
+    newlyEarnedBadges.forEach(b=>{
+      db.badgeEvents[me].push({
+        id:'bd_'+Date.now()+'_'+b.id,
+        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
+        ts:Date.now(), reactions:{}
+      });
+    });
+    saveDb();
+  }
+  return newlyEarnedBadges;
+}
+
 function saveField(bookId,field,value){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const prevValid=validBooks().map(b=>({...b}));
   if(['country','series','author','comicSeries'].includes(field)&&value==='') value=null;
   book[field]=value;
   if(field==='review'&&value) book.reviewTs=Date.now();
@@ -6834,10 +6833,12 @@ function saveField(bookId,field,value){
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
   if(field==='series'&&value) checkAndOfferSeriesLink(book);
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
 }
 
 async function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const prevValid=validBooks().map(b=>({...b}));
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
   if(field==='endDate'&&type==='date'&&rawVal){
     const onlyYear=/^\d{4}$/.test(rawVal.trim());
@@ -6845,7 +6846,7 @@ async function saveFieldTyped(bookId,field,type,rawVal){
       book.yearOnly=parseInt(rawVal.trim());
       book.endDate=null;
       book.month=rawVal.trim()+'-01';
-      saveDb();renderSafe();return;
+      saveDb();renderSafe();checkAndAwardBadges(prevValid);return;
     } else {
       book.yearOnly=null;
     }
@@ -6878,6 +6879,7 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     await checkCoreadingMilestone(book);
   }
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
 }
 function recalcSeriesCompletion(bookId){
   const books=db.books[me]||[];
@@ -7030,11 +7032,8 @@ async function finishReading(bookId){
   if(newlyEarnedBadges.length){
     if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
-    if(!db.feedEvents) db.feedEvents={};
-    if(!db.feedEvents[me]) db.feedEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
       db.badgeEvents[me].push({id:'bd_'+Date.now()+'_'+b.id,badgeId:b.id,tier:b.tier,icon:b.icon,name:b.name,desc:b.desc,ts:Date.now(),reactions:{}});
-      db.feedEvents[me].push({id:'fe_'+Date.now()+'_'+b.id,type:'badge',badgeId:b.id,tier:b.tier,icon:b.icon,name:b.name,ts:Date.now(),reactions:{}});
     });
     saveDb();
   }
@@ -7727,22 +7726,6 @@ function getFeedCards(){
       startedAt: s.startedAt||0,
 	  progress: JSON.parse(JSON.stringify(s.progress||{})),
       history: JSON.parse(JSON.stringify(s.history||[])),
-    });
-  });
-  // Rozet feed kartları
-  Object.keys(db.feedEvents||{}).forEach(u=>{
-    const user=db.users[u]||{};
-    (db.feedEvents[u]||[]).forEach(ev=>{
-      if(ev.type==='badge'){
-        cards.push({
-          type:'badge', u,
-          userName:user.displayName||u,
-          userAvatar:user.avatar||'📚',
-          badgeId:ev.badgeId, tier:ev.tier,
-          icon:ev.icon, name:ev.name,
-          ts:ev.ts, reactions:ev.reactions||{}
-        });
-      }
     });
   });
   return cards;
