@@ -6789,8 +6789,10 @@ function toggleFlag(bookId,field,el){
 }
 
 // ── ROZET KONTROLÜ (ortak) ──────────────────────────────────────
-// prevValidBooks: değişiklikten ÖNCE alınmış, validBooks() ile aynı filtreden geçmiş bir klon dizi olmalı.
-// Örn: const prevValid=validBooks().map(b=>({...b}));  ... alanı değiştir ...  checkAndAwardBadges(prevValid);
+// prevValidBooks: değişiklikten ÖNCE alınmış bir snapshot olmalı — snapshotValidBooks() kullan.
+function snapshotValidBooks(){
+  return validBooks().map(b=>({...b, genres:[...(b.genres||[])], formats:[...(b.formats||[])]}));
+}
 function checkAndAwardBadges(prevValidBooks){
   console.log('checkAndAwardBadges çağrıldı', prevValidBooks.length, validBooks().length);
   const newlyEarned=[];
@@ -6826,7 +6828,7 @@ function checkAndAwardBadges(prevValidBooks){
 
 function saveField(bookId,field,value){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
-  const prevValid=validBooks().map(b=>({...b}));
+  const prevValid=snapshotValidBooks();
   if(['country','series','author','comicSeries'].includes(field)&&value==='') value=null;
   book[field]=value;
   if(field==='review'&&value) book.reviewTs=Date.now();
@@ -6840,7 +6842,7 @@ function saveField(bookId,field,value){
 
 async function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
-  const prevValid=validBooks().map(b=>({...b}));
+  const prevValid=snapshotValidBooks();
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
   if(field==='endDate'&&type==='date'&&rawVal){
     const onlyYear=/^\d{4}$/.test(rawVal.trim());
@@ -11336,10 +11338,12 @@ function addGenre(bookId, genreId){
   const genres=book.genres||[];
   const norm=normalizeGenre(genreId);
   if(!genres.map(g=>normalizeGenre(g)).includes(norm)){
+    const prevValid=snapshotValidBooks();
     genres.push(genreId);
     book.genres=genres;
     saveDb();
     renderGenreChips(bookId);
+    checkAndAwardBadges(prevValid);
   }
   const inp=document.getElementById('gs-'+bookId);
   if(inp){ inp.value=''; inp.focus(); }
