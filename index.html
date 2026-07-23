@@ -6974,6 +6974,7 @@ function pauseReading(bookId){
 async function finishReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks(); // rozet kıyaslaması için — herhangi bir değişiklikten ÖNCE alınmalı
   // Birlikte okuma varsa %100 milestone tetikle
   if(book.coreadingSession&&book.pages){
     book.currentPage=book.pages;
@@ -6990,16 +6991,15 @@ async function finishReading(bookId){
   const month=book.endDate.substring(0,7);
   book.month=month;
   saveDb();
-  // Rozet kontrolü
-  const prev=myBooks().map(b=>({...b}));
+  // Rozet kontrolü — snapshot fonksiyon başında (prevValid) alınmıştı
+  console.log('finishReading rozet kontrolü', prevValid.length, validBooks().length);
+  const newValid=validBooks();
   const newlyEarned=[];
   const newlyEarnedBadges=[];
-  const _prevValid=prev.filter(x=>x.readingStatus!=='wishlist'&&x.readingStatus!=='reading'&&!x.title?.startsWith('ISBN:'));
-  const _newValid=validBooks();
   BADGE_CATS.forEach(cat=>{
     const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
     allB.forEach(b=>{
-      if(!bstat(b,_prevValid).earned&&bstat(b,_newValid).earned){
+      if(!bstat(b,prevValid).earned&&bstat(b,newValid).earned){
         newlyEarned.push(b.id);
         newlyEarnedBadges.push(b);
       }
