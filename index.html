@@ -6792,6 +6792,8 @@ function toggleFlag(bookId,field,el){
 // prevValidBooks: değişiklikten ÖNCE alınmış, validBooks() ile aynı filtreden geçmiş bir klon dizi olmalı.
 // Örn: const prevValid=validBooks().map(b=>({...b}));  ... alanı değiştir ...  checkAndAwardBadges(prevValid);
 function checkAndAwardBadges(prevValidBooks){
+function checkAndAwardBadges(prevValidBooks){
+  console.log('checkAndAwardBadges çağrıldı', prevValidBooks.length, validBooks().length);
   const newlyEarned=[];
   const newlyEarnedBadges=[];
   const newValid=validBooks();
@@ -6819,6 +6821,7 @@ function checkAndAwardBadges(prevValidBooks){
     });
     saveDb();
   }
+  console.log('newlyEarned:', newlyEarned);
   return newlyEarnedBadges;
 }
 
