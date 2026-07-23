@@ -5537,8 +5537,7 @@ async function addBook(){
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
     setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
   }
-  setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
-  }
+  
   if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
