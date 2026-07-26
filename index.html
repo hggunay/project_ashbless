@@ -1857,18 +1857,16 @@ function normalizeSeries(s){
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
     .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
 }
-function listRows(data, total, showDivider=false, dividerAt=5){
-  // dividerAt: kaçıncı ANA TÜR'den sonra "diğerleri" çizgisi çizilsin (default: 2. ana türden sonra)
+function listRows(data, total, showDivider=false, dividerAt=2){
+  // dividerAt: kaçıncı ANA TÜR'den sonra "diğerleri" çizgisi çizilsin
   let parentsSeen=0;
   let dividerIdx=-1;
   if(showDivider){
-    const parentCount=typeof dividerAt==='number'?dividerAt:2;
     for(let i=0;i<data.length;i++){
       const isObj=typeof data[i]==='object'&&!Array.isArray(data[i])&&'id' in data[i];
       const isChild=isObj&&data[i].isParent===false;
       if(!isChild){parentsSeen++;}
-      if(parentsSeen===parentCount){
-        // bu ana türün tüm alt türleri bittikten sonraki ilk satırı bul
+      if(parentsSeen===dividerAt){
         let j=i+1;
         while(j<data.length){
           const nextIsObj=typeof data[j]==='object'&&!Array.isArray(data[j])&&'id' in data[j];
@@ -1895,27 +1893,51 @@ function listRows(data, total, showDivider=false, dividerAt=5){
   }).join('')+'</div>';
 }
 
+function sliceByParents(data, parentCount){
+  // data içinde ilk parentCount kadar ana satırı (isParent!==false) ve onların alt satırlarını al
+  let seen=0;
+  for(let i=0;i<data.length;i++){
+    const isChild=typeof data[i]==='object'&&data[i].isParent===false;
+    if(!isChild) seen++;
+    if(seen===parentCount){
+      // bu parent'ın tüm alt satırlarını da dahil et
+      let j=i+1;
+      while(j<data.length&&typeof data[j]==='object'&&data[j].isParent===false) j++;
+      return data.slice(0,j);
+    }
+  }
+  return data;
+}
+function countParents(data){
+  return data.filter(d=>!(typeof d==='object'&&d.isParent===false)).length;
+}
 function listRowsPaged(data, total, key){
-  window['_paged_'+key]={data:data,shown:5,total:total};
-  function render(shown){
+  const initParents=2;
+  window['_paged_'+key]={data:data,shownParents:initParents,total:total};
+  function render(shownParents){
     const el=document.getElementById('paged-'+key);
     const btn=document.getElementById('paged-btn-'+key);
     if(!el) return;
-    el.innerHTML=listRows(data.slice(0,shown),total,shown>5,5);
+    const slice=sliceByParents(data,shownParents);
+    const totalParents=countParents(data);
+    el.innerHTML=listRows(slice,total,shownParents>initParents,initParents);
     if(btn){
-      btn.dataset.shown=shown;
-      btn.textContent=shown>=data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,data.length-shown))+')';
-      btn.style.display=data.length<=5?'none':'inline-block';
+      btn.dataset.shownparents=shownParents;
+      const remaining=totalParents-shownParents;
+      btn.textContent=shownParents>=totalParents?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,remaining))+')';
+      btn.style.display=totalParents<=initParents?'none':'inline-block';
     }
   }
-  setTimeout(()=>render(5),0);
-  return `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--gold);opacity:.6;letter-spacing:.08em;padding-bottom:.3rem;border-bottom:1px solid rgba(201,162,39,.15);margin-bottom:.2rem">EN ÇOK OKUNAN</div><div id="paged-${key}"></div>${data.length>5?`<button id="paged-btn-${key}" data-shown="5" onclick="
+  setTimeout(()=>render(initParents),0);
+  return `<div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--gold);opacity:.6;letter-spacing:.08em;padding-bottom:.3rem;border-bottom:1px solid rgba(201,162,39,.15);margin-bottom:.2rem">EN ÇOK OKUNAN</div><div id="paged-${key}"></div>${countParents(data)>initParents?`<button id="paged-btn-${key}" data-shownparents="${initParents}" onclick="
     const state=window['_paged_${key}'];
-    let s=parseInt(this.dataset.shown||'5');
-    if(s>=state.data.length){s=5;}else{s=Math.min(s+10,state.data.length);}
-    this.dataset.shown=s;
-    document.getElementById('paged-${key}').innerHTML=listRows(state.data.slice(0,s),window['_paged_${key}'].total,s>5,5);
-    this.textContent=s>=state.data.length?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,state.data.length-s))+')';
+    let s=parseInt(this.dataset.shownparents||'${initParents}');
+    const totalP=countParents(state.data);
+    if(s>=totalP){s=${initParents};}else{s=Math.min(s+10,totalP);}
+    this.dataset.shownparents=s;
+    const slice=sliceByParents(state.data,s);
+    document.getElementById('paged-${key}').innerHTML=listRows(slice,state.total,s>${initParents},${initParents});
+    this.textContent=s>=totalP?'↑ Daha az':'↓ Daha fazla ('+(Math.min(10,totalP-s))+')';
   " style="margin-top:.5rem;font-family:'Space Mono',monospace;font-size:.6rem;padding:.25rem .7rem;border:1px solid rgba(201,162,39,.3);border-radius:20px;background:transparent;color:var(--gold);cursor:pointer">↓ Daha fazla</button>`:''}`;
 }
 
