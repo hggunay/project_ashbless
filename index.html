@@ -1858,12 +1858,33 @@ function normalizeSeries(s){
     .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
 }
 function listRows(data, total, showDivider=false, dividerAt=5){
+  // dividerAt: kaçıncı ANA TÜR'den sonra "diğerleri" çizgisi çizilsin (default: 2. ana türden sonra)
+  let parentsSeen=0;
+  let dividerIdx=-1;
+  if(showDivider){
+    const parentCount=typeof dividerAt==='number'?dividerAt:2;
+    for(let i=0;i<data.length;i++){
+      const isObj=typeof data[i]==='object'&&!Array.isArray(data[i])&&'id' in data[i];
+      const isChild=isObj&&data[i].isParent===false;
+      if(!isChild){parentsSeen++;}
+      if(parentsSeen===parentCount){
+        // bu ana türün tüm alt türleri bittikten sonraki ilk satırı bul
+        let j=i+1;
+        while(j<data.length){
+          const nextIsObj=typeof data[j]==='object'&&!Array.isArray(data[j])&&'id' in data[j];
+          if(nextIsObj&&data[j].isParent===false){j++;}else{break;}
+        }
+        dividerIdx=j;
+        break;
+      }
+    }
+  }
   return `<div style="max-width:420px">`+data.map((item,i)=>{
     const isObj = typeof item==='object' && !Array.isArray(item) && 'id' in item;
     const isChild = isObj && item.isParent===false;
     const label = isObj ? genreLabel(item.id) : item[0];
     const val = isObj ? item.count : item[1];
-    const divider = (showDivider && i===dividerAt)?`<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;margin:.2rem 0"><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span><span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.5">diğerleri</span><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span></div>`:'';
+    const divider = (showDivider && i===dividerIdx)?`<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem 0;margin:.2rem 0"><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span><span style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.5">diğerleri</span><span style="flex:1;height:1px;background:rgba(201,162,39,.2)"></span></div>`:'';
     return divider+`
       <div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.06);${isChild?'padding-left:1.2rem;opacity:.85':''}">
         <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);min-width:1rem;text-align:right;opacity:.5">${isChild?'↳':''}</span>
@@ -6818,8 +6839,7 @@ function checkAndAwardBadges(prevValidBooks){
     if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
-      const alreadyLogged=(db.badgeEvents[me]||[]).some(e=>e.badgeId===b.id);
-      if(!alreadyLogged) db.badgeEvents[me].push({
+      db.badgeEvents[me].push({
         id:'bd_'+Date.now()+'_'+b.id,
         badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
         ts:Date.now(), reactions:{}
@@ -9631,7 +9651,19 @@ allIds.forEach(id=>{
 });
 
 // Ana türleri sayıya göre sırala (alt türleri yerinde bırak)
-const topGenres=genreRows;
+const parentRows=genreRows.filter(r=>r.isParent);
+const childMap={};
+genreRows.filter(r=>!r.isParent).forEach(r=>{
+  const par=PARENT_MAP[r.id];
+  if(!childMap[par])childMap[par]=[];
+  childMap[par].push(r);
+});
+parentRows.sort((a,b)=>b.count-a.count);
+const topGenres=[];
+parentRows.forEach(r=>{
+  topGenres.push(r);
+  (childMap[r.id]||[]).forEach(c=>topGenres.push(c));
+});
 
   // Yazar dağılımı
   const authorCount={};
