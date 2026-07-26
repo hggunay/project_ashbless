@@ -6818,7 +6818,8 @@ function checkAndAwardBadges(prevValidBooks){
     if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
-      db.badgeEvents[me].push({
+      const alreadyLogged=(db.badgeEvents[me]||[]).some(e=>e.badgeId===b.id);
+      if(!alreadyLogged) db.badgeEvents[me].push({
         id:'bd_'+Date.now()+'_'+b.id,
         badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
         ts:Date.now(), reactions:{}
