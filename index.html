@@ -6759,6 +6759,10 @@ function toggleRetroactive(bookId,el){
   if(!book.retroactive&&book.country){
     checkAndAddCountryEvent(book);
   }
+  // retroactive kapandıysa seri tamamlama kontrolü yap
+  if(!book.retroactive&&book.series){
+    recalcSeriesCompletion(book.id);
+  }
   saveDb();renderSafe();
 }
 
@@ -6889,7 +6893,8 @@ function recalcSeriesCompletion(bookId){
   const books=db.books[me]||[];
   const book=books.find(b=>b.id===bookId);if(!book||!book.series)return;
   const sn=book.series;
-  const cnt=books.filter(b=>b.series===sn).length;
+  const readStatuses=['new','past'];
+  const cnt=books.filter(b=>b.series===sn&&(readStatuses.includes(b.readingStatus)||b.retroactive)).length;
   const tot=book.seriesTotal||books.find(b=>b.series===sn&&b.seriesTotal)?.seriesTotal;
   if(tot&&cnt>=tot){
     books.filter(b=>b.series===sn).forEach(b=>{
@@ -9662,14 +9667,12 @@ const topGenres=genreRows;
   const femaleBooks=books.filter(b=>b.femaleAuthor).length;
   const femPct=books.length?Math.round(femaleBooks/books.length*100):0;
 
-  // Seri tamamlama — genel kitap/sayfa istatistiklerinden bağımsız kendi filtresi: retroaktif/past kitaplar dahil, sadece paused hariç
-  const seriesBooks=books.filter(b=>b.readingStatus!=='paused');
+  // Seri tamamlama
   const seriesMap={};
-  seriesBooks.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:false};seriesMap[b.series].count++;if(b.seriesComplete)seriesMap[b.series].complete=true;}});
-  const seriesTotal=Object.keys(seriesMap).length;
+  books.forEach(b=>{if(b.series){if(!seriesMap[b.series])seriesMap[b.series]={count:0,total:b.seriesTotal||null,complete:false};seriesMap[b.series].count++;if(b.seriesComplete)seriesMap[b.series].complete=true;}});
+  const seriesStarted=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete).length;
   const seriesFinished=Object.values(seriesMap).filter(s=>s.complete).length;
-  const seriesOngoing=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete).length;
-  const seriesStartedList=Object.keys(seriesMap);
+  const seriesStartedList=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete);
   const seriesFinishedList=Object.keys(seriesMap).filter(k=>seriesMap[k].complete);
   const seriesContinueList=Object.keys(seriesMap).filter(k=>!seriesMap[k].complete);
   
@@ -10010,14 +10013,14 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
             ${books.length?`<div class="stats-big-card"><div class="stats-big-num">%${femPct}</div><div class="stats-big-label">👩 Kadın Yazar</div></div>`:''}
           </div>`)}
 
-        ${seriesTotal?statsSection('stats-series','📚 Seri Durumu',`
+        ${seriesStarted?statsSection('stats-series','📚 Seri Durumu',`
           <div class="stats-grid">
             <div class="stats-big-card badge-tooltip-wrap" onclick="toggleStatsTooltip('seri-started',event)" style="cursor:pointer">
               <div class="badge-tooltip" id="tooltip-seri-started" onclick="event.stopPropagation()">
                 <div class="badge-tooltip-title">📚 Başlanan Seriler</div>
                 ${seriesStartedList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join('')}
               </div>
-              <div class="stats-big-num">${seriesTotal}</div><div class="stats-big-label">Başlanan Seri</div></div>
+              <div class="stats-big-num">${seriesStarted}</div><div class="stats-big-label">Başlanan Seri</div></div>
             <div class="stats-big-card badge-tooltip-wrap" onclick="toggleStatsTooltip('seri-finished',event)" style="cursor:pointer">
               <div class="badge-tooltip" id="tooltip-seri-finished" onclick="event.stopPropagation()">
                 <div class="badge-tooltip-title">✅ Bitirilen Seriler</div>
@@ -10029,7 +10032,7 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
                 <div class="badge-tooltip-title">🔖 Devam Eden Seriler</div>
                 ${seriesContinueList.length?seriesContinueList.map(n=>`<div class="badge-tooltip-book">${n}</div>`).join(''):'<div class="badge-tooltip-more">Devam eden seri yok</div>'}
               </div>
-              <div class="stats-big-num">${seriesOngoing}</div><div class="stats-big-label">Devam Eden</div></div>
+              <div class="stats-big-num">${seriesStarted-seriesFinished}</div><div class="stats-big-label">Devam Eden</div></div>
           </div>`):''}
 
         ${books.length===0?'<div class="empty-state">Henüz yeterli veri yok. Kitap ekledikçe istatistikler burada görünür.</div>':''}
