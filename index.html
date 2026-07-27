@@ -9611,7 +9611,7 @@ function renderStatsPanel(){
   const target=viewing||me;
   const user=db.users[target];
   const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
-  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading');
+  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
 
   // Zaman filtresi uygula
   const tf = window._statsTimeFilter||'all';
