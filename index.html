@@ -3498,16 +3498,17 @@ function checkStreakMilestone(books, curStreak){
   ];
   const hit = [...milestones].reverse().find(m=>curStreak>=m.months);
   if(!hit) return;
-  const key = 'streakMilestoneShown_'+hit.months+'_'+new Date().getFullYear();
-  try{ if(localStorage.getItem(key)) return; }catch(e){}
-  try{ localStorage.setItem(key,'1'); }catch(e){}
-  // Feed'e milestone kartı ekle
+  const yr = new Date().getFullYear();
+  // Bu rozet bu yıl için zaten kaydedilmiş mi? (cihazdan bağımsız — Firebase verisine bakılır)
   if(!db.streakEvents) db.streakEvents={};
   if(!db.streakEvents[me]) db.streakEvents[me]=[];
+  const alreadyLogged = db.streakEvents[me].some(e=>e.months===hit.months&&(e.year||new Date(e.ts).getFullYear())===yr);
+  if(alreadyLogged) return;
+  // Feed'e milestone kartı ekle
   db.streakEvents[me].push({
     id:'sm_'+Date.now(),
     months:hit.months, emoji:hit.emoji, badge:hit.badge,
-    ts:Date.now(), reactions:{}
+    year:yr, ts:Date.now(), reactions:{}
   });
   saveDb();
   setTimeout(()=>playStreakMilestone(hit), 2000);
@@ -3559,12 +3560,15 @@ function checkStreakBreak(books){
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
   const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth()+1).padStart(2,'0')}`;
-  const hasThisMonth = books.some(b=>bookMonth(b)===curMonth);
-const hadLastMonth = books.some(b=>bookMonth(b)===prevMonth);
+  const hadLastMonth = books.some(b=>bookMonth(b)===prevMonth);
   if(!hadLastMonth){
-    const key = 'streakBreakShown_'+curMonth;
-    try{ if(localStorage.getItem(key)) return; }catch(e){}
-    try{ localStorage.setItem(key,'1'); }catch(e){}
+    // Bu ay için "seri kırıldı" ekranı zaten gösterilmiş mi? (cihazdan bağımsız — Firebase verisine bakılır)
+    if(!db.streakBreakEvents) db.streakBreakEvents={};
+    if(!db.streakBreakEvents[me]) db.streakBreakEvents[me]=[];
+    const alreadyShown = db.streakBreakEvents[me].some(e=>e.month===curMonth);
+    if(alreadyShown) return;
+    db.streakBreakEvents[me].push({month:curMonth, ts:Date.now()});
+    saveDb();
     setTimeout(()=>playStreakBreak(), 2000);
   }
 }
@@ -6819,8 +6823,8 @@ function toggleFmt(bookId,fmt,el){
 
 function toggleFlag(bookId,field,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const prevValid=snapshotValidBooks();
   el.classList.toggle('active');
-  const prev=myBooks().map(b=>({...b}));
   const newVal=el.classList.contains('active');
   book[field]=newVal;
   // seriesComplete ve türevleri tüm seriye yayılsın
@@ -6829,10 +6833,8 @@ function toggleFlag(bookId,field,el){
     db.books[me].filter(b=>b.series===book.series&&b.id!==bookId).forEach(b=>{b[field]=newVal;});
   }
   saveDb();
-  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{
-    if(!bstat(b,prev).earned&&bstat(b,myBooks()).earned)notify(`🏅 Rozet Kazandın!`,`${b.icon} ${b.name}`);
-  }));
-  render();
+  renderSafe();
+  checkAndAwardBadges(prevValid);
 }
 
 // ── ROZET KONTROLÜ (ortak) ──────────────────────────────────────
