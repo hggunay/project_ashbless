@@ -1638,9 +1638,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
-                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Geçmiş ülkeleri akışa ekle</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Yeni ülke sistemi kurulmadan önce eklenen kitapların ülkelerini akışa ekler.</div>
-                  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Geçmiş Ülkeleri Ekle</button>
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Eksik ülke kayıtlarını onar</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.4rem;font-style:italic">Kitaplarındaki ülke bilgisiyle akış/harita arasında uyuşmazlık olduğunda, eksik olanları tarayıp ekler. Şu durumlarda işe yarar:</div>
+                  <ul style="font-size:.78rem;opacity:.6;font-style:italic;margin:0 0 .75rem 1.1rem;padding:0;line-height:1.5">
+                    <li>Bir yedeği geri yükledikten sonra (yedekler ülke geçmişini içermez)</li>
+                    <li>Ülke akış/harita kartı beklenmedik şekilde eksik göründüğünde</li>
+                    <li>Yeni ülke sistemi kurulmadan önce eklenmiş eski kitaplar için</li>
+                  </ul>
+                  <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Eksik Ülkeleri Ekle</button>
                 </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
@@ -2279,8 +2284,8 @@ const BADGE_CATS = [
         check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
-      {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages&&x.pages&&x.pages>0))},
-      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag(b.some(x=>x.hundredPages))},
+      {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir (okumaya başlama ve bitirme tarihi aynı olmalı).', check:b=>flag(b.some(x=>x.startDate&&x.endDate&&x.startDate===x.endDate))},
+      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag((db.books[me]||[]).filter(x=>x.readingStatus==='reading').length>=3)},
       {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
       {id:'secret_creator',tier:'diamond',icon:'✨', name:'Yaratıcının Tanığı', imgSrc:'images/yaraticinintanigi.png', desc:'Her şey görünenlerden ibaret değildi. Satır aralarını okudun. Sistemin ardındaki sesi duydun. Yaratıcının izine rastladın.\n\nGeliştirici: Claude (Anthropic) + hggunay aka Gweluien (Elf adıyla bilinen) · 8 Mart 2026\'dan bu yana devam ediyor...',
         check:b=>{
@@ -2320,23 +2325,14 @@ function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.coun
 function uniqueISOs(books){return new Set(books.filter(b=>b.country).map(b=>countryToISO(b.country)).filter(Boolean));}
 function booksInRegion(books,isoSet){return books.filter(b=>{const iso=countryToISO(b.country);return iso&&isoSet.has(iso);}).length;}
 function allContinents(books){const isos=uniqueISOs(books);const conts=new Set([...isos].map(iso=>ISO_CONTINENT[iso]).filter(Boolean));return conts.size>=6?1:0;}
-function streakMonths(books,year){
+// Ortak hesaplama — bir yıl için ay bazlı okuma serisi.
+// 'current': şu ana kadar (bu ay dahil) kesintisiz devam eden seri.
+// 'best': o yıl içinde ulaşılan en uzun kesintisiz seri.
+// İkisi de bookMonth() ile normalize edilmiş ay bilgisini kullanır.
+function _monthStreakStats(books,year){
   const now=new Date();
   const yr=year||now.getFullYear();
   const months=new Set(books.map(b=>bookMonth(b)).filter(Boolean));
-  const maxMonth=yr===now.getFullYear()?now.getMonth()-1:11;
-  let streak=0;
-  for(let m=0;m<=maxMonth;m++){
-    const key=`${yr}-${String(m+1).padStart(2,'0')}`;
-    if(months.has(key)) streak++;
-    else streak=0;
-  }
-  return streak;
-}
-function streakBadgesForYear(books,year){
-  const now=new Date();
-  const yr=year||now.getFullYear();
-  const months=new Set(books.filter(b=>b.endDate||b.month).map(b=>(b.endDate||b.month||'').substring(0,7)).filter(Boolean));
   const maxMonth=yr===now.getFullYear()?now.getMonth():11;
   let best=0,cur=0;
   for(let m=0;m<=maxMonth;m++){
@@ -2344,6 +2340,14 @@ function streakBadgesForYear(books,year){
     if(months.has(key)){cur++;best=Math.max(best,cur);}
     else cur=0;
   }
+  return{current:cur,best};
+}
+// "🔥 X ay" göstergesi için — şu an hâlâ devam eden kesintisiz seri.
+function currentReadingStreak(books,year){
+  return _monthStreakStats(books,year).current;
+}
+function streakBadgesForYear(books,year){
+  const{best}=_monthStreakStats(books,year);
   const earned=[];
   if(best>=3) earned.push({icon:'🥉',name:'Düzenli Okuyucu (3 ay)'});
   if(best>=6) earned.push({icon:'🥈',name:'Okuma Alışkanlığı (6 ay)'});
@@ -2494,7 +2498,9 @@ function booksForBadge(badge,books){
   if(id==='secret_anubis') return filtered.filter(b=>(b.readingStatus==='new'||b.retroactive)&&(b.author||'').toLowerCase().includes('powers')&&((b.title||'').toLowerCase().includes('anubis')||(b.title||'').toLowerCase().includes('kapı')));
   if(id==='secret_author'){const counts=filtered.reduce((acc,x)=>{if(x.author){acc[x.author]=(acc[x.author]||0)+1;}return acc;},{});const topAuthor=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];return topAuthor?filtered.filter(b=>b.author===topAuthor[0]):[];}
   if(id==='secret_whale') return filtered.filter(b=>b.pages&&b.pages>=1000);
-  if(id==='secret_month'||id==='secret_speed'||id==='secret_multi'||id==='secret_100pg') return filtered.filter(b=>b.hundredPages);
+  if(id==='secret_speed') return filtered.filter(b=>b.startDate&&b.endDate&&b.startDate===b.endDate);
+  if(id==='secret_multi') return (db.books[me]||[]).filter(b=>b.readingStatus==='reading');
+  if(id==='secret_month'||id==='secret_100pg') return filtered.filter(b=>b.hundredPages);
   if(id==='secret_ashbless') return [];
   if(id==='secret_creator') return [];
   // Diğer gizliler
@@ -2958,15 +2964,18 @@ function renderSettings(){
     const reqs=(db.forgotRequests||[]).filter(r=>db.users[r.u]);
     if(reqs.length){
       reqBox.style.display='block';
-      reqList.innerHTML=reqs.map(r=>`
+      reqList.innerHTML=reqs.map(r=>{
+        const av=db.users[r.u]?.avatar||'📚';
+        const avD=av.startsWith('data:')||av.startsWith('avatar_')?'👤':av;
+        return`
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap">
-          <span style="font-size:1.1rem">${db.users[r.u]?.avatar||'📚'}</span>
+          <span style="font-size:1.1rem">${avD}</span>
           <span style="font-family:'Playfair Display',serif;font-size:.9rem;flex:1">${db.users[r.u]?.displayName} <span style="opacity:.5;font-size:.75rem">@${r.u}</span></span>
           <div style="display:flex;gap:.4rem;align-items:center">
             <input class="detail-input" type="text" id="forgotpw_${r.u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
             <button class="btn btn-sm btn-primary" onclick="adminResetFromForgot('${r.u}')">🔑 Sıfırla</button>
           </div>
-        </div>`).join('');
+        </div>`;}).join('');
     } else {
       reqBox.style.display='none';
     }
@@ -2975,15 +2984,18 @@ function renderSettings(){
   if(adminList){
     const others=Object.keys(db.users).filter(u=>u!==me);
     if(!others.length){adminList.innerHTML='<div style="font-size:.85rem;opacity:.5;font-style:italic">Başka üye yok.</div>';return;}
-    adminList.innerHTML=others.map(u=>`
+    adminList.innerHTML=others.map(u=>{
+      const av=db.users[u].avatar||'📚';
+      const avD=av.startsWith('data:')||av.startsWith('avatar_')?'👤':av;
+      return`
       <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;flex-wrap:wrap">
-        <span style="font-size:1.2rem">${db.users[u].avatar||'📚'}</span>
+        <span style="font-size:1.2rem">${avD}</span>
         <span style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--ink);flex:1">${db.users[u].displayName} <span style="opacity:.5;font-size:.75rem">@${u}</span></span>
         <div style="display:flex;gap:.4rem;align-items:center">
           <input class="detail-input" type="text" id="newpw_${u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
           <button class="btn btn-sm btn-danger" onclick="adminResetPassword('${u}')">🔑 Sıfırla</button>
         </div>
-      </div>`).join('');
+      </div>`;}).join('');
   }
 }
 
@@ -3104,7 +3116,7 @@ function exportData(){
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
   a.href=url;
-  a.download=`armchair-yedek-${new Date().toISOString().split('T')[0]}.json`;
+  a.download=`armchair-yedek-${todayLocal()}.json`;
   a.click();
   URL.revokeObjectURL(url);
   notify('📥 Yedek Alındı','Tüm veriler başarıyla indirildi.');
@@ -3340,7 +3352,7 @@ function showSpecialDayBanner(){
   const days=getSpecialDay();
   if(!days.length){wrap.innerHTML='';return;}
 
-  const todayKey='aa-banner-'+new Date().toISOString().split('T')[0];
+  const todayKey='aa-banner-'+todayLocal();
   let closedIds=[];
   try{closedIds=JSON.parse(localStorage.getItem(todayKey)||'[]');}catch(e){}
 
@@ -3370,7 +3382,7 @@ function specialDayClick(url){
 
 function closeSpecialDayBanner(e,idx){
   e.stopPropagation();
-  const todayKey='aa-banner-'+new Date().toISOString().split('T')[0];
+  const todayKey='aa-banner-'+todayLocal();
   let closedIds=[];
   try{closedIds=JSON.parse(localStorage.getItem(todayKey)||'[]');}catch(e){}
   if(!closedIds.includes(idx)) closedIds.push(idx);
@@ -3389,7 +3401,7 @@ function enterApp(){
   try{
     const _fullBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist');
     checkStreakBreak(_fullBooks);
-    const _csCurStreak=streakMonths(_fullBooks, new Date().getFullYear());
+    const _csCurStreak=currentReadingStreak(_fullBooks, new Date().getFullYear());
     checkStreakMilestone(_fullBooks, _csCurStreak);
   }catch(e){}
   showSpecialDayBanner();
@@ -5076,7 +5088,7 @@ function confirmLend(bookId){
   const s=myShelf();
   const book=(s.books||[]).find(b=>b.id===bookId);
   if(!book) return;
-  book.lent={person,date:new Date().toISOString().split('T')[0]};
+  book.lent={person,date:todayLocal()};
   saveDb();renderShelf();
   notify('📤 Ödünç Verildi',`"${book.title}" → ${person}`);
 }
@@ -5470,6 +5482,12 @@ document.addEventListener('click',function(e){
   }
 });
 // ── TARİH YARDIMCI FONKSİYONLARI ─────────────────────────────
+// "Bugün" için her yerde aynı (yerel) tarihi üret — UTC ile yerel saat arasındaki
+// kaymayı önler (gece yarısına yakın saatlerde tarih hatası oluşmasın diye).
+function todayLocal(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
 function normalizeDate(s){
   if(!s) return null;
   s=s.trim().replace(/[,\/]/g,'.').replace(/\s+/g,'');
@@ -5502,7 +5520,7 @@ async function addBook(){
   const title=looksIsbn?'':rawInput;
   const manualSeries=document.getElementById('bookSeries').value.trim();
   const publisher=document.getElementById('bookPublisher').value.trim();
-  const startDate=document.getElementById('bookStartDate').value||new Date().toISOString().split('T')[0];
+  const startDate=document.getElementById('bookStartDate').value||todayLocal();
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
   if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
@@ -6547,8 +6565,8 @@ function confirmAddFromVisitor(bookId, status, el){
     readingStatus:status,
     addedAt:Date.now(),
   };
-  if(status==='reading') newBook.startDate=new Date().toISOString().split('T')[0];
-  if(status==='new') newBook.endDate=new Date().toISOString().split('T')[0];
+  if(status==='reading') newBook.startDate=todayLocal();
+  if(status==='new') newBook.endDate=todayLocal();
 
   if(!db.books[me]) db.books[me]=[];
   db.books[me].push(newBook);
@@ -6861,6 +6879,7 @@ function flagChipRetroactive(book,editable){
 
 function toggleRetroactive(bookId,el){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const prevValid=snapshotValidBooks();
   el.classList.toggle('active');
   book.retroactive=el.classList.contains('active');
   if(!book.retroactive&&book.readingStatus==='past') book.readingStatus='new';
@@ -6886,14 +6905,17 @@ function toggleRetroactive(bookId,el){
     recalcSeriesCompletion(book.id);
   }
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
 }
 
 function toggleFmt(bookId,fmt,el){
   el.classList.toggle('active');
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const prevValid=snapshotValidBooks();
   const fmts=[...document.querySelectorAll(`[data-fmt].active`)].map(c=>c.dataset.fmt);
   book.formats=fmts;
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
 }
 
 function toggleFlag(bookId,field,el){
@@ -6915,10 +6937,9 @@ function toggleFlag(bookId,field,el){
 // ── ROZET KONTROLÜ (ortak) ──────────────────────────────────────
 // prevValidBooks: değişiklikten ÖNCE alınmış bir snapshot olmalı — snapshotValidBooks() kullan.
 function snapshotValidBooks(){
-  return validBooks().map(b=>({...b, genres:[...(b.genres||[])], formats:[...(b.formats||[])]}));
+  return validBooks().map(b=>({...b, genres:[...(b.genres||[])], formats:[...(b.formats||[])], quotes:(b.quotes||[]).map(q=>({...q, reactions:{...(q.reactions||{})}}))}));
 }
-function checkAndAwardBadges(prevValidBooks){
-  console.log('checkAndAwardBadges çağrıldı', prevValidBooks.length, validBooks().length);
+function checkAndAwardBadges(prevValidBooks, delay=500){
   const newlyEarned=[];
   const newlyEarnedBadges=[];
   const newValid=validBooks();
@@ -6934,7 +6955,7 @@ function checkAndAwardBadges(prevValidBooks){
   if(newlyEarned.length){
     launchConfetti('badge');
     newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
-    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),500);
+    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),delay);
     if(!db.badgeEvents) db.badgeEvents={};
     if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
     newlyEarnedBadges.forEach(b=>{
@@ -6946,7 +6967,6 @@ function checkAndAwardBadges(prevValidBooks){
     });
     saveDb();
   }
-  console.log('newlyEarned:', newlyEarned);
   return newlyEarnedBadges;
 }
 
@@ -7030,6 +7050,7 @@ function applyToWholeSeries(bookId){
   if(!book||!book.series) return;
   const allSeriesBooks=db.books[me].filter(b=>b.series===book.series);
   if(allSeriesBooks.length<2){notify('📚 Seri','Bu seride başka kitap yok.');return;}
+  const prevValid=snapshotValidBooks();
 
   // Seri içindeki en dolu bilgiyi topla
   const best={};
@@ -7056,6 +7077,7 @@ function applyToWholeSeries(bookId){
     if(best.bigSeriesComplete){b.bigSeriesComplete=true;}
   });
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
   if(count>0) notify('✅ Seri güncellendi','Seri bilgileri tüm kitaplara aktarıldı.',true);
   else notify('📚 Seri','Aktarılacak yeni bilgi bulunamadı.');
 }
@@ -7063,20 +7085,24 @@ function applyToWholeSeries(bookId){
 function startReadingFromWishlist(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks();
   book.previousStatus=book.readingStatus||'wishlist';
   if(book.readingStatus==='new'||book.readingStatus==='past') book.rereadStarted=true;
   book.readingStatus='reading';
-  book.startDate=new Date().toISOString().split('T')[0];
+  book.startDate=todayLocal();
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
 
 function resumeReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks();
   book.previousStatus=book.readingStatus||'paused';
   book.readingStatus='reading';
   saveDb();renderSafe();
+  checkAndAwardBadges(prevValid);
   notify('📖 Devam ediliyor',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
 function savePausedPage(bookId, value){
@@ -7111,25 +7137,11 @@ async function finishReading(bookId){
   // Daha önce okunmuşsa yeniden okuma say
   if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
-  book.endDate=book.endDate||new Date().toISOString().split('T')[0];
+  book.endDate=book.endDate||todayLocal();
   book.rereadStarted=false;
   const month=book.endDate.substring(0,7);
   book.month=month;
   saveDb();
-  // Rozet kontrolü — snapshot fonksiyon başında (prevValid) alınmıştı
-  console.log('finishReading rozet kontrolü', prevValid.length, validBooks().length);
-  const newValid=validBooks();
-  const newlyEarned=[];
-  const newlyEarnedBadges=[];
-  BADGE_CATS.forEach(cat=>{
-    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
-    allB.forEach(b=>{
-      if(!bstat(b,prevValid).earned&&bstat(b,newValid).earned){
-        newlyEarned.push(b.id);
-        newlyEarnedBadges.push(b);
-      }
-    });
-  });
   // Seri tamamlanma kontrolü
   if(book.series){
     const data=mySeriesData();
@@ -7153,19 +7165,8 @@ async function finishReading(bookId){
   }
   // Harita sekmesi açıksa yenile
   if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
-  if(newlyEarned.length){
-    launchConfetti('badge');
-    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
-    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges), baseDelay+2000);
-  }
-  if(newlyEarnedBadges.length){
-    if(!db.badgeEvents) db.badgeEvents={};
-    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
-    newlyEarnedBadges.forEach(b=>{
-      db.badgeEvents[me].push({id:'bd_'+Date.now()+'_'+b.id,badgeId:b.id,tier:b.tier,icon:b.icon,name:b.name,desc:b.desc,ts:Date.now(),reactions:{}});
-    });
-    saveDb();
-  }
+  // Rozet kontrolü — snapshot fonksiyon başında (prevValid) alınmıştı
+  checkAndAwardBadges(prevValid, baseDelay+2000);
 }
 
 function markAsUnread(bookId){
@@ -7349,9 +7350,11 @@ function filterBadges(f,el){
 function setRating(bookId, rating){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks();
   // Aynı puana tekrar tıklayınca sıfırla
   book.rating = book.rating===rating ? 0 : rating;
   saveDb();
+  checkAndAwardBadges(prevValid);
   // Yıldızları güncelle
   const container=document.getElementById('starInput_'+bookId);
   if(container){
@@ -7370,10 +7373,12 @@ function addQuote(bookId){
   const pageEl=document.getElementById('newQuotePage_'+bookId);
   const text=textEl.value.trim();
   if(!text){notify('⚠️','Alıntı metni boş olamaz.');return;}
+  const prevValid=snapshotValidBooks();
   if(!book.quotes) book.quotes=[];
   book.quotes.push({text, page:pageEl.value?parseInt(pageEl.value):null, ts:Date.now()});
   textEl.value=''; pageEl.value='';
   saveDb();
+  checkAndAwardBadges(prevValid);
   // Modalı yenile
   openBook(bookId);
 }
@@ -7459,6 +7464,7 @@ function addStory(){
   if(!title){notify('⚠️','Öykü başlığı boş olamaz.');return;}
   if(!db.stories) db.stories={};
   if(!db.stories[me]) db.stories[me]=[];
+  const prevValid=snapshotValidBooks();
   const story={
     id:Date.now(),
     title, author, source, status, link, sourceBook,
@@ -7468,6 +7474,7 @@ function addStory(){
   };
   db.stories[me].push(story);
   saveDb();
+  checkAndAwardBadges(prevValid);
   // Formu sıfırla
   document.getElementById('storyTitle').value='';
   document.getElementById('storyAuthor').value='';
@@ -7772,6 +7779,8 @@ function getFeedCards(){
   let cards=[];
   Object.keys(db.users).forEach(u=>{
     const user=db.users[u];
+    // Gizli profil — sahibi hariç kimse akışta göremesin
+    if(u!==me&&user&&user.publicProfile===false) return;
     const books=db.books[u]||[];
     books.forEach(b=>{
       if(b.review&&b.review.trim()){
@@ -9696,6 +9705,7 @@ function renderStatsPanel(){
   const user=db.users[target];
   const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
   let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly)));
+  const badgeSourceBooks=books; // rozet sayımı zaman filtresinden etkilenmesin — rozetler zaman dilimine bağlı değil
 
   // Zaman filtresi uygula
   const tf = window._statsTimeFilter||'all';
@@ -9723,7 +9733,7 @@ function renderStatsPanel(){
   // Özet sayılar
   let badgeCount=0;
   let badgeTotal=0;
-  BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{badgeTotal++;if(bstat(b,books).earned)badgeCount++;});});
+  BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{badgeTotal++;if(bstat(b,badgeSourceBooks).earned)badgeCount++;});});
   const totalPages=books.reduce((s,b)=>s+(b.pages||0),0);
   const countries=new Set(books.filter(b=>b.country).map(b=>b.country.trim().toLowerCase()));
   const series=new Set(books.filter(b=>b.series).map(b=>b.series));
@@ -9857,7 +9867,7 @@ parentRows.forEach(r=>{
             const sira=Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
             const ana=sira[0]?sira[0][0]:null;
             const etiket={evren:'farklı dünyalara yönelen',gerilim:'bilinmeyeni çözmeyi seven',dusunce:'anlam arayışında olan',insan:'insan hikâyelerine yakın duran',gercek:'gerçeklik odaklı'};
-            const streak=streakMonths(books,new Date().getFullYear());
+            const streak=currentReadingStreak(books,new Date().getFullYear());
             const ritim=streak>=6?'Akış stabil.':streak>=3?'Ritmini yakalamış.':streak>=1?'Okuma alışkanlığı oluşuyor.':'';
             return ana?`${etiket[ana]} bir okuyucu.${ritim?' '+ritim:''}`:target+' henüz okuma profilini oluşturuyor.';
           })()}
@@ -9913,7 +9923,7 @@ parentRows.forEach(r=>{
             const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
             cal12.push({key,lbl:monthLabels[d.getMonth()],yr:d.getFullYear(),has:!!(monthCounts[key]),n:monthCounts[key]||0});
           }
-          const curStreak=streakMonths(books,curYear);
+          const curStreak=currentReadingStreak(books,curYear);
           const cellStyle=(has)=>has
             ?'background:linear-gradient(135deg,var(--gold),var(--leather));border-color:var(--gold);color:var(--ink);font-weight:700'
             :'background:rgba(138,69,19,.06);border-color:rgba(201,162,39,.15);color:var(--rust);opacity:.4';
@@ -10072,7 +10082,7 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
           const stil = _pick(stilHavuz, 2);
 
           // Ritim
-          const curStreakForProfile = streakMonths(books, new Date().getFullYear());
+          const curStreakForProfile = currentReadingStreak(books, new Date().getFullYear());
           const ritmHavuz = curStreakForProfile>=6
             ?['Akış stabil.','Ritmini yakalamışsın.','Okuma düzenin oturmuş.']
             :curStreakForProfile>=3
@@ -10767,7 +10777,7 @@ function renderBadges(){
         <div class="badge-desc">${b.desc}</div>
         <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
         <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
-        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${streakMonths(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
+        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${currentReadingStreak(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
         ${!isOpen2?'':''}`}
       </div>
     </div>`;
@@ -11493,11 +11503,13 @@ function addGenre(bookId, genreId){
 function removeGenre(bookId, genreId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks();
   book.genres=(book.genres||[]).filter(g=>normalizeGenre(g)!==genreId);
   saveDb();
   renderGenreChips(bookId);
   renderStats();
-  renderBadges(); 
+  renderBadges();
+  checkAndAwardBadges(prevValid);
 }
 
 function renderGenreChips(bookId){
@@ -12068,9 +12080,10 @@ function toggleSeriesOngoing(seriesName, val){
 function startReadingSeriesBook(bookId){
   const book = myBooks().find(b=>b.id===bookId);
   if(!book) return;
+  const prevValid=snapshotValidBooks();
   book.previousStatus = book.readingStatus||'wishlist';
   book.readingStatus = 'reading';
-  book.startDate = book.startDate || new Date().toISOString().split('T')[0];
+  book.startDate = book.startDate || todayLocal();
   // Hangi seriye ait — seri event'i kaydet
   const data = mySeriesData();
   Object.values(data.series||{}).forEach(ser=>{
@@ -12086,6 +12099,7 @@ function startReadingSeriesBook(bookId){
     addSeriesEvent(ser.id, ser.name, book.title, eventType);
   });
   saveDb();
+  checkAndAwardBadges(prevValid);
   renderSeriesList();
   notify('📖 Okumaya Başlandı', book.title+' şu an okunanlar listesine eklendi.');
   var _t=[...document.querySelectorAll('.nav-tab')].find(function(t){return (t.getAttribute('onclick')||'').includes("'myBooks'");});
@@ -12226,9 +12240,9 @@ function startPlannedBook(seriesId, manualTitle, manualAuthor){
     readingStatus: 'reading',
     genres:[], formats:['kitap'],
     series: ser.name||null,
-    month: now.toISOString().substring(0,7),
+    month: todayLocal().substring(0,7),
     addedAt: now.toISOString(),
-    startDate: now.toISOString().split('T')[0],
+    startDate: todayLocal(),
     endDate: null, currentPage: null,
     retroactive:false, nightReading:false, reread:false, challenging:false,
     funniest:false, saddest:false, indie:false, hundredPages:false,
