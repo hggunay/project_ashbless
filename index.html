@@ -1606,6 +1606,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
             <div class="detail-acc-body" id="body-set-backup">
               <div style="padding-top:.75rem">
                 <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Verilerini yedekle veya yeni cihaza taşı. Tüm üyelerin verileri dışa aktarılır.</div>
+                <div style="font-size:.75rem;color:var(--rust);margin-bottom:.75rem">⚠️ İçe aktarma, birleştirme değil DEĞİŞTİRMEdir: yedekteki bir üyenin/kitabın verisi, o an sunucudaki güncel veriyle eşleşiyorsa üzerine tamamen yazılır. Yedek tarihinden sonra eklenenler kaybolabilir. Sadece elindeki en güncel yedeği geri yüklerken kullan.</div>
                 <div style="display:flex;gap:.75rem;flex-wrap:wrap">
                   <button class="btn btn-primary btn-sm" onclick="exportData()">📥 Veriyi Dışa Aktar</button>
                   <label class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink);cursor:pointer;border:1px solid rgba(201,162,39,.3)">
@@ -3086,6 +3087,13 @@ function exportData(){
     archivedNotes:db.archivedNotes||{},
     countryEvents:db.countryEvents||{},
     settings:db.settings||{},
+    notifications:db.notifications||{},
+    badgeEvents:db.badgeEvents||{},
+    streakEvents:db.streakEvents||{},
+    streakBreakEvents:db.streakBreakEvents||{},
+    readingSessions:db.readingSessions||{},
+    mapReset:db.mapReset||{},
+    forgotRequests:db.forgotRequests||[],
   };
   const json=JSON.stringify(data,null,2);
   const blob=new Blob([json],{type:'application/json'});
@@ -3109,7 +3117,7 @@ function importData(input){
         document.getElementById('importStatus').textContent='⚠️ Geçersiz dosya formatı.';
         return;
       }
-      // Mevcut veriyle birleştir — üzerine yaz
+      // Mevcut veriyle birleştir — DİKKAT: aynı isimli kullanıcı/anahtar TAMAMEN değişir, iç içe birleştirme yapılmaz
       db.users={...db.users,...data.users};
       db.books={...db.books,...data.books};
       if(data.stories) db.stories={...db.stories,...data.stories};
@@ -3119,10 +3127,23 @@ function importData(input){
       if(data.archivedNotes) db.archivedNotes={...db.archivedNotes,...data.archivedNotes};
       if(data.countryEvents) db.countryEvents={...db.countryEvents,...data.countryEvents};
       if(data.settings) db.settings={...db.settings,...data.settings};
+      if(data.notifications) db.notifications={...db.notifications,...data.notifications};
+      if(data.badgeEvents) db.badgeEvents={...db.badgeEvents,...data.badgeEvents};
+      if(data.streakEvents) db.streakEvents={...db.streakEvents,...data.streakEvents};
+      if(data.streakBreakEvents) db.streakBreakEvents={...db.streakBreakEvents,...data.streakBreakEvents};
+      if(data.readingSessions) db.readingSessions={...db.readingSessions,...data.readingSessions};
+      if(data.mapReset) db.mapReset={...db.mapReset,...data.mapReset};
+      if(data.forgotRequests) db.forgotRequests=[...(db.forgotRequests||[]),...(Array.isArray(data.forgotRequests)?data.forgotRequests:[])];
       await saveDb();
+      // Kayıt gerçekten başarılı mıydı? (K5 çakışması ya da ağ hatası olabilir)
+      const saveFailed=!!document.getElementById('_saveError');
       render();
-      document.getElementById('importStatus').textContent=`✅ İçe aktarıldı! ${Object.keys(data.users).length} üye, ${Object.values(data.books).flat().length} kitap yüklendi.`;
-      notify('📤 İçe Aktarıldı','Veriler başarıyla yüklendi.');
+      if(saveFailed){
+        document.getElementById('importStatus').textContent='⚠️ Dosya okundu ama sunucuya KAYDEDİLEMEDİ — yukarıdaki kırmızı uyarıya bak.';
+      }else{
+        document.getElementById('importStatus').textContent=`✅ İçe aktarıldı! ${Object.keys(data.users).length} üye, ${Object.values(data.books).flat().length} kitap yüklendi.`;
+        notify('📤 İçe Aktarıldı','Veriler başarıyla yüklendi.');
+      }
     }catch(err){
       document.getElementById('importStatus').textContent='⚠️ Dosya okunamadı: '+err.message;
     }
