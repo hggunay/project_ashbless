@@ -5711,9 +5711,7 @@ async function respondCoreading(sessionId, response){
   const initiator=session.initiator;
   if(initiator&&initiator!==me){
     const myName=(db.users[me]||{}).displayName||me;
-    if(!db.notifications[initiator]) db.notifications[initiator]=[];
-    db.notifications[initiator].push({id:'crr_'+sessionId+'_'+me+'_'+Date.now(),type:'coreading_response',sessionId,bookTitle:session.bookTitle,fromUser:me,fromName:myName,response,ts:new Date().toISOString(),seen:false,reaction:response==='accepted'?'✓':'✗',context:session.bookTitle});
-    await saveDb();
+    await pushNotification(initiator, {id:'crr_'+sessionId+'_'+me+'_'+Date.now(),type:'coreading_response',sessionId,bookTitle:session.bookTitle,fromUser:me,fromName:myName,response,ts:new Date().toISOString(),seen:false,reaction:response==='accepted'?'✓':'✗',context:session.bookTitle});
   }
   renderSafe();
 }
@@ -5758,10 +5756,8 @@ async function startCoreadingRead(sessionId){
 	  reaction: '📖',
       context: session.bookTitle,
     };
-    if(!db.notifications[u]) db.notifications[u]=[];
-    db.notifications[u].push(notif);
+    await pushNotification(u, notif);
   }
-  await saveDb();
   notify('📖 Okuma başladı!', session.bookTitle+' için birlikte okuma oturumu başladı.');
   renderSafe();
   // Initiator için kitap bağlama
@@ -5967,10 +5963,8 @@ async function leaveCoreading(sessionId){
       await fbSet('aa-v4/readingSessions/'+sessionId+'/history',updatedSession.history);
       const allAccepted=Object.keys(updatedSession.participants||{}).filter(u=>updatedSession.participants[u].status==='accepted');
       for(const u of allAccepted){
-        if(!db.notifications[u]) db.notifications[u]=[];
-        db.notifications[u].push({id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:updatedSession.bookTitle,fromName:(db.users[me]||{}).displayName||me,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:updatedSession.bookTitle});
+        await pushNotification(u, {id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:updatedSession.bookTitle,fromName:(db.users[me]||{}).displayName||me,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:updatedSession.bookTitle});
       }
-      await saveDb();
       launchCoreadingConfetti(true);
       updateNotifDot();
     }
@@ -6077,11 +6071,9 @@ async function checkCoreadingMilestone(book){
       reaction:'👥',
       context:session.bookTitle,
     };
-    if(!db.notifications[u]) db.notifications[u]=[];
-    db.notifications[u].push(notif);
+    await pushNotification(u, notif);
   }
  await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
-  await saveDb();
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
   if(lastMilestone===100){
     // Kişisel bildirim + küçük konfeti (finishReading'den gelmiyorsa)
@@ -6110,8 +6102,7 @@ if(!alreadyFinished){
 if(!alreadyFinished){
   const otherParticipants = Object.keys(freshSession.participants||{}).filter(u=>u!==me&&freshSession.participants[u].status==='accepted');
   for(const u of otherParticipants){
-    if(!db.notifications[u]) db.notifications[u]=[];
-    db.notifications[u].push({
+    await pushNotification(u, {
       id:'crf_'+sessionId+'_'+me+'_'+Date.now(),
       type:'coreading_finished',
       sessionId,
@@ -6123,7 +6114,6 @@ if(!alreadyFinished){
       context:myName+' "'+freshSession.bookTitle+'" kitabını bitirdi!'
     });
   }
-  await saveDb();
   updateNotifDot();
 }
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
@@ -6145,12 +6135,9 @@ if(!alreadyFinished){
       if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].status='completed';
       const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
       for(const u of allAccepted){
-        if(!db.notifications[u]) db.notifications[u]=[];
         const notif={id:'crc_'+sessionId+'_'+u+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:u===me,reaction:'🎉',context:freshSession.bookTitle};
-        db.notifications[u].push(notif);
-        await fbSet('aa-v4/notifications/'+u+'/'+db.notifications[u].length-1, notif);
+        await pushNotification(u, notif);
       }
-      await saveDb();
       notify('🎉 Herkesle birlikte!', freshSession.bookTitle+' birlikte tamamlandı!');
       launchCoreadingConfetti(true);
       updateNotifDot();
@@ -6176,10 +6163,8 @@ if(!alreadyFinished){
         reaction:'👥',
         context:session.bookTitle,
       };
-      if(!db.notifications[u]) db.notifications[u]=[];
-      db.notifications[u].push(notif);
+      await pushNotification(u, notif);
     }
-    await saveDb();
     updateNotifDot();
     renderSafe();
   }
@@ -8854,15 +8839,23 @@ function formatTimeAgo(ts){
   return`${d} gün önce`;
 }
 
-function pushReactionNotif(toUser,fromUser,reaction,context){
+async function pushNotification(toUser, notif){
   if(!db.notifications) db.notifications={};
   if(!db.notifications[toUser]) db.notifications[toUser]=[];
+  db.notifications[toUser].push(notif); // yerel görünüm için hemen ekle
+  try{
+    const remote = await fbGet('aa-v4/notifications/'+toUser);
+    const list = Array.isArray(remote) ? remote : [];
+    list.push(notif);
+    await fbSet('aa-v4/notifications/'+toUser, list);
+  }catch(e){ console.error('bildirim gönderilemedi:',e); }
+}
+async function pushReactionNotif(toUser,fromUser,reaction,context){
   const fromName=(db.users[fromUser]&&db.users[fromUser].displayName)||fromUser;
-  db.notifications[toUser].push({
+  await pushNotification(toUser, {
     id:Date.now(), type:'reaction', from:fromUser, fromName,
     reaction, context, ts:new Date().toISOString(), seen:false,
   });
-  saveDb();
 }
 
 function checkNotifications(){
