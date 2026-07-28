@@ -2660,7 +2660,11 @@ function targetBooks(){return db.books[viewing||me]||[];}
 function validBooks(){
   return targetBooks().filter(b=>
     b.title&&!b.title.startsWith('ISBN:')&&b.title.trim()!==''
-    &&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'
+    &&b.readingStatus!=='wishlist'
+    &&(
+      (b.readingStatus!=='reading'&&b.readingStatus!=='paused')
+      || !!(b.endDate||b.yearOnly) // daha önce bitirilmiş ama şimdi yeniden okunan/yarım bırakılan kitap — sayımdan düşmesin
+    )
   );
 }
 
@@ -3383,7 +3387,7 @@ function enterApp(){
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
   try{
-    const _fullBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist');
+    const _fullBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist');
     checkStreakBreak(_fullBooks);
     const _csCurStreak=streakMonths(_fullBooks, new Date().getFullYear());
     checkStreakMilestone(_fullBooks, _csCurStreak);
@@ -4595,7 +4599,7 @@ function saveSpecialShelf(type,data){
 function spReadBooks(){
   return (db.books[me]||[]).filter(b=>
     b.title&&!b.title.startsWith('ISBN:')&&
-    b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'
+    b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))
   );
 }
 
@@ -4606,7 +4610,7 @@ function renderSpecialShelves(){
   const allBadges=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):c.badges||[]);
   const bedsideBadge=allBadges.find(b=>b.id==='secret_bedside');
   const forbiddenBadge=allBadges.find(b=>b.id==='secret_forbidden');
-  const targetBooks2=(db.books[target]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
+  const targetBooks2=(db.books[target]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly)));
   const showBedside=bedsideBadge?bstat(bedsideBadge,targetBooks2).earned:false;
   const showForbidden=forbiddenBadge?bstat(forbiddenBadge,targetBooks2).earned:false;
   let html='';
@@ -9691,7 +9695,7 @@ function renderStatsPanel(){
   const target=viewing||me;
   const user=db.users[target];
   const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
-  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading'&&b.readingStatus!=='paused');
+  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly)));
 
   // Zaman filtresi uygula
   const tf = window._statsTimeFilter||'all';
@@ -10396,7 +10400,7 @@ function renderBookList(){
   const reading=allBooks.filter(b=>b.readingStatus==='reading');
   const paused=allBooks.filter(b=>b.readingStatus==='paused');
   const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
-  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='planned');
+  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='planned');
 
   // Sekme sayaçları
   const bc=document.getElementById('bst-bitti-count');
@@ -12076,7 +12080,7 @@ function startReadingSeriesBook(bookId){
     const readCount = (ser.books||[]).filter(b=>{
       if(!b.bookId) return false;
       const lb = myBooksList.find(mb=>mb.id===b.bookId);
-      return lb && lb.readingStatus!=='reading'&&lb.readingStatus!=='paused'&&lb.readingStatus!=='wishlist'&&lb.readingStatus!=='planned';
+      return lb && ((lb.readingStatus!=='reading'&&lb.readingStatus!=='paused')||!!(lb.endDate||lb.yearOnly))&&lb.readingStatus!=='wishlist'&&lb.readingStatus!=='planned';
     }).length;
     const eventType = readCount===0 ? 'series_start' : 'series_continue';
     addSeriesEvent(ser.id, ser.name, book.title, eventType);
@@ -12697,7 +12701,7 @@ function renderGroupCards(seriesContainer){
         const book=myBooksList.find(b=>b.id===bk.bookId);
         return book?{...bk,book}:null;
       }).filter(Boolean);
-      const readCount=serBooks.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist';}).length;
+      const readCount=serBooks.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist';}).length;
       const total=ser.total||serBooks.length||1;
       const pct=Math.round((readCount/total)*100);
       return {...s,ser,serBooks,readCount,total,pct};
@@ -13008,7 +13012,7 @@ function renderPathsList(){
       }).filter(Boolean);
       const readCount = serBooks.filter(bk=>{
         const b=bk.book;
-        return b&&b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist';
+        return b&&b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist';
       }).length;
       const total = ser.total||serBooks.length||1;
       const pct = Math.round((readCount/total)*100);
@@ -13019,7 +13023,7 @@ function renderPathsList(){
         const b=bk.book; if(!b) return s;
         if(b.readingStatus==='reading'&&b.currentPage) return s+b.currentPage;
         const pg=bk.pages||b.pages||0;
-        if(b.readingStatus!=='planned'&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist') return s+pg;
+        if(b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist') return s+pg;
         return s;
       },0);
       return { ...s, ser, readCount, total, pct, allHavePages, serTotalPages, serReadPages };
