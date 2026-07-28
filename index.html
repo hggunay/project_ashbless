@@ -2525,11 +2525,12 @@ async function fbSet(path,data){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(data)
     });
+    if(r.ok) hideSaveError(); else showSaveError('ağ isteği');
     return r.ok;
-  }catch(e){return false;}
+  }catch(e){showSaveError('bağlantı');return false;}
 }
 
-async function loadDb(){
+async function loadDb(fbOnly){
   // Firebase'den yükle
   try{
     const data=await fbGet('aa-v4');
@@ -2547,7 +2548,9 @@ async function loadDb(){
       return;
     }
   }catch(e){}
-  // localStorage'a düş
+// Sekmeye dönüş senkronizasyonunda buraya düşme — taze veriyi eski yedekle ezmesin
+  if(fbOnly) return;
+  // localStorage'a düş  
   try{const r=localStorage.getItem('aa-v4');if(r)db=JSON.parse(r);}catch(e){}
   if(!db.stories)db.stories={};
   if(!db.seriesData)db.seriesData={};
@@ -2556,29 +2559,44 @@ async function loadDb(){
   if(!db.notifications)db.notifications={};
 }
 // ── VERİ KORUMA ──────────────────────────────────────────────
-async function saveDb(){
+async function _saveDbNow(){
+  let ok=false, nerede='';
   // Firebase'e kaydet — shelf ayrı node'a
- 
-    try{
+  try{
     // Timestamp kontrolü — eski veri yeni verinin üzerine yazmasın
     const remoteRaw = await fbGet('aa-v4');
     const remoteTs = remoteRaw?.savedAt||0;
     const localTs = db.savedAt||0;
     if(remoteTs > localTs){
       console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
+      // Reddedilen yerel değişikliği kaybetmemek için yedekle
+      try{
+        localStorage.setItem('aa-v4-reddedilen-'+Date.now(), JSON.stringify(db));
+      }catch(e){}
       // Uzak veriyi yükle
       Object.assign(db, remoteRaw);
       renderSafe();
+      showSaveError('çakışma — az önceki değişikliğin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı. Kaybolmaması için tarayıcı hafızasına yedeklendi.');
       return;
     }
     db.savedAt = Date.now();
     const {shelf,...dbWithoutShelf}={...db};
-    await fbSet('aa-v4',dbWithoutShelf);
-    if(shelf&&Object.keys(shelf).length) await fbSet('aa-shelf',shelf);
-  }catch(e){}
+    ok = await fbSet('aa-v4',dbWithoutShelf);
+    if(!ok) nerede='ana veri';
+    if(ok&&shelf&&Object.keys(shelf).length){
+      ok = await fbSet('aa-shelf',shelf);
+      if(!ok) nerede='raf';
+    }
+  }catch(e){
+    ok=false;
+    nerede=(e&&e.message)?e.message:'beklenmeyen hata';
+    console.error('saveDb hatası:',e);
+  }
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   updateAdminBadge();
+  if(!ok){ showSaveError(nerede); return; }
+  hideSaveError();
   // Mikro feedback — modal header'ında, layout bozmadan
   const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
   if(modalOpen){
@@ -2596,6 +2614,46 @@ async function saveDb(){
     fb._t=setTimeout(()=>{fb.style.opacity='0';},1800);
   }
 }
+
+function showSaveError(nerede){
+  let el=document.getElementById('_saveError');
+  if(!el){
+    el=document.createElement('div');
+    el.id='_saveError';
+    el.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#7a1f1f;color:#fff;font-family:'Space Mono',monospace;font-size:.72rem;line-height:1.5;padding:.65rem 1rem;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer";
+    el.onclick=()=>el.remove();
+    document.body.appendChild(el);
+  }
+  el.innerHTML='⚠️ SUNUCUYA KAYDEDİLEMEDİ ('+nerede+') — değişikliğin şimdilik yalnızca bu tarayıcıda duruyor. Bağlantını kontrol et, sonra bir değişiklik daha yaparak tekrar dene. <b>Bu uyarı kaybolmadan sekmeyi kapatma.</b><br><span style="opacity:.65">(kapatmak için tıkla)</span>';
+}
+function hideSaveError(){
+  const el=document.getElementById('_saveError');
+  if(el) el.remove();
+}
+// ── Kaydetme kuyruğu — art arda gelen saveDb() çağrılarını tek yazmada birleştirir ──
+let _saveDbTimer=null;
+let _saveDbPending=null;
+function saveDb(){
+  if(_saveDbPending) return _saveDbPending;
+  _saveDbPending=new Promise((resolve)=>{
+    _saveDbTimer=setTimeout(async()=>{
+      _saveDbTimer=null;
+      _saveDbPending=null;
+      await _saveDbNow();
+      resolve();
+    },700);
+  });
+  return _saveDbPending;
+}
+window.addEventListener('beforeunload',()=>{
+  if(_saveDbTimer){
+    clearTimeout(_saveDbTimer);
+    _saveDbTimer=null;
+    _saveDbPending=null;
+    try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
+    _saveDbNow();
+  }
+});
 function myBooks(){return db.books[me]||[];}
 function targetBooks(){return db.books[viewing||me]||[];}
 function validBooks(){
@@ -3302,6 +3360,13 @@ function enterApp(){
   updateAdminBadge();
   
   render();setTodayDate();updateAddFormFields();updateNotifDot();
+  // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
+  try{
+    const _fullBooks=(db.books[me]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='reading'&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist');
+    checkStreakBreak(_fullBooks);
+    const _csCurStreak=streakMonths(_fullBooks, new Date().getFullYear());
+    checkStreakMilestone(_fullBooks, _csCurStreak);
+  }catch(e){}
   showSpecialDayBanner();
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
@@ -7303,17 +7368,18 @@ function addQuote(bookId){
   openBook(bookId);
 }
 
-function deleteQuote(bookId, idx){
+function deleteQuoteModal(bookId, idx){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book||!book.quotes) return;
   book.quotes.splice(idx,1);
   saveDb();
   openBook(bookId);
+  renderFeed();
 }
 
 function confirmDeleteQuote(bookId, idx, btn){
   if(btn.dataset.confirming==='1'){
-    deleteQuote(bookId, idx);
+    deleteQuoteModal(bookId, idx);
     return;
   }
   btn.dataset.confirming='1';
@@ -9754,16 +9820,8 @@ parentRows.forEach(r=>{
     </div>`;
   }
 
-  // Seri kırılma kontrolü — sadece kendi profilinde
-  if(!viewing){
-    checkStreakBreak(books);
-    // Milestone kontrolü — streak devam ediyorsa
-    const _csNow = new Date();
-    const _csCurStreak = streakMonths(books, _csNow.getFullYear());
-    checkStreakMilestone(books, _csCurStreak);
-  }
-
   document.getElementById('statsContainer').innerHTML=`
+  
     ${isV?`<div class="card" style="margin-bottom:.75rem">
       <div class="card-body" style="padding:.75rem">
         <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem">
@@ -11866,7 +11924,7 @@ function _refreshSeriesBookList(seriesId){
     const mapKey = seriesId+'_'+books.indexOf(bk);
     seriesBkMap[mapKey] = bk;
     const isReading = b.readingStatus==='reading';
-    const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned'&&b.readingStatus!=='new';
+    const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned';
     const isPlanned = !isReading&&!isRead&&b.readingStatus!=='paused';
     const ico = isReading?'📖':b.readingStatus==='paused'?'🚧':isRead?'✅':'⏳';
     const removeKey = bk.planned ? `'${seriesId}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${b.id},false`;
@@ -12442,7 +12500,7 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
       const mapKey = ser.id+'_'+books.indexOf(bk);
       seriesBkMap[mapKey] = bk;
       const isReading = b.readingStatus==='reading';
-      const isRead = !isReading && !!b.readingStatus && b.readingStatus!=='paused' && b.readingStatus!=='wishlist' && b.readingStatus!=='planned' && b.readingStatus!=='new' && b.readingStatus!=='want';
+      const isRead = !isReading && !!b.readingStatus && b.readingStatus!=='paused' && b.readingStatus!=='wishlist' && b.readingStatus!=='planned' && b.readingStatus!=='want';
       const isPlanned = !isReading && !isRead && b.readingStatus!=='paused';
       const statusIcon = isReading ? '📖' : b.readingStatus==='paused' ? '🚧' : isRead ? '✅' : '⏳';
       const pageInfo = isReading && b.currentPage && b.pages 
@@ -13027,8 +13085,9 @@ async function init(){
       const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
       if(modalOpen) return; // Düzenleme varsa yenileme
       try{
-        await fbGet('aa-v4');
-        if(JSON.stringify(db.books)!==oldBooks) render();
+        const oldBooks=JSON.stringify(db.books||{});
+        await loadDb(true);
+        if(JSON.stringify(db.books||{})!==oldBooks) render();
         else renderBanners();
       }catch(e){}
     }
