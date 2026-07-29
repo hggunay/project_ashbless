@@ -2846,7 +2846,7 @@ function handleAvatarUpload(input){
   const reader=new FileReader();
   reader.onload=e=>{
     const img=new Image();
-    img.onload=()=>{
+    img.onload=async()=>{
       const canvas=document.createElement('canvas');
       const size=120;
       canvas.width=size;canvas.height=size;
@@ -2857,14 +2857,15 @@ function handleAvatarUpload(input){
       ctx.drawImage(img,ox,oy,s,s,0,0,size,size);
       const b64=canvas.toDataURL('image/jpeg',0.7);
       db.users[me].avatar=b64;
-      // Avatar'ı ayrı node'a kaydet (büyük veri)
-      fbSet('aa-avatars/'+me, b64).catch(e=>{});
+      // Avatar'ı ayrı node'a kaydet (büyük veri) — sonucunu kontrol et, sessizce yutma
+      const uploadOk=await fbSet('aa-avatars/'+me, b64).catch(e=>false);
       saveDb();
       setAvatarEl(document.getElementById('settingsAvatar'),b64);
       setAvatarEl(document.getElementById('headerAvatar'),b64);
       const removeBtn=document.getElementById('removeAvatarBtn');
       if(removeBtn) removeBtn.style.display='';
-      notify('📷 Fotoğraf Güncellendi','Profil fotoğrafın kaydedildi.');
+      if(uploadOk) notify('📷 Fotoğraf Güncellendi','Profil fotoğrafın kaydedildi.');
+      else notify('⚠️ Kaydetme Sorunu','Fotoğraf yüklenirken bir hata oldu, tekrar dener misin?');
     };
     img.src=e.target.result;
   };
@@ -3050,15 +3051,7 @@ function clearMapAvatar(){
 function getGBooksKey(){
   return 'AIzaSyC2jWGPvgf6dAV8OQDsUbIWU4BY3VWVgJ4';
 }
-function saveGBooksKey(){
-  const key=document.getElementById('settingGBooksKey')?.value.trim()||'';
-  if(!db.settings) db.settings={};
-  db.settings.googleBooksKey=key;
-  saveDb();
-  const status=document.getElementById('gBooksKeyStatus');
-  if(status) status.textContent=key?'✓ API key kaydedildi — Google Books aktif':'API key kaldırıldı — Open Library kullanılacak';
-  notify('🔑 API Key',key?'Google Books API aktif.':'Open Library\'ye döndü.');
-}
+
 
 function saveHint(){
   const hint=document.getElementById('settingHint').value.trim();
@@ -7150,7 +7143,7 @@ function confirmMarkAsUnread(bookId, status){
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
 
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;if(window._creatorCleanup){window._creatorCleanup();window._creatorCleanup=null;}const dd=getGenreDropdown();if(dd){dd.style.display='none';}}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open');modalBookId=null;if(window._creatorCleanup){window._creatorCleanup();window._creatorCleanup=null;}const dd=getGenreDropdown();if(dd){dd.style.display='none';}renderBookList();renderStats();renderBadges();}
 
 function titleSparkle(el){
   if(el._animating) return;
@@ -7775,7 +7768,7 @@ function getFeedCards(){
     badgeEvs.forEach(ev=>{
       cards.push({
         type:'badge', u, userName:user.displayName, userAvatar:user.avatar||'📚',
-        badgeId:ev.badgeId, tier:ev.tier, icon:ev.icon, name:ev.name, desc:ev.desc,
+        badgeId:ev.badgeId, eventId:ev.id, tier:ev.tier, icon:ev.icon, name:ev.name, desc:ev.desc,
         ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
@@ -7922,6 +7915,11 @@ function renderFeed(append=false){
       if(card.type==='streak_milestone'){
         const evId=`sm_${card.u}_${card.months}_${card.ts}`;
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStreakMilestoneReaction('${card.u}','${evId}','${rEsc}')">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
+      if(card.type==='badge'){
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}')">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
@@ -8190,6 +8188,21 @@ function toggleCountryEventReaction(owner,eventId,reaction){
   else{
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
+  }
+  saveDb();renderFeed();
+}
+
+function toggleBadgeEventReaction(owner,eventId,reaction){
+  if(!db.badgeEvents||!db.badgeEvents[owner]) return;
+  const ev=db.badgeEvents[owner].find(e=>e.id===eventId);
+  if(!ev) return;
+  if(!ev.reactions) ev.reactions={};
+  if(!ev.reactions[me]) ev.reactions[me]=[];
+  const idx=ev.reactions[me].indexOf(reaction);
+  if(idx>-1) ev.reactions[me].splice(idx,1);
+  else{
+    ev.reactions[me].push(reaction);
+    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.name||'rozet');
   }
   saveDb();renderFeed();
 }
