@@ -631,7 +631,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .series-card{background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.15);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .series-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;}
 .series-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);font-weight:700;}
-.series-card-stats{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.8;}
+.series-card-stats{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold-light);opacity:.9;}
 .series-progress-wrap{background:rgba(201,162,39,.1);border-radius:20px;height:6px;margin:.4rem 0;}
 .series-progress-fill{background:var(--gold);border-radius:20px;height:6px;transition:width .4s ease;}
 .series-progress-fill.done{background:var(--moss);}
@@ -976,24 +976,24 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               </select>
             </div>
             <div id="bookFilterBar" style="display:none;padding:.5rem .25rem;border-bottom:1px solid rgba(201,162,39,.1);flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
-              <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="renderBookList()"/>
-              <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+              <input class="book-input" id="bookSearchText" type="text" placeholder="🔍 Kitap adı veya yazar ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem" oninput="booksPage=1;renderBookList()"/>
+              <select class="book-input" id="bookFilterGenre" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="booksPage=1;renderBookList()">
                 <option value="">📚 Tür</option>
               </select>
-              <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="renderBookList()">
+              <select class="book-input" id="bookFilterFormat" style="font-size:.8rem;padding:.4rem .6rem;max-width:130px" onchange="booksPage=1;renderBookList()">
                 <option value="">📖 Format</option>
                 <option value="kitap">📖 Fiziksel</option>
                 <option value="ekitap">📱 E-Kitap</option>
                 <option value="sesli">🎧 Sesli</option>
                 <option value="cizgi">🎨 Çizgi/Manga</option>
               </select>
-              <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="renderBookList()">
+              <select class="book-input" id="bookFilterRating" style="font-size:.8rem;padding:.4rem .6rem;max-width:120px" onchange="booksPage=1;renderBookList()">
                 <option value="">⭐ Puan</option>
                 <option value="5">⭐⭐⭐⭐⭐ 5</option>
                 <option value="4">⭐⭐⭐⭐ 4+</option>
                 <option value="3">⭐⭐⭐ 3+</option>
               </select>
-              <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="renderBookList()">
+              <select class="book-input" id="bookFilterYear" style="font-size:.8rem;padding:.4rem .6rem;max-width:110px" onchange="booksPage=1;renderBookList()">
                 <option value="">📅 Yıl</option>
               </select>
             </div>
@@ -2316,14 +2316,14 @@ const BADGE_CATS = [
 function cap(cur,max){return{cur:Math.min(cur,max),max};}
 function flag(bool){return{cur:bool?1:0,max:1};}
 function genre(books,kw,max){const n=books.filter(b=>(b.genres||[]).some(g=>{const norm=normalizeGenre(g);const badge=badgeGenre(norm);return norm===kw.toLowerCase()||badge===kw.toLowerCase();})).length;return{cur:Math.min(n,max),max};}
-function monthCount(books){return new Set(books.map(b=>b.month).filter(Boolean)).size;}
+
 function maxMonth(books){const c={};books.forEach(b=>{if(b.month)c[b.month]=(c[b.month]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxSeries(books){const c={};books.filter(b=>b.series).forEach(b=>{c[b.series]=(c[b.series]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxComicSeries(books){const c={};books.filter(b=>b.comicSeries).forEach(b=>{c[b.comicSeries]=(c[b.comicSeries]||0)+1;});return Math.max(0,...Object.values(c));}
 function totalPages(books){return books.reduce((s,b)=>s+(b.pages||0),0);}
 function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.country.trim()).map(b=>b.country.trim().toLowerCase())).size;}
 function uniqueISOs(books){return new Set(books.filter(b=>b.country).map(b=>countryToISO(b.country)).filter(Boolean));}
-function booksInRegion(books,isoSet){return books.filter(b=>{const iso=countryToISO(b.country);return iso&&isoSet.has(iso);}).length;}
+
 function allContinents(books){const isos=uniqueISOs(books);const conts=new Set([...isos].map(iso=>ISO_CONTINENT[iso]).filter(Boolean));return conts.size>=6?1:0;}
 // Ortak hesaplama — bir yıl için ay bazlı okuma serisi.
 // 'current': şu ana kadar (bu ay dahil) kesintisiz devam eden seri.
@@ -2514,6 +2514,15 @@ function booksForBadge(badge,books){
 let db={users:{},books:{}};
 let me=null,viewing=null,badgeFilter='all',modalBookId=null,pendingShimmerBadges=new Set();
 const seriesBkMap={};
+// Seri kitap girdileri için kararlı bir kimlik üretir/döndürür — index tabanlı referans
+// yerine kullanılır, çünkü index iki render arasında kayabiliyor (Ö39). Kimlik, seri
+// verisinin kendi nesnesi üzerinde saklanıyor (mySeriesData()/viewSeriesData() referans
+// döndürüyor), yani aynı oturum içinde render'lar arası kalıcı — Firebase'e yazılmasına
+// gerek yok.
+function ensureBkEid(bk){
+  if(!bk._eid) bk._eid='be_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  return bk._eid;
+}
 
 // ── FİREBASE ──────────────────────────────────────────────────
 const FB_URL='https://armchair-adventurers-default-rtdb.europe-west1.firebasedatabase.app';
@@ -3409,9 +3418,13 @@ function enterApp(){
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
   // Gece yarısı mesajı — her dakika kontrol et, sadece sekme aktifken
-  setInterval(()=>{
-    if(document.visibilityState==='visible') tryShowNightMessage();
-  }, 60000);
+  // (yalnızca bir kez ekle — enterApp her giriş/çıkışta tekrar çağrılıyor)
+  if(!window._nightIntervalAdded){
+    window._nightIntervalAdded=true;
+    setInterval(()=>{
+      if(document.visibilityState==='visible') tryShowNightMessage();
+    }, 60000);
+  }
   
   // 🌦️ Uygulama açılınca hava durumunu kontrol et
   tryShowWeatherMessage();
@@ -3905,83 +3918,6 @@ function propagateSeriesInfo(newBook){
 }
 
 // ── API — FULL AUTO FILL ──────────────────────────────────────
-// Google Books genre → Turkish keyword mapping
-const GBOOKS_GENRE_MAP = {
-  'fiction': 'kurgu', 'roman': 'kurgu', 'novel': 'kurgu',
-  'fantasy': 'fantastik', 'fantastik': 'fantastik', 'fantasy fiction': 'fantastik',
-  'science fiction': 'bilimkurgu', 'sci-fi': 'bilimkurgu', 'bilim kurgu': 'bilimkurgu',
-  'romance': 'romantik', 'love': 'romantik', 'ask': 'romantik',
-  'historical fiction': 'tarihi', 'history - fiction': 'tarihi', 'tarih': 'tarihi',
-  'horror': 'korku', 'ghost': 'korku', 'thriller': 'korku',
-  'mystery': 'polisiye', 'detective': 'polisiye', 'crime': 'polisiye', 'polisiye': 'polisiye',
-  'dystopia': 'distopya', 'dystopian': 'distopya',
-  'self-help': 'kisisel gelisim', 'personal development': 'kisisel gelisim', 'kisisel': 'kisisel gelisim',
-  'psychology': 'psikoloji', 'psikoloji': 'psikoloji',
-  'travel': 'gezi', 'seyahat': 'gezi',
-  'essay': 'deneme', 'deneme': 'deneme',
-  'philosophy': 'felsefe', 'felsefe': 'felsefe',
-  "children's": 'genclik', 'young adult': 'genclik', 'juvenile': 'genclik',
-  'mythology': 'mitoloji', 'myth': 'mitoloji',
-  'nature': 'doga', 'environment': 'doga', 'ecology': 'doga',
-  'popular science': 'bilim', 'technology': 'bilim', 'science - popular': 'bilim',
-  'art': 'sanat', 'culture': 'sanat',
-  'journalism': 'gazetecilik', 'reportage': 'gazetecilik',
-  'short stories': 'oyku', 'hikaye': 'oyku',
-  'poetry': 'siir', 'poems': 'siir', 'siir': 'siir',
-  'comics': 'cizgi roman', 'graphic novel': 'grafik roman', 'manga': 'manga',
-  'superhero': 'superkahrama',
-  'biography': 'biyografi', 'autobiography': 'biyografi', 'memoir': 'biyografi',
-  'religion': 'kutsal', 'scripture': 'kutsal', 'sacred text': 'kutsal meta',
-};
-
-function mapGenres(categories){
-  if(!categories||!categories.length) return [];
-  const result = new Set();
-  categories.forEach(cat => {
-    const lower = cat.toLowerCase();
-    Object.entries(GBOOKS_GENRE_MAP).forEach(([key, val]) => {
-      if(lower.includes(key)) result.add(val);
-    });
-  });
-  return [...result];
-}
-
-// Score how well a Google Books result matches our query
-function scoreMatch(vol, title, author){
-  let score = 0;
-  const vTitle = (vol.title||'').toLowerCase();
-  const qTitle = title.toLowerCase();
-  if(vTitle === qTitle) score += 10;
-  else if(vTitle.includes(qTitle)) score += 5;
-  else if(qTitle.includes(vTitle)) score += 3;
-  if(author && vol.authors){
-    const qAuth = author.toLowerCase();
-    if(vol.authors.some(a => a.toLowerCase().includes(qAuth) || qAuth.includes(a.toLowerCase()))) score += 5;
-  }
-  return score;
-}
-
-// Open Library: series + subject/genre info
-async function fetchFromOpenLibrary(title, author){
-  try {
-    const q = encodeURIComponent((author ? title+' '+author : title));
-    const res = await fetch('https://openlibrary.org/search.json?q='+q+'&fields=key,title,author_name,series,series_number,subject&limit=5');
-    const data = await res.json();
-    if(!data.docs || !data.docs.length) return {series:null, series_num:null, subjects:[]};
-    // Pick best match
-    let best = data.docs[0];
-    const tLow = title.toLowerCase();
-    for(const doc of data.docs){
-      if((doc.title||'').toLowerCase() === tLow){ best = doc; break; }
-    }
-    const series = (best.series && best.series[0]) || null;
-    const series_num = best.series_number ? parseInt(best.series_number) : null;
-    const subjects = best.subject || [];
-    return {series, series_num, subjects};
-  } catch(e) { return {series:null, series_num:null, subjects:[]}; }
-}
-
-// Map Open Library subjects to Turkish genre keywords
 // Open Library subjects — use exact/precise matches only to avoid false positives
 const OL_SUBJECT_MAP = [
   // key must match as whole word or exact phrase in subject string
@@ -5037,7 +4973,7 @@ async function addShelfBook(){
 
 function closeShelfDup(){
   document.getElementById('shelfDupBar')?.classList.remove('show');
-  window._pendingShelfBook=null;window._skipShelfDup=false;
+  window._skipShelfDup=false;
 }
 function shelfDupConfirmed(){
   closeShelfDup();
@@ -5764,7 +5700,16 @@ async function cancelCoreading(sessionId){
   if(db.readingSessions[sessionId].initiator!==me) return;
   db.readingSessions[sessionId].status='cancelled';
   await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
-  delete db.readingSessions[sessionId];
+  // NOT: kaydı yerelden SİLMİYORUZ artık — 'cancelled' durumuyla kalsın. Eskiden burada
+  // `delete db.readingSessions[sessionId]` yapılıyordu; sonraki herhangi bir saveDb() tüm
+  // veritabanını bellekten yazdığı için (K3) oturum Firebase'den de tümüyle siliniyordu,
+  // ama katılımcıların kitaplarındaki `coreadingSession` referansı öksüz kalıp
+  // "Birlikte Okunuyor" sekmesinde tıklanamayan bir kitap olarak asılı kalıyordu.
+  // Bunun yerine, bağlı olan tüm kitaplardaki referansı temizliyoruz:
+  Object.values(db.books||{}).forEach(list=>(list||[]).forEach(b=>{
+    if(b.coreadingSession===sessionId) delete b.coreadingSession;
+  }));
+  saveDb();
   document.getElementById('cancelConfirm')?.remove();
   renderSafe();
 }
@@ -5987,14 +5932,12 @@ async function leaveCoreading(sessionId){
     }
   }
   notify('👋 Ayrıldın', session.bookTitle+' birlikte okuma oturumundan ayrıldın.');
-  console.log('db participants:', JSON.stringify(db.readingSessions[sessionId].participants));
   // Ayrılma sonrası allDone kontrolü — kalan herkes bitirdiyse oturumu kapat
   if(session.status==='active'){
     const updatedSession=db.readingSessions[sessionId];
     const accepted=Object.keys(updatedSession.participants||{}).filter(u=>updatedSession.participants[u].status==='accepted');
     const allDone=accepted.length>0&&accepted.every(u=>
       (updatedSession.progress&&updatedSession.progress[u]&&updatedSession.progress[u].lastMilestone===100)
-      ||updatedSession.participants[u].status==='left'
     );
     if(allDone){
       updatedSession.status='completed';
@@ -6049,24 +5992,19 @@ function launchCoreadingConfetti(big=false){
 }
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
-  console.log('🔵 checkCoreadingMilestone çağrıldı', book?.id, 'coreadingSession:', book?.coreadingSession, 'currentPage:', book?.currentPage, 'pages:', book?.pages);
-  if(!book.coreadingSession){console.log('❌ coreadingSession yok'); return;}
+  if(!book.coreadingSession){ return;}
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
-  console.log('🔵 session status:', session?.status, 'sessionId:', sessionId);
-  if(!session||session.status!=='active'){console.log('❌ session aktif değil', session?.status); return;}
-  if(!book.currentPage||!book.pages){console.log('❌ sayfa bilgisi yok', book.currentPage, book.pages); return;}
+  if(!session||session.status!=='active'){ return;}
+  if(!book.currentPage||!book.pages){ return;}
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
-  console.log('🔵 pct:', pct);
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
-  console.log('🔵 reached:', reached);
-  if(!reached.length){console.log('❌ milestone yok'); return;}
+  if(!reached.length){ return;}
   const lastMilestone=reached[reached.length-1];
   if(!session.progress) session.progress={};
   if(!session.progress[me]) session.progress[me]={};
   const prevMilestone=session.progress[me].lastMilestone||0;
-  console.log('🔵 lastMilestone:', lastMilestone, 'prevMilestone:', prevMilestone, 'me:', me);
   if(pct<prevMilestone){
     // Milestone'u güncelle, önceki milestone'ları temizle
     session.progress[me].lastMilestone=lastMilestone||0;
@@ -6094,27 +6032,30 @@ async function checkCoreadingMilestone(book){
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   await fbSet('aa-v4/readingSessions/'+sessionId+'/history', session.history);
   await fbSet('aa-v4/readingSessions/'+sessionId+'/lastActivityAt', session.lastActivityAt);
-  // Tüm katılımcılara bildirim gönder
+  // Tüm katılımcılara bildirim gönder — %100'de ayrıca özel bir "bitirdi" bildirimi
+  // gönderileceği için (aşağıda), burada tekrar göndermeyip çift bildirimi önlüyoruz.
   const myName=(db.users[me]||{}).displayName||me;
-  const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
-  for(const u of accepted){
-    const notifId='crm_'+sessionId+'_'+me+'_'+lastMilestone+'_'+Date.now();
-    const notif={
-      id:notifId,
-      type:'coreading_milestone',
-      sessionId:sessionId,
-      bookTitle:session.bookTitle,
-      fromUser:me,
-      fromName:myName,
-      milestone:lastMilestone,
-      milestoneMsg:milestoneMsg,
-      pct:pct,
-      ts:new Date().toISOString(),
-      seen:false,
-      reaction:'👥',
-      context:session.bookTitle,
-    };
-    await pushNotification(u, notif);
+  if(lastMilestone<100){
+    const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted'&&u!==me);
+    for(const u of accepted){
+      const notifId='crm_'+sessionId+'_'+me+'_'+lastMilestone+'_'+Date.now();
+      const notif={
+        id:notifId,
+        type:'coreading_milestone',
+        sessionId:sessionId,
+        bookTitle:session.bookTitle,
+        fromUser:me,
+        fromName:myName,
+        milestone:lastMilestone,
+        milestoneMsg:milestoneMsg,
+        pct:pct,
+        ts:new Date().toISOString(),
+        seen:false,
+        reaction:'👥',
+        context:session.bookTitle,
+      };
+      await pushNotification(u, notif);
+    }
   }
  await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
   const msg=session.progress[me].milestoneMsg||'%'+lastMilestone+' ye ulaştı';
@@ -6128,7 +6069,8 @@ async function checkCoreadingMilestone(book){
     let freshSession=session;
     try{
       const snap=await fetch(FB_URL+'/aa-v4/readingSessions/'+sessionId+'.json');
-      freshSession=await snap.json();
+      const fetched=await snap.json();
+      if(fetched) freshSession=fetched;
     }catch(e){}
     // Zaten completed ise tekrar tetiklenme
     if(freshSession.status==='completed'){ renderSafe(); return; }
@@ -6160,11 +6102,8 @@ if(!alreadyFinished){
   updateNotifDot();
 }
     const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
-   const hasProgress=u=>freshSession.progress&&freshSession.progress[u]&&(freshSession.progress[u].pct||0)>0;
     const allDone=accepted.length>0&&accepted.every(u=>
       (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
-      ||freshSession.participants[u].status==='left'
-      ||!hasProgress(u)
     );
     if(allDone){
       freshSession.status='completed';
@@ -7895,7 +7834,9 @@ function markFeedVisited(){
 function renderFeed(append=false){
   const container=document.getElementById('feedContainer');
   if(!container) return;
-  if(!append){feedPage=1;}
+  // NOT: feedPage burada sıfırlanmıyor — filtre değişince filterFeed() kendi
+  // feedPage=1 yapıyor. Böylece reaksiyon vermek/alıntı silmek gibi "içerik değişti,
+  // görünümü tazele" çağrıları kullanıcıyı akışın başına fırlatmıyor.
 
   let cards=getFeedCards();
   if(feedFilter==='reviews') cards=cards.filter(c=>c.type==='review');
@@ -8755,7 +8696,6 @@ function backfillCountryEvents(){
 }
 
 function checkAndAddCountryEvent(book){
-console.log('check called', book?.country, book?.readingStatus, book?.retroactive);
   if(!book.country||book.readingStatus!=='new'||book.retroactive) return;
   // Bu ülke daha önce hiç kaydedilmiş mi?
   const allBooks=(db.books[me]||[]);
@@ -8797,7 +8737,9 @@ function renderNotifPanel(){
     list.innerHTML='<div style="padding:.75rem 1rem;font-size:.85rem;color:#888;font-style:italic">Henüz bildirim yok.</div>';
     return;
   }
-  const sorted=[...notifs].sort((a,b)=>b.ts.localeCompare(a.ts));
+  // new Date(...) hem ISO string hem sayısal (epoch ms) ts değerini doğru şekilde çözer —
+  // .localeCompare gibi yalnızca string'lerde çalışan bir metoda bağımlı kalmıyoruz.
+  const sorted=[...notifs].sort((a,b)=>(new Date(b.ts).getTime()||0)-(new Date(a.ts).getTime()||0));
   list.innerHTML=sorted.map(n=>{
     const timeAgo=formatTimeAgo(n.ts);
     if(n.type==='coreading_start'){
@@ -10015,7 +9957,6 @@ parentRows.forEach(r=>{
 
           // Tür eğilimi
           const topGenreItem = topGenres.find(g=>g.isParent!==false);
-		  console.log('topGenreItem:', topGenreItem);
 const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
           const genreLabelMap = topGenre ? {
             'fantastik':'Fantastik okuyucu','bilimkurgu':'Bilim kurgu meraklısı',
@@ -10586,11 +10527,14 @@ function renderBookList(){
       ?'<div class="empty-state">Filtreye uyan kitap bulunamadı.</div>'
       :'<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
   } else {
-    const totalVisible=booksPage*PAGE_SIZE;
-    const visible=filteredBooks.slice(0,totalVisible);
-    const hasMore=filteredBooks.length>totalVisible;
-    const showRetroSplit=sortMode==='date_desc'||sortMode==='date_asc';
     const useGrouping=sortMode==='series';
+    // Gruplama aktifken sayfalama yapmıyoruz — aksi halde bir seri sayfa sınırında
+    // ikiye bölünüp yanlış "X kitap" sayısı gösterebiliyordu. Tüm eşleşen kitaplar
+    // birlikte gruplanıp gösteriliyor.
+    const totalVisible=useGrouping?filteredBooks.length:booksPage*PAGE_SIZE;
+    const visible=useGrouping?filteredBooks:filteredBooks.slice(0,totalVisible);
+    const hasMore=useGrouping?false:filteredBooks.length>totalVisible;
+    const showRetroSplit=sortMode==='date_desc'||sortMode==='date_asc';
 
     let html='';
 
@@ -11920,10 +11864,11 @@ function _refreshSeriesBookList(seriesId){
   const ser = data.series[seriesId];
   if(!ser){ renderSeriesList(); return; }
 
-  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   // Global map'i güncelle — openEditSeriesBook buraya bakıyor
   Object.keys(seriesBkMap).forEach(k=>{ if(k.startsWith(seriesId+'_')) delete seriesBkMap[k]; });
 
+  (ser.books||[]).forEach(ensureBkEid);
   const books = (ser.books||[]).map(bk=>{
     if(bk.planned){
       const linked = myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
@@ -11947,11 +11892,9 @@ function _refreshSeriesBookList(seriesId){
     return s==='wishlist'||s==='planned';
   });
 
-  const statusIcon = b => b.readingStatus==='reading'?'📖':b.readingStatus==='paused'?'🚧':'✅';
-
   const bookItemHtml = (bk) => {
     const b = bk.book;
-    const mapKey = seriesId+'_'+books.indexOf(bk);
+    const mapKey = seriesId+'_'+ensureBkEid(bk);
     seriesBkMap[mapKey] = bk;
     const isReading = b.readingStatus==='reading';
     const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned';
@@ -11960,11 +11903,11 @@ function _refreshSeriesBookList(seriesId){
     const removeKey = bk.planned ? `'${seriesId}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${b.id},false`;
     const canStart = !isReading&&b.id&&!viewing;
     const plannedBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${seriesId}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
-    return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>      <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>      <span class="series-book-status">${ico}</span>      <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>      ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}      <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">        ${canStart?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedBtn}        ${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}',${books.indexOf(bk)})">✏️</button>        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}      </div>    </div>`;
+    return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>      <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>      <span class="series-book-status">${ico}</span>      <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>      ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}      <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">        ${canStart?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedBtn}        ${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}','${ensureBkEid(bk)}')">✏️</button>        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}      </div>    </div>`;
   };
 
   const groupHtml = (label, icon, items) => items.length ? `
-    <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
+    <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-light);opacity:.92;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
     ${items.map(bookItemHtml).join('')}
   ` : '';
 
@@ -12010,7 +11953,7 @@ function seriesAcSearch(seriesId){
     const authorAttr = (b.author||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;');
     return `<div class="series-ac-item" data-sid="${seriesId}" data-title="${titleAttr}" data-author="${authorAttr}" onclick="var el=this;selectSeriesAc(el.dataset.sid,el.dataset.title,el.dataset.author)">
       <span style="font-size:.88rem;color:var(--parchment);font-weight:600">${b.title}</span>
-      ${b.author?`<span style="font-size:.75rem;color:var(--rust);opacity:.8"> — ${b.author}</span>`:''}
+      ${b.author?`<span style="font-size:.75rem;color:var(--gold-light);opacity:.92"> — ${b.author}</span>`:''}
       ${b.series?`<span style="font-size:.65rem;color:var(--moss);font-family:'Space Mono',monospace"> · ${b.series}</span>`:''}
     </div>`;
   }).join('');
@@ -12043,7 +11986,7 @@ function confirmRemoveBookFromSeries(evt, seriesId, bookId, isPlanned, manualTit
   const args = isPlanned ? `'${seriesId}',null,true,'${(manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${bookId},false`;
   const box = document.createElement('div');
   box.id = existId;
-  box.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--rust);flex-wrap:wrap;margin-top:.2rem';
+  box.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--gold-light);flex-wrap:wrap;margin-top:.2rem';
   box.innerHTML = `"${bookTitle}" seriden çıkar?
     <button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="removeBookFromSeries(${args})">Evet</button>
     <button class="btn btn-sm" style="font-size:.68rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="this.closest('div[id^=rmConf]').remove()">İptal</button>`;
@@ -12066,6 +12009,14 @@ function updateSeriesTotal(seriesId, val){
   const data = mySeriesData();
   if(data.series[seriesId]) data.series[seriesId].total = parseInt(val)||null;
   saveDb();
+}
+function toggleSeriesTotalEdit(seriesId){
+  const v=document.getElementById('seriesTotalView_'+seriesId);
+  const e=document.getElementById('seriesTotalEdit_'+seriesId);
+  if(!v||!e) return;
+  const isEditing = e.style.display!=='none';
+  e.style.display = isEditing?'none':'flex';
+  v.style.display = isEditing?'flex':'none';
 }
 function toggleSeriesOngoing(seriesName, val){
   const data = mySeriesData();
@@ -12275,23 +12226,24 @@ function checkSeriesComplete(seriesId){
   }
 }
 
-function openEditSeriesBook(evt, seriesId, idx){
+function openEditSeriesBook(evt, seriesId, eid){
   // Inline edit — kitabın altında açılan form
-  const containerId = 'seriesEditForm_'+seriesId+'_'+idx;
+  const containerId = 'seriesEditForm_'+seriesId+'_'+eid;
   const existing = document.getElementById(containerId);
   if(existing){ existing.remove(); return; }
-  let bk = seriesBkMap[seriesId+'_'+idx];
+  let bk = seriesBkMap[seriesId+'_'+eid];
   if(!bk){
-    // map dolmamışsa allSeries'ten reconstruct et
+    // map dolmamışsa allSeries'ten kararlı kimlikle (eid) reconstruct et — index kullanmıyoruz,
+    // çünkü iki render arasında sıra değişmiş olabilir (Ö39).
     const data = mySeriesData();
     const ser = data.series[seriesId];
     if(!ser) return;
-    const rawBk = ser.books[idx];
+    const rawBk = (ser.books||[]).find(b=>b._eid===eid);
     if(!rawBk) return;
     const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
     const linked = rawBk.bookId ? myBooksList.find(b=>b.id===rawBk.bookId) : null;
     bk = linked ? {...rawBk, book:linked} : {...rawBk, book:{id:null,title:rawBk.manualTitle,author:rawBk.manualAuthor||'',readingStatus:'planned'}};
-    seriesBkMap[seriesId+'_'+idx] = bk;
+    seriesBkMap[seriesId+'_'+eid] = bk;
   }
   const data = mySeriesData();
   const ser = data.series[seriesId];
@@ -12308,7 +12260,7 @@ function openEditSeriesBook(evt, seriesId, idx){
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
       <input class="book-input" id="edit_num_${containerId}" type="number" value="${bk.num||''}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
       <input class="book-input" id="edit_pages_${containerId}" type="number" value="${bk.pages||''}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
-      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}',${idx},'${containerId}',${isPlanned})">&#10003; Kaydet</button>
+      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}','${eid}','${containerId}',${isPlanned})">&#10003; Kaydet</button>
       <button class="btn btn-sm" style="font-size:.72rem;background:rgba(100,160,200,.15);color:rgba(100,180,220,.9)" onclick="closeEditSeriesBook('${containerId}')">Iptal</button>
     </div>`;
   const btn = evt.target.closest('button');
@@ -12329,11 +12281,11 @@ function openEditSeriesBook(evt, seriesId, idx){
   }
 }
 
-function saveEditSeriesBook(seriesId, idx, containerId, isPlanned){
+function saveEditSeriesBook(seriesId, eid, containerId, isPlanned){
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser) return;
-  const bkRef = seriesBkMap[seriesId+'_'+idx];
+  const bkRef = seriesBkMap[seriesId+'_'+eid];
   if(!bkRef) return;
   const rawIdx = ser.books.findIndex(b=>
     bkRef.bookId ? b.bookId===bkRef.bookId : b.manualTitle===bkRef.manualTitle
@@ -12432,7 +12384,7 @@ function renderSeriesList(){
   );
   const data = viewSeriesData();
   const allSeries = Object.values(data.series||{});
-  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
 
   if(!allSeries.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz seri oluşturmadın. Yukarıdan başlayabilirsin!</div>`;
@@ -12451,14 +12403,20 @@ function renderSeriesList(){
   });
 
   try {
-  // Grup kartlarını önce render et
-  renderGroupCards(container);
+
+  // Gruba bağlı serileri sayfalamadan ÖNCE listeden çıkar — zaten kendi kartı olarak
+  // görünmeyip grup kartının içinde gösterilecekler, sayfalama/sayaç onları saymamalı.
+  const groupedSeriesIds = new Set();
+  Object.values(data.paths||{}).forEach(path=>(path.steps||[]).forEach(s=>groupedSeriesIds.add(s.seriesId)));
+  allSeries.forEach(s=>{ if(s.groupId) groupedSeriesIds.add(s.id); });
+  const paginatableSeries = allSeries.filter(s=>!groupedSeriesIds.has(s.id));
 
   // Tekil serileri paginate et
-  const visibleSeries = allSeries.slice(0, seriesPage * PAGE_SIZE);
-  const hasMoreSeries = allSeries.length > seriesPage * PAGE_SIZE;
+  const visibleSeries = paginatableSeries.slice(0, seriesPage * PAGE_SIZE);
+  const hasMoreSeries = paginatableSeries.length > seriesPage * PAGE_SIZE;
 
   container.innerHTML = visibleSeries.map(ser=>{
+    (ser.books||[]).forEach(ensureBkEid);
     const books = (ser.books||[]).map(bk=>{
       if(bk.planned){
         // Planlanan kitap — kitaplarımda yok, ama title eşleşirse bağla
@@ -12529,7 +12487,7 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
 
     function bookItemHtmlSeries(bk){
       const b = bk.book;
-      const mapKey = ser.id+'_'+books.indexOf(bk);
+      const mapKey = ser.id+'_'+ensureBkEid(bk);
       seriesBkMap[mapKey] = bk;
       const isReading = b.readingStatus==='reading';
       const isRead = !isReading && !!b.readingStatus && b.readingStatus!=='paused' && b.readingStatus!=='wishlist' && b.readingStatus!=='planned' && b.readingStatus!=='want';
@@ -12543,19 +12501,19 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
       const plannedStartBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
         <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
         <span class="series-book-status">${statusIcon}</span>
-        <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}</span>
-        ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--rust);opacity:.6">planlanan</span>':''}
+        <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
+        ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}
         ${pageInfo}
         <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
           ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedStartBtn}
-          ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}',${books.indexOf(bk)})">✏️</button>
+          ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}','${ensureBkEid(bk)}')">✏️</button>
           <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}
         </div>
       </div>`;
     }
 
     const groupHtml = (label, icon, items) => items.length ? `
-      <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.6;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-light);opacity:.92;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
       ${items.map(bookItemHtmlSeries).join('')}
     ` : '';
 
@@ -12609,7 +12567,7 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
           <button class="btn btn-sm btn-primary" onclick="addBulkBooksToSeries('${ser.id}')">+ Toplu Ekle</button>
         </div>
       </div>
-      <div style="font-size:.7rem;color:var(--rust);opacity:.6;font-style:italic;margin-top:.2rem">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir</div>
+      <div style="font-size:.7rem;color:var(--gold-light);opacity:.92;font-style:italic;margin-top:.2rem">Kitaplarımda olmayan kitaplar "planlanan" olarak eklenir</div>
     </div>`;
 
 
@@ -12623,12 +12581,24 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
           ${pageModePossible ? `<button class="btn btn-sm" style="font-size:.6rem;padding:.2rem .5rem;background:${progressMode==='pages'?'rgba(74,103,65,.2)':'rgba(201,162,39,.1)'};color:${progressMode==='pages'?'var(--moss)':'var(--gold)'};border:1px solid ${progressMode==='pages'?'rgba(74,103,65,.3)':'rgba(201,162,39,.2)'}" onclick="toggleSeriesMode('${ser.id}')">
             ${progressMode==='pages'?'📖 Sayfa modu':'📚 Kitap modu'}
           </button>` : ''}
-          ${pageModeWarning && progressMode==='pages' ? `<span style="font-size:.6rem;color:var(--rust);opacity:.7">⚠️ Sayfa bilgisi eksik</span>` : ''}
-          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem" onclick="copySeriesToMyList('${ser.id}')">📚 Ekle</button>`:`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6">Toplam:</div>
-          <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
-            style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
-            onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-          <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>`}
+          ${pageModeWarning && progressMode==='pages' ? `<span style="font-size:.6rem;color:var(--gold-light);opacity:.92">⚠️ Sayfa bilgisi eksik</span>` : ''}
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem" onclick="copySeriesToMyList('${ser.id}')">📚 Ekle</button>`:`
+          <div id="seriesTotalView_${ser.id}" style="display:flex;align-items:center;gap:.5rem">
+            <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold-light);opacity:.92">Toplam: ${ser.total||'?'}${ongoing?'+':''}</span>
+            ${ongoing?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">✓ devam eden seri</span>`:''}
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .4rem" onclick="toggleSeriesTotalEdit('${ser.id}')" title="Düzenle">✏️</button>
+          </div>
+          <div id="seriesTotalEdit_${ser.id}" style="display:none;align-items:center;gap:.4rem;flex-wrap:wrap">
+            <label style="display:flex;align-items:center;gap:.25rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold-light);opacity:.92;cursor:pointer" title="Yazar bu seriye hâlâ yeni kitap ekliyorsa işaretle">
+              <input type="checkbox" ${ongoing?'checked':''} onchange="toggleSeriesOngoing('${(ser.name||'').replace(/'/g,"\\'")}',this.checked)" style="margin:0"/> devam ediyor
+            </label>
+            <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold-light);opacity:.92">Toplam:</div>
+            <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
+              style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
+              onchange="updateSeriesTotal('${ser.id}',this.value)"/>
+            <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .4rem" onclick="toggleSeriesTotalEdit('${ser.id}')">✓ Bitti</button>
+          </div>`}
         </div>
       </div>
       <div class="series-progress-wrap">
@@ -12639,25 +12609,25 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
         ${currentlyReading.book.currentPage&&currentlyReading.book.pages
           ?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.7"> · ${currentlyReading.book.currentPage}/${currentlyReading.book.pages} sayfa</span>`:''}
       </div>` : ''}
-      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--rust);opacity:.7;margin:.3rem 0">⏭ Sıradaki: ${nextUnread.book.title}</div>` : ''}
+      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--gold-light);opacity:.92;margin:.3rem 0">⏭ Sıradaki: ${nextUnread.book.title}</div>` : ''}
       <div class="series-actions">
         <button class="btn btn-sm" id="seriesToggleBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
           onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${books.length})</button>
         <button class="btn btn-sm" id="seriesCloseBtn_${ser.id}" 
-          style="font-size:.7rem;background:rgba(139,0,0,.1);color:var(--rust);border:1px solid rgba(139,0,0,.2);display:none"
+          style="font-size:.7rem;background:rgba(139,0,0,.1);color:var(--gold-light);border:1px solid rgba(139,0,0,.2);display:none"
           onclick="closeSeriesCard('${ser.id}')">✓ Bitti</button>
       </div>
       <div class="series-books-list" id="seriesBooks_${ser.id}">
         <div class="series-book-list-inner">${bookListHtml}</div>
         <div style="margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(201,162,39,.1)">
-          <div style="font-size:.75rem;color:var(--rust);opacity:.7;margin-bottom:.3rem">Kitap Ekle</div>
+          <div style="font-size:.75rem;color:var(--gold-light);opacity:.92;margin-bottom:.3rem">Kitap Ekle</div>
           ${bookSelectHtml}
         </div>
       </div>
     </div>`;
-  }).join('')+(hasMoreSeries?`<button class="load-more-btn" onclick="seriesPage++;renderSeriesList()">↓ Daha fazla yükle (${allSeries.length-seriesPage*PAGE_SIZE} kaldı)</button>`:'');
-  } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--rust)">Render hatası: '+e.message+'</div>'; }
+  }).join('')+(hasMoreSeries?`<button class="load-more-btn" onclick="seriesPage++;renderSeriesList()">↓ Daha fazla yükle (${paginatableSeries.length-seriesPage*PAGE_SIZE} kaldı)</button>`:'');
+  } catch(e) { console.error('[Seriler HATA]', e.message, e.stack); container.innerHTML='<div class="empty-state" style="padding:2rem;color:var(--gold-light)">Render hatası: '+e.message+'</div>'; }
   // Grup kartlarını üste ekle
   renderGroupCards(container);
   // Açık kartları geri aç — renderGroupCards'tan sonra çalışmalı
@@ -12675,7 +12645,7 @@ function renderGroupCards(seriesContainer){
   const data = viewSeriesData();
   const allPaths = Object.values(data.paths||{});
   if(!allPaths.length) return;
-  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   const allSeries = data.series||{};
 
   // Grup kartlarını üste taşı — her grup kartını seriesListContainer'ın başına ekle
@@ -12707,6 +12677,7 @@ function renderGroupCards(seriesContainer){
     const steps = (path.steps||[]).map(s=>{
       const ser = allSeries[s.seriesId];
       if(!ser) return null;
+      (ser.books||[]).forEach(ensureBkEid);
       const serBooks = (ser.books||[]).map(bk=>{
         if(bk.planned){
           const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
@@ -12764,8 +12735,8 @@ function renderGroupCards(seriesContainer){
               :`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${st.ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`):'';
             const readingLabel=isReading?`<span style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:4px">📖 Okuyorum</span>`:'';
             const removeKey=bk.planned?`'${st.ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}'  `:`'${st.ser.id}',${lb.id||'null'},false`;
-            seriesBkMap[st.ser.id+'_'+bkIdx]=bk;
-            const editBtn=!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${st.ser.id}',${bkIdx})" title="Kitabı düzenle">✏️</button>`:'';
+            seriesBkMap[st.ser.id+'_'+ensureBkEid(bk)]=bk;
+            const editBtn=!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${st.ser.id}','${ensureBkEid(bk)}')" title="Kitabı düzenle">✏️</button>`:'';
             return `<div data-grp-book="1" style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${readingLabel}${startBtn}${editBtn}</div></div>`;
           }).join('');
           const serOpenKey='serInGrp_'+st.ser.id;
@@ -12968,7 +12939,7 @@ function removeStepFromPath(pathId, seriesId, evt){
   if(!btn) { _doRemoveStep(pathId, seriesId); return; }
   const box = document.createElement('div');
   box.id = confirmId;
-  box.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .4rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.75rem;color:var(--rust)';
+  box.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .4rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.75rem;color:var(--gold-light)';
   box.innerHTML = `"${serName}" gruptan çıkar?
     <button class="btn btn-sm btn-danger" style="font-size:.65rem;padding:.1rem .35rem" onclick="_doRemoveStep('${pathId}','${seriesId}')">Evet</button>
     <button class="btn btn-sm" style="font-size:.65rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="document.getElementById('${confirmId}').remove()">İptal</button>`;
@@ -13003,7 +12974,7 @@ function renderPathsList(){
   if(!container) return;
   const data = mySeriesData();
   const allPaths = Object.values(data.paths||{});
-  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist');
+  const myBooksList = targetBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
 
   if(!allPaths.length){
     container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz okuma yolu oluşturmadın. Önce seriler oluşturup buradan birleştirebilirsin!</div>`;
@@ -13016,6 +12987,7 @@ function renderPathsList(){
     const steps = (path.steps||[]).map(s=>{
       const ser = allSeries[s.seriesId];
       if(!ser) return null;
+      (ser.books||[]).forEach(ensureBkEid);
       const serBooks = (ser.books||[]).map(bk=>{
         if(bk.planned){
           const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
