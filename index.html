@@ -1188,6 +1188,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
               <div class="field-group" style="grid-column:1/-1">
                 <span class="field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400">(YYYY-AA-GG veya sadece YYYY)</span></span>
                 <input class="book-input" id="storyDate" type="text" placeholder="örn: 2024-03-15 veya 2024"/>
+                <label style="display:flex;align-items:center;gap:.35rem;margin-top:.4rem;font-size:.8rem;opacity:.75;cursor:pointer">
+                  <input type="checkbox" id="storyRetroactive" style="margin:0"/> Bunu geçmişte okudum (rozet sayımına dahil etme)
+                </label>
               </div>
             </div>
             <!-- Kaynak türü -->
@@ -2124,10 +2127,10 @@ const BADGE_CATS = [
       {id:'siir4',tier:'diamond',icon:'🌙', name:'Şiir Ustası',        desc:'20 şiir kitabı oku.', check:b=>genre(b,'siir',20)},
     ]},
     {id:'kc_oyku',   label:'📖 Öykü',             badges:[
-      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),5)},
-      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),15)},
-      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),30)},
-      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:b=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+(db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0),50)},
+      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,5)},
+      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,15)},
+      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,30)},
+      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,50)},
     ]},
     {id:'kc_dis',    label:'🔥 Distopya',          badges:[
       {id:'dis1',tier:'bronze', icon:'🔥', name:'Distopya Kaçkını',   desc:'3 distopya/cyberpunk kitabı oku.',  check:b=>genre(b,'distopya',3)},
@@ -2192,15 +2195,15 @@ const BADGE_CATS = [
   // ── 5. SERİ & ÖZEL ────────────────────────────────────────────
   {label:'📚 Seri & Özel', chains:[
     {id:'seri_ustaligi', label:'📖 Seri Okuma', badges:[
-      {id:'ser1',tier:'bronze', icon:'📖', name:'Seri Başlangıcı',  desc:'1 seriyi baştan sona bitir.',        check:b=>cap(completedSeriesCount(),1)},
-      {id:'ser2',tier:'silver', icon:'📚', name:'Seri Tutkunu',     desc:'3 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(),3)},
-      {id:'ser3',tier:'gold',   icon:'🏆', name:'Seri Ustası',      desc:'5 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(),5)},
-      {id:'ser4',tier:'diamond',icon:'💎', name:'Seri Takıntılısı', desc:'Bir seriden 10+ kitap oku.',         check:b=>cap(maxSeriesBooks(),10)},
+      {id:'ser1',tier:'bronze', icon:'📖', name:'Seri Başlangıcı',  desc:'1 seriyi baştan sona bitir.',        check:b=>cap(completedSeriesCount(b),1)},
+      {id:'ser2',tier:'silver', icon:'📚', name:'Seri Tutkunu',     desc:'3 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(b),3)},
+      {id:'ser3',tier:'gold',   icon:'🏆', name:'Seri Ustası',      desc:'5 farklı seriyi baştan sona bitir.', check:b=>cap(completedSeriesCount(b),5)},
+      {id:'ser4',tier:'diamond',icon:'💎', name:'Seri Takıntılısı', desc:'Bir seriden 10+ kitap oku.',         check:b=>cap(maxSeriesBooks(b),10)},
     ]},
     {id:'ayni_evren', label:'🔮 Aynı Evren', badges:[
-      {id:'univ1',tier:'bronze',icon:'🔮', name:'Evren Kâşifi',       desc:'Seriler sekmesinden bir grup oluştur ve 2+ farklı seriden kitap oku.', check:b=>cap(sameUniverseFromGroups(),1)},
-      {id:'univ2',tier:'silver',icon:'🌌', name:'Paralel Gezgin',     desc:'Farklı gruplarda 3 evren keşfet.',  check:b=>cap(sameUniverseFromGroups(),3)},
-      {id:'univ3',tier:'gold',  icon:'✨', name:'Çoklu Evren Ustası', desc:'Farklı gruplarda 5 evren keşfet.', check:b=>cap(sameUniverseFromGroups(),5)},
+      {id:'univ1',tier:'bronze',icon:'🔮', name:'Evren Kâşifi',       desc:'Seriler sekmesinden bir grup oluştur ve 2+ farklı seriden kitap oku.', check:b=>cap(sameUniverseFromGroups(b),1)},
+      {id:'univ2',tier:'silver',icon:'🌌', name:'Paralel Gezgin',     desc:'Farklı gruplarda 3 evren keşfet.',  check:b=>cap(sameUniverseFromGroups(b),3)},
+      {id:'univ3',tier:'gold',  icon:'✨', name:'Çoklu Evren Ustası', desc:'Farklı gruplarda 5 evren keşfet.', check:b=>cap(sameUniverseFromGroups(b),5)},
     ]},
     {id:'bagimsiz', label:'🌱 Bağımsız Yayınevi', badges:[
       {id:'ind1',tier:'bronze',icon:'🌱', name:'Bağımsız Ruh',              desc:'1 bağımsız yayınevi kitabı oku ("Bağımsız yayınevi" işaretle).', check:b=>cap(b.filter(x=>x.indie).length,1)},
@@ -2309,7 +2312,7 @@ const BADGE_CATS = [
       {id:'comb_multi',  tier:'diamond',icon:'📖', name:'Çok Yönlü Okuyucu',      desc:'8 farklı türden en az 5 tanesinde 3 veya daha fazla kitap oku.', check:b=>{const cats=[genre(b,'fantastik',3),genre(b,'bilimkurgu',3),genre(b,'polisiye',3),genre(b,'tarih',3),genre(b,'felsefe',3),genre(b,'psikoloji',3),genre(b,'romantik',3),genre(b,'korku',3)];return flag(cats.filter(c=>c.cur>=3).length>=5);}},
       {id:'comb_all',    tier:'diamond',icon:'🌈', name:'Sınır Tanımaz',           desc:'10 farklı türün tamamında en az 3 kitap oku.', check:b=>{const cats=[genre(b,'fantastik',3),genre(b,'bilimkurgu',3),genre(b,'polisiye',3),genre(b,'tarih',3),genre(b,'felsefe',3),genre(b,'psikoloji',3),genre(b,'romantik',3),genre(b,'korku',3),genre(b,'deneme',3),genre(b,'mitoloji',3)];return flag(cats.filter(c=>c.cur>=3).length>=10);}},
       {id:'comb_classic',tier:'diamond',icon:'🏛️', name:'Klasik ile Modern',       desc:'1950 öncesi en az 3 klasik ve 2000 sonrası en az 3 modern kitap oku.', check:b=>flag(b.filter(x=>x.pubYear&&x.pubYear<1950).length>=3&&b.filter(x=>x.pubYear&&x.pubYear>=2000).length>=3)},
-      {id:'comb_ser_geo',tier:'diamond',icon:'🗺️', name:'Seyahat Eden Seri Okuru', desc:'En az 1 seriyi tamamla ve 5 farklı ülkeden yazar oku.', check:b=>flag(completedSeriesCount()>=1&&uniqueCountries(b)>=5)},
+      {id:'comb_ser_geo',tier:'diamond',icon:'🗺️', name:'Seyahat Eden Seri Okuru', desc:'En az 1 seriyi tamamla ve 5 farklı ülkeden yazar oku.', check:b=>flag(completedSeriesCount(b)>=1&&uniqueCountries(b)>=5)},
     ]},
   ], badges:[]},
 ]
@@ -2362,10 +2365,12 @@ function countReviews(books){
   books.forEach(b=>{if(b.review&&b.review.trim())total++;total+=(b.quotes||[]).length;});
   return total;
 }
-function sameUniverseFromGroups(){
+function sameUniverseFromGroups(books,user){
+  user=user||me;
+  books=books||db.books[user]||[];
   // Bir grupta 2+ farklı seriden kitap okunmuşsa sameUniverse sayılır
-  if(!db||!db.seriesData||!db.seriesData[me]) return 0;
-  const data=db.seriesData[me];
+  if(!db||!db.seriesData||!db.seriesData[user]) return 0;
+  const data=db.seriesData[user];
   let count=0;
   Object.values(data.paths||{}).forEach(path=>{
     const seriesInPath=(path.steps||[]).map(s=>s.seriesId).filter(Boolean);
@@ -2374,7 +2379,7 @@ function sameUniverseFromGroups(){
       if(!ser) return false;
       return (ser.books||[]).some(bk=>{
         if(!bk.bookId) return false;
-        const book=(db.books[me]||[]).find(b=>b.id===bk.bookId);
+        const book=books.find(b=>b.id===bk.bookId);
         return book&&book.readingStatus==='new'&&!book.retroactive;
       });
     });
@@ -2383,29 +2388,53 @@ function sameUniverseFromGroups(){
   return count;
 }
 function uniqueGenres(books){return new Set(books.flatMap(b=>b.genres||[]).map(g=>badgeGenre(normalizeGenre(g)))).size;}
-function completedSeriesCount(){
-  if(!db||!db.seriesData||!db.seriesData[me]) return 0;
-  const data=db.seriesData[me];
+// ⚠️ RETROAKTİF SÖZLEŞMESİ — Ö9 refactoru sırasında SİLİNMEMELİ ⚠️
+// completedSeriesCount()/maxSeriesBooks() içindeki `!book.retroactive` filtresi KASITLI.
+// Genel seri rozetleri (ser1-4) retroaktif kitapları SAYMAMALI — amaç, kullanıcının
+// geçmişte okuduğu 10 seriyi toplu girip bu rozetleri ilk günde tüketmesini önlemek.
+// İsme özel rozetler (badge_dune, badge_hp vb.) ise retroaktifi DAHİL etmeli — onlar
+// koleksiyon/başarı listesi gibi çalışıyor, "meydan okuma" değil.
+// Bu asimetri BURADA, bu iki fonksiyonun içindeki elle yazılmış filtrede duruyor —
+// bstat() (aşağıda) SERIES_BADGE_IDS'teki HİÇBİR rozet için retroaktif filtrelemiyor
+// (ikisi de aynı kefede). Yani ser1-4'ün retroaktif hariç tutması TAMAMEN bu iki
+// fonksiyonun kendi içindeki filtreye bağlı. Ö9'da bu fonksiyonlar "canlı db okumasın,
+// bağlam nesnesi alsın" diye yeniden yazılırken, biri "zaten filtrelenmiş books dizisi
+// var, kendi filtremi kaldırayım" derse, ser1-4 sessizce retroaktifi dahil etmeye
+// başlar ve bu kasıtlı tasarım kararı fark edilmeden bozulur. Refactor sırasında bu
+// filtreyi mutlaka koru — context nesnesi ne olursa olsun, bu iki fonksiyon kendi
+// retroaktif kontrolünü kendisi yapmaya devam etmeli.
+// 2026-07-29 (Ö9): artık db.books[me]'i canlı okumak yerine `books` parametresini
+// kullanıyor (verilmezse eski canlı davranışa düşer) — böylece rozet kontrolü
+// "önce/sonra" karşılaştırması yapabiliyor. Seri YAPISI (db.seriesData) hâlâ canlı
+// okunuyor, çünkü bir kitabı bitirmek seri yapısını değiştirmiyor, sadece kitabın
+// durumunu değiştiriyor — diff'lenmesi gereken tek şey `books`.
+function completedSeriesCount(books,user){
+  user=user||me;
+  books=books||db.books[user]||[];
+  if(!db||!db.seriesData||!db.seriesData[user]) return 0;
+  const data=db.seriesData[user];
   let count=0;
   Object.values(data.series||{}).forEach(ser=>{
     if(!ser.total||!ser.books) return;
     const readCount=(ser.books||[]).filter(bk=>{
       if(!bk.bookId) return false;
-      const book=(db.books[me]||[]).find(b=>b.id===bk.bookId);
+      const book=books.find(b=>b.id===bk.bookId);
       return book&&book.readingStatus==='new'&&!book.retroactive;
     }).length;
     if(readCount>=ser.total) count++;
   });
   return count;
 }
-function maxSeriesBooks(){
-  if(!db||!db.seriesData||!db.seriesData[me]) return 0;
-  const data=db.seriesData[me];
+function maxSeriesBooks(books,user){
+  user=user||me;
+  books=books||db.books[user]||[];
+  if(!db||!db.seriesData||!db.seriesData[user]) return 0;
+  const data=db.seriesData[user];
   let max=0;
   Object.values(data.series||{}).forEach(ser=>{
     const readCount=(ser.books||[]).filter(bk=>{
       if(!bk.bookId) return false;
-      const book=(db.books[me]||[]).find(b=>b.id===bk.bookId);
+      const book=books.find(b=>b.id===bk.bookId);
       return book&&book.readingStatus==='new'&&!book.retroactive;
     }).length;
     if(readCount>max) max=readCount;
@@ -2425,18 +2454,30 @@ const REGIONS={
 };
 
 // Seri rozetleri retroactive kitapları da sayar, diğerleri saymaz
+// ⚠️ Bu set kendisi retroaktif AYRIMI yapmıyor — hem genel (ser1-4/univ1-3) hem isme
+// özel (badge_dune vb.) rozetler burada bstat()'a aynı şekilde davranıyor. Genel
+// rozetlerin retroaktifi hariç tutması, completedSeriesCount()/maxSeriesBooks()
+// içindeki AYRI, elle yazılmış filtreden geliyor (yukarıdaki uyarıya bakın). Ö9
+// refactorunda bu ikisini karıştırmayın.
 const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis','secret_ashbless','secret_creator']);
 
 function isRetroactive(b){
   return b.retroactive===true;
 }
-function bstat(badge,books){
+function bstat(badge,books,ctx){
   const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
     ? books
     : books.filter(b=>!isRetroactive(b));
-  const{cur,max}=badge.check(filteredBooks);
+  const{cur,max}=badge.check(filteredBooks,ctx||badgeCtxFor(viewing||me));
   const pct=max>0?Math.round(cur/max*100):0;
   return{cur,max,pct,earned:cur>=max};
+}
+// Rozet check() fonksiyonlarına geçirilen bağlam — canlı db okuması yerine bunu kullanırlar.
+// ctx.stories: o kullanıcının Hikayelerim listesi (dizi). Snapshot alınırken (Ö9 kapsamında,
+// checkAndAwardBadges) bu da derin kopyalanmalı — yoksa "önce/sonra" karşılaştırması
+// öykü rozetleri için hep aynı sonucu verir (K9).
+function badgeCtxFor(user){
+  return{ stories:(db.stories&&db.stories[user])||[] };
 }
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
@@ -3510,7 +3551,7 @@ function viewMember(u){
   if(user&&user.publicProfile===false){
     const books=(db.books[u]||[]).filter(b=>b.readingStatus!=='wishlist'&&b.title&&!b.title.startsWith('ISBN:'));
     let badgeCount=0;
-    BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books).earned)badgeCount++;});});
+    BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books,badgeCtxFor(u)).earned)badgeCount++;});});
     notify('🔒 Gizli Profil',`${user.displayName} · ${books.length} kitap · ${badgeCount} rozet`);
     return;
   }
@@ -6873,14 +6914,23 @@ function toggleFlag(bookId,field,el){
 function snapshotValidBooks(){
   return validBooks().map(b=>({...b, genres:[...(b.genres||[])], formats:[...(b.formats||[])], quotes:(b.quotes||[]).map(q=>({...q, reactions:{...(q.reactions||{})}}))}));
 }
-function checkAndAwardBadges(prevValidBooks, delay=500){
+// Rozet karşılaştırması için "önceki" bağlamın anlık görüntüsü — şu an sadece
+// stories'i kapsıyor (Ö9'un ilk dilimi). İleride seri verisi de buraya eklenecek.
+function snapshotBadgeContext(){
+  return{ stories:((db.stories&&db.stories[me])||[]).map(s=>({...s})) };
+}
+function checkAndAwardBadges(prevValidBooks, delay=500, prevCtx){
   const newlyEarned=[];
   const newlyEarnedBadges=[];
   const newValid=validBooks();
+  const newCtx=badgeCtxFor(me);
+  // prevCtx verilmezse (çoğu tetikleyici stories'e dokunmuyor) yeni bağlamla aynı kabul
+  // edilir — eski davranış korunur, sadece stories değişen yerlerde (addStory) fark eder.
+  const usedPrevCtx=prevCtx||newCtx;
   BADGE_CATS.forEach(cat=>{
     const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
     allB.forEach(b=>{
-      if(!bstat(b,prevValidBooks).earned&&bstat(b,newValid).earned){
+      if(!bstat(b,prevValidBooks,usedPrevCtx).earned&&bstat(b,newValid,newCtx).earned){
         newlyEarned.push(b.id);
         newlyEarnedBadges.push(b);
       }
@@ -7082,13 +7132,9 @@ async function finishReading(bookId){
     const matchedSer=Object.values(data.series||{}).find(s=>s.name===book.series);
     if(matchedSer) checkSeriesComplete(matchedSer.id);
   }
-  // Yeni ülke kontrolü — önce ülke bildirimi, sonra tamamlandı
-  const _otherCountries=new Set(
-    (db.books[me]||[]).filter(b=>b.id!==book.id&&b.country&&b.readingStatus==='new'&&!b.retroactive)
-      .map(b=>b.country.toLowerCase())
-  );
-  const _isNewCountry=book.country&&!_otherCountries.has(book.country.toLowerCase());
-  checkAndAddCountryEvent(book);
+  // Yeni ülke kontrolü — checkAndAddCountryEvent'in kendi sonucunu kullanıyoruz,
+  // burada ayrıca aynı mantığı tekrar hesaplamıyoruz (K3 tarzı kopya riskini önler).
+  const _isNewCountry=checkAndAddCountryEvent(book);
   closeModal();
   render();
   const baseDelay=_isNewCountry?2200:0;
@@ -7399,22 +7445,25 @@ function addStory(){
   if(!db.stories) db.stories={};
   if(!db.stories[me]) db.stories[me]=[];
   const prevValid=snapshotValidBooks();
+  const prevCtx=snapshotBadgeContext();
   const story={
     id:Date.now(),
     title, author, source, status, link, sourceBook,
     readDate, readYearOnly,
     rating:0, note:null,
+    retroactive:document.getElementById('storyRetroactive')?.checked||false,
     addedAt:new Date().toISOString(),
   };
   db.stories[me].push(story);
   saveDb();
-  checkAndAwardBadges(prevValid);
+  checkAndAwardBadges(prevValid,500,prevCtx);
   // Formu sıfırla
   document.getElementById('storyTitle').value='';
   document.getElementById('storyAuthor').value='';
   document.getElementById('storyLink').value='';
   document.getElementById('storySourceBook').value='';
   document.getElementById('storyDate').value='';
+  const retroChk=document.getElementById('storyRetroactive'); if(retroChk) retroChk.checked=false;
   document.getElementById('storyLinkWrap').style.display='none';
   document.getElementById('storySourceBookWrap').style.display='block';
   document.querySelectorAll('#storySourceChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
@@ -7497,7 +7546,10 @@ function openStoryDetail(ownerId, storyId){
       ${isMe?`<div class="check-chips">
         <span class="check-chip ${story.status==='read'?'active':''}" onclick="saveStoryField(${storyId},'status','read');this.closest('.check-chips').querySelectorAll('.check-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">✔ Okundu</span>
         <span class="check-chip ${story.status==='toread'?'active':''}" onclick="saveStoryField(${storyId},'status','toread');this.closest('.check-chips').querySelectorAll('.check-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">⏳ Okunacak</span>
-      </div>`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
+      </div>
+      <label style="display:flex;align-items:center;gap:.35rem;margin-top:.5rem;font-size:.8rem;opacity:.75;cursor:pointer">
+        <input type="checkbox" ${story.retroactive?'checked':''} onchange="saveStoryField(${storyId},'retroactive',this.checked)" style="margin:0"/> Geçmişte okudum (rozet sayımına dahil etme)
+      </label>`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">⭐ Puan</div>
@@ -7535,10 +7587,13 @@ function saveStoryDate(storyId, rawVal){
 function saveStoryField(storyId, field, value){
   const story=(db.stories[me]||[]).find(s=>s.id===storyId);
   if(!story) return;
+  const prevValid=snapshotValidBooks();
+  const prevCtx=snapshotBadgeContext();
   story[field]=value;
   saveDb();
   renderStories();
   renderJournal();
+  checkAndAwardBadges(prevValid,500,prevCtx);
 }
 
 function setStoryRating(storyId, rating){
@@ -8711,19 +8766,20 @@ function backfillCountryEvents(){
 }
 
 function checkAndAddCountryEvent(book){
-  if(!book.country||book.readingStatus!=='new'||book.retroactive) return;
+  if(!book.country||book.readingStatus!=='new'||book.retroactive) return false;
+  const norm=c=>(c||'').trim().toLowerCase();
   // Bu ülke daha önce hiç kaydedilmiş mi?
   const allBooks=(db.books[me]||[]);
   const existingCountries=new Set(
     allBooks.filter(b=>b.id!==book.id&&b.country&&b.readingStatus==='new'&&!b.retroactive)
-      .map(b=>b.country.toLowerCase())
+      .map(b=>norm(b.country))
   );
-  if(existingCountries.has(book.country.toLowerCase())) return;
+  if(existingCountries.has(norm(book.country))) return false;
   // countryEvents'te daha önce bu ülke için kayıt var mı?
   if(!db.countryEvents) db.countryEvents={};
   if(!db.countryEvents[me]) db.countryEvents[me]=[];
-  const alreadyLogged=db.countryEvents[me].some(e=>e.country.toLowerCase()===book.country.toLowerCase());
-  if(alreadyLogged) return;
+  const alreadyLogged=db.countryEvents[me].some(e=>norm(e.country)===norm(book.country));
+  if(alreadyLogged) return false;
   db.countryEvents[me].push({
     id:Date.now(),
     country:book.country,
@@ -8734,6 +8790,7 @@ function checkAndAddCountryEvent(book){
   });
   saveDb();
   notify('🌍 Yeni Ülke!',`${book.country} keşfedildi! ${book.title} ile haritana girdi`);
+  return true;
 }
 
 function toggleNotifPanel(){
@@ -10748,7 +10805,11 @@ function renderBadges(){
     const catTotal=allBadges.length;
     const hasNew=allBadges.some(b=>pendingShimmerBadges.has(b.id));
     const key='badgeCat-'+ci;
-    const isOpen=prefs[key]!==undefined?prefs[key]:false;
+    // Bir filtre aktifken (Kazanılanlar/İlerleyenler/Kilitli) kategoriler varsayılan
+    // olarak açık gelsin — kullanıcı zaten "sadece bunu göster" demiş, tek tek açması
+    // gerekmesin. "Tümü" görünümünde eski davranış (kapalı başla) korunuyor. Kullanıcının
+    // kendi elle kapattığı/açtığı bir tercihi varsa (prefs[key]) her zaman ona uyulur.
+    const isOpen=prefs[key]!==undefined?prefs[key]:(badgeFilter!=='all');
 
     const chains=(cat.chains||[]).map(chain=>{
       const filtered=chain.badges.filter(b=>{
@@ -11495,7 +11556,7 @@ function shimmerEarnedBadges(){
 
 function renderMembers(){
   const all=Object.keys(db.users);
-  const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books).earned)badges++;});});return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
+  const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;const ctx=badgeCtxFor(u);BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books,ctx).earned)badges++;});});return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
   document.getElementById('leaderboardGrid').innerHTML=sorted.map((m,i)=>`
     <div class="leader-card ${m.u===me?'me':''}" onclick="viewMember('${m.u}')">
       <span class="leader-rank">#${i+1}</span><span class="leader-avatar">${avatarHtml(m.avatar,"2rem")}</span>
