@@ -2290,7 +2290,7 @@ const BADGE_CATS = [
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
       {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir (okumaya başlama ve bitirme tarihi aynı olmalı).', check:b=>flag(b.some(x=>x.startDate&&x.endDate&&x.startDate===x.endDate))},
-      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 farklı kitap oku.', check:b=>flag((db.books[me]||[]).filter(x=>x.readingStatus==='reading').length>=3)},
+      {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 kitap oku. Ama dikkat, ben biraz gelip geçiciyim.😶\u200d🌫️', check:(b,ctx)=>flag(((ctx&&ctx.readingCount!==undefined)?ctx.readingCount:(db.books[me]||[]).filter(x=>x.readingStatus==='reading').length)>=3)},
       {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
       {id:'secret_creator',tier:'diamond',icon:'✨', name:'Yaratıcının Tanığı', imgSrc:'images/yaraticinintanigi.png', desc:'Her şey görünenlerden ibaret değildi. Satır aralarını okudun. Sistemin ardındaki sesi duydun. Yaratıcının izine rastladın.\n\nGeliştirici: Claude (Anthropic) + hggunay aka Gweluien (Elf adıyla bilinen) · 8 Mart 2026\'dan bu yana devam ediyor...',
         check:b=>{
@@ -2477,7 +2477,10 @@ function bstat(badge,books,ctx){
 // checkAndAwardBadges) bu da derin kopyalanmalı — yoksa "önce/sonra" karşılaştırması
 // öykü rozetleri için hep aynı sonucu verir (K9).
 function badgeCtxFor(user){
-  return{ stories:(db.stories&&db.stories[user])||[] };
+  return{
+    stories:(db.stories&&db.stories[user])||[],
+    readingCount:(db.books[user]||[]).filter(b=>b.readingStatus==='reading').length,
+  };
 }
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
@@ -5582,6 +5585,7 @@ async function addBook(){
 
   // series completion
   const prevBooksAll=myBooks(),prevBooksValid=validBooks(),sn=info.series||manualSeries||null;
+  const prevCtx=snapshotBadgeContext();
   let seriesComplete=false,miniSeriesComplete=false,bigSeriesComplete=false;
   if(sn){
     const cnt=prevBooksAll.filter(b=>b.series===sn).length+1,tot=info.series_total;
@@ -5647,7 +5651,7 @@ async function addBook(){
   checkAndAddCountryEvent(book);
 
   render();
-  checkAndAwardBadges(prevBooksValid);
+  checkAndAwardBadges(prevBooksValid,500,prevCtx);
 }
 
 
@@ -6917,7 +6921,10 @@ function snapshotValidBooks(){
 // Rozet karşılaştırması için "önceki" bağlamın anlık görüntüsü — şu an sadece
 // stories'i kapsıyor (Ö9'un ilk dilimi). İleride seri verisi de buraya eklenecek.
 function snapshotBadgeContext(){
-  return{ stories:((db.stories&&db.stories[me])||[]).map(s=>({...s})) };
+  return{
+    stories:((db.stories&&db.stories[me])||[]).map(s=>({...s})),
+    readingCount:(db.books[me]||[]).filter(b=>b.readingStatus==='reading').length,
+  };
 }
 function checkAndAwardBadges(prevValidBooks, delay=500, prevCtx){
   const newlyEarned=[];
@@ -7070,12 +7077,13 @@ function startReadingFromWishlist(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
   const prevValid=snapshotValidBooks();
+  const prevCtx=snapshotBadgeContext();
   book.previousStatus=book.readingStatus||'wishlist';
   if(book.readingStatus==='new'||book.readingStatus==='past') book.rereadStarted=true;
   book.readingStatus='reading';
   book.startDate=todayLocal();
   saveDb();renderSafe();
-  checkAndAwardBadges(prevValid);
+  checkAndAwardBadges(prevValid,500,prevCtx);
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
 
@@ -7083,10 +7091,11 @@ function resumeReading(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
   const prevValid=snapshotValidBooks();
+  const prevCtx=snapshotBadgeContext();
   book.previousStatus=book.readingStatus||'paused';
   book.readingStatus='reading';
   saveDb();renderSafe();
-  checkAndAwardBadges(prevValid);
+  checkAndAwardBadges(prevValid,500,prevCtx);
   notify('📖 Devam ediliyor',`"${book.title}" şu an okunanlar listesine taşındı.`);
 }
 function savePausedPage(bookId, value){
