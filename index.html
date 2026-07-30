@@ -4040,7 +4040,21 @@ async function fetchBookInfo(title, author, isbn=''){
           const isInitial=firstName.length<=2;
           const femaleEndings=['a','e','i','ü','ö','ş','ye','se'];
           const female_author=!isInitial&&femaleEndings.some(e=>firstName.endsWith(e));
-          return {title_clean,author_clean,genres,pages,pub_year,author_birth_year:null,country:null,female_author,series:null,series_num:null,series_total:null,comic_series:null,_method:'google'};
+          // Google seri bilgisi vermiyor — OpenLibrary'ye ayrıca sor, sadece seriyi al
+          let series=null, series_num=null;
+          try {
+            const olq=author?encodeURIComponent(title_clean)+'+'+encodeURIComponent(author_clean):encodeURIComponent(title_clean);
+            const olUrl='https://openlibrary.org/search.json?q='+olq+'&fields=title,series,series_number&limit=5';
+            const olr=await fetch(olUrl);
+            const old=await olr.json();
+            if(old.docs&&old.docs.length){
+              const tLow2=title_clean.toLowerCase();
+              let olBest=old.docs.find(d=>(d.title||'').toLowerCase()===tLow2)||old.docs[0];
+              series=(olBest.series&&olBest.series[0])||null;
+              series_num=olBest.series_number?parseInt(olBest.series_number):null;
+            }
+          } catch(e){}
+          return {title_clean,author_clean,genres,pages,pub_year,author_birth_year:null,country:null,female_author,series,series_num,series_total:null,comic_series:null,_method:'google'};
         }
       } catch(e){}
       // Google'da bulunamadı — Open Library'ye geç
