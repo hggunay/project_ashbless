@@ -637,6 +637,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .series-card{background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.15);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .series-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;}
 .series-card-name{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);font-weight:700;}
+.series-card-name-input{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);font-weight:700;background:transparent;border:1px solid transparent;border-radius:4px;padding:.1rem .3rem;margin:-.1rem -.3rem;width:auto;max-width:100%;cursor:text;transition:background .15s,border-color .15s;}
+.series-card-name-input:hover{background:rgba(201,162,39,.08);border-color:rgba(201,162,39,.2);}
+.series-card-name-input:focus{outline:none;background:rgba(201,162,39,.1);border-color:rgba(201,162,39,.4);}
 .series-card-stats{font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold-light);opacity:.9;}
 .series-progress-wrap{background:rgba(201,162,39,.1);border-radius:20px;height:6px;margin:.4rem 0;}
 .series-progress-fill{background:var(--gold);border-radius:20px;height:6px;transition:width .4s ease;}
@@ -6642,6 +6645,11 @@ function renderEditMode(bookId, fromShelf){
       <div class="detail-acc-body" id="mSec-series-${book.id}">
         <div class="detail-grid" style="margin-top:.5rem">
           ${dFieldSeries('Seri Adı','series',book.series,isMe,book.id)}
+          ${isMe?`<div class="confirm-bar" id="seriesRenameConfirmBar" style="grid-column:1/-1">
+            <span id="seriesRenameConfirmMsg" style="flex:1"></span>
+            <button class="btn btn-sm btn-primary" onclick="confirmSeriesRenameWhole()">Tüm Seriye Uygula</button>
+            <button class="btn btn-sm" onclick="confirmSeriesRenameSingle()" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)">Sadece Bu Kitap</button>
+          </div>`:''}
           ${dField('Seri No','seriesNum',book.seriesNum,'number',isMe)}
           ${dField('Seri Toplam','seriesTotal',book.seriesTotal,'number',isMe)}
           ${isMe?`<div class="detail-field">
@@ -6991,11 +6999,48 @@ function checkAndAwardBadges(prevValidBooks, delay=500, prevCtx){
 
 function saveField(bookId,field,value){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  if(field==='series'){
+    const oldSeriesVal=book.series;
+    if(oldSeriesVal&&value&&oldSeriesVal!==value){
+      const siblingCount=(db.books[me]||[]).filter(b=>b.id!==bookId&&b.series===oldSeriesVal).length;
+      if(siblingCount>0){
+        window._pendingSeriesRename={bookId,oldName:oldSeriesVal,newName:value};
+        const bar=document.getElementById('seriesRenameConfirmBar');
+        const msg=document.getElementById('seriesRenameConfirmMsg');
+        if(msg) msg.textContent=`"${oldSeriesVal}" serisinde bu kitap dışında ${siblingCount} kitap daha var. Yeni ad ("${value}") tüm seriye mi uygulansın, yoksa sadece bu kitap mı seriden çıksın?`;
+        if(bar) bar.classList.add('show');
+        return; // kullanıcı seçim yapana kadar kaydetme
+      }
+    }
+  }
+  saveFieldCommit(bookId,field,value,false);
+}
+
+function confirmSeriesRenameWhole(){
+  const p=window._pendingSeriesRename; if(!p) return;
+  document.getElementById('seriesRenameConfirmBar')?.classList.remove('show');
+  window._pendingSeriesRename=null;
+  saveFieldCommit(p.bookId,'series',p.newName,true);
+}
+
+function confirmSeriesRenameSingle(){
+  const p=window._pendingSeriesRename; if(!p) return;
+  document.getElementById('seriesRenameConfirmBar')?.classList.remove('show');
+  window._pendingSeriesRename=null;
+  saveFieldCommit(p.bookId,'series',p.newName,false);
+}
+
+function saveFieldCommit(bookId,field,value,applyWholeSeries){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   const prevValid=snapshotValidBooks();
   if(['country','series','author','comicSeries'].includes(field)&&value==='') value=null;
+  const oldSeriesVal = field==='series' ? book.series : null;
   book[field]=value;
   if(field==='review'&&value) book.reviewTs=Date.now();
   if(field==='review'&&!value) book.reviewTs=null;
+  if(field==='series'&&applyWholeSeries&&oldSeriesVal&&value&&oldSeriesVal!==value){
+    renameSeriesGlobally(oldSeriesVal,value);
+  }
   // Seri bilgisi değişince diğer kitaplara yay
   if(['author','country','genres'].includes(field)&&book.series) propagateSeriesInfo(book);
   if(field==='series'&&value) checkAndOfferSeriesLink(book);
@@ -10755,6 +10800,11 @@ function renderBookList(){
 
 let openBadgeId=null;
 
+// Rozet görseli (GitHub'dan) yüklenemezse emoji ikonuna düş
+function badgeImgFallback(el,icon){
+  try{ el.outerHTML='<span class="badge-icon" style="font-size:3rem;display:block;text-align:center;padding:1.2rem 0">'+icon+'</span>'; }catch(e){}
+}
+
 function renderBadges(){
   const books=validBooks();
   let prefs={};
@@ -10834,7 +10884,7 @@ function renderBadges(){
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
         ${b.imgSrc?`
           <div style="padding:.6rem .6rem .2rem;display:flex;justify-content:center;">
-            <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" onerror="this.parentNode.style.display='none'" />
+            <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" onerror="badgeImgFallback(this,'${b.icon}')" />
           </div>
           <div style="padding:.3rem .6rem .5rem;text-align:center;">
             <div class="badge-name" style="font-size:.78rem;margin-bottom:.25rem">${b.name}</div>
@@ -11703,6 +11753,89 @@ function viewSeriesData(){
   return db.seriesData[u];
 }
 
+// Bir serinin adını değiştirir — hem seri kaydını hem de o seriye ait tüm kitapları günceller
+function renameSeriesGlobally(oldName,newName){
+  if(!oldName||!newName||oldName===newName) return 0;
+  const normOld=normalizeSeries(oldName);
+  let count=0;
+  (db.books[me]||[]).forEach(b=>{
+    if(b.series&&normalizeSeries(b.series)===normOld){ b.series=newName; count++; }
+  });
+  const data=mySeriesData();
+  Object.values(data.series||{}).forEach(s=>{
+    if(s.name&&normalizeSeries(s.name)===normOld) s.name=newName;
+  });
+  return count;
+}
+
+// Bir başlığı kalem butonuyla düzenleme moduna alır — tıklayınca değil, sadece butona basınca yazılabilir olur
+function startInlineRename(displayElId, commitFn, styleCss){
+  const el=document.getElementById(displayElId);
+  if(!el) return;
+  const currentValue=el.textContent;
+  const input=document.createElement('input');
+  input.type='text';
+  input.value=currentValue;
+  input.style.cssText=styleCss;
+  input.onclick=e=>e.stopPropagation();
+  input.onkeydown=e=>{
+    if(e.key==='Enter') input.blur();
+    if(e.key==='Escape'){ input.value=currentValue; input.blur(); }
+  };
+  input.onblur=()=>{ commitFn(input.value.trim()); };
+  el.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
+function renameSeriesFromEdit(seriesId,newVal){
+  const data=mySeriesData();
+  const ser=data.series[seriesId];
+  if(!ser) return;
+  const trimmed=(newVal||'').trim();
+  if(!trimmed||trimmed===ser.name){ renderSeriesList(); return; }
+  const count=renameSeriesGlobally(ser.name,trimmed);
+  saveDb();
+  renderSeriesList();
+  notify('✅ Seri adı güncellendi', count>0?`${count} kitabın seri adı da güncellendi.`:'Seri adı güncellendi.',true);
+}
+
+function startSeriesNameEdit(seriesId){
+  const data=mySeriesData();
+  const ser=data.series[seriesId];
+  if(!ser) return;
+  startInlineRename('seriesNameDisp_'+seriesId, (newVal)=>renameSeriesFromEdit(seriesId,newVal),
+    "font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);font-weight:700;padding:.1rem .3rem;max-width:280px;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.4);border-radius:4px");
+}
+
+function renamePathFromEdit(pathId,newVal){
+  if(viewing) return;
+  const data=mySeriesData();
+  const path=data.paths[pathId];
+  if(!path) return;
+  const trimmed=(newVal||'').trim();
+  if(!trimmed||trimmed===path.name){ renderSeriesList(); return; }
+  path.name=trimmed;
+  saveDb();
+  renderSeriesList();
+}
+
+function startPathNameEdit(pathId){
+  const data=mySeriesData();
+  const path=data.paths[pathId];
+  if(!path) return;
+  startInlineRename('pathNameDisp_'+pathId, (newVal)=>renamePathFromEdit(pathId,newVal),
+    "font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;padding:.1rem .3rem;flex:1;background:rgba(74,103,65,.12);border:1px solid rgba(74,103,65,.4);border-radius:4px");
+}
+
+function startGroupedSeriesNameEdit(seriesId){
+  const data=mySeriesData();
+  const ser=data.series[seriesId];
+  if(!ser) return;
+  startInlineRename('grpSeriesNameDisp_'+seriesId, (newVal)=>renameSeriesFromEdit(seriesId,newVal),
+    "font-size:.85rem;font-family:'Crimson Pro',serif;color:var(--parchment);flex:1;padding:.1rem .3rem;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.4);border-radius:4px");
+}
+
 function checkSeriesMatch(){
   const name = document.getElementById('newSeriesName').value.trim().toLowerCase();
   const banner = document.getElementById('seriesMatchBanner');
@@ -12140,6 +12273,7 @@ function updateSeriesTotal(seriesId, val){
   const data = mySeriesData();
   if(data.series[seriesId]) data.series[seriesId].total = parseInt(val)||null;
   saveDb();
+  renderSeriesList();
 }
 function toggleSeriesTotalEdit(seriesId){
   const v=document.getElementById('seriesTotalView_'+seriesId);
@@ -12148,6 +12282,11 @@ function toggleSeriesTotalEdit(seriesId){
   const isEditing = e.style.display!=='none';
   e.style.display = isEditing?'none':'flex';
   v.style.display = isEditing?'flex':'none';
+  // Aynı anda seri adını da yazılabilir hale getir (tek pencil, iki alan)
+  if(!isEditing){
+    const nameDisp=document.getElementById('seriesNameDisp_'+seriesId);
+    if(nameDisp) startSeriesNameEdit(seriesId);
+  }
 }
 function toggleSeriesOngoing(seriesName, val){
   const data = mySeriesData();
@@ -12705,7 +12844,9 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
     return `<div class="series-card" data-sid="${ser.id}">
       <div class="series-card-header">
         <div>
-          <div class="series-card-name">${ser.name}</div>
+          ${viewing
+            ?`<div class="series-card-name">${ser.name}</div>`
+            :`<div class="series-card-name" id="seriesNameDisp_${ser.id}">${ser.name}</div>`}
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -12845,10 +12986,12 @@ function renderGroupCards(seriesContainer){
     div.innerHTML=`
       <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex-wrap:wrap" onclick="toggleGroupCard('${path.id}',this.closest('.group-card'))">
         <span style="font-size:1rem">🗂</span>
-        <span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>
+        ${viewing
+          ?`<span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>`
+          :`<span id="pathNameDisp_${path.id}" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>`}
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
         <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
-          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
         </div>
         <span style="color:var(--moss);font-size:.8rem">${isOpen?'▲':'▼'}</span>
       </div>
@@ -12874,10 +13017,12 @@ function renderGroupCards(seriesContainer){
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
           return `<div style="border:1px solid rgba(74,103,65,.2);border-radius:6px;margin-bottom:.4rem;overflow:hidden">
             <div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;cursor:pointer;background:rgba(74,103,65,.06)" onclick="toggleSeriesInGroup('${st.ser.id}',this)">
-              <span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>
+              ${viewing
+                ?`<span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>`
+                :`<span id="grpSeriesNameDisp_${st.ser.id}" style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>`}
               <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
               ${!viewing?`<div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
-                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="goToFullSeriesCard('${st.ser.id}')" title="Tam kartı göster">✏️</button>
+                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="startGroupedSeriesNameEdit('${st.ser.id}')" title="Adı düzenle">✏️</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
                 <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}',event)">✕</button>
@@ -12919,52 +13064,7 @@ function toggleSeriesInGroup(seriesId, headerEl){
   sessionStorage.setItem('serInGrp_'+seriesId, isOpen?'0':'1');
 }
 
-function goToFullSeriesCard(seriesId){
-  if(viewing) return;
-  const seriesPanel = document.getElementById('series');
-  if(seriesPanel && !seriesPanel.classList.contains('active')){
-    const seriesNavTab = [...document.querySelectorAll('.nav-tab')].find(t=>(t.getAttribute('onclick')||'').includes("'series'"));
-    showPanel('series', seriesNavTab);
-  }
-  const doScroll = () => {
-    let card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
-    if(!card){
-      const data = mySeriesData();
-      const total = Object.keys(data.series||{}).length;
-      seriesPage = Math.ceil(total/PAGE_SIZE)||1;
-      renderSeriesList();
-      card = document.querySelector('.series-card[data-sid="'+seriesId+'"]');
-    }
-    if(!card) return;
-    card.style.display='';
-    const booksEl = document.getElementById('seriesBooks_'+seriesId);
-    if(booksEl&&!booksEl.classList.contains('open')){ toggleSeriesBooks(seriesId); }
-    card.scrollIntoView({behavior:'smooth',block:'center'});
-    // Önceki vurguyu temizle
-    document.querySelectorAll('.series-card.grp-highlighted').forEach(c=>{
-      c.classList.remove('grp-highlighted');
-      c.style.background='';
-      c.style.outline='';
-      c.style.borderColor='';
-    });
-    card.classList.add('grp-highlighted');
-    card.style.background='rgba(44,80,107,.2)';
-    card.style.outline='2px solid rgba(100,180,220,.6)';
-    card.style.borderColor='rgba(100,180,220,.4)';
-    // Başka yere tıklayınca vurguyu kaldır
-    const clearHighlight = (e)=>{
-      if(!card.contains(e.target)){
-        card.classList.remove('grp-highlighted');
-        card.style.background='';
-        card.style.outline='';
-        card.style.borderColor='';
-        document.removeEventListener('click', clearHighlight);
-      }
-    };
-    setTimeout(()=>document.addEventListener('click', clearHighlight), 300);
-  };
-  setTimeout(doScroll, 150);
-}
+
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
 
