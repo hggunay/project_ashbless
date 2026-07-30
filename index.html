@@ -260,6 +260,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .category-label{font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.8;margin-bottom:.65rem;padding-bottom:.35rem;border-bottom:1px solid rgba(201,162,39,.15);}
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.75rem;}
 .badge-card{background:linear-gradient(135deg,var(--parchment),var(--cream));border:1px solid rgba(201,162,39,.2);border-radius:16px;padding:1rem .9rem;text-align:center;transition:all .2s;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;}
+@keyframes foggyFlicker{0%{opacity:1;filter:blur(0px);}50%{opacity:.4;filter:blur(3.2px);}100%{opacity:1;filter:blur(0px);}}
+.badge-card.foggy-badge{animation:foggyFlicker 3.5s ease-in-out 3 forwards;box-shadow:0 0 18px 6px rgba(220,220,220,.35) inset,0 0 12px rgba(200,200,200,.25);}
+.badge-card.foggy-badge::before,.badge-card.foggy-badge-rest::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 55%,rgba(245,237,214,.4) 88%,rgba(245,237,214,.6) 100%);z-index:1;}
+.foggy-bug{position:absolute;bottom:.35rem;right:.4rem;font-size:.7rem;opacity:.55;z-index:2;transform:rotate(-8deg);}
 .badge-card:hover{transform:translateY(-2px);box-shadow:0 4px 15px var(--shadow);}
 .badge-card.earned{border-color:var(--gold);background:linear-gradient(135deg,#fdf5e0,#fff8e8);box-shadow:0 0 12px rgba(201,162,39,.15);}
 .badge-card.earned::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold),transparent);}
@@ -10782,7 +10786,8 @@ function renderBadges(){
       </div>`:'';
     return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
       ${tooltipHtml}
-      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="overflow:hidden;position:relative;"`:''}>
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''} ${b.id==='secret_multi'?(isNew?'foggy-badge':'foggy-badge-rest'):''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="overflow:hidden;position:relative;"`:''}>
+        ${b.id==='secret_multi'?'<span class="foggy-bug" title="şşt, kimseye söyleme">🐛</span>':''}
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
