@@ -2275,7 +2275,7 @@ const BADGE_CATS = [
         check:b=>{
           const books25=b.length>=25;
           const countries5=uniqueCountries(b)>=5;
-          const series1=completedSeriesCount()>=1;
+          const series1=completedSeriesCount(b)>=1;
           const books2=validBooks();
           let genreRozetCount=0;
           const turZincirleri=['kc_roman','kc_sf','kc_fantastik','kc_polisiye','kc_korku','kc_tarih','kc_felsefe','kc_psikoloji','kc_gezi','kc_biyografi','kc_deneme','kc_dis','kc_romantik','kc_mitoloji','kc_oyku'];
