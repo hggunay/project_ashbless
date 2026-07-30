@@ -1647,6 +1647,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Rozetleri sıfırla</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Bu buton, kayıtlı tüm kitaplarına ve hikayelerine "geçmişte okundu" etiketi verir — çoğu rozet böylece 0'a döner ve yeniden kazanılabilir hale gelir. İsme özel rozetler (Dune, Harry Potter, Yüzüklerin Efendisi vb.) etkilenmez, zaten kazanılmışsa öyle kalır. Etiketi kaldırırsan ilgili rozet geri gelebilir — geri almak istersen kitap/hikaye kayıtlarındaki "geçmişte okudum" kutucuklarını tek tek kaldırman gerekir, toplu bir "geri al" yok.</div>
+                  <button class="btn btn-danger" onclick="confirmResetBadges()">🏅 Rozetleri Sıfırla</button>
+                </div>
+                <div style="margin-bottom:1.2rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Eksik ülke kayıtlarını onar</div>
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.4rem;font-style:italic">Kitaplarındaki ülke bilgisiyle akış/harita arasında uyuşmazlık olduğunda, eksik olanları tarayıp ekler. Şu durumlarda işe yarar:</div>
                   <ul style="font-size:.78rem;opacity:.6;font-style:italic;margin:0 0 .75rem 1.1rem;padding:0;line-height:1.5">
@@ -10324,6 +10329,23 @@ function renderSafe(){
   } else {
     render();
   }
+}
+
+function confirmResetBadges(){
+  const btn=document.querySelector('[onclick="confirmResetBadges()"]');
+  if(btn.dataset.confirming==='1'){
+    (db.books[me]||[]).forEach(b=>{ b.retroactive=true; });
+    ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.retroactive=true; });
+    saveDb();renderSafe();renderBadges();
+    btn.textContent='🏅 Rozetleri Sıfırla';
+    btn.dataset.confirming='';
+    notify('🏅 Rozetler Sıfırlandı','Tüm kitap ve hikayelerin "geçmişte okundu" olarak işaretlendi.');
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
+  btn.style.background='rgba(160,82,45,.5)';
+  setTimeout(()=>{btn.textContent='🏅 Rozetleri Sıfırla';btn.dataset.confirming='';btn.style.background='';},4000);
 }
 
 function confirmResetMap(){
