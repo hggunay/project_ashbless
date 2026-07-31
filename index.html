@@ -2625,6 +2625,19 @@ async function fbSet(path,data){
     return r.ok;
   }catch(e){showSaveError('bağlantı');return false;}
 }
+// PATCH: PUT'un aksine, sadece payload'daki üst-seviye alanları değiştirir — payload'da
+// olmayan alanlara (ör. başka bir cihazın granüler olarak yazdığı bildirimler) dokunmaz.
+async function fbPatch(path,data){
+  try{
+    const r=await fetch(`${FB_URL}/${path}.json`,{
+      method:'PATCH',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(data)
+    });
+    if(r.ok) hideSaveError(); else showSaveError('ağ isteği');
+    return r.ok;
+  }catch(e){showSaveError('bağlantı');return false;}
+}
 
 async function loadDb(fbOnly){
   // Firebase'den yükle
@@ -2676,8 +2689,10 @@ async function _saveDbNow(){
       return;
     }
     db.savedAt = Date.now();
-    const {shelf,...dbWithoutShelf}={...db};
-    ok = await fbSet('aa-v4',dbWithoutShelf);
+    // notifications hariç — her kullanıcı kendi/başkasının bildirimini granüler pushNotification()
+    // ile yazıyor; burada PATCH kullanıldığı için zaten dokunulmuyor ama payload'ı da şişirmesin
+    const {shelf,notifications,...dbWithoutShelf}={...db};
+    ok = await fbPatch('aa-v4',dbWithoutShelf);
     if(!ok) nerede='ana veri';
     if(ok&&shelf&&Object.keys(shelf).length){
       ok = await fbSet('aa-shelf',shelf);
@@ -5891,7 +5906,7 @@ async function acceptCoreadingBook(sessionId, mode){
   // Bildirimi güncelle
   if(db.notifications&&db.notifications[me]){
     const n=db.notifications[me].find(n=>n.sessionId===sessionId&&n.type==='coreading_start');
-    if(n) n.responded=true;
+    if(n){ n.responded=true; fbSet('aa-v4/notifications/'+me, db.notifications[me]); }
   }
   await saveDb();
   renderSafe();
@@ -5929,7 +5944,7 @@ async function linkCoreadingBook(sessionId, bookId){
   book.readingStatus='reading';
   if(db.notifications&&db.notifications[me]){
     const n=db.notifications[me].find(n=>n.sessionId===sessionId&&n.type==='coreading_start');
-    if(n) n.responded=true;
+    if(n){ n.responded=true; fbSet('aa-v4/notifications/'+me, db.notifications[me]); }
   }
   document.getElementById('coreadingPicker')?.remove();
   await saveDb();
@@ -9078,17 +9093,19 @@ function renderNotifPanel(){
       <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
     </div>`;
   }).join('');
-  // Hepsini görüldü yap
-  if(db.notifications&&db.notifications[me]){
+  // Hepsini görüldü yap — kendi bildirim alanımıza granüler yaz (genel saveDb'ye bağımlı kalma)
+  if(db.notifications&&db.notifications[me]&&db.notifications[me].some(n=>!n.seen)){
     db.notifications[me].forEach(n=>n.seen=true);
-    saveDb();
+    fbSet('aa-v4/notifications/'+me, db.notifications[me]);
+    try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   }
   updateNotifDot();
 }
 
 function clearNotifs(){
   if(db.notifications) db.notifications[me]=[];
-  saveDb();
+  fbSet('aa-v4/notifications/'+me, []);
+  try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
   renderNotifPanel();
 }
 
@@ -12303,6 +12320,36 @@ function addBookToSeries(seriesId){
   _refreshSeriesBookList(seriesId);
 }
 
+// Seri kartındaki tek bir kitap satırının HTML'i — renderSeriesList VE _refreshSeriesBookList
+// tarafından ortak kullanılır (önceden iki ayrı kopya vardı, biri kaçış hatası taşıyordu — Ö22)
+function renderSeriesBookItemHtml(seriesId, bk){
+  const b = bk.book;
+  const mapKey = seriesId+'_'+ensureBkEid(bk);
+  seriesBkMap[mapKey] = bk;
+  const isReading = b.readingStatus==='reading';
+  const isRead = !isReading && !!b.readingStatus && b.readingStatus!=='paused' && b.readingStatus!=='wishlist' && b.readingStatus!=='planned' && b.readingStatus!=='want';
+  const isPlanned = !isReading && !isRead && b.readingStatus!=='paused';
+  const statusIcon = isReading ? '📖' : b.readingStatus==='paused' ? '🚧' : isRead ? '✅' : '⏳';
+  const pageInfo = isReading && b.currentPage && b.pages
+    ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
+  const removeKey = bk.planned ? `'${seriesId}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}'` : `'${seriesId}',${b.id},false`;
+  const canStart = !isReading && b.id && !viewing;
+  const isOwn = !viewing;
+  const plannedBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${seriesId}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
+  return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
+    <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
+    <span class="series-book-status">${statusIcon}</span>
+    <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
+    ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}
+    ${pageInfo}
+    <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
+      ${canStart&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedBtn}
+      ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}','${ensureBkEid(bk)}')">✏️</button>
+      <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}
+    </div>
+  </div>`;
+}
+
 function _refreshSeriesBookList(seriesId){
   // renderSeriesList çağırmak yerine sadece bu kartın kitap listesini güncelle
   const booksContainer = document.getElementById('seriesBooks_'+seriesId);
@@ -12340,23 +12387,9 @@ function _refreshSeriesBookList(seriesId){
     return s==='wishlist'||s==='planned';
   });
 
-  const bookItemHtml = (bk) => {
-    const b = bk.book;
-    const mapKey = seriesId+'_'+ensureBkEid(bk);
-    seriesBkMap[mapKey] = bk;
-    const isReading = b.readingStatus==='reading';
-    const isRead = !isReading&&!!b.readingStatus&&b.readingStatus!=='paused'&&b.readingStatus!=='wishlist'&&b.readingStatus!=='planned';
-    const isPlanned = !isReading&&!isRead&&b.readingStatus!=='paused';
-    const ico = isReading?'📖':b.readingStatus==='paused'?'🚧':isRead?'✅':'⏳';
-    const removeKey = bk.planned ? `'${seriesId}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\'")}'` : `'${seriesId}',${b.id},false`;
-    const canStart = !isReading&&b.id&&!viewing;
-    const plannedBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${seriesId}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
-    return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>      <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>      <span class="series-book-status">${ico}</span>      <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>      ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}      <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">        ${canStart?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedBtn}        ${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}','${ensureBkEid(bk)}')">✏️</button>        <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}      </div>    </div>`;
-  };
-
   const groupHtml = (label, icon, items) => items.length ? `
     <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-light);opacity:.92;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
-    ${items.map(bookItemHtml).join('')}
+    ${items.map(bk=>renderSeriesBookItemHtml(seriesId,bk)).join('')}
   ` : '';
 
   const listHtml = groupHtml('Şu An Okunuyor','📖',booksReading) +
@@ -12378,6 +12411,20 @@ function _refreshSeriesBookList(seriesId){
   // Buton metnini güncelle
   const btn = document.getElementById('seriesToggleBtn_'+seriesId);
   if(btn) btn.textContent = '▲ Gizle';
+
+  // Toplam/yüzde göstergesini de güncelle (önceden eksikti — Ö22)
+  const statsEl = document.getElementById('seriesStats_'+seriesId);
+  if(statsEl){
+    const readCount = books.filter(bk=>{
+      const b=bk.book; if(!b||b.readingStatus==='planned'||b.readingStatus==='reading'||b.readingStatus==='paused'||b.readingStatus==='wishlist') return false; return true;
+    }).length;
+    const total = ser.total || books.length || 1;
+    const ongoing = ser.ongoing||false;
+    const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
+    const pct = Math.round((readCount/total)*100);
+    const isDone = readCount>=total && total>0;
+    statsEl.textContent = readCount+' / '+totalDisplay+' kitap · %'+pct+(isDone?' · ✅ Tamamlandı':'');
+  }
 }
 
 function seriesAcSearch(seriesId){
@@ -12475,11 +12522,14 @@ function toggleSeriesTotalEdit(seriesId){
 function toggleSeriesOngoing(seriesName, val){
   const data = mySeriesData();
   const entry = Object.values(data.series||{}).find(s=>normalizeSeries(s.name||'')===normalizeSeries(seriesName||''));
+  console.log('[ONGOING-DEBUG] seriesName:',seriesName,'val:',val,'entry bulundu mu:',!!entry,'entry.name:',entry&&entry.name,'entry.ongoing (önce):',entry&&entry.ongoing);
   if(entry) entry.ongoing = val;
+  console.log('[ONGOING-DEBUG] entry.ongoing (sonra):',entry&&entry.ongoing);
   (db.books[me]||[]).forEach(b=>{
     if(normalizeSeries(b.series||'')===normalizeSeries(seriesName||'')) b.seriesOngoing = val;
   });
   saveDb();
+  renderSeriesList();
 }
 
 function startReadingSeriesBook(bookId){
@@ -12887,6 +12937,7 @@ function renderSeriesList(){
     }).length;
     const total = ser.total || books.length || 1;
 	const ongoing = ser.ongoing||false;
+if(ser.name&&ser.name.includes('Katilbot')) console.log('[ONGOING-DEBUG][RENDER]',ser.name,'ser.ongoing:',ser.ongoing,'-> ongoing:',ongoing);
 const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
@@ -12939,36 +12990,9 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
       return s==='wishlist'||s==='planned';
     });
 
-    function bookItemHtmlSeries(bk){
-      const b = bk.book;
-      const mapKey = ser.id+'_'+ensureBkEid(bk);
-      seriesBkMap[mapKey] = bk;
-      const isReading = b.readingStatus==='reading';
-      const isRead = !isReading && !!b.readingStatus && b.readingStatus!=='paused' && b.readingStatus!=='wishlist' && b.readingStatus!=='planned' && b.readingStatus!=='want';
-      const isPlanned = !isReading && !isRead && b.readingStatus!=='paused';
-      const statusIcon = isReading ? '📖' : b.readingStatus==='paused' ? '🚧' : isRead ? '✅' : '⏳';
-      const pageInfo = isReading && b.currentPage && b.pages 
-        ? `<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">${b.currentPage}/${b.pages}s</span>` : '';
-      const removeKey = bk.planned ? `'${ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}' ` : `'${ser.id}',${b.id},false`;
-      const canStartReading = !isReading && b.id && !viewing;
-      const isOwn = !viewing;
-      const plannedStartBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${ser.id}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';      return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
-        <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
-        <span class="series-book-status">${statusIcon}</span>
-        <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
-        ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}
-        ${pageInfo}
-        <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
-          ${canStartReading&&b.id?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="startReadingSeriesBook(${b.id})">📖 ${isRead?'Tekrar':'Başla'}</button>`:plannedStartBtn}
-          ${isOwn?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${ser.id}','${ensureBkEid(bk)}')">✏️</button>
-          <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="confirmRemoveBookFromSeries(event,${removeKey})">✕</button>`:''}
-        </div>
-      </div>`;
-    }
-
     const groupHtml = (label, icon, items) => items.length ? `
       <div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold-light);opacity:.92;padding:.4rem .4rem .2rem">${icon} ${label} (${items.length})</div>
-      ${items.map(bookItemHtmlSeries).join('')}
+      ${items.map(bk=>renderSeriesBookItemHtml(ser.id,bk)).join('')}
     ` : '';
 
     const bookListHtml = 
