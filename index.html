@@ -585,6 +585,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .stats-month-label{font-size:.5rem;font-family:'Space Mono',monospace;color:var(--rust);text-align:center;margin-top:.2rem;opacity:.6;}
 .book-item-paused{background:linear-gradient(90deg,rgba(160,82,45,.07),transparent);border-left:3px solid var(--rust);}
 .journal-entry{border-bottom:1px solid rgba(201,162,39,.12);padding:1rem .75rem;transition:background .15s;}
+.feed-del-wrap{display:inline-flex;align-items:center;gap:.3rem;float:right}
+.feed-del-x{background:none;border:none;color:var(--rust);opacity:.3;font-size:.8rem;cursor:pointer;padding:.1rem .35rem;line-height:1;transition:opacity .15s;}
+.feed-del-x:hover{opacity:.75;}
 .journal-entry:last-child{border-bottom:none;}
 .journal-entry:hover{background:rgba(201,162,39,.04);}
 .journal-entry-type-badge{display:inline-block;font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.06em;padding:.1rem .45rem;border-radius:20px;margin-bottom:.5rem;}
@@ -8183,6 +8186,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
         ${stars?`<div class="journal-stars" style="margin-bottom:.4rem">${stars}</div>`:''}
         <div class="journal-review">${truncateHtml(card.text,cardKey)}</div>
       `:card.type==='story'?`
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'story',${card.storyId})" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
           <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
         </div>
@@ -8192,7 +8196,8 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
           ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
         </div>
       `:card.type==='series_event'?`
-        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'series_event','${card.seriesEventId}')" title="Sil">✕</button></div>`:''}
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           ${card.eventType==='series_start'
             ?`📚 <strong>${card.seriesName}</strong> serisine başladı${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
             :card.eventType==='series_continue'
@@ -8200,12 +8205,14 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
             :`✅ <strong>${card.seriesName}</strong> serisini bitirdi 🎉`}
         </div>
       `:card.type==='country_event'?`
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'country_event','${card.countryEventId}')" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           🌍 <strong>${card.userName}</strong>, <strong>${card.country}</strong>'yı haritasına ekledi!
           ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
         </div>
       `:card.type==='streak_milestone'?`
-        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'streak_milestone','sm_${card.u}_${card.months}_${card.ts}')" title="Sil">✕</button></div>`:''}
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
           <span style="font-size:2rem">${card.emoji}</span>
           <div>
             <strong>${card.userName}</strong>, <strong>${card.months} aylık okuma serisine</strong> ulaştı!<br>
@@ -8213,6 +8220,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
           </div>
         </div>
       `:card.type==='badge'?`
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'badge','${card.eventId}')" title="Sil">✕</button></div>`:''}
         <div class="badge-feed-card tier-${card.tier}" style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
           <span style="font-size:2rem">${card.icon}</span>
           <div>
@@ -8221,6 +8229,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
           </div>
         </div>
       `:card.type==='reading_event'?`
+        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'reading','${card.readingEventId}')" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           ${readingEventIcon(card.eventType)} <strong>${card.userName}</strong>, ${readingEventText(card)}
         </div>
@@ -8385,6 +8394,65 @@ function toggleReadingEventReaction(owner,eventId,reaction){
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.bookTitle||'kitap');
   }
   saveDb();renderFeed();
+}
+
+// Kullanıcının kendi rozet/okuma-olayı kartını akıştan silmesi — küçük ✕, inline "emin misin?" onayı
+function startFeedEventDelete(btnEl,cardType,eventId){
+  const wrap=btnEl.closest('.feed-del-wrap');
+  if(!wrap) return;
+  wrap.innerHTML=`<span style="font-size:.62rem;color:var(--rust);font-family:'Space Mono',monospace">Emin misin?</span>
+    <button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.1rem .3rem" onclick="confirmFeedEventDelete(this,'${cardType}','${eventId}')">Sil</button>
+    <button class="btn btn-sm" style="font-size:.58rem;padding:.1rem .3rem;background:rgba(74,103,65,.1);color:var(--moss)" onclick="cancelFeedEventDelete(this,'${cardType}','${eventId}')">Vazgeç</button>`;
+  wrap._delTimer=setTimeout(()=>{
+    if(document.body.contains(wrap)){
+      wrap.innerHTML=`<button class="feed-del-x" onclick="startFeedEventDelete(this,'${cardType}','${eventId}')" title="Sil">✕</button>`;
+    }
+  },4000);
+}
+
+function cancelFeedEventDelete(elInside,cardType,eventId){
+  const wrap=elInside.closest('.feed-del-wrap');
+  if(!wrap) return;
+  if(wrap._delTimer) clearTimeout(wrap._delTimer);
+  wrap.innerHTML=`<button class="feed-del-x" onclick="startFeedEventDelete(this,'${cardType}','${eventId}')" title="Sil">✕</button>`;
+}
+
+function confirmFeedEventDelete(btnEl,cardType,eventId){
+  const wrap=btnEl.closest('.feed-del-wrap');
+  if(wrap&&wrap._delTimer) clearTimeout(wrap._delTimer);
+  if(cardType==='badge'){
+    if(db.badgeEvents&&db.badgeEvents[me]){
+      const idx=db.badgeEvents[me].findIndex(e=>e.id===eventId);
+      if(idx>-1) db.badgeEvents[me].splice(idx,1);
+    }
+  } else if(cardType==='reading'){
+    if(db.readingEvents&&db.readingEvents[me]){
+      const idx=db.readingEvents[me].findIndex(e=>e.id===eventId);
+      if(idx>-1) db.readingEvents[me].splice(idx,1);
+    }
+  } else if(cardType==='series_event'){
+    if(db.seriesEvents&&db.seriesEvents[me]){
+      const idx=db.seriesEvents[me].findIndex(e=>e.id===Number(eventId));
+      if(idx>-1) db.seriesEvents[me].splice(idx,1);
+    }
+  } else if(cardType==='country_event'){
+    if(db.countryEvents&&db.countryEvents[me]){
+      const idx=db.countryEvents[me].findIndex(e=>e.id===Number(eventId));
+      if(idx>-1) db.countryEvents[me].splice(idx,1);
+    }
+  } else if(cardType==='story'){
+    if(db.stories&&db.stories[me]){
+      const idx=db.stories[me].findIndex(s=>s.id===Number(eventId));
+      if(idx>-1) db.stories[me].splice(idx,1);
+    }
+  } else if(cardType==='streak_milestone'){
+    if(db.streakEvents&&db.streakEvents[me]){
+      const idx=db.streakEvents[me].findIndex(e=>`sm_${me}_${e.months}_${e.ts}`===eventId);
+      if(idx>-1) db.streakEvents[me].splice(idx,1);
+    }
+  }
+  saveDb();
+  renderFeed();
 }
 
 let journalFilter='all';
