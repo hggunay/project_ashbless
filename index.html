@@ -2775,12 +2775,20 @@ function renderPills(){
   if(!names.length){p.innerHTML='<span style="opacity:.5;font-size:.8rem;font-style:italic">Henüz kayıtlı üye yok.</span>';return;}
   p.innerHTML=names.map(u=>`<span class="member-pill" onclick="document.getElementById('loginUsername').value='${u}'">${avatarHtml(db.users[u].avatar||'📚','1.1rem')} ${db.users[u].displayName}</span>`).join('');
 }
+// Şifreyi login()'in kullandığı algoritmayla aynı şekilde SHA-256 hash'ler
+async function hashPassword(p){
+  try{
+    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
+    return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+  }catch(e){ return p; } // crypto.subtle desteklenmeyen çok eski bir ortamda düz metne düş
+}
 async function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
   if(!db.users[u]){err.style.display='block';return;}
   const stored=db.users[u].password;
   // Hash'li şifre (64 karakter hex) ise girilen şifreyi hash'le, değilse düz karşılaştır
   let match=false;
+  let needsMigration=false;
   if(stored&&stored.length===64&&/^[0-9a-f]+$/.test(stored)){
     try{
       const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
@@ -2789,19 +2797,23 @@ async function login(){
     }catch(e){match=stored===p;}
   } else {
     match=stored===p;
+    if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
   }
   if(!match){err.style.display='block';return;}
   err.style.display='none';me=u;viewing=null;
+  if(needsMigration){
+    try{ db.users[u].password=await hashPassword(p); saveDb(); }catch(e){}
+  }
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
   }
   enterApp();
 }
-function register(){
+async function register(){
   const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
   if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
   if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:p,hint:hint||null,email:email||null};db.books[u]=[];
+  db.users[u]={displayName:dn,avatar:av,password:await hashPassword(p),hint:hint||null,email:email||null};db.books[u]=[];
   saveDb();err.style.display='none';me=u;viewing=null;enterApp();
 }
 
@@ -2857,7 +2869,7 @@ function sendResetCode(){
   });
 }
 
-function confirmResetCode(){
+async function confirmResetCode(){
   const code=document.getElementById('resetCodeInput').value.trim();
   const pw=document.getElementById('resetNewPw').value;
   const errEl=document.getElementById('resetError');
@@ -2866,7 +2878,7 @@ function confirmResetCode(){
   if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
   if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
   // Şifreyi güncelle
-  db.users[_resetUser].password=pw;
+  db.users[_resetUser].password=await hashPassword(pw);
   saveDb();
   _resetCode=null;_resetUser=null;_resetExpiry=null;
   document.getElementById('forgotBox').style.display='none';
@@ -2972,10 +2984,10 @@ function updateProfile(field, value){
   saveDb();
 }
 
-function changePassword(){
+async function changePassword(){
   const pw=document.getElementById('settingPw').value;
   if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
-  db.users[me].password=pw;
+  db.users[me].password=await hashPassword(pw);
   document.getElementById('settingPw').value='';
   saveDb();
   alert('Şifre güncellendi! ✅');
@@ -3151,22 +3163,22 @@ function updateAdminBadge(){
   if(badge){badge.style.display=reqs.length>0?'':'none';badge.textContent=reqs.length>0?String(reqs.length):'';}
 }
 
-function adminResetFromForgot(u){
+async function adminResetFromForgot(u){
   const input=document.getElementById('forgotpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
+  db.users[u].password=await hashPassword(pw);
   db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
   saveDb();
   renderSettings();
   notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
 
-function adminResetPassword(u){
+async function adminResetPassword(u){
   const input=document.getElementById('newpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=pw;
+  db.users[u].password=await hashPassword(pw);
   saveDb();
   input.value='';
   notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
