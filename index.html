@@ -757,6 +757,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </head>
 <body>
 
+<!-- YÜKLENİYOR (kayıtlı oturum varken, veri gelene kadar görünür) -->
+<div id="earlyLoadingScreen" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:var(--ink);z-index:9999;">
+  <span style="font-family:'Space Mono',monospace;font-size:.8rem;letter-spacing:.15em;color:var(--gold);opacity:.65;text-transform:uppercase;">Yükleniyor…</span>
+</div>
+
 <!-- AUTH -->
 <div id="authScreen">
   <div class="auth-box">
@@ -812,6 +817,20 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     </div>
   </div>
 </div>
+
+<script>
+// Kayıtlı oturum varsa giriş ekranını EN ERKEN fırsatta gizle, yerine "Yükleniyor…" göster —
+// aşağıdaki emailjs kütüphanesi senkron/engelleyici yüklendiği için asıl uygulama script'i
+// çok geç çalışıyor, bu yüzden bu küçük kontrol ayrı ve erken konumlandırıldı.
+try{
+  if(localStorage.getItem('aa-session')){
+    var _earlyAuthEl=document.getElementById('authScreen');
+    if(_earlyAuthEl) _earlyAuthEl.style.display='none';
+    var _earlyLoadEl=document.getElementById('earlyLoadingScreen');
+    if(_earlyLoadEl) _earlyLoadEl.style.display='flex';
+  }
+}catch(e){}
+</script>
 
 <!-- APP -->
 <div id="appScreen">
@@ -3455,6 +3474,7 @@ function closeSpecialDayBanner(e,idx){
 
 function enterApp(){
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
+  const _loadEl=document.getElementById('earlyLoadingScreen');if(_loadEl)_loadEl.style.display='none';
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
   updateAdminBadge();
@@ -13010,7 +13030,7 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
           <div id="seriesTotalView_${ser.id}" style="display:flex;align-items:center;gap:.5rem">
             <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold-light);opacity:.92">Toplam: ${ser.total||'?'}${ongoing?'+':''}</span>
             ${ongoing?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss)">✓ devam eden seri</span>`:''}
-            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .4rem" onclick="toggleSeriesTotalEdit('${ser.id}')" title="Düzenle">✏️</button>
+            <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .4rem;background:none;border:none" onclick="toggleSeriesTotalEdit('${ser.id}')" title="Düzenle">✏️</button>
           </div>
           <div id="seriesTotalEdit_${ser.id}" style="display:none;align-items:center;gap:.4rem;flex-wrap:wrap">
             <label style="display:flex;align-items:center;gap:.25rem;font-family:'Space Mono',monospace;font-size:.6rem;color:var(--gold-light);opacity:.92;cursor:pointer" title="Yazar bu seriye hâlâ yeni kitap ekliyorsa işaretle">
@@ -13020,7 +13040,7 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
             <input class="book-input" type="number" min="1" value="${ser.total||''}" placeholder="?" 
               style="width:50px;font-size:.75rem;padding:.2rem .4rem;text-align:center"
               onchange="updateSeriesTotal('${ser.id}',this.value)"/>
-            <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>
+            <button class="btn btn-sm btn-danger" style="font-size:.75rem;padding:.2rem .5rem;background:rgba(160,82,45,.35);border-width:1.5px" onclick="confirmDeleteSeries(event,'${ser.id}')">🗑</button>
             <button class="btn btn-sm" style="font-size:.6rem;padding:.15rem .4rem" onclick="toggleSeriesTotalEdit('${ser.id}')">✓ Bitti</button>
           </div>`}
         </div>
@@ -13143,7 +13163,7 @@ function renderGroupCards(seriesContainer){
           :`<span id="pathNameDisp_${path.id}" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>`}
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
         <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
-          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:none;border:none" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
         </div>
         <span style="color:var(--moss);font-size:.8rem">${isOpen?'▲':'▼'}</span>
       </div>
@@ -13174,7 +13194,7 @@ function renderGroupCards(seriesContainer){
                 :`<span id="grpSeriesNameDisp_${st.ser.id}" style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>`}
               <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
               ${!viewing?`<div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
-                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="startGroupedSeriesNameEdit('${st.ser.id}')" title="Adı düzenle">✏️</button>
+                <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:none;border:none" onclick="startGroupedSeriesNameEdit('${st.ser.id}')" title="Adı düzenle">✏️</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},-1)" ${i===0?'disabled':''}>▲</button>
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="moveStep('${path.id}',${i},1)" ${i===steps.length-1?'disabled':''}>▼</button>
                 <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .3rem" onclick="removeStepFromPath('${path.id}','${st.seriesId}',event)">✕</button>
@@ -13463,6 +13483,17 @@ function renderPathsList(){
 }
 
 async function init(){
+  // Kayıtlı oturum varsa, veri gelene kadar giriş ekranını gösterme (1-2 sn'lik yanıp sönmeyi önler)
+  let hadSavedSession=false;
+  try{
+    const savedEarly=localStorage.getItem('aa-session');
+    if(savedEarly){
+      hadSavedSession=true;
+      const authEl=document.getElementById('authScreen');
+      if(authEl) authEl.style.display='none';
+    }
+  }catch(e){}
+
   await loadDb();
   renderPills();
   setTimeout(checkHintAvailable, 500);
@@ -13512,6 +13543,13 @@ async function init(){
       return;
     }
   }catch(e){}
+  // Kayıtlı oturum geçersiz çıktıysa (ör. kullanıcı silinmiş) giriş ekranını tekrar göster
+  if(hadSavedSession){
+    const authEl=document.getElementById('authScreen');
+    if(authEl) authEl.style.display='flex';
+    const loadEl=document.getElementById('earlyLoadingScreen');
+    if(loadEl) loadEl.style.display='none';
+  }
 }
 init();
 
