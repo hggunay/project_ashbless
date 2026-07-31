@@ -5657,6 +5657,8 @@ async function addBook(){
   if(!db.books[me])db.books[me]=[];
   db.books[me].push(book);
 
+  if(book.readingStatus==='reading') pushReadingEvent(book,'started');
+  else if(book.readingStatus==='new') pushReadingEvent(book,'finished_direct');
 
   propagateSeriesInfo(book); // eksik seri bilgilerini diğer kitaplara yay
   await saveDb();
@@ -7152,9 +7154,11 @@ function startReadingFromWishlist(bookId){
   const prevValid=snapshotValidBooks();
   const prevCtx=snapshotBadgeContext();
   book.previousStatus=book.readingStatus||'wishlist';
-  if(book.readingStatus==='new'||book.readingStatus==='past') book.rereadStarted=true;
+  const isReread=book.readingStatus==='new'||book.readingStatus==='past';
+  if(isReread) book.rereadStarted=true;
   book.readingStatus='reading';
   book.startDate=todayLocal();
+  pushReadingEvent(book,isReread?'reread':'started');
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid,500,prevCtx);
   notify('📖 Okumaya başlandı!',`"${book.title}" şu an okunanlar listesine taşındı.`);
@@ -7167,6 +7171,7 @@ function resumeReading(bookId){
   const prevCtx=snapshotBadgeContext();
   book.previousStatus=book.readingStatus||'paused';
   book.readingStatus='reading';
+  pushReadingEvent(book,'resumed');
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid,500,prevCtx);
   notify('📖 Devam ediliyor',`"${book.title}" şu an okunanlar listesine taşındı.`);
@@ -7184,6 +7189,7 @@ function pauseReading(bookId){
   if(!book) return;
   book.previousStatus=book.readingStatus||'reading';
   book.readingStatus='paused';
+  pushReadingEvent(book,'paused');
   saveDb();closeModal();renderSafe();
   notify('🚧 Yarım bırakıldı',`"${book.title}" yarım bırakılanlar listesine taşındı.`);
 }
@@ -7207,6 +7213,7 @@ async function finishReading(bookId){
   book.rereadStarted=false;
   const month=book.endDate.substring(0,7);
   book.month=month;
+  pushReadingEvent(book,'finished');
   saveDb();
   // Seri tamamlanma kontrolü
   if(book.series){
@@ -7911,6 +7918,14 @@ function getFeedCards(){
         ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
+    const readingEvs=(db.readingEvents&&db.readingEvents[u])||[];
+    readingEvs.forEach(ev=>{
+      cards.push({
+        type:'reading_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        readingEventId:ev.id, bookId:ev.bookId, bookTitle:ev.bookTitle, author:ev.author,
+        eventType:ev.type, variant:ev.variant, ts:ev.ts||0, reactions:ev.reactions||{},
+      });
+    });
   });
   // Birlikte okuma davetleri
   const sessions=db.readingSessions||{};
@@ -8026,9 +8041,11 @@ function renderFeed(append=false){
           ?`countryev_${card.u}_${card.countryEventId}`
           :card.type==='badge'
             ?`badge_${card.u}_${card.badgeId}_${card.ts}`
-            :card.type==='quote'
-              ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-              :`review_${card.u}_${card.bookId}`;
+            :card.type==='reading_event'
+              ?`readingev_${card.u}_${card.readingEventId}`
+              :card.type==='quote'
+                ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
+                :`review_${card.u}_${card.bookId}`;
     const reactionList=card.type==='streak_milestone'?milestoneReactionList:defaultReactionList;
     return reactionList.map(r=>{
       const myR=(card.reactions[me])||[];
@@ -8059,6 +8076,11 @@ function renderFeed(append=false){
       }
       if(card.type==='badge'){
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}')">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
+      if(card.type==='reading_event'){
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}')">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
@@ -8140,8 +8162,8 @@ ${(()=>{
           :card.type==='quote'
             ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
             :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':' 💬 alıntı';
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?'📖 okuma':' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${card.country||'—'}</span>`
       :card.type==='badge'
@@ -8197,6 +8219,10 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
             <strong>${card.userName}</strong>, <strong>"${card.name}"</strong> rozetini kazandı!<br>
             <span style="font-size:.8rem;color:var(--gold)">${card.desc}</span>
           </div>
+        </div>
+      `:card.type==='reading_event'?`
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--parchment);line-height:1.5">
+          ${readingEventIcon(card.eventType)} <strong>${card.userName}</strong>, ${readingEventText(card)}
         </div>
       `:`
         <div class="journal-quote">
@@ -8342,6 +8368,21 @@ function toggleBadgeEventReaction(owner,eventId,reaction){
   else{
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.name||'rozet');
+  }
+  saveDb();renderFeed();
+}
+
+function toggleReadingEventReaction(owner,eventId,reaction){
+  if(!db.readingEvents||!db.readingEvents[owner]) return;
+  const ev=db.readingEvents[owner].find(e=>e.id===eventId);
+  if(!ev) return;
+  if(!ev.reactions) ev.reactions={};
+  if(!ev.reactions[me]) ev.reactions[me]=[];
+  const idx=ev.reactions[me].indexOf(reaction);
+  if(idx>-1) ev.reactions[me].splice(idx,1);
+  else{
+    ev.reactions[me].push(reaction);
+    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.bookTitle||'kitap');
   }
   saveDb();renderFeed();
 }
@@ -11739,6 +11780,49 @@ if(existingEntry){
     notify('✅', `Seri oluşturuldu: ${serName} · ${books.length} kitap`,true);
   }
   renderSeriesList();
+}
+
+// Kitap başlama/bitirme/yarım bırakma/devam etme olaylarını akışa (feed) düşürür
+function pushReadingEvent(book,type){
+  if(!book) return;
+  if(!db.readingEvents) db.readingEvents={};
+  if(!db.readingEvents[me]) db.readingEvents[me]=[];
+  const variant=(type==='resumed'||type==='reread')?Math.floor(Math.random()*3):null;
+  db.readingEvents[me].push({
+    id:'rd_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    bookId:book.id, bookTitle:book.title, author:book.author||'',
+    type, variant, ts:Date.now(), reactions:{}
+  });
+}
+
+function readingEventIcon(eventType){
+  if(eventType==='finished'||eventType==='finished_direct') return '✅';
+  if(eventType==='paused') return '🚧';
+  return '📖';
+}
+
+function readingEventText(card){
+  const book=card.bookTitle||'';
+  const RESUME=[
+    `${book} kitabıyla kaldığı yerden devam ediyor.`,
+    `${book} kitabına ikinci bir şans verdi.`,
+    `${book} kitabına geri döndü. Bu sefer son sayfaya ulaşabilecek mi?`
+  ];
+  const REREAD=[
+    `${book} kitabını yeniden okumaya başladı. Sevilen hikâyeler bazen ikinci kez daha güzeldir.`,
+    `${book} kitabını yeniden okumaya başladı. Belli ki bu hikâyenin raf ömrü uzun.`,
+    `${book} kitabını yeniden okumaya başladı. Kitabı sevmişe benziyor.`
+  ];
+  const idx=(typeof card.variant==='number'&&card.variant>=0&&card.variant<3)?card.variant:0;
+  switch(card.eventType){
+    case 'started': return `${book} kitabını okumaya başladı.`;
+    case 'finished': return `${book} kitabını bitirdi! 🎉`;
+    case 'finished_direct': return `${book} kitabını okudu.`;
+    case 'paused': return `${book} kitabını yarım bıraktı.`;
+    case 'resumed': return RESUME[idx];
+    case 'reread': return REREAD[idx];
+    default: return `${book} ile ilgileniyor.`;
+  }
 }
 
 function mySeriesData(){
