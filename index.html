@@ -1688,7 +1688,7 @@ try{
                 </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.</div>
+                  <div style="font-size:.95rem;opacity:.9;margin-bottom:.75rem;font-style:italic;font-weight:600;color:var(--ink)" id="deleteProfileDesc">Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.</div>
                   <button class="btn btn-danger" onclick="confirmDeleteProfile()">❌ Profilimi Kalıcı Olarak Sil</button>
                 </div>
               </div>
@@ -3016,11 +3016,35 @@ function deleteAllBooks(){
   alert('Tüm kitaplar silindi.');
 }
 
+// Bir kullanıcının TÜM verilerini siler — profil silme akışının iki giriş noktası da bunu kullanır (Ö34)
+function deleteAllUserData(u){
+  delete db.users[u];
+  delete db.books[u];
+  if(db.shelf) delete db.shelf[u];
+  if(db.stories) delete db.stories[u];
+  if(db.seriesData) delete db.seriesData[u];
+  if(db.seriesEvents) delete db.seriesEvents[u];
+  if(db.badgeEvents) delete db.badgeEvents[u];
+  if(db.countryEvents) delete db.countryEvents[u];
+  if(db.streakEvents) delete db.streakEvents[u];
+  if(db.readingEvents) delete db.readingEvents[u];
+  if(db.archivedNotes) delete db.archivedNotes[u];
+  if(db.mapReset) delete db.mapReset[u];
+  // Katıldığı birlikte-okuma oturumlarından çık — oturumun kendisini silme, başka katılımcılar hâlâ içinde olabilir
+  if(db.readingSessions){
+    Object.values(db.readingSessions).forEach(s=>{
+      if(s.participants&&s.participants[u]) delete s.participants[u];
+    });
+  }
+  // notifications, Ö6 gereği ana kayıttan hariç tutuluyor — ayrıca granüler siliniyor
+  if(db.notifications) delete db.notifications[u];
+  fbSet('aa-v4/notifications/'+u, null);
+}
+
 function deleteProfile(){
   if(!confirm('Profilin ve tüm verilerin kalıcı olarak silinecek. Emin misin?')) return;
   if(!confirm('Bu işlem geri alınamaz! Devam etmek istiyor musun?')) return;
-  delete db.users[me];
-  delete db.books[me];
+  deleteAllUserData(me);
   saveDb();
   logout();
 }
@@ -6386,6 +6410,23 @@ async function confirmRemoveBookFinal(id, deleteNote){
     if(!db.countryEvents[me].length) delete db.countryEvents[me];
   }
 }
+  // Seri referanslarını temizle — silinen kitaba işaret eden öksüz bookId bırakma (Ö34)
+  if(db.seriesData&&db.seriesData[me]&&db.seriesData[me].series){
+    Object.values(db.seriesData[me].series).forEach(ser=>{
+      if(ser.books&&ser.books.some(bk=>bk.bookId===id)){
+        ser.books=ser.books.filter(bk=>bk.bookId!==id);
+      }
+    });
+  }
+  // Özel raflardaki (başucu/yasaklı) referansları temizle
+  if(db.shelf&&db.shelf[me]&&db.shelf[me].special){
+    Object.keys(db.shelf[me].special).forEach(type=>{
+      const sh=db.shelf[me].special[type];
+      if(sh&&sh.books&&sh.books.some(b=>b.libId===String(id))){
+        sh.books=sh.books.filter(b=>b.libId!==String(id));
+      }
+    });
+  }
 
   saveDb();closeModal();renderSafe();
   notify('🗑 Silindi',`"${book.title}" kütüphaneden kaldırıldı.`);
@@ -9092,14 +9133,14 @@ function renderNotifPanel(){
     const timeAgo=formatTimeAgo(n.ts);
     if(n.type==='coreading_start'){
 	if(n.responded) return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08)">
-  <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${n.fromName}</strong>: <em>${n.bookTitle}</em></div>
+  <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${escapeHtml(n.fromName)}</strong>: <em>${escapeHtml(n.bookTitle)}</em></div>
   <div style="display:flex;gap:.5rem;margin-top:.4rem">
     <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker('${n.sessionId}')">🔄 Kitabı değiştir</button>
   </div>
   <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
 </div>`;
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-        <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${n.fromName}</strong> birlikte okuma başlattı: <em>${n.bookTitle}</em>${n.author?' — '+n.author:''}</div>
+        <div style="font-size:.88rem;color:var(--ink)">📖 <strong>${escapeHtml(n.fromName)}</strong> birlikte okuma başlattı: <em>${escapeHtml(n.bookTitle)}</em>${n.author?' — '+escapeHtml(n.author):''}</div>
         <div style="display:flex;gap:.5rem;margin-top:.4rem">
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="acceptCoreadingBook('${n.sessionId}','new')">+ Kitabımı ekle</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="acceptCoreadingBook('${n.sessionId}','existing')">📚 Mevcut kitabımı bağla</button>
@@ -9109,25 +9150,25 @@ function renderNotifPanel(){
     }
 	if(n.type==='coreading_response'){
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-        <div style="font-size:.88rem;color:var(--ink)">${n.response==='accepted'?'✓':'✗'} <strong>${n.fromName}</strong> — <em>${n.bookTitle}</em> ${n.response==='accepted'?'oturumuna katıldı':'davetini reddetti'}</div>
+        <div style="font-size:.88rem;color:var(--ink)">${n.response==='accepted'?'✓':'✗'} <strong>${escapeHtml(n.fromName)}</strong> — <em>${escapeHtml(n.bookTitle)}</em> ${n.response==='accepted'?'oturumuna katıldı':'davetini reddetti'}</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
 	if(n.type==='coreading_completed'){
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-        <div style="font-size:.88rem;color:var(--ink)">🎉 <em>${n.bookTitle}</em> — Birlikte tamamladınız!</div>
+        <div style="font-size:.88rem;color:var(--ink)">🎉 <em>${escapeHtml(n.bookTitle)}</em> — Birlikte tamamladınız!</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
 	if(n.type==='coreading_milestone'){
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-        <div style="font-size:.88rem;color:var(--ink)">👥 <strong>${n.fromName}</strong> — <em>${n.bookTitle}</em></div>
+        <div style="font-size:.88rem;color:var(--ink)">👥 <strong>${escapeHtml(n.fromName)}</strong> — <em>${escapeHtml(n.bookTitle)}</em></div>
         <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--moss);margin-top:.25rem">%${n.milestone} tamamladı</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
     return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-      <div style="font-size:.88rem;color:var(--ink)">${n.reaction} <strong>${n.fromName}</strong> — "${n.context}"</div>
+      <div style="font-size:.88rem;color:var(--ink)">${n.reaction} <strong>${escapeHtml(n.fromName)}</strong> — "${escapeHtml(n.context)}"</div>
       <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
     </div>`;
   }).join('');
@@ -10662,26 +10703,29 @@ function confirmDeleteBooks(){
   btn.dataset.confirming='1';
   btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
   btn.style.background='rgba(160,82,45,.5)';
-  setTimeout(()=>{btn.textContent='🗑️ Tüm Kitapları Sil';btn.dataset.confirming='';btn.style.background='';},4000);
+  setTimeout(()=>{btn.textContent='🗑️ Tüm Kitapları Sil';btn.dataset.confirming='';btn.style.background='';},8000);
 }
 
 function confirmDeleteProfile(){
   const btn=document.querySelector('[onclick="confirmDeleteProfile()"]');
+  const desc=document.getElementById('deleteProfileDesc');
+  const originalDesc='Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.';
   if(btn.dataset.confirming==='2'){
-    delete db.users[me];delete db.books[me];
+    deleteAllUserData(me);
     saveDb();logout();
     return;
   }
   if(btn.dataset.confirming==='1'){
     btn.dataset.confirming='2';
     btn.textContent='💀 Son kez: Tekrar tıkla!';
-    setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';},4000);
+    setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';if(desc)desc.textContent=originalDesc;},8000);
     return;
   }
   btn.dataset.confirming='1';
   btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
   btn.style.background='rgba(160,82,45,.4)';
-  setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';},4000);
+  if(desc) desc.textContent='Silmek istediğinden emin misin? Sebebini bize bildirmek ister misin? Şaka şaka, umrumuzda değil 😂 Belli ki okumuyorsun. Elveda... 👋';
+  setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';if(desc)desc.textContent=originalDesc;},8000);
 }
 
 function renderBanners(){
