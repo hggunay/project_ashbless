@@ -2778,6 +2778,43 @@ function validBooks(){
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// Ö13 — Tek, tutarlı "okunmuş kitap" tanımı (2026-08-01, kullanıcı ile netleşti)
+// Kurallar:
+//  - Aktif okunan (henüz hiç bitmemiş) bir kitap: hiçbir sayaca girmez.
+//  - Yarım bırakılan: "bitti" sayısına girmez; includePaused:true ile sayfa/genel
+//    istatistiklere (o ana kadar okunan sayfa kadar) girebilir.
+//  - Bitmiş (readingStatus 'new'/'past', VEYA yeniden okunuyor olsa bile endDate/
+//    yearOnly'si zaten varsa — reread sayımdan düşmesin): her zaman "bitti" sayısına girer.
+//  - Retroaktif kitaplar: genel istatistiklere girer; rozet/harita için
+//    excludeRetroactive:true ile hariç tutulur.
+//  - Başlıksız/taslak kayıtlar: her zaman hariç.
+// ══════════════════════════════════════════════════════════════════════
+function readBooksOf(user, opts={}){
+  const {includePaused=false, excludeRetroactive=false, dateRange=null} = opts;
+  const books=(db.books[user]||[]);
+  return books.filter(b=>{
+    if(!b.title||b.title.startsWith('ISBN:')||b.title.trim()==='') return false;
+    const hasBeenFinished = b.readingStatus==='new'||b.readingStatus==='past'||!!(b.endDate||b.yearOnly);
+    const isPaused = b.readingStatus==='paused';
+    if(!hasBeenFinished && !(isPaused&&includePaused)) return false;
+    if(hasBeenFinished && excludeRetroactive && b.retroactive) return false;
+    if(dateRange){
+      const d=b.endDate||b.month||b.yearOnly||'';
+      if(!d) return false;
+      if(dateRange.year && !d.startsWith(String(dateRange.year))) return false;
+      if(dateRange.month && !d.startsWith(dateRange.month)) return false;
+    }
+    return true;
+  });
+}
+
+// Bir readBooksOf() listesinin toplam sayfasını hesaplar — yarım bırakılanlar için
+// o ana kadarki sayfa (currentPage), bitenler için tam sayfa (pages).
+function totalPagesOf(books){
+  return books.reduce((s,b)=>s+(b.readingStatus==='paused'?(b.currentPage||0):(b.pages||0)),0);
+}
+
 // ── AUTH ──────────────────────────────────────────────────────
 function showAuthTab(tab){
   document.getElementById('loginForm').style.display=tab==='login'?'':'none';
@@ -3651,10 +3688,11 @@ function viewMember(u){
   const user=db.users[u];
   // Gizli profil — sadece özet bilgi göster
   if(user&&user.publicProfile===false){
-    const books=(db.books[u]||[]).filter(b=>b.readingStatus!=='wishlist'&&b.title&&!b.title.startsWith('ISBN:'));
+    const badgeBooks=(db.books[u]||[]).filter(b=>b.readingStatus!=='wishlist'&&b.title&&!b.title.startsWith('ISBN:'));
+    const displayBooks=readBooksOf(u);
     let badgeCount=0;
-    BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books,badgeCtxFor(u)).earned)badgeCount++;});});
-    notify('🔒 Gizli Profil',`${user.displayName} · ${books.length} kitap · ${badgeCount} rozet`);
+    BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,badgeBooks,badgeCtxFor(u)).earned)badgeCount++;});});
+    notify('🔒 Gizli Profil',`${user.displayName} · ${displayBooks.length} kitap · ${badgeCount} rozet`);
     return;
   }
   viewing=u;
@@ -4702,10 +4740,7 @@ function saveSpecialShelf(type,data){
 }
 
 function spReadBooks(){
-  return (db.books[me]||[]).filter(b=>
-    b.title&&!b.title.startsWith('ISBN:')&&
-    b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))
-  );
+  return readBooksOf(me);
 }
 
 function renderSpecialShelves(){
@@ -9443,10 +9478,8 @@ function renderMap(){
   // mapReset tarihi varsa o tarihten SONRA eklenen kitapları göster (addedAt bazlı),
   // yoksa tüm kitapları göster (hiç sıfırlanmamış = filtre yok)
   const mapResetDate=db.mapReset[target]?new Date(db.mapReset[target]):null;
-  const books=(db.books[target]||[]).filter(b=>
-    b.country&&b.readingStatus==='new'&&!b.retroactive&&
-    b.title&&!b.title.startsWith('ISBN:')&&
-    (!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
+  const books=readBooksOf(target,{excludeRetroactive:true}).filter(b=>
+    b.country&&(!mapResetDate||!b.addedAt||new Date(b.addedAt)>=mapResetDate)
   );
   const counts={};
   books.forEach(b=>{const iso=countryToISO(b.country);if(iso)counts[iso]=(counts[iso]||0)+1;});
@@ -9975,7 +10008,7 @@ function setStatsTimeFilter(filter){
   renderStatsPanel();
 }
 function showMonthBooks(monthStr, el){
-  const books = (db.books[viewing||me]||[]).filter(b=>bookMonth(b)===monthStr&&b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&b.readingStatus!=='reading');
+  const books = readBooksOf(viewing||me, {dateRange:{month:monthStr}});
   if(!books.length) return;
   const monthLabels=['Oca','Şub','Mar','Nis','May','Haz','Tem','Ağu','Eyl','Eki','Kas','Ara'];
   const [y,m] = monthStr.split('-');
@@ -10055,25 +10088,15 @@ function renderStatsPanel(){
   const target=viewing||me;
   const user=db.users[target];
   const allBooks=(db.books[target]||[]).filter(b=>b.readingStatus!=='wishlist');
-  let books=allBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly)));
-  const badgeSourceBooks=books; // rozet sayımı zaman filtresinden etkilenmesin — rozetler zaman dilimine bağlı değil
-
   // Zaman filtresi uygula
   const tf = window._statsTimeFilter||'all';
   const _tfNow = new Date();
   const curYearStr = String(_tfNow.getFullYear());
   const curMonthStr = `${curYearStr}-${String(_tfNow.getMonth()+1).padStart(2,'0')}`;
-  if(tf==='year'){
-    books = books.filter(b=>{
-      const d = b.endDate||b.month||b.yearOnly||'';
-      return d.startsWith(curYearStr);
-    });
-  } else if(tf==='month'){
-    books = books.filter(b=>{
-      const d = b.endDate||b.month||'';
-      return d.startsWith(curMonthStr);
-    });
-  }
+  const dateRange = tf==='year' ? {year:_tfNow.getFullYear()} : tf==='month' ? {month:curMonthStr} : null;
+  let books = readBooksOf(target, {includePaused:true, dateRange});
+  const finishedBooks = books.filter(b=>b.readingStatus!=='paused'); // "kitap sayısı" — yarım bırakılan tam kitap sayılmasın
+  const badgeSourceBooks=validBooks(); // rozet sayımı hep gerçek rozet motorundan gelsin — zaman filtresinden etkilenmesin (O3)
 
   // Viewing banner
   const isV=!!viewing;
@@ -10085,7 +10108,7 @@ function renderStatsPanel(){
   let badgeCount=0;
   let badgeTotal=0;
   BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{badgeTotal++;if(bstat(b,badgeSourceBooks).earned)badgeCount++;});});
-  const totalPages=books.reduce((s,b)=>s+(b.pages||0),0);
+  const totalPages=totalPagesOf(books);
   const countries=new Set(books.filter(b=>b.country).map(b=>b.country.trim().toLowerCase()));
   const series=new Set(books.filter(b=>b.series).map(b=>b.series));
   const reading=allBooks.filter(b=>b.readingStatus==='reading');
@@ -10207,7 +10230,7 @@ parentRows.forEach(r=>{
           ${(()=>{const av=user?.avatar||'📚';if(av.startsWith('avatar_'))return`<img src="avatars/${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;if(av.startsWith('data:'))return`<img src="${av}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid var(--gold)"/>`;return`<span style="font-size:2.5rem">${av}</span>`;})()}
           <div>
             <div style="font-family:'Playfair Display',serif;font-size:1.1rem;color:var(--gold);font-weight:700">${user?.displayName||target}</div>
-            <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7">${books.length} kitap · ${badgeCount} rozet · ${countries.size} ülke</div>
+            <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7">${finishedBooks.length} kitap · ${badgeCount} rozet · ${countries.size} ülke</div>
           </div>
         </div>
         <div style="font-family:'Playfair Display',serif;font-size:.88rem;color:var(--ink);line-height:1.5;padding:.6rem .75rem;background:linear-gradient(135deg,rgba(91,58,138,0.2),rgba(201,162,39,0.1));background-size:200% 200%;animation:oraclePulse 4s ease-in-out infinite;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-style:italic">
@@ -10231,7 +10254,7 @@ parentRows.forEach(r=>{
 
         ${statsSection('stats-overview','📈 Genel Bakış',`
           <div class="stats-grid">
-            <div class="stats-big-card"><div class="stats-big-num">${books.length}</div><div class="stats-big-label">Kitap Okundu</div></div>
+            <div class="stats-big-card"><div class="stats-big-num">${finishedBooks.length}</div><div class="stats-big-label">Kitap Okundu</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${badgeCount}</div><div class="stats-big-label">Rozet</div><div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;margin-top:.2rem">${badgeCount}/${badgeTotal}</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${countries.size}</div><div class="stats-big-label">Ülke</div></div>
             <div class="stats-big-card"><div class="stats-big-num">${series.size}</div><div class="stats-big-label">Seri</div></div>
@@ -10781,7 +10804,7 @@ function renderBookList(){
   const reading=allBooks.filter(b=>b.readingStatus==='reading');
   const paused=allBooks.filter(b=>b.readingStatus==='paused');
   const wishlist=allBooks.filter(b=>b.readingStatus==='wishlist');
-  const readBooks=allBooks.filter(b=>b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='planned');
+  const readBooks=readBooksOf(viewing||me);
 
   // Sekme sayaçları
   const bc=document.getElementById('bst-bitti-count');
