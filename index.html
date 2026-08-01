@@ -8239,17 +8239,17 @@ ${(()=>{
     const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
 const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?'📖 okuma':' 💬 alıntı';
     const headerBook=card.type==='country_event'
-      ?`<span class="journal-entry-book">${card.country||'—'}</span>`
+      ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
-      :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${card.bookTitle||'—'}</span>`;
+      :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem;display:inline-flex;align-items:center;cursor:pointer" onclick="viewMember('${card.u}')">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
-          <span class="journal-entry-user" style="cursor:pointer" onclick="viewMember('${card.u}')">${card.userName}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
+          <span class="journal-entry-user" style="cursor:pointer" onclick="viewMember('${card.u}')">${escapeHtml(card.userName)}${isNewCard?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
           ${headerBook}
-          <span class="journal-entry-date">${card.author?card.author+' · ':''}${fmtDate(card.ts)}</span>
+          <span class="journal-entry-date">${card.author?escapeHtml(card.author)+' · ':''}${fmtDate(card.ts)}</span>
         </div>
         <span class="journal-entry-type-badge ${typeBadgeClass}">${typeBadgeLabel}</span>
       </div>
@@ -8259,9 +8259,9 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
       `:card.type==='story'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'story',${card.storyId})" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);cursor:pointer" onclick="openStoryDetail('${card.u}',${card.storyId})">
-          <strong>${card.bookTitle}</strong>${card.author?' — '+card.author:''}
+          <strong>${escapeHtml(card.bookTitle)}</strong>${card.author?' — '+escapeHtml(card.author):''}
         </div>
-        ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${card.sourceBook}</div>`:''}
+        ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${escapeHtml(card.sourceBook)}</div>`:''}
         <div class="book-tags-row" style="margin-top:.3rem">
           <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
           ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
@@ -8270,16 +8270,16 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'series_event','${card.seriesEventId}')" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           ${card.eventType==='series_start'
-            ?`📚 <strong>${card.seriesName}</strong> serisine başladı${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
+            ?`📚 <strong>${escapeHtml(card.seriesName)}</strong> serisine başladı${card.bookTitle?' — <em>'+escapeHtml(card.bookTitle)+'</em>':''}`
             :card.eventType==='series_continue'
-            ?`📖 <strong>${card.seriesName}</strong> serisine devam ediyor${card.bookTitle?' — <em>'+card.bookTitle+'</em>':''}`
-            :`✅ <strong>${card.seriesName}</strong> serisini bitirdi 🎉`}
+            ?`📖 <strong>${escapeHtml(card.seriesName)}</strong> serisine devam ediyor${card.bookTitle?' — <em>'+escapeHtml(card.bookTitle)+'</em>':''}`
+            :`✅ <strong>${escapeHtml(card.seriesName)}</strong> serisini bitirdi 🎉`}
         </div>
       `:card.type==='country_event'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'country_event','${card.countryEventId}')" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
-          🌍 <strong>${card.userName}</strong>, <strong>${card.country}</strong>'yı haritasına ekledi!
-          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${card.bookTitle}</em>${card.author?' — '+card.author:''} ile yeni bir ülkeye açıldı</div>`:''}
+          🌍 <strong>${escapeHtml(card.userName)}</strong>, <strong>${escapeHtml(card.country)}</strong>'yı haritasına ekledi!
+          ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em>${card.author?' — '+escapeHtml(card.author):''} ile yeni bir ülkeye açıldı</div>`:''}
         </div>
       `:card.type==='streak_milestone'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'streak_milestone','sm_${card.u}_${card.months}_${card.ts}')" title="Sil">✕</button></div>`:''}
@@ -8302,7 +8302,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
       `:card.type==='reading_event'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'reading','${card.readingEventId}')" title="Sil">✕</button></div>`:''}
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
-          ${readingEventIcon(card.eventType)} <strong>${card.userName}</strong>, ${readingEventText(card)}
+          ${readingEventIcon(card.eventType)} <strong>${escapeHtml(card.userName)}</strong>, ${readingEventText(card)}
         </div>
       `:`
         <div class="journal-quote">
@@ -8335,12 +8335,25 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
 }
 
 const FEED_TRUNCATE=300;
+// Kullanıcı metnini HTML'e güvenli şekilde yerleştirir — < > & " ' karakterlerini kaçırır.
+// Kart düzenini bozan (ör. "<3" yazan bir inceleme) veya düzenleme butonlarını kıran
+// (ör. başlıkta " olan bir kitap) durumları önler (Ö33).
+function escapeHtml(s){
+  return (s===null||s===undefined?'':String(s))
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
 function truncateHtml(text,cardKey){
-  if(!text||text.length<=FEED_TRUNCATE) return`<span>${text||''}</span>`;
-  const short=text.substring(0,FEED_TRUNCATE);
+  const safe=escapeHtml(text);
+  if(!text||text.length<=FEED_TRUNCATE) return`<span>${safe}</span>`;
+  const shortSafe=escapeHtml(text.substring(0,FEED_TRUNCATE));
   return`<span>
-    <span class="feed-text-short" id="fts-${cardKey}">${short}<span style="color:var(--gold)">…</span></span>
-    <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${text}</span>
+    <span class="feed-text-short" id="fts-${cardKey}">${shortSafe}<span style="color:var(--gold)">…</span></span>
+    <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${safe}</span>
     <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
   </span>`;
 }
@@ -8348,7 +8361,7 @@ function truncateHtml(text,cardKey){
 function reactionNames(reactions,r,cardKey){
   const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
   if(!users.length) return '';
-  const names=users.map(([u])=>u===me?'Sen':(db.users[u]&&db.users[u].displayName||u));
+  const names=users.map(([u])=>u===me?'Sen':escapeHtml(db.users[u]&&db.users[u].displayName||u));
   if(names.length<=2) return ' · '+names.join(', ');
   const rKey=(cardKey+'_'+r).replace(/[^a-zA-Z0-9_]/g,'_');
   const visible=names.slice(0,2).join(', ');
@@ -10746,10 +10759,10 @@ function renderBookList(){
       const s=db.readingSessions&&db.readingSessions[b.coreadingSession];
       const status=s?s.status:'?';
       const label=status==='completed'?'🎉 Tamamlandı':status==='active'?'📖 Devam ediyor':'⏸ Bekliyor';
-      const names=s?Object.keys(s.participants||{}).filter(u=>s.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', '):'';
+      const names=s?Object.keys(s.participants||{}).filter(u=>s.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', '):'';
       return`<div class="book-list-item" onclick="openBook(${b.id})" style="cursor:pointer;padding:.5rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
-        <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600">${b.title} 👥</div>
-        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.5);margin-top:.2rem">${b.author||''} · ${label}${names?' · '+names:''}</div>
+        <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600">${escapeHtml(b.title)} 👥</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.5);margin-top:.2rem">${escapeHtml(b.author)||''} · ${label}${names?' · '+names:''}</div>
       </div>`;
     }).join('');
     if(crBookEmpty) crBookEmpty.style.display=coreadingBooks.length?'none':'block';
@@ -10770,11 +10783,11 @@ function renderBookList(){
         const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
         return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
           <div class="book-info" style="flex:1">
-            <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':b.title}</span>
-            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+            <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':escapeHtml(b.title)}</span>
+            ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}</span>`:''}
             ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
-            ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
-			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', ')}</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>escapeHtml((db.users[u]||{}).displayName||u)).join(', ')}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
           </div>
         </div>`;
@@ -10795,10 +10808,10 @@ function renderBookList(){
         const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
         return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
           <div class="book-info" style="flex:1">
-            <span class="book-title-text">${b.title||'İsimsiz'}</span>
-            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
+            <span class="book-title-text">${escapeHtml(b.title)||'İsimsiz'}</span>
+            ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}</span>`:''}
             ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
-            ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
           </div>
           ${isMe?`<div onclick="event.stopPropagation()">
@@ -10886,10 +10899,10 @@ function renderBookList(){
     const zebraClass=idx%2===1?'zebra-dark':'';
     return`<div class="book-item${noTitle?' book-item-warn':''} ${zebraClass}" onclick="openBook(${b.id})">
       <div class="book-info">
-        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':b.title}${b.coreadingSession?' 👥':''}</span>
-        ${b.author?`<span class="book-meta">— ${b.author}${b.country?' · '+b.country:''}</span>`:''}
+        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':escapeHtml(b.title)}${b.coreadingSession?' 👥':''}</span>
+        ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}${b.country?' · '+escapeHtml(b.country):''}</span>`:''}
         ${dateDisplay?`<span class="book-meta">${dateDisplay}</span>`:''}
-        ${b.series?`<span class="book-series-text">📚 ${b.series}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
+        ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}
         ${tags?`<div class="book-tags-row">${tags}</div>`:''}
       </div>
     </div>`;
@@ -10933,7 +10946,7 @@ function renderBookList(){
         serBooks.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
         h+=`<div class="series-accordion">
           <div class="series-accordion-header" onclick="toggleSeriesAcc('${key}')">
-            <span class="series-accordion-title">📚 ${serName}</span>
+            <span class="series-accordion-title">📚 ${escapeHtml(serName)}</span>
             <span style="display:flex;align-items:center;gap:.4rem">
               <span class="series-accordion-count">${serBooks.length} kitap</span>
               <button onclick="event.stopPropagation();exportToSeriesTab('${serName.replace(/'/g,String.fromCharCode(39))}')" style="font-size:.6rem;padding:.15rem .4rem;background:rgba(201,162,39,.12);color:var(--gold);border:1px solid rgba(201,162,39,.3);border-radius:4px;cursor:pointer;font-family:'Space Mono',monospace">📥 Seriler'e Aktar</button>
@@ -10982,9 +10995,9 @@ function renderBookList(){
       wlList.innerHTML=wishlist.map(b=>`
         <div class="book-item book-item-wishlist">
           <div class="book-info" style="flex:1">
-            <span class="book-title-text">${b.title||'İsimsiz'}</span>
-            ${b.author?`<span class="book-meta">— ${b.author}</span>`:''}
-            ${b.series?`<span class="book-series-text">📚 ${b.series}</span>`:''}
+            <span class="book-title-text">${escapeHtml(b.title)||'İsimsiz'}</span>
+            ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}</span>`:''}
+            ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}</span>`:''}
           </div>
           ${isMe?`<div class="wishlist-actions" onclick="event.stopPropagation()">
             <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="startReadingFromWishlist(${b.id})">📖 Okumaya başla</button>
@@ -11963,7 +11976,7 @@ function readingEventIcon(eventType){
 }
 
 function readingEventText(card){
-  const book=card.bookTitle||'';
+  const book=escapeHtml(card.bookTitle)||'';
   const RESUME=[
     `${book} kitabıyla kaldığı yerden devam ediyor.`,
     `${book} kitabına ikinci bir şans verdi.`,
@@ -12401,7 +12414,7 @@ function renderSeriesBookItemHtml(seriesId, bk){
   return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
     <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
     <span class="series-book-status">${statusIcon}</span>
-    <span class="series-book-title">${b.title}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+b.author+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
+    <span class="series-book-title">${escapeHtml(b.title)}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+escapeHtml(b.author)+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
     ${isPlanned?'<span style="font-family:var(--mono,monospace);font-size:.58rem;color:var(--gold-light);opacity:.92">planlanan</span>':''}
     ${pageInfo}
     <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
@@ -12939,7 +12952,7 @@ function renderSeriesList(){
     const data0 = viewSeriesData();
     const paths0 = Object.values(data0.paths||{});
     groupSel.innerHTML = '<option value="">— Gruba ekleme —</option>' +
-      paths0.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+      paths0.map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
   }
   // Açık kartları hatırla
   const openIds = new Set(
@@ -13112,8 +13125,8 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
       <div class="series-card-header">
         <div>
           ${viewing
-            ?`<div class="series-card-name">${ser.name}</div>`
-            :`<div class="series-card-name" id="seriesNameDisp_${ser.id}">${ser.name}</div>`}
+            ?`<div class="series-card-name">${escapeHtml(ser.name)}</div>`
+            :`<div class="series-card-name" id="seriesNameDisp_${ser.id}">${escapeHtml(ser.name)}</div>`}
           <div class="series-card-stats" id="seriesStats_${ser.id}">${displayLabel}</div>
         </div>
         <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
@@ -13144,11 +13157,11 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
         <div class="series-progress-fill ${isDone?'done':''}" style="width:${displayPct}%"></div>
       </div>
       ${currentlyReading ? `<div style="font-size:.8rem;color:var(--moss);margin:.3rem 0">
-        📖 Şu an: <strong>${currentlyReading.book.title}</strong>
+        📖 Şu an: <strong>${escapeHtml(currentlyReading.book.title)}</strong>
         ${currentlyReading.book.currentPage&&currentlyReading.book.pages
           ?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.7"> · ${currentlyReading.book.currentPage}/${currentlyReading.book.pages} sayfa</span>`:''}
       </div>` : ''}
-      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--gold-light);opacity:.92;margin:.3rem 0">⏭ Sıradaki: ${nextUnread.book.title}</div>` : ''}
+      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--gold-light);opacity:.92;margin:.3rem 0">⏭ Sıradaki: ${escapeHtml(nextUnread.book.title)}</div>` : ''}
       <div class="series-actions">
         <button class="btn btn-sm" id="seriesToggleBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
@@ -13254,8 +13267,8 @@ function renderGroupCards(seriesContainer){
       <div style="display:flex;align-items:center;gap:.5rem;cursor:pointer;flex-wrap:wrap" onclick="toggleGroupCard('${path.id}',this.closest('.group-card'))">
         <span style="font-size:1rem">🗂</span>
         ${viewing
-          ?`<span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>`
-          :`<span id="pathNameDisp_${path.id}" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${path.name}</span>`}
+          ?`<span style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${escapeHtml(path.name)}</span>`
+          :`<span id="pathNameDisp_${path.id}" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${escapeHtml(path.name)}</span>`}
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
         <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
           ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:none;border:none" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
@@ -13285,8 +13298,8 @@ function renderGroupCards(seriesContainer){
           return `<div style="border:1px solid rgba(74,103,65,.2);border-radius:6px;margin-bottom:.4rem;overflow:hidden">
             <div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;cursor:pointer;background:rgba(74,103,65,.06)" onclick="toggleSeriesInGroup('${st.ser.id}',this)">
               ${viewing
-                ?`<span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>`
-                :`<span id="grpSeriesNameDisp_${st.ser.id}" style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${st.ser.name}</span>`}
+                ?`<span style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${escapeHtml(st.ser.name)}</span>`
+                :`<span id="grpSeriesNameDisp_${st.ser.id}" style="font-size:.85rem;flex:1;font-family:'Crimson Pro',serif;color:var(--parchment)">${escapeHtml(st.ser.name)}</span>`}
               <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--moss);opacity:.7">${st.readCount}/${st.total} · %${st.pct}</span>
               ${!viewing?`<div onclick="event.stopPropagation()" style="display:flex;gap:.2rem">
                 <button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:none;border:none" onclick="startGroupedSeriesNameEdit('${st.ser.id}')" title="Adı düzenle">✏️</button>
