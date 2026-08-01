@@ -11974,6 +11974,9 @@ function startInlineRename(displayElId, commitFn, styleCss){
   const el=document.getElementById(displayElId);
   if(!el) return;
   const currentValue=el.textContent;
+  const originalTag=el.tagName.toLowerCase();
+  const originalClass=el.className;
+  const originalStyleAttr=el.getAttribute('style')||'';
   const input=document.createElement('input');
   input.type='text';
   input.value=currentValue;
@@ -11983,7 +11986,22 @@ function startInlineRename(displayElId, commitFn, styleCss){
     if(e.key==='Enter') input.blur();
     if(e.key==='Escape'){ input.value=currentValue; input.blur(); }
   };
-  input.onblur=()=>{ commitFn(input.value.trim()); };
+  input.onblur=()=>{
+    const newVal=input.value.trim();
+    if(!newVal||newVal===currentValue){
+      // Değişiklik yok — sadece bu alanı hafifçe eski görünümüne döndür,
+      // ağır bir tam-render tetikleme (aksi halde aynı kutudaki başka bir
+      // kontrole — ör. "devam ediyor" checkbox'ına — tıklamayı yarıda keser)
+      const revert=document.createElement(originalTag);
+      revert.id=displayElId;
+      if(originalClass) revert.className=originalClass;
+      if(originalStyleAttr) revert.setAttribute('style',originalStyleAttr);
+      revert.textContent=currentValue;
+      input.replaceWith(revert);
+    } else {
+      commitFn(newVal);
+    }
+  };
   el.replaceWith(input);
   input.focus();
   input.select();
@@ -12522,9 +12540,7 @@ function toggleSeriesTotalEdit(seriesId){
 function toggleSeriesOngoing(seriesName, val){
   const data = mySeriesData();
   const entry = Object.values(data.series||{}).find(s=>normalizeSeries(s.name||'')===normalizeSeries(seriesName||''));
-  console.log('[ONGOING-DEBUG] seriesName:',seriesName,'val:',val,'entry bulundu mu:',!!entry,'entry.name:',entry&&entry.name,'entry.ongoing (önce):',entry&&entry.ongoing);
   if(entry) entry.ongoing = val;
-  console.log('[ONGOING-DEBUG] entry.ongoing (sonra):',entry&&entry.ongoing);
   (db.books[me]||[]).forEach(b=>{
     if(normalizeSeries(b.series||'')===normalizeSeries(seriesName||'')) b.seriesOngoing = val;
   });
@@ -12937,7 +12953,6 @@ function renderSeriesList(){
     }).length;
     const total = ser.total || books.length || 1;
 	const ongoing = ser.ongoing||false;
-if(ser.name&&ser.name.includes('Katilbot')) console.log('[ONGOING-DEBUG][RENDER]',ser.name,'ser.ongoing:',ser.ongoing,'-> ongoing:',ongoing);
 const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
