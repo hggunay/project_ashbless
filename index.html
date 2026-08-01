@@ -3065,7 +3065,7 @@ function renderSettings(){
     if(sthumb) sthumb.style.transform=isShelfPublic?'translateX(20px)':'translateX(0)';
   }
   // Weather anim toggle
-  const weatherDisabled=localStorage.getItem('weatherAnimDisabled')==='true';
+  const weatherDisabled=getWeatherAnimDisabled();
   const wcb=document.getElementById('settingWeather');
   const wtrack=document.getElementById('weatherToggleTrack');
   const wthumb=document.getElementById('weatherToggleThumb');
@@ -3286,8 +3286,21 @@ function toggleShelfPublic(val){
   if(thumb) thumb.style.transform=val?'translateX(20px)':'translateX(0)';
   notify(val?'🔓 Kitap Rafı Açık':'🔒 Kitap Rafı Gizli',val?'Diğer üyeler rafını görebilir.':'Rafın sadece sana görünür.');
 }
+// Hava animasyonu tercihi — hesap bazlı (Firebase), eski localStorage değeri tek seferlik geçirilir
+function getWeatherAnimDisabled(){
+  if(db.users&&db.users[me]&&typeof db.users[me].weatherAnimDisabled==='boolean'){
+    return db.users[me].weatherAnimDisabled;
+  }
+  try{
+    const legacy=localStorage.getItem('weatherAnimDisabled')==='true';
+    if(db.users&&db.users[me]){ db.users[me].weatherAnimDisabled=legacy; saveDb(); }
+    return legacy;
+  }catch(e){return false;}
+}
 function toggleWeatherAnim(val) {
-  localStorage.setItem('weatherAnimDisabled', val ? 'false' : 'true');
+  if(db.users&&db.users[me]) db.users[me].weatherAnimDisabled = !val;
+  try{localStorage.setItem('weatherAnimDisabled', val ? 'false' : 'true');}catch(e){} // çevrimdışı yedek
+  saveDb();
   const track=document.getElementById('weatherToggleTrack');
   const thumb=document.getElementById('weatherToggleThumb');
   if(track) track.style.background=val?'var(--moss)':'rgba(138,69,19,.3)';
@@ -8007,7 +8020,16 @@ function getFeedCards(){
 }
 
 function updateFeedBadge(){
-  try{const saved=localStorage.getItem('aa-feed-visit-'+me);lastFeedVisit=saved?parseInt(saved):0;}catch(e){}
+  if(db.users[me]&&typeof db.users[me].lastFeedVisit==='number'){
+    lastFeedVisit=db.users[me].lastFeedVisit;
+  } else {
+    // Tek seferlik geçiş: Firebase'de kayıt yoksa eski localStorage değerini kullan
+    try{
+      const saved=localStorage.getItem('aa-feed-visit-'+me);
+      lastFeedVisit=saved?parseInt(saved):0;
+      if(db.users[me]){ db.users[me].lastFeedVisit=lastFeedVisit; saveDb(); }
+    }catch(e){lastFeedVisit=0;}
+  }
   const allCards=getFeedCards();
   const newCount=allCards.filter(c=>{
     let ts=c.ts;
@@ -8023,7 +8045,9 @@ function updateFeedBadge(){
 
 function markFeedVisited(){
   const now=Date.now();
-  try{localStorage.setItem('aa-feed-visit-'+me,String(now));}catch(e){}
+  if(db.users[me]) db.users[me].lastFeedVisit=now;
+  try{localStorage.setItem('aa-feed-visit-'+me,String(now));}catch(e){} // çevrimdışı yedek
+  saveDb();
   lastFeedVisit=now;
   updateFeedBadge();
 }
@@ -8994,6 +9018,7 @@ function backfillCountryEvents(){
     db.countryEvents[me].sort((a,b)=>new Date(a.ts)-new Date(b.ts));
     // mapReset'i kaldır — geçmiş kitaplar da haritada görünsün
     if(db.mapReset) db.mapReset[me]=null;
+    if(db.users[me]&&db.users[me].mapVisits) delete db.users[me].mapVisits[me];
     try{localStorage.removeItem('aa-map-visit-'+me);}catch(e){}
     saveDb();
     renderSafe();
@@ -9619,7 +9644,20 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   window._mapTarget=target;
 
   // Otomatik animasyon — son ziyaretten bu yana yeni ülke eklendiyse
-  const lastMapVisit=parseInt(localStorage.getItem('aa-map-visit-'+target)||'0');
+  let lastMapVisit=0;
+  if(db.users[me]&&db.users[me].mapVisits&&typeof db.users[me].mapVisits[target]==='number'){
+    lastMapVisit=db.users[me].mapVisits[target];
+  } else {
+    // Tek seferlik geçiş: Firebase'de kayıt yoksa eski localStorage değerini kullan
+    try{
+      lastMapVisit=parseInt(localStorage.getItem('aa-map-visit-'+target)||'0');
+      if(db.users[me]&&lastMapVisit){
+        if(!db.users[me].mapVisits) db.users[me].mapVisits={};
+        db.users[me].mapVisits[target]=lastMapVisit;
+        saveDb();
+      }
+    }catch(e){}
+  }
   const newEvents=((db.countryEvents&&db.countryEvents[target])||[]).filter(ev=>{
     const t=new Date(ev.ts).getTime();
     return t>lastMapVisit;
@@ -9630,7 +9668,12 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
     // Yeni event yok — avatarı son konumda sabit göster
     setTimeout(()=>_placeAvatarStatic(),300);
   }
-  try{localStorage.setItem('aa-map-visit-'+target,String(Date.now()));}catch(e){}
+  if(db.users[me]){
+    if(!db.users[me].mapVisits) db.users[me].mapVisits={};
+    db.users[me].mapVisits[target]=Date.now();
+    saveDb();
+  }
+  try{localStorage.setItem('aa-map-visit-'+target,String(Date.now()));}catch(e){} // çevrimdışı yedek
 }
 
 // ── HARİTA ANİMASYONU ────────────────────────────────────────
@@ -10579,6 +10622,7 @@ function confirmResetMap(){
     if(!db.countryEvents) db.countryEvents={};
     db.countryEvents[me]=[];
     // map-visit timestamp'i sıfırla
+    if(db.users[me]&&db.users[me].mapVisits) delete db.users[me].mapVisits[me];
     try{localStorage.removeItem('aa-map-visit-'+me);}catch(e){}
     saveDb();renderSafe();
     btn.textContent='🗺️ Haritayı Sıfırla';
@@ -13716,7 +13760,7 @@ function showGreeting() {
 // 🌦️ Hava durumu kontrolü
 async function tryShowWeatherMessage() {
   if(!navigator.geolocation) return;
-  if(localStorage.getItem('weatherAnimDisabled')==='true') return;
+  if(getWeatherAnimDisabled()) return;
   const today = new Date().toDateString();
   if(localStorage.getItem('weatherMessageDate') === today) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
