@@ -3620,13 +3620,7 @@ function enterApp(){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(targetPanel).classList.add('active');
   if(targetTab) targetTab.classList.add('active');
-  if(targetPanel==='settings') renderSettings();
-  else if(targetPanel==='stats') renderStatsPanel();
-  else if(targetPanel==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
-  else if(targetPanel==='stories') renderStories();
-  else if(targetPanel==='series') renderSeriesList();
-  else if(targetPanel==='feed'){markFeedVisited();renderFeed();}
-  else if(targetPanel==='shelf') renderShelf();
+  renderPanelContent(targetPanel);
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
   setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
   // İlk state'i kaydet
@@ -3647,20 +3641,28 @@ function enterApp(){
 }
 
 // ── NAV ───────────────────────────────────────────────────────
-function _showPanelNoHistory(id, el){
-  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById(id)?.classList.add('active');
-  if(el) el.classList.add('active');
-  try{ localStorage.setItem('aa-lastpanel', id); if(me) localStorage.setItem('aa-lastpanel-'+me, id); }catch(e){}
+// Panelin içeriğini render eder — enterApp/showPanel/_showPanelNoHistory'nin
+// üçü de bunu kullanır. Önceden üç ayrı kopya vardı, ikisi birbirinden eksikti
+// (biri 'shelf'i, diğeri 'myBadges'i unutmuştu) — Ö37.
+function renderPanelContent(id){
   if(id==='settings') renderSettings();
   else if(id==='stats') renderStatsPanel();
   else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
   else if(id==='series'){seriesPage=1;renderSeriesList();}
+  else if(id==='shelf'){renderShelf();}
   else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
   else render();
+}
+
+function _showPanelNoHistory(id, el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id)?.classList.add('active');
+  if(el) el.classList.add('active');
+  try{ localStorage.setItem('aa-lastpanel', id); if(me) localStorage.setItem('aa-lastpanel-'+me, id); }catch(e){}
+  renderPanelContent(id);
 }
 
 function showPanel(id,el){
@@ -3673,15 +3675,7 @@ function showPanel(id,el){
   if(history.state?.panel!==id){
     history.pushState({panel:id},'',location.pathname+(id!=='myBooks'?'#'+id:''));
   }
-  if(id==='settings') renderSettings();
-  else if(id==='stats') renderStatsPanel();
-  else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
-  else if(id==='stories') renderStories();
-  else if(id==='feed'){markFeedVisited();renderFeed();}
-  else if(id==='series'){seriesPage=1;renderSeriesList();}
-  else if(id==='shelf'){renderShelf();}
-  else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
-  else render();
+  renderPanelContent(id);
 }
 function viewMember(u){
   if(u===me){stopViewing();return;}
