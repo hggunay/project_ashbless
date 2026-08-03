@@ -2659,6 +2659,13 @@ async function loadDb(fbOnly){
         const avatars=await fbGet('aa-avatars');
         if(avatars){Object.keys(avatars).forEach(u=>{if(db.users[u]&&avatars[u].startsWith('data:'))db.users[u].avatar=avatars[u];});}
       }catch(e){}
+      // K3: az önce sunucudan taze çektiğimiz "diğer alanlar" halini önbelleğe yaz — yoksa
+      // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
+      // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
+      {
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,...freshRest}={...db};
+        _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
+      }
       return;
     }
   }catch(e){}
