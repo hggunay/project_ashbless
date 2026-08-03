@@ -379,24 +379,25 @@ async function checkCoreadingMilestone(book){
   if(!book.coreadingSession){ return;}
   const sessionId=book.coreadingSession;
   const session=db.readingSessions&&db.readingSessions[sessionId];
-  if(!session||session.status!=='active'){ return;}
-  if(!book.currentPage||!book.pages){ return;}
+  if(!session||session.status!=='active'){ console.warn('checkCoreadingMilestone: sessiz çıkış — session yok veya aktif değil',{sessionId,status:session&&session.status}); return;}
+  if(!book.currentPage||!book.pages){ console.warn('checkCoreadingMilestone: sessiz çıkış — currentPage veya pages eksik',{bookId:book.id,currentPage:book.currentPage,pages:book.pages}); return;}
   const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
-  if(!reached.length){ return;}
+  if(!reached.length){ console.warn('checkCoreadingMilestone: sessiz çıkış — %25 eşiğine ulaşılmadı',{pct}); return;}
   const lastMilestone=reached[reached.length-1];
   if(!session.progress) session.progress={};
   if(!session.progress[me]) session.progress[me]={};
   const prevMilestone=session.progress[me].lastMilestone||0;
   if(pct<prevMilestone){
     // Milestone'u güncelle, önceki milestone'ları temizle
+    console.warn('checkCoreadingMilestone: sessiz çıkış — pct önceki milestone altına düştü, bildirim yok',{pct,prevMilestone});
     session.progress[me].lastMilestone=lastMilestone||0;
     session.progress[me].pct=pct;
     await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
     return;
   }
-  if(lastMilestone<=prevMilestone) return;
+  if(lastMilestone<=prevMilestone){ console.warn('checkCoreadingMilestone: sessiz çıkış — bu milestone zaten bildirilmiş',{lastMilestone,prevMilestone}); return;}
   // Yeni milestone — kaydet ve bildirim gönder
   const msgPool={
     25:['hikâyeye adım attı','ilk çeyreği tamamladı','hikâyenin içine çekilmeye başladı'],

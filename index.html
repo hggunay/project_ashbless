@@ -2720,6 +2720,13 @@ async function _saveDbNow(){
         Object.assign(db, remoteRaw);
         db.books=keepBooks;
         db.readingSessions=keepSessions;
+        // Uzak veriyi benimsedik — bu artık "en son bilinen diğer alanlar" halimiz.
+        // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
+        // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
+        {
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,...adoptedRest}={...db};
+          _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
+        }
         renderSafe();
         if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
         else showSaveError(nerede);
@@ -6253,7 +6260,7 @@ function confirmAddFromVisitor(bookId, status, el){
     femaleAuthor:src.femaleAuthor||false,
     youngAuthor:src.youngAuthor||false,
     readingStatus:status,
-    addedAt:Date.now(),
+    addedAt:new Date().toISOString(),
   };
   if(status==='reading') newBook.startDate=todayLocal();
   if(status==='new') newBook.endDate=todayLocal();
@@ -6931,7 +6938,7 @@ function confirmMarkAsUnread(bookId, status){
   // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle
   if(targetStatus!=='new'){
     book.endDate=null;
-    book.month=book.addedAt?book.addedAt.substring(0,7):new Date().toISOString().substring(0,7);
+    book.month=book.addedAt?String(typeof book.addedAt==='string'?book.addedAt:new Date(book.addedAt).toISOString()).substring(0,7):new Date().toISOString().substring(0,7);
   }
   // Seri tamamlama bayrağını sıfırla
   if(book.series){
@@ -12438,6 +12445,10 @@ async function init(){
       const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
       if(modalOpen) return; // Düzenleme varsa yenileme
       try{
+        // Bekleyen (henüz Firebase'e gönderilmemiş) bir kayıt varsa önce onu bitir —
+        // yoksa aşağıdaki taze veri çekme işlemi, henüz sunucuya ulaşmamış yerel bir
+        // değişikliği (ör. az önce girilen sayfa ilerlemesini) sessizce ezer.
+        if(_saveDbPending) await _saveDbPending;
         const oldBooks=JSON.stringify(db.books||{});
         await loadDb(true);
         if(JSON.stringify(db.books||{})!==oldBooks) render();
