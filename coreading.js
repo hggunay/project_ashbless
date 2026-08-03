@@ -511,27 +511,10 @@ if(!alreadyFinished){
     }
     renderSafe();
   } else {
+    // Katılımcılara milestone bildirimi zaten yukarıda (lastMilestone<100 bloğunda) gönderildi —
+    // burada tekrar göndermiyoruz (eskiden aynı işi ikinci kez yapmaya çalışan, kapsam dışı
+    // `accepted` değişkenine erişip ReferenceError ile çöken kopya kod vardı).
     notify('👥 '+session.bookTitle, myName+' — '+msg);
-    // Diğer katılımcılara milestone bildirimi gönder
-    for(const u of accepted){
-      const notifId='crm_'+sessionId+'_'+me+'_'+lastMilestone+'_'+Date.now();
-      const notif={
-        id:notifId,
-        type:'coreading_milestone',
-        sessionId:sessionId,
-        bookTitle:session.bookTitle,
-        fromUser:me,
-        fromName:myName,
-        milestone:lastMilestone,
-        milestoneMsg:milestoneMsg,
-        pct:pct,
-        ts:new Date().toISOString(),
-        seen:false,
-        reaction:'👥',
-        context:session.bookTitle,
-      };
-      await pushNotification(u, notif);
-    }
     updateNotifDot();
     renderSafe();
   }

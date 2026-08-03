@@ -7683,7 +7683,16 @@ function markFeedVisited(){
   const now=Date.now();
   if(db.users[me]) db.users[me].lastFeedVisit=now;
   try{localStorage.setItem('aa-feed-visit-'+me,String(now));}catch(e){} // çevrimdışı yedek
-  saveDb();
+  // K3 devamı: bu salt kozmetik alan (Feed rozeti için) paylaşılan "diğer alanlar" çakışma
+  // kontrolünden geçmeden doğrudan kendi granüler yoluna yazılıyor — yoksa Feed'e her girişte
+  // tüm profil/rozet verisi gereksiz yere çakışma riskine giriyordu (saveDb() yerine).
+  fbSet('aa-v4/users/'+me+'/lastFeedVisit', now).catch(()=>{});
+  if(_lastOtherFieldsSnapshot){
+    try{
+      const cached=JSON.parse(_lastOtherFieldsSnapshot);
+      if(cached.users&&cached.users[me]){ cached.users[me].lastFeedVisit=now; _lastOtherFieldsSnapshot=JSON.stringify(cached); }
+    }catch(e){}
+  }
   lastFeedVisit=now;
   updateFeedBadge();
 }
