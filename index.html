@@ -2673,6 +2673,11 @@ async function loadDb(fbOnly){
   if(!db.notifications)db.notifications={};
 }
 // ── VERİ KORUMA ──────────────────────────────────────────────
+// K3: "diğer alanlar" (users/badges/streaks/settings vb.) son başarıyla gönderilen hali —
+// değişmediyse gereksiz PATCH + çakışma kontrolünü tamamen atlıyoruz. Yoksa salt kitap
+// ilerlemesi gibi bu alanlara hiç dokunmayan bir kayıt bile ortak zaman damgasını
+// güncelleyip iki kullanıcıyı birbirine karşı sahte "çakışma"ya düşürüyordu.
+let _lastOtherFieldsSnapshot=null;
 async function _saveDbNow(){
   let ok=false, nerede='';
   // K3: kitaplar, aşağıdaki "diğer alanlar" (users/badges/streaks/settings vb.) çakışma
@@ -2689,43 +2694,44 @@ async function _saveDbNow(){
   }
   // Firebase'e kaydet — shelf ayrı node'a
   try{
-    // Timestamp kontrolü — eski veri yeni verinin üzerine yazmasın (yalnızca "diğer
-    // alanlar" için geçerli; books ve readingSessions kendi granüler yoluna yazılıyor)
-    const remoteRaw = await fbGet('aa-v4');
-    const remoteTs = remoteRaw?.savedAt||0;
-    const localTs = db.savedAt||0;
-    if(remoteTs > localTs){
-      console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
-      // Reddedilen yerel değişikliği kaybetmemek için yedekle
-      try{
-        localStorage.setItem('aa-v4-reddedilen-'+Date.now(), JSON.stringify(db));
-      }catch(e){}
-      // K3: books ve readingSessions kendi ayrı/granüler yoluna zaten yazıldığı için
-      // uzak veriden ALINMIYOR — yoksa henüz bu fonksiyonun bildiği "genel" savedAt'a
-      // işlenmemiş ama Firebase'de zaten var olan taze bir kayıt (ör. başka bir
-      // kullanıcının aynı anda kaydettiği kitap ilerlemesi) yerelden silinip
-      // ekranda "kaybolmuş" gibi görünürdü.
-      const keepBooks=db.books, keepSessions=db.readingSessions;
-      Object.assign(db, remoteRaw);
-      db.books=keepBooks;
-      db.readingSessions=keepSessions;
-      renderSafe();
-      if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
-      else showSaveError(nerede);
-      return;
-    }
-    db.savedAt = Date.now();
     // notifications hariç — her kullanıcı kendi/başkasının bildirimini granüler pushNotification()
-    // ile yazıyor; burada PATCH kullanıldığı için zaten dokunulmuyor ama payload'ı da şişirmesin
-    // books ve readingSessions de aynı nedenle hariç (K3): ikisi de PAYLAŞILAN tek belge +
-    // tek zaman damgasıyla korunduğunda, iki kullanıcı yakın zamanda kaydedince biri
-    // ötekinin (bazen bayat) verisiyle ezilebiliyordu — özellikle birlikte okuma sırasında.
-    // Kitaplar yukarıda kendi yoluna zaten yazıldı, oturumlar da zaten her değiştiği
-    // yerde kendi granüler yoluna yazılıyor.
-    const {shelf,notifications,readingSessions,books,...dbWithoutShelf}={...db};
-    const patchOk = await fbPatch('aa-v4',dbWithoutShelf);
-    if(!patchOk){ ok=false; nerede='ana veri'; }
-    if(patchOk&&shelf&&Object.keys(shelf).length){
+    // ile yazıyor. books ve readingSessions de hariç (K3): ikisi kendi granüler yoluna yazılıyor.
+    // savedAt da karşılaştırmadan hariç — o zaten her kayıtta değişen bir alan.
+    const {shelf,notifications,readingSessions,books,savedAt,...restFields}={...db};
+    const otherSnapshot=JSON.stringify(restFields);
+    if(otherSnapshot!==_lastOtherFieldsSnapshot){
+      // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
+      // değişmiş — ancak o zaman PATCH + çakışma kontrolü yapıyoruz. Değişmediyse (ör.
+      // salt kitap ilerlemesi girildiyse) bu adımı tamamen atlıyoruz — yoksa ortak zaman
+      // damgası gereksiz yere güncellenip iki kullanıcıyı birbirine karşı sahte
+      // "çakışma"ya düşürüyordu.
+      const remoteRaw = await fbGet('aa-v4');
+      const remoteTs = remoteRaw?.savedAt||0;
+      const localTs = db.savedAt||0;
+      if(remoteTs > localTs){
+        console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
+        // Reddedilen yerel değişikliği kaybetmemek için yedekle
+        try{
+          localStorage.setItem('aa-v4-reddedilen-'+Date.now(), JSON.stringify(db));
+        }catch(e){}
+        // K3: books ve readingSessions kendi ayrı/granüler yoluna zaten yazıldığı için
+        // uzak veriden ALINMIYOR
+        const keepBooks=db.books, keepSessions=db.readingSessions;
+        Object.assign(db, remoteRaw);
+        db.books=keepBooks;
+        db.readingSessions=keepSessions;
+        renderSafe();
+        if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
+        else showSaveError(nerede);
+        return;
+      }
+      db.savedAt = Date.now();
+      const dbWithoutShelf={...restFields, savedAt:db.savedAt};
+      const patchOk = await fbPatch('aa-v4',dbWithoutShelf);
+      if(!patchOk){ ok=false; nerede='ana veri'; }
+      else{ _lastOtherFieldsSnapshot=otherSnapshot; }
+    }
+    if(ok&&shelf&&Object.keys(shelf).length){
       const shelfOk = await fbSet('aa-shelf',shelf);
       if(!shelfOk){ ok=false; nerede='raf'; }
     }
