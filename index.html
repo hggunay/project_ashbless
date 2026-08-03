@@ -2716,6 +2716,13 @@ async function _saveDbNow(){
       const remoteTs = remoteRaw?.savedAt||0;
       const localTs = db.savedAt||0;
       if(remoteTs > localTs){
+        // Teşhis: hangi "diğer alan" değişmiş görünüyor, gerçekten neyle çakıştık?
+        try{
+          const prevRest=JSON.parse(_lastOtherFieldsSnapshot||'{}');
+          const changedSincePrevSave=Object.keys(restFields).filter(k=>JSON.stringify(restFields[k])!==JSON.stringify(prevRest[k]));
+          const diffVsRemote=Object.keys(restFields).filter(k=>JSON.stringify(restFields[k])!==JSON.stringify(remoteRaw?.[k]));
+          console.warn('🔎 Çakışma teşhisi:',{remoteTs,localTs,changedSincePrevSave,diffVsRemote});
+        }catch(e){}
         console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
         // Reddedilen yerel değişikliği kaybetmemek için yedekle
         try{
