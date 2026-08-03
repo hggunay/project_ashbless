@@ -2687,8 +2687,15 @@ async function _saveDbNow(){
       try{
         localStorage.setItem('aa-v4-reddedilen-'+Date.now(), JSON.stringify(db));
       }catch(e){}
-      // Uzak veriyi yükle
+      // K3: books ve readingSessions kendi ayrı/granüler yoluna zaten yazıldığı için
+      // uzak veriden ALINMIYOR — yoksa henüz bu fonksiyonun bildiği "genel" savedAt'a
+      // işlenmemiş ama Firebase'de zaten var olan taze bir kayıt (ör. başka bir
+      // kullanıcının aynı anda kaydettiği kitap ilerlemesi) yerelden silinip
+      // ekranda "kaybolmuş" gibi görünürdü.
+      const keepBooks=db.books, keepSessions=db.readingSessions;
       Object.assign(db, remoteRaw);
+      db.books=keepBooks;
+      db.readingSessions=keepSessions;
       renderSafe();
       showSaveError('çakışma — az önceki değişikliğin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı. Kaybolmaması için tarayıcı hafızasına yedeklendi.');
       return;
@@ -2696,9 +2703,18 @@ async function _saveDbNow(){
     db.savedAt = Date.now();
     // notifications hariç — her kullanıcı kendi/başkasının bildirimini granüler pushNotification()
     // ile yazıyor; burada PATCH kullanıldığı için zaten dokunulmuyor ama payload'ı da şişirmesin
-    const {shelf,notifications,...dbWithoutShelf}={...db};
+    // books ve readingSessions de aynı nedenle hariç (K3): ikisi de PAYLAŞILAN tek belge +
+    // tek zaman damgasıyla korunduğunda, iki kullanıcı yakın zamanda kaydedince biri
+    // ötekinin (bazen bayat) verisiyle ezilebiliyordu — özellikle birlikte okuma sırasında.
+    // Kitaplar artık her zaman doğrudan kullanıcının kendi yoluna (aşağıda), oturumlar da
+    // zaten her değiştiği yerde kendi granüler yoluna yazılıyor.
+    const {shelf,notifications,readingSessions,books,...dbWithoutShelf}={...db};
     ok = await fbPatch('aa-v4',dbWithoutShelf);
     if(!ok) nerede='ana veri';
+    if(ok){
+      ok = await fbSet('aa-v4/books/'+me, db.books[me]||[]);
+      if(!ok) nerede='kitaplar';
+    }
     if(ok&&shelf&&Object.keys(shelf).length){
       ok = await fbSet('aa-shelf',shelf);
       if(!ok) nerede='raf';
@@ -3073,9 +3089,14 @@ function deleteAllUserData(u){
   if(db.archivedNotes) delete db.archivedNotes[u];
   if(db.mapReset) delete db.mapReset[u];
   // Katıldığı birlikte-okuma oturumlarından çık — oturumun kendisini silme, başka katılımcılar hâlâ içinde olabilir
+  // readingSessions de (K3) genel kayıttan hariç tutulduğu için, silinen katılımcı
+  // her etkilenen oturumun kendi granüler yoluna ayrıca yazılmalı
   if(db.readingSessions){
-    Object.values(db.readingSessions).forEach(s=>{
-      if(s.participants&&s.participants[u]) delete s.participants[u];
+    Object.entries(db.readingSessions).forEach(([sid,s])=>{
+      if(s.participants&&s.participants[u]){
+        delete s.participants[u];
+        fbSet('aa-v4/readingSessions/'+sid+'/participants/'+u, null);
+      }
     });
   }
   // notifications, Ö6 gereği ana kayıttan hariç tutuluyor — ayrıca granüler siliniyor
@@ -3326,6 +3347,18 @@ function importData(input){
       if(data.mapReset) db.mapReset={...db.mapReset,...data.mapReset};
       if(data.forgotRequests) db.forgotRequests=[...(db.forgotRequests||[]),...(Array.isArray(data.forgotRequests)?data.forgotRequests:[])];
       await saveDb();
+      // K3: books ve readingSessions genel kayıttan hariç tutuluyor (bkz. saveDb) — içe
+      // aktarılan, birden fazla kullanıcıya ait olabilecek veriyi kendi granüler
+      // yollarına ayrıca yazıyoruz, yoksa saveDb() yalnızca giriş yapan üyenin
+      // kitaplarını Firebase'e gönderir, diğerlerininki yerelde kalır.
+      if(data.books){
+        for(const u of Object.keys(data.books)){
+          try{ await fbSet('aa-v4/books/'+u, db.books[u]||[]); }catch(e){}
+        }
+      }
+      if(data.readingSessions){
+        try{ await fbSet('aa-v4/readingSessions', db.readingSessions); }catch(e){}
+      }
       // Kayıt gerçekten başarılı mıydı? (K5 çakışması ya da ağ hatası olabilir)
       const saveFailed=!!document.getElementById('_saveError');
       render();
@@ -6720,11 +6753,6 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     const cpVal=Number(rawVal);
     if(cpVal>0) book.currentPage=cpVal;
     await checkCoreadingMilestone(book);
-    // Birlikte okuma sırasında iki hesap kısa aralıklarla kaydedebiliyor. saveDb()
-    // TÜM kullanıcıların verisini tek belgede, tek zaman damgasıyla koruyor — biri
-    // kaydederken öbürü de kaydediyorsa biri "eski kaldı" sayılıp sessizce eziliyor.
-    // Sayfa ilerlemesini kendi kullanıcı yoluna doğrudan yazarak bu yarıştan koruyoruz.
-    try{ await fbSet('aa-v4/books/'+me, db.books[me]); }catch(e){}
   }
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid);

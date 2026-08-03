@@ -83,10 +83,16 @@ async function cancelCoreading(sessionId){
   // veritabanını bellekten yazdığı için (K3) oturum Firebase'den de tümüyle siliniyordu,
   // ama katılımcıların kitaplarındaki `coreadingSession` referansı öksüz kalıp
   // "Birlikte Okunuyor" sekmesinde tıklanamayan bir kitap olarak asılı kalıyordu.
-  // Bunun yerine, bağlı olan tüm kitaplardaki referansı temizliyoruz:
-  Object.values(db.books||{}).forEach(list=>(list||[]).forEach(b=>{
-    if(b.coreadingSession===sessionId) delete b.coreadingSession;
-  }));
+  // Bunun yerine, bağlı olan tüm kitaplardaki referansı temizliyoruz. books de (K3) genel
+  // kayıttan hariç tutulduğundan, kendi kitabımız dışında değiştirdiğimiz her kullanıcının
+  // listesini kendi granüler yoluna ayrıca yazmamız gerekiyor.
+  for(const [u,list] of Object.entries(db.books||{})){
+    let changed=false;
+    (list||[]).forEach(b=>{
+      if(b.coreadingSession===sessionId){ delete b.coreadingSession; changed=true; }
+    });
+    if(changed&&u!==me) await fbSet('aa-v4/books/'+u, list);
+  }
   saveDb();
   document.getElementById('cancelConfirm')?.remove();
   renderSafe();
