@@ -2675,9 +2675,22 @@ async function loadDb(fbOnly){
 // ── VERİ KORUMA ──────────────────────────────────────────────
 async function _saveDbNow(){
   let ok=false, nerede='';
+  // K3: kitaplar, aşağıdaki "diğer alanlar" (users/badges/streaks/settings vb.) çakışma
+  // kontrolünden TAMAMEN bağımsız, koşulsuz olarak doğrudan kullanıcının kendi yoluna
+  // yazılıyor. Bu yola yalnızca ben yazarım, başka kimse yazmaz — o yüzden burada gerçek
+  // bir çakışma olamaz; "diğer alanlar" çakışsa bile kitap ilerlemesi kaybolmamalı.
+  try{
+    ok = await fbSet('aa-v4/books/'+me, db.books[me]||[]);
+    if(!ok) nerede='kitaplar';
+  }catch(e){
+    ok=false;
+    nerede=(e&&e.message)?e.message:'beklenmeyen hata';
+    console.error('saveDb hatası (kitaplar):',e);
+  }
   // Firebase'e kaydet — shelf ayrı node'a
   try{
-    // Timestamp kontrolü — eski veri yeni verinin üzerine yazmasın
+    // Timestamp kontrolü — eski veri yeni verinin üzerine yazmasın (yalnızca "diğer
+    // alanlar" için geçerli; books ve readingSessions kendi granüler yoluna yazılıyor)
     const remoteRaw = await fbGet('aa-v4');
     const remoteTs = remoteRaw?.savedAt||0;
     const localTs = db.savedAt||0;
@@ -2697,7 +2710,8 @@ async function _saveDbNow(){
       db.books=keepBooks;
       db.readingSessions=keepSessions;
       renderSafe();
-      showSaveError('çakışma — az önceki değişikliğin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı. Kaybolmaması için tarayıcı hafızasına yedeklendi.');
+      if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
+      else showSaveError(nerede);
       return;
     }
     db.savedAt = Date.now();
@@ -2706,18 +2720,14 @@ async function _saveDbNow(){
     // books ve readingSessions de aynı nedenle hariç (K3): ikisi de PAYLAŞILAN tek belge +
     // tek zaman damgasıyla korunduğunda, iki kullanıcı yakın zamanda kaydedince biri
     // ötekinin (bazen bayat) verisiyle ezilebiliyordu — özellikle birlikte okuma sırasında.
-    // Kitaplar artık her zaman doğrudan kullanıcının kendi yoluna (aşağıda), oturumlar da
-    // zaten her değiştiği yerde kendi granüler yoluna yazılıyor.
+    // Kitaplar yukarıda kendi yoluna zaten yazıldı, oturumlar da zaten her değiştiği
+    // yerde kendi granüler yoluna yazılıyor.
     const {shelf,notifications,readingSessions,books,...dbWithoutShelf}={...db};
-    ok = await fbPatch('aa-v4',dbWithoutShelf);
-    if(!ok) nerede='ana veri';
-    if(ok){
-      ok = await fbSet('aa-v4/books/'+me, db.books[me]||[]);
-      if(!ok) nerede='kitaplar';
-    }
-    if(ok&&shelf&&Object.keys(shelf).length){
-      ok = await fbSet('aa-shelf',shelf);
-      if(!ok) nerede='raf';
+    const patchOk = await fbPatch('aa-v4',dbWithoutShelf);
+    if(!patchOk){ ok=false; nerede='ana veri'; }
+    if(patchOk&&shelf&&Object.keys(shelf).length){
+      const shelfOk = await fbSet('aa-shelf',shelf);
+      if(!shelfOk){ ok=false; nerede='raf'; }
     }
   }catch(e){
     ok=false;
