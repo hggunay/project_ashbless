@@ -5947,7 +5947,7 @@ async function confirmRemoveBookFinal(id, deleteNote){
 }
 
 // ── MODAL ─────────────────────────────────────────────────────
-function openBook(bookId,fromShelf=false){
+async function openBook(bookId,fromShelf=false){
   const book=targetBooks().find(b=>b.id===bookId);
   if(!book)return;
   modalBookId=bookId;
@@ -5958,6 +5958,17 @@ function openBook(bookId,fromShelf=false){
   const coreadingEl=document.getElementById('modalCoreadingBadge');
 if(coreadingEl){
   const sid=book.coreadingSession;
+  if(sid){
+    // Yerel db.readingSessions bayat olabilir (paylaşılan tüm-veritabanı kaydındaki
+    // yarış durumu yüzünden) — modalda doğru rozeti göstermek için güncelini çek.
+    try{
+      const fresh=await fbGet('aa-v4/readingSessions/'+sid);
+      if(fresh){
+        if(!db.readingSessions) db.readingSessions={};
+        db.readingSessions[sid]=fresh;
+      }
+    }catch(e){}
+  }
   const session=sid&&db.readingSessions&&db.readingSessions[sid];
   const isParticipant=session&&session.participants&&session.participants[me]&&session.participants[me].status==='accepted';
   if(session&&(session.status==='active'||session.status==='completed')&&isParticipant){
@@ -6709,6 +6720,11 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     const cpVal=Number(rawVal);
     if(cpVal>0) book.currentPage=cpVal;
     await checkCoreadingMilestone(book);
+    // Birlikte okuma sırasında iki hesap kısa aralıklarla kaydedebiliyor. saveDb()
+    // TÜM kullanıcıların verisini tek belgede, tek zaman damgasıyla koruyor — biri
+    // kaydederken öbürü de kaydediyorsa biri "eski kaldı" sayılıp sessizce eziliyor.
+    // Sayfa ilerlemesini kendi kullanıcı yoluna doğrudan yazarak bu yarıştan koruyoruz.
+    try{ await fbSet('aa-v4/books/'+me, db.books[me]); }catch(e){}
   }
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid);
