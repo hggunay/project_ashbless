@@ -1339,6 +1339,39 @@ function renderGroupCards(seriesContainer){
           }).join('');
           const serOpenKey='serInGrp_'+st.ser.id;
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
+          const grpAddFormHtml=!viewing?`<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.35rem;padding:.4rem .5rem .2rem 1.25rem">
+            <div style="display:flex;gap:.3rem">
+              <button class="btn btn-sm" id="seriesAddModeBtn_${st.ser.id}"
+                style="font-size:.62rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
+                onclick="toggleSeriesAddMode('${st.ser.id}')">📋 Toplu giriş</button>
+            </div>
+            <div id="seriesAddSingle_${st.ser.id}">
+              <div style="position:relative">
+                <input class="book-input" id="seriesBookTitle_${st.ser.id}" type="text" placeholder="Kitap adı..."
+                  style="width:100%;font-size:.78rem;padding:.32rem .5rem"
+                  oninput="seriesAcSearch('${st.ser.id}')" onblur="setTimeout(()=>hideSeriesAc('${st.ser.id}'),300)"/>
+                <div id="seriesAcList_${st.ser.id}" class="series-ac-dropdown" style="display:none"></div>
+              </div>
+              <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem">
+                <input class="book-input" id="seriesBookAuthor_${st.ser.id}" type="text" placeholder="Yazar (opsiyonel)"
+                  style="flex:1;min-width:100px;font-size:.75rem;padding:.3rem .45rem"/>
+                <input class="book-input" id="seriesBookNum_${st.ser.id}" type="number" min="1" placeholder="#"
+                  style="width:45px;font-size:.75rem;padding:.3rem .35rem"/>
+                <input class="book-input" id="seriesBookPages_${st.ser.id}" type="number" min="1" placeholder="Sayfa"
+                  style="width:60px;font-size:.75rem;padding:.3rem .35rem"/>
+                <button class="btn btn-sm btn-primary" style="font-size:.68rem" onclick="addBookToSeries('${st.ser.id}')">+ Ekle</button>
+              </div>
+            </div>
+            <div id="seriesAddBulk_${st.ser.id}" style="display:none">
+              <textarea class="book-input" id="seriesBulkText_${st.ser.id}" placeholder="Her satıra bir kitap adı"
+                style="min-height:70px;resize:vertical;font-size:.78rem;line-height:1.4"></textarea>
+              <div style="display:flex;gap:.3rem;align-items:center;margin-top:.3rem">
+                <input class="book-input" id="seriesBulkAuthor_${st.ser.id}" type="text" placeholder="Yazar (opsiyonel — tümü için)"
+                  style="flex:1;font-size:.75rem;padding:.3rem .45rem"/>
+                <button class="btn btn-sm btn-primary" style="font-size:.68rem" onclick="addBulkBooksToSeries('${st.ser.id}')">+ Toplu Ekle</button>
+              </div>
+            </div>
+          </div>`:'';
           return `<div style="border:1px solid rgba(74,103,65,.2);border-radius:6px;margin-bottom:.4rem;overflow:hidden">
             <div style="display:flex;align-items:center;gap:.4rem;padding:.4rem .6rem;cursor:pointer;background:rgba(74,103,65,.06)" onclick="toggleSeriesInGroup('${st.ser.id}',this)">
               ${viewing
@@ -1353,7 +1386,7 @@ function renderGroupCards(seriesContainer){
               </div>`:`<div onclick="event.stopPropagation()"><button class="btn btn-sm btn-primary" style="font-size:.55rem;padding:.1rem .3rem" onclick="copySeriesToMyList('${st.ser.id}')">📚 Ekle</button></div>`}
               <span style="font-size:.7rem;color:var(--moss)">${serIsOpen?'▲':'▼'}</span>
             </div>
-            <div class="ser-in-grp-books" data-sid="${st.ser.id}" style="display:${serIsOpen?'block':'none'};padding:.3rem 0">${booksHtml||'<div style="padding:.2rem 1rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}</div>
+            <div class="ser-in-grp-books" data-sid="${st.ser.id}" style="display:${serIsOpen?'block':'none'};padding:.3rem 0">${booksHtml||'<div style="padding:.2rem 1rem;font-size:.8rem;opacity:.5;font-style:italic">Kitap yok</div>'}${grpAddFormHtml}</div>
           </div>`;
         }).join('')}
         ${steps.length===0?'<div style="font-size:.85rem;opacity:.5;font-style:italic">Henüz seri eklenmemiş.</div>':''}
