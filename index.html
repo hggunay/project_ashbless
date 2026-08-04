@@ -9558,14 +9558,14 @@ function falKapat() {
   }, 2000);
 }
 function render(){
-  renderBanners();renderStats();renderBookList();renderBadges();renderMembers();renderFeed();
+  renderBanners();renderStats();renderBookList();renderBadges();renderMembers();renderFeed();renderSeriesList();
 }
 
 // Modal açıkken çağrılacak güvenli render — modal'a dokunmaz
 function renderSafe(){
   const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
   if(modalOpen){
-    renderStats();renderBookList();renderBadges();renderMembers();
+    renderStats();renderBookList();renderBadges();renderMembers();renderSeriesList();
     if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
 
   } else {
