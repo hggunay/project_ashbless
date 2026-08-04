@@ -817,6 +817,8 @@ function _buildSeriesEditFormEl(seriesId, eid, bk, override){
   const author = (override&&override.author!==undefined) ? override.author : (bk.manualAuthor||'');
   const div = document.createElement('div');
   div.id = containerId;
+  div.dataset.seriesId = seriesId;
+  div.dataset.eid = eid;
   div.style.cssText = 'margin-top:.4rem;padding:.6rem .75rem;background:rgba(44,80,107,.18);border:1px solid rgba(100,160,200,.35);border-left:3px solid rgba(100,180,220,.7);border-radius:6px;display:flex;flex-direction:column;gap:.4rem';
   div.innerHTML = `
     ${isPlanned?`<div style="display:flex;gap:.4rem;flex-wrap:wrap">
@@ -954,6 +956,16 @@ function closeSeriesCard(id){
 function renderSeriesList(){
   const container = document.getElementById('seriesListContainer');
   if(!container) return;
+  // Açık düzenleme formları varsa (kaydedilmemiş girdileriyle) hatırla — hem bağımsız
+  // kartlarda hem de grup içindeki serilerde, tam liste yeniden çizilince kaybolmasınlar (Ö40).
+  const openEditsAll = [...container.querySelectorAll('[id^="seriesEditForm_"]')].map(div=>({
+    seriesId: div.dataset.seriesId,
+    eid: div.dataset.eid,
+    num: document.getElementById('edit_num_'+div.id)?.value,
+    pages: document.getElementById('edit_pages_'+div.id)?.value,
+    title: document.getElementById('edit_title_'+div.id)?.value,
+    author: document.getElementById('edit_author_'+div.id)?.value
+  })).filter(o=>o.seriesId&&o.eid);
   // Ziyaret modunda formları gizle
   const isViewing = !!viewing;
   ['newSeriesName','newSeriesTotal','newSeriesGroupId','newSeriesBulkBooks','newSeriesBulkAuthor','newPathName'].forEach(id=>{
@@ -1205,6 +1217,26 @@ const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||
     if(btn){ btn.textContent='▲ Gizle'; }
     if(closeBtn){ closeBtn.style.display=''; }
   });
+  // Hatırlanan açık düzenleme formlarını, girilen değerleriyle geri koy
+  openEditsAll.forEach(({seriesId,eid,num,pages,title,author})=>{
+    const ser2 = (data.series||{})[seriesId];
+    const rawBk = ser2 && (ser2.books||[]).find(b=>b._eid===eid);
+    const item = container.querySelector('[data-eid="'+eid+'"]');
+    if(!rawBk || !item) return;
+    const div = _buildSeriesEditFormEl(seriesId, eid, rawBk, {num,pages,title,author});
+    item.insertAdjacentElement('afterend', div);
+    const grpBooksContainer = item.closest('.ser-in-grp-books');
+    if(grpBooksContainer){
+      const header = grpBooksContainer.previousElementSibling;
+      if(header){
+        header.dataset.editActive='1';
+        header.style.background='rgba(44,80,107,.25)';
+        header.style.borderBottom='1px solid rgba(100,160,200,.4)';
+        const titleSpan = header.querySelector('span:first-child');
+        if(titleSpan){ titleSpan.style.color='rgba(130,190,230,.95)'; }
+      }
+    }
+  });
 }
 
 function renderGroupCards(seriesContainer){
@@ -1303,7 +1335,7 @@ function renderGroupCards(seriesContainer){
             const removeKey=bk.planned?`'${st.ser.id}',null,true,'${(bk.manualTitle||'').replace(/'/g,"\\'")}'  `:`'${st.ser.id}',${lb.id||'null'},false`;
             seriesBkMap[st.ser.id+'_'+ensureBkEid(bk)]=bk;
             const editBtn=!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${st.ser.id}','${ensureBkEid(bk)}')" title="Kitabı düzenle">✏️</button>`:'';
-            return `<div data-grp-book="1" style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${readingLabel}${startBtn}${editBtn}</div></div>`;
+            return `<div data-grp-book="1" data-eid="${ensureBkEid(bk)}" style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;color:var(--parchment);opacity:.85">${ico}${bk.num?' #'+bk.num+' ':' '}<span style="flex:1">${title}</span><div style="display:flex;gap:.2rem;flex-shrink:0">${readingLabel}${startBtn}${editBtn}</div></div>`;
           }).join('');
           const serOpenKey='serInGrp_'+st.ser.id;
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
