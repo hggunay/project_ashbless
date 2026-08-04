@@ -483,7 +483,7 @@ function renderSeriesBookItemHtml(seriesId, bk){
   const canStart = !isReading && b.id && !viewing;
   const isOwn = !viewing;
   const plannedBtn = (!isReading&&bk.planned&&!viewing)?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" data-sid="${seriesId}" data-mt="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" data-ma="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" onclick="startPlannedBook(this.dataset.sid,this.dataset.mt,this.dataset.ma)">📖 Başla</button>`:'';
-  return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
+  return `<div class="series-book-item ${isReading?'reading':isPlanned?'planned':isRead?'':'unread'}" data-eid="${ensureBkEid(bk)}" ${b.id&&!isPlanned?`onclick="openBook(${b.id})"`:''}>
     <span class="series-book-num">${bk.num?'#'+bk.num:''}</span>
     <span class="series-book-status">${statusIcon}</span>
     <span class="series-book-title">${escapeHtml(b.title)}${b.author?'<span style="opacity:.5;font-size:.75rem"> — '+escapeHtml(b.author)+'</span>':''}${(bk.pages||b.pages)?'<span style="opacity:.5;font-size:.7rem"> · '+(bk.pages||b.pages)+' sayfa</span>':''}</span>
@@ -505,6 +505,20 @@ function _refreshSeriesBookList(seriesId){
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser){ renderSeriesList(); return; }
+
+  // Başka kitapların açık düzenleme formları varsa (kaydedilmemiş girdileriyle) hatırla —
+  // liste yeniden çizilince kaybolmasınlar (Ö40, çoklu-düzenleme kaydetme çakışması düzeltmesi).
+  const openEditPrefix = 'seriesEditForm_'+seriesId+'_';
+  const openEdits = [...booksContainer.querySelectorAll('[id^="'+openEditPrefix+'"]')].map(div=>{
+    const eid = div.id.slice(openEditPrefix.length);
+    return {
+      eid,
+      num: document.getElementById('edit_num_'+div.id)?.value,
+      pages: document.getElementById('edit_pages_'+div.id)?.value,
+      title: document.getElementById('edit_title_'+div.id)?.value,
+      author: document.getElementById('edit_author_'+div.id)?.value
+    };
+  });
 
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   // Global map'i güncelle — openEditSeriesBook buraya bakıyor
@@ -555,6 +569,19 @@ function _refreshSeriesBookList(seriesId){
     wrapper.innerHTML = listHtml;
     booksContainer.insertBefore(wrapper, booksContainer.firstChild);
   }
+
+  // Hatırlanan açık formları, girilen değerleriyle geri koy
+  if(openEdits.length){
+    const freshListContainer = booksContainer.querySelector('.series-book-list-inner');
+    openEdits.forEach(({eid,num,pages,title,author})=>{
+      const bk = books.find(b=>b._eid===eid);
+      const item = freshListContainer && freshListContainer.querySelector('[data-eid="'+eid+'"]');
+      if(!bk || !item) return;
+      const div = _buildSeriesEditFormEl(seriesId, eid, bk, {num,pages,title,author});
+      item.insertAdjacentElement('afterend', div);
+    });
+  }
+
   // Buton metnini güncelle
   const btn = document.getElementById('seriesToggleBtn_'+seriesId);
   if(btn) btn.textContent = '▲ Gizle';
@@ -779,6 +806,32 @@ function checkSeriesComplete(seriesId){
   }
 }
 
+// Düzenleme formunun DOM'unu kurar (eklemez) — hem tıklamayla açmada hem de
+// liste yeniden çizilirken açık formları korumada kullanılır (Ö40).
+function _buildSeriesEditFormEl(seriesId, eid, bk, override){
+  const containerId = 'seriesEditForm_'+seriesId+'_'+eid;
+  const isPlanned = !!(bk.planned||bk.manualTitle);
+  const num = (override&&override.num!==undefined) ? override.num : (bk.num||'');
+  const pages = (override&&override.pages!==undefined) ? override.pages : (bk.pages||'');
+  const title = (override&&override.title!==undefined) ? override.title : (bk.manualTitle||'');
+  const author = (override&&override.author!==undefined) ? override.author : (bk.manualAuthor||'');
+  const div = document.createElement('div');
+  div.id = containerId;
+  div.style.cssText = 'margin-top:.4rem;padding:.6rem .75rem;background:rgba(44,80,107,.18);border:1px solid rgba(100,160,200,.35);border-left:3px solid rgba(100,180,220,.7);border-radius:6px;display:flex;flex-direction:column;gap:.4rem';
+  div.innerHTML = `
+    ${isPlanned?`<div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <input class="book-input" id="edit_title_${containerId}" type="text" value="${(title||'').replace(/"/g,'&quot;')}" placeholder="Kitap adı" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
+      <input class="book-input" id="edit_author_${containerId}" type="text" value="${(author||'').replace(/"/g,'&quot;')}" placeholder="Yazar" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
+    </div>`:''}
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+      <input class="book-input" id="edit_num_${containerId}" type="number" value="${num}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
+      <input class="book-input" id="edit_pages_${containerId}" type="number" value="${pages}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
+      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}','${eid}','${containerId}',${isPlanned})">&#10003; Kaydet</button>
+      <button class="btn btn-sm" style="font-size:.72rem;background:rgba(100,160,200,.15);color:rgba(100,180,220,.9)" onclick="closeEditSeriesBook('${containerId}')">Iptal</button>
+    </div>`;
+  return div;
+}
+
 function openEditSeriesBook(evt, seriesId, eid){
   // Inline edit — kitabın altında açılan form
   const containerId = 'seriesEditForm_'+seriesId+'_'+eid;
@@ -801,21 +854,7 @@ function openEditSeriesBook(evt, seriesId, eid){
   const data = mySeriesData();
   const ser = data.series[seriesId];
   if(!ser) return;
-  const isPlanned = !!(bk.planned||bk.manualTitle);
-  const div = document.createElement('div');
-  div.id = containerId;
-  div.style.cssText = 'margin-top:.4rem;padding:.6rem .75rem;background:rgba(44,80,107,.18);border:1px solid rgba(100,160,200,.35);border-left:3px solid rgba(100,180,220,.7);border-radius:6px;display:flex;flex-direction:column;gap:.4rem';
-  div.innerHTML = `
-    ${isPlanned?`<div style="display:flex;gap:.4rem;flex-wrap:wrap">
-      <input class="book-input" id="edit_title_${containerId}" type="text" value="${(bk.manualTitle||'').replace(/"/g,'&quot;')}" placeholder="Kitap adı" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
-      <input class="book-input" id="edit_author_${containerId}" type="text" value="${(bk.manualAuthor||'').replace(/"/g,'&quot;')}" placeholder="Yazar" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
-    </div>`:''}
-    <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-      <input class="book-input" id="edit_num_${containerId}" type="number" value="${bk.num||''}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
-      <input class="book-input" id="edit_pages_${containerId}" type="number" value="${bk.pages||''}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
-      <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}','${eid}','${containerId}',${isPlanned})">&#10003; Kaydet</button>
-      <button class="btn btn-sm" style="font-size:.72rem;background:rgba(100,160,200,.15);color:rgba(100,180,220,.9)" onclick="closeEditSeriesBook('${containerId}')">Iptal</button>
-    </div>`;
+  const div = _buildSeriesEditFormEl(seriesId, eid, bk);
   const btn = evt.target.closest('button');
   const item = btn ? (btn.closest('.series-book-item') || btn.closest('[data-grp-book]')) : null;
   if(item){
