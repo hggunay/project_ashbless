@@ -961,7 +961,6 @@ function renderSeriesList(){
   // görünmeyip grup kartının içinde gösterilecekler, sayfalama/sayaç onları saymamalı.
   const groupedSeriesIds = new Set();
   Object.values(data.paths||{}).forEach(path=>(path.steps||[]).forEach(s=>groupedSeriesIds.add(s.seriesId)));
-  allSeries.forEach(s=>{ if(s.groupId) groupedSeriesIds.add(s.id); });
   const paginatableSeries = allSeries.filter(s=>!groupedSeriesIds.has(s.id));
 
   // Tekil serileri paginate et
@@ -1185,8 +1184,6 @@ function renderGroupCards(seriesContainer){
   allPaths.forEach(path=>{
     (path.steps||[]).forEach(s=>groupedSeriesIds.add(s.seriesId));
   });
-  // Seri kaydındaki groupId de kontrol et
-  Object.values(allSeries).forEach(s=>{ if(s.groupId) groupedSeriesIds.add(s.id); });
   // Render öncesi hangi kartların açık olduğunu hatırla
   const openSeriesIds = new Set(
     [...seriesContainer.querySelectorAll('.series-books-list.open')]
