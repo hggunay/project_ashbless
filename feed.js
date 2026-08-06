@@ -9,6 +9,19 @@ let feedFilter='all';
 let lastFeedVisit=0;
 let feedPage=1, journalPage=1, privateNotesPage=1;
 
+// Feed kartındaki kitap başlığına tıklanınca çağrılır. openBook() kitabı
+// targetBooks() = db.books[viewing||me] içinde arıyor; kart başka bir
+// kullanıcıya aitse ve o kullanıcı şu an "viewing" değilse kitap orada
+// bulunamıyor ve modal sessizce açılmıyordu. viewMember()/stopViewing()
+// zaten uygulamanın geri kalanında (avatar/isim tıklaması) kullanılan,
+// test edilmiş context-değiştirme yolu — burada da onu kullanıyoruz.
+// Bkz. ö40-devir-teslim-notu #5.
+function openBookFromFeed(owner,bookId){
+  if(owner===me){ if(viewing) stopViewing(); }
+  else if(owner!==viewing){ viewMember(owner); }
+  openBook(bookId);
+}
+
 function filterFeed(f,el){
   feedFilter=f; feedPage=1;
   document.querySelectorAll('#feed .filter-tab').forEach(t=>t.classList.remove('active'));
@@ -237,38 +250,38 @@ function renderFeed(append=false){
       const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       if(card.type==='story'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='series_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleSeriesEventReaction('${card.u}',${card.seriesEventId},'${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleSeriesEventReaction('${card.u}',${card.seriesEventId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='country_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCountryEventReaction('${card.u}',${card.countryEventId},'${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleCountryEventReaction('${card.u}',${card.countryEventId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='streak_milestone'){
         const evId=`sm_${card.u}_${card.months}_${card.ts}`;
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleStreakMilestoneReaction('${card.u}','${evId}','${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleStreakMilestoneReaction('${card.u}','${evId}','${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='badge'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='reading_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}')">
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       const qi=card.type==='quote'?card.quoteIdx:-1;
-      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
+      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}${names}`:''}
       </button>`;
     }).join('');
@@ -351,7 +364,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
-      :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBook(${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
+      :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBookFromFeed('${card.u}',${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
     return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem;display:inline-flex;align-items:center;cursor:pointer" onclick="viewMember('${card.u}')">${avatarHtml(card.userAvatar,"1.5rem")}</span>
@@ -488,7 +501,25 @@ function toggleFeedText(cardKey){
   btn.textContent=isOpen?'daha fazla':'daha az';
 }
 
-function toggleSeriesEventReaction(owner,eventId,reaction){
+// Tıklanan reaksiyon butonunu bulup pop animasyonunu SADECE ona uygular.
+// (Eskiden animasyon CSS'te .active class'ına bağlıydı; her re-render'da tüm
+// kartlardaki tüm daha-önce-reaksiyon-verilmiş butonlar yeniden oluşturulduğu
+// için hepsi birden animasyon oynatıyordu. Bkz. ö40-devir-teslim-notu #5.)
+function flashReactionPop(oldBtn){
+  if(!oldBtn||!oldBtn.dataset) return;
+  const key=oldBtn.dataset.cardkey, r=oldBtn.dataset.r;
+  if(key===undefined||r===undefined) return;
+  const btns=document.querySelectorAll(`.journal-reaction-btn[data-cardkey="${CSS.escape(key)}"]`);
+  for(const b of btns){
+    if(b.dataset.r===r){
+      b.classList.add('reaction-pop');
+      b.addEventListener('animationend',()=>b.classList.remove('reaction-pop'),{once:true});
+      break;
+    }
+  }
+}
+
+function toggleSeriesEventReaction(owner,eventId,reaction,btnEl){
   if(!db.seriesEvents||!db.seriesEvents[owner]) return;
   const ev=db.seriesEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
@@ -500,10 +531,10 @@ function toggleSeriesEventReaction(owner,eventId,reaction){
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.seriesName||'seri');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
-function toggleStoryReaction(storyOwner,storyId,reaction){
+function toggleStoryReaction(storyOwner,storyId,reaction,btnEl){
   if(!db.stories||!db.stories[storyOwner]) return;
   const story=db.stories[storyOwner].find(s=>s.id===storyId);
   if(!story) return;
@@ -515,10 +546,10 @@ function toggleStoryReaction(storyOwner,storyId,reaction){
     story.reactions[me].push(reaction);
     if(storyOwner!==me) pushReactionNotif(storyOwner,me,reaction,story.title||'hikâye');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
-function toggleStreakMilestoneReaction(owner,eventId,reaction){
+function toggleStreakMilestoneReaction(owner,eventId,reaction,btnEl){
   if(!db.streakEvents||!db.streakEvents[owner]) return;
   const ev=db.streakEvents[owner].find(e=>`sm_${owner}_${e.months}_${e.ts}`===eventId);
   if(!ev) return;
@@ -530,10 +561,10 @@ function toggleStreakMilestoneReaction(owner,eventId,reaction){
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.months+' aylık seri');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
-function toggleCountryEventReaction(owner,eventId,reaction){
+function toggleCountryEventReaction(owner,eventId,reaction,btnEl){
   if(!db.countryEvents||!db.countryEvents[owner]) return;
   const ev=db.countryEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
@@ -545,10 +576,10 @@ function toggleCountryEventReaction(owner,eventId,reaction){
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
-function toggleBadgeEventReaction(owner,eventId,reaction){
+function toggleBadgeEventReaction(owner,eventId,reaction,btnEl){
   if(!db.badgeEvents||!db.badgeEvents[owner]) return;
   const ev=db.badgeEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
@@ -560,10 +591,10 @@ function toggleBadgeEventReaction(owner,eventId,reaction){
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.name||'rozet');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
-function toggleReadingEventReaction(owner,eventId,reaction){
+function toggleReadingEventReaction(owner,eventId,reaction,btnEl){
   if(!db.readingEvents||!db.readingEvents[owner]) return;
   const ev=db.readingEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
@@ -575,7 +606,7 @@ function toggleReadingEventReaction(owner,eventId,reaction){
     ev.reactions[me].push(reaction);
     if(owner!==me) pushReactionNotif(owner,me,reaction,ev.bookTitle||'kitap');
   }
-  saveDb();renderFeed();
+  saveDb();renderFeed();flashReactionPop(btnEl);
 }
 
 // Kullanıcının kendi rozet/okuma-olayı kartını akıştan silmesi — küçük ✕, inline "emin misin?" onayı
@@ -1086,7 +1117,7 @@ function toggleCardReaction(type,bookOwner,bookId,quoteIdx,reaction,btnEl){
     reactObj[me].push(reaction);
     if(bookOwner!==me) pushReactionNotif(bookOwner,me,reaction,book.title||'kitap');
   }
-  saveDb();renderJournal();renderFeed();
+  saveDb();renderJournal();renderFeed();flashReactionPop(btnEl);
 }
 
 function copyCardQuote(bookOwner,bookId,quoteIdx){
