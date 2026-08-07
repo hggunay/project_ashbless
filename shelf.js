@@ -327,6 +327,22 @@ function shelfShowMore(shelfId,count){
   renderShelf();
 }
 
+function toggleShelfAddSection(forceOpen){
+  const body=document.getElementById('shelfAddAccBody');
+  const btn=document.getElementById('shelfAddToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+}
+function toggleMagAddSection(forceOpen){
+  const body=document.getElementById('magAddAccBody');
+  const btn=document.getElementById('magAddToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+}
 function renderShelfSelect(){
   const sel=document.getElementById('shelfSelect');
   if(!sel) return;

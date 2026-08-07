@@ -902,8 +902,22 @@ try{
       </div>
       <div class="stats-row" id="statsRow"></div>
       <div class="add-section" id="addBookSection">
+        <button class="btn btn-primary" id="addBookToggleBtn" onclick="toggleAddBookSection()">+ Kitap Ekle</button>
+        <div class="acc-body" id="addBookAccBody">
         <div class="section-title">📖 Kitap Ekle</div>
-        <!-- Her zaman görünür: kitap adı/ISBN + yazar -->
+        <!-- Okuma durumu — panel açılınca her zaman görünür -->
+        <div class="chip-group-label" style="margin-bottom:.4rem">📖 Okuma durumu</div>
+        <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
+          <span class="chip" data-val="reading" onclick="selectReadingTime(this)">📖 Okuyorum</span>
+          <span class="chip" data-val="new" onclick="selectReadingTime(this)">✅ Okudum</span>
+          <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım</span>
+          <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Eskiden okudum</span>
+          <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Listeye ekle</span>
+		  <span class="chip" data-val="coreading" onclick="selectReadingTime(this)">👥 Birlikte Okuyalım</span>
+        </div>
+
+        <div class="acc-body" id="addBookFormBody">
+        <!-- Kitap adı/ISBN + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
           <div class="field-group autocomplete-wrap" style="grid-column:1/-1">
             <span class="field-label">Kitap Adı veya ISBN *</span>
@@ -919,17 +933,7 @@ try{
           </div>
           <div class="field-group" style="grid-column:1/-1"><span class="field-label">Yazar <span style="opacity:.5;font-weight:400">(girilirse eşleştirme daha doğru olur)</span></span><input class="book-input" id="bookAuthor" type="text" placeholder="Yazar adı — isteğe bağlı"/></div>
         </div>
-        <!-- Okuma durumu — her zaman görünür -->
-        <div class="chip-group-label" style="margin-bottom:.4rem">📖 Okuma durumu</div>
-        <div class="chip-group" id="readingTimeChips" style="margin-bottom:.75rem">
-          <span class="chip active" data-val="reading" onclick="selectReadingTime(this)">📖 Okuyorum</span>
-          <span class="chip" data-val="new" onclick="selectReadingTime(this)">✅ Okudum</span>
-          <span class="chip" data-val="paused" onclick="selectReadingTime(this)">🚧 Yarım</span>
-          <span class="chip" data-val="past" onclick="selectReadingTime(this)">📦 Eskiden okudum</span>
-          <span class="chip" data-val="wishlist" onclick="selectReadingTime(this)">🔖 Listeye ekle</span>
-		  <span class="chip" data-val="coreading" onclick="selectReadingTime(this)">👥 Birlikte Okuyalım</span>
-        </div>
-		
+
 <!-- Birlikte okuma alanı -->
         <div id="addFields-coreading" style="display:none;margin-bottom:.75rem">
           <div class="field-group">
@@ -983,6 +987,10 @@ try{
           <button class="btn btn-sm" onclick="useExistingSeriesName()" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)">Mevcut Adı Kullan</button>
           <button class="btn btn-sm" onclick="closeSeriesConfirm()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
         </div>
+        </div><!-- /addBookFormBody -->
+
+        <button class="btn btn-sm" onclick="toggleAddBookSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+        </div><!-- /addBookAccBody -->
       </div>
       <div class="card">
         <div class="card-body" style="padding:.75rem">
@@ -1087,8 +1095,16 @@ try{
       <!-- YAYINLAR sekmesi -->
       <div id="jPanel-public">
       <!-- Yeni Defter Girişi — EN ÜSTTE -->
-      <div class="add-section" style="margin-bottom:1rem">
+      <div class="add-section" id="addJournalSection" style="margin-bottom:1rem">
+        <button class="btn btn-primary" id="addJournalToggleBtn" onclick="toggleAddJournalSection()">+ Yeni Giriş Ekle</button>
+        <div class="acc-body" id="addJournalAccBody">
         <div class="section-title">✏️ Yeni Giriş Ekle</div>
+        <div class="chip-group-label">Giriş Türü</div>
+        <div class="chip-group" id="journalEntryTypeChips" style="margin-bottom:.75rem">
+          <span class="chip" data-val="review" onclick="selectJournalEntryType(this)">📖 Değerlendirme</span>
+          <span class="chip" data-val="quote" onclick="selectJournalEntryType(this)">💬 Alıntı</span>
+        </div>
+        <div class="acc-body" id="addJournalFormBody">
         <div class="field-group" style="margin-bottom:.75rem">
           <span class="field-label">Kitap Seç *</span>
           <div class="autocomplete-wrap">
@@ -1097,11 +1113,6 @@ try{
             <div class="autocomplete-list" id="journalBookAcList" style="display:none"></div>
             <input type="hidden" id="journalBookSelect" value=""/>
           </div>
-        </div>
-        <div class="chip-group-label">Giriş Türü</div>
-        <div class="chip-group" id="journalEntryTypeChips" style="margin-bottom:.75rem">
-          <span class="chip active" data-val="review" onclick="selectJournalEntryType(this)">📖 Değerlendirme</span>
-          <span class="chip" data-val="quote" onclick="selectJournalEntryType(this)">💬 Alıntı</span>
         </div>
         <div id="journalReviewWrap">
           <div class="field-group" style="margin-bottom:.5rem">
@@ -1139,6 +1150,9 @@ try{
           <button class="btn btn-primary" onclick="addJournalEntry()">+ Ekle</button>
           <div class="status-msg" id="journalEntryStatus"></div>
         </div>
+        </div><!-- /addJournalFormBody -->
+        <button class="btn btn-sm" onclick="toggleAddJournalSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+        </div><!-- /addJournalAccBody -->
       </div>
       <!-- Defterim listesi -->
       <div class="card">
@@ -1193,6 +1207,8 @@ try{
       </div>
       <!-- Hikâye Ekle formu -->
       <div class="add-section" id="addStorySection">
+        <button class="btn btn-primary" id="addStoryToggleBtn" onclick="toggleAddStorySection()">+ Hikâye Ekle</button>
+        <div class="acc-body" id="addStoryAccBody">
         <div class="section-title">📖 Hikâye Ekle</div>
         <!-- Her zaman görünür: başlık + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
@@ -1256,6 +1272,8 @@ try{
           <button class="btn btn-primary" onclick="addStory()">+ Hikâye Ekle</button>
           <div class="status-msg" id="addStoryStatus"></div>
         </div>
+        <button class="btn btn-sm" onclick="toggleAddStorySection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+        </div><!-- /addStoryAccBody -->
       </div>
       <!-- Tsundoku -->
       <div class="card" id="storyWishlistCard" style="display:none">
@@ -1291,7 +1309,9 @@ try{
       <!-- OLUŞTURMA FORMLARI -->
       <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:1.25rem">
         <!-- Yeni Seri -->
-        <div class="add-section" style="flex:1;min-width:260px">
+        <div class="add-section" id="addSeriesSection" style="flex:1;min-width:260px">
+          <button class="btn btn-primary" id="addSeriesToggleBtn" onclick="toggleAddSeriesSection()">+ Yeni Seri</button>
+          <div class="acc-body" id="addSeriesAccBody">
           <div class="section-title">➕ Yeni Seri</div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
             <div style="flex:1;min-width:150px">
@@ -1322,14 +1342,20 @@ try{
             <input class="book-input" id="newSeriesBulkAuthor" type="text" placeholder="Frank Herbert"/>
           </div>
           <div class="status-msg" id="seriesCreateStatus" style="margin-top:.4rem"></div>
+          <button class="btn btn-sm" onclick="toggleAddSeriesSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+          </div><!-- /addSeriesAccBody -->
         </div>
         <!-- Yeni Grup -->
-        <div class="add-section" style="flex:0 0 220px;min-width:200px">
+        <div class="add-section" id="addPathSection" style="flex:0 0 220px;min-width:200px">
+          <button class="btn btn-primary" id="addPathToggleBtn" onclick="toggleAddPathSection()" style="width:100%">+ Yeni Grup</button>
+          <div class="acc-body" id="addPathAccBody">
           <div class="section-title">🗂 Yeni Grup</div>
           <div class="field-label" style="margin-bottom:.3rem">Grup Adı *</div>
           <input class="book-input" id="newPathName" type="text" placeholder="örn: Asimov Evreni"/>
           <button class="btn btn-primary" style="margin-top:.5rem;width:100%" onclick="createPath()">+ Oluştur</button>
           <div class="status-msg" id="pathCreateStatus" style="margin-top:.4rem"></div>
+          <button class="btn btn-sm" onclick="toggleAddPathSection(false)" style="margin-top:.75rem;width:100%;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+          </div><!-- /addPathAccBody -->
         </div>
       </div>
 
@@ -1376,6 +1402,8 @@ try{
       <!-- KİTAPLAR -->
       <div id="ssp-books">
       <div class="add-section" id="shelfAddSection">
+        <button class="btn btn-primary" id="shelfAddToggleBtn" onclick="toggleShelfAddSection()">+ Raf / Kitap Ekle</button>
+        <div class="acc-body" id="shelfAddAccBody">
         <div class="section-title">🗄️ Kitap Rafım</div>
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <input class="book-input" id="shelfNewName" type="text" placeholder="Raf adı (örn: Odamdaki Kitaplık)" style="flex:1;min-width:160px"/>
@@ -1411,6 +1439,8 @@ try{
             <button class="btn btn-sm" onclick="closeShelfDup()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
           </div>
         </div>
+        <button class="btn btn-sm" onclick="toggleShelfAddSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+        </div><!-- /shelfAddAccBody -->
       </div>
       <div class="card" style="margin-bottom:.75rem">
         <div class="card-body" style="padding:.6rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
@@ -1430,6 +1460,8 @@ try{
       <!-- DERGİLER -->
       <div id="ssp-mags" style="display:none">
       <div class="add-section" id="magAddSection">
+        <button class="btn btn-primary" id="magAddToggleBtn" onclick="toggleMagAddSection()">+ Raf / Dergi Ekle</button>
+        <div class="acc-body" id="magAddAccBody">
         <div class="section-title">📰 Dergilerim</div>
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <input class="book-input" id="magNewName" type="text" placeholder="Raf adı (örn: Bilim Dergileri)" style="flex:1;min-width:160px"/>
@@ -1458,6 +1490,8 @@ try{
             <button class="btn btn-sm" onclick="closeMagDup()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
           </div>
         </div>
+        <button class="btn btn-sm" onclick="toggleMagAddSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
+        </div><!-- /magAddAccBody -->
       </div>
       <div class="card" style="margin-bottom:.75rem">
         <div class="card-body" style="padding:.6rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
@@ -3371,7 +3405,46 @@ function getFormats(){return[...document.querySelectorAll('#formatChips .chip.ac
 function selectReadingTime(el){
   document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));
   el.classList.add('active');
+  const formBody=document.getElementById('addBookFormBody');
+  if(formBody) formBody.classList.add('open');
   updateAddFormFields();
+}
+function toggleAddBookSection(forceOpen){
+  const body=document.getElementById('addBookAccBody');
+  const btn=document.getElementById('addBookToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+  if(!willOpen){
+    const formBody=document.getElementById('addBookFormBody');
+    if(formBody) formBody.classList.remove('open');
+    document.querySelectorAll('#readingTimeChips .chip').forEach(c=>c.classList.remove('active'));
+  }
+}
+function toggleAddStorySection(forceOpen){
+  const body=document.getElementById('addStoryAccBody');
+  const btn=document.getElementById('addStoryToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+}
+function toggleAddSeriesSection(forceOpen){
+  const body=document.getElementById('addSeriesAccBody');
+  const btn=document.getElementById('addSeriesToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+}
+function toggleAddPathSection(forceOpen){
+  const body=document.getElementById('addPathAccBody');
+  const btn=document.getElementById('addPathToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
 }
 function updateAddFormFields(){
   const val=getReadingTime();

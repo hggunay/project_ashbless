@@ -699,6 +699,21 @@ function selectJournalEntryType(el){
   const val=el.dataset.val;
   document.getElementById('journalReviewWrap').style.display=val==='review'?'':'none';
   document.getElementById('journalQuoteWrap').style.display=val==='quote'?'':'none';
+  const formBody=document.getElementById('addJournalFormBody');
+  if(formBody) formBody.classList.add('open');
+}
+function toggleAddJournalSection(forceOpen){
+  const body=document.getElementById('addJournalAccBody');
+  const btn=document.getElementById('addJournalToggleBtn');
+  if(!body) return;
+  const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
+  body.classList.toggle('open',willOpen);
+  if(btn) btn.style.display=willOpen?'none':'';
+  if(!willOpen){
+    const formBody=document.getElementById('addJournalFormBody');
+    if(formBody) formBody.classList.remove('open');
+    document.querySelectorAll('#journalEntryTypeChips .chip').forEach(c=>c.classList.remove('active'));
+  }
 }
 
 function setJournalQuickRating(val){
