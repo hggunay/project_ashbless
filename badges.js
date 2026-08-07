@@ -596,3 +596,702 @@ function booksForBadge(badge,books){
   if(['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(id)) return [];
   return [];
 }
+
+// ── Rozet gösterim / kazanma / bildirim mantığı (Ö40, 2026-08-06) ──
+// ── ROZET KONTROLÜ (ortak) ──────────────────────────────────────
+// prevValidBooks: değişiklikten ÖNCE alınmış bir snapshot olmalı — snapshotValidBooks() kullan.
+function snapshotValidBooks(){
+  return validBooks().map(b=>({...b, genres:[...(b.genres||[])], formats:[...(b.formats||[])], quotes:(b.quotes||[]).map(q=>({...q, reactions:{...(q.reactions||{})}}))}));
+}
+// Rozet karşılaştırması için "önceki" bağlamın anlık görüntüsü — şu an sadece
+// stories'i kapsıyor (Ö9'un ilk dilimi). İleride seri verisi de buraya eklenecek.
+function snapshotBadgeContext(){
+  return{
+    stories:((db.stories&&db.stories[me])||[]).map(s=>({...s})),
+    readingCount:(db.books[me]||[]).filter(b=>b.readingStatus==='reading').length,
+  };
+}
+function checkAndAwardBadges(prevValidBooks, delay=500, prevCtx){
+  const newlyEarned=[];
+  const newlyEarnedBadges=[];
+  const newValid=validBooks();
+  const newCtx=badgeCtxFor(me);
+  // prevCtx verilmezse (çoğu tetikleyici stories'e dokunmuyor) yeni bağlamla aynı kabul
+  // edilir — eski davranış korunur, sadece stories değişen yerlerde (addStory) fark eder.
+  const usedPrevCtx=prevCtx||newCtx;
+  BADGE_CATS.forEach(cat=>{
+    const allB=cat.chains?cat.chains.flatMap(c=>c.badges):(cat.badges||[]);
+    allB.forEach(b=>{
+      if(!bstat(b,prevValidBooks,usedPrevCtx).earned&&bstat(b,newValid,newCtx).earned){
+        newlyEarned.push(b.id);
+        newlyEarnedBadges.push(b);
+      }
+    });
+  });
+  if(newlyEarned.length){
+    launchConfetti('badge');
+    newlyEarned.forEach(id=>pendingShimmerBadges.add(id));
+    setTimeout(()=>notifyBadgesSequentially(newlyEarnedBadges),delay);
+    if(!db.badgeEvents) db.badgeEvents={};
+    if(!db.badgeEvents[me]) db.badgeEvents[me]=[];
+    newlyEarnedBadges.forEach(b=>{
+      db.badgeEvents[me].push({
+        id:'bd_'+Date.now()+'_'+b.id,
+        badgeId:b.id, tier:b.tier, icon:b.icon, name:b.name, desc:b.desc,
+        ts:Date.now(), reactions:{}
+      });
+    });
+    saveDb();
+  }
+  return newlyEarnedBadges;
+}
+
+function notifyBadgesSequentially(badges){
+  if(!badges.length) return;
+  const tierLabels={bronze:'🥉',silver:'🥈',gold:'🥇',diamond:'💎'};
+  badges.forEach((b,i)=>{
+    setTimeout(()=>{
+      const tier=tierLabels[b.tier]||'🏅';
+      notify(`${tier} Rozet Kazandın!`,`${b.icon} ${b.name}`);
+      // Shadow aura efekti
+      if(['hor1','hor2','hor3','hor4'].includes(b.id)) triggerShadowEffect('hor');
+      else if(['ger1','ger2','ger3','ger4'].includes(b.id)) triggerShadowEffect('ger');
+    }, i*2000);
+  });
+}
+
+// ── FILTER ────────────────────────────────────────────────────
+function filterBadges(f,el){
+  badgeFilter=f;openBadgeId=null;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderBadges();
+}
+
+function confirmResetBadges(){
+  const btn=document.querySelector('[onclick="confirmResetBadges()"]');
+  if(btn.dataset.confirming==='1'){
+    (db.books[me]||[]).forEach(b=>{ b.retroactive=true; });
+    ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.retroactive=true; });
+    saveDb();renderSafe();renderBadges();
+    btn.textContent='🏅 Rozetleri Sıfırla';
+    btn.dataset.confirming='';
+    notify('🏅 Rozetler Sıfırlandı','Tüm kitap ve hikayelerin "geçmişte okundu" olarak işaretlendi.');
+    return;
+  }
+  btn.dataset.confirming='1';
+  btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
+  btn.style.background='rgba(160,82,45,.5)';
+  setTimeout(()=>{btn.textContent='🏅 Rozetleri Sıfırla';btn.dataset.confirming='';btn.style.background='';},4000);
+}
+
+let openBadgeId=null;
+
+// Rozet görseli (GitHub'dan) yüklenemezse emoji ikonuna düş
+function badgeImgFallback(el,icon){
+  try{ el.outerHTML='<span class="badge-icon" style="font-size:3rem;display:block;text-align:center;padding:1.2rem 0">'+icon+'</span>'; }catch(e){}
+}
+
+function renderBadges(){
+  const books=validBooks();
+  let prefs={};
+  try{prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
+
+  // Tüm rozetleri düz listede topla
+  function allBadgesOf(cat){
+    if(cat.chains) return cat.chains.flatMap(c=>c.badges);
+    return cat.badges||[];
+  }
+
+  // Toplam rozet sayısı
+  let totalEarned=0,totalAll=0;
+  BADGE_CATS.forEach(cat=>{allBadgesOf(cat).forEach(b=>{totalAll++;if(bstat(b,books).earned)totalEarned++;});});
+  const totalEl=document.getElementById('badgeTotalInfo');
+  if(totalEl) totalEl.textContent=`${totalEarned} / ${totalAll} rozet kazanıldı`;
+
+  const tierLabels={bronze:'🥉 Bronz',silver:'🥈 Gümüş',gold:'🥇 Altın',diamond:'💎 Elmas'};
+
+  function badgeCardHtml(b){
+    const s=bstat(b,books);
+    const tier=b.tier||'gold';
+    const isSecret=b.id.startsWith('secret_')||b.id.startsWith('comb_');
+    const isNew=pendingShimmerBadges.has(b.id);
+    // ── ROZET AURA HARİTASI ──
+    // Her rozet ailesinin ID listesi ve karşılık gelen CSS aura sınıfı.
+    // Yeni aile eklemek için buraya satır eklemek yeterli.
+    const BADGE_AURA_MAP = [
+      { ids: ['fan1','fan2','fan3','fan4'],                                                                           cls: 'badge-aura-fantasy' }, // 💜 Arcane Fantastik — mor/altın
+      { ids: ['sf1','sf2','sf3','sf4'],                                                                              cls: 'badge-aura-sf'      }, // 🔵 Arcane Bilim Kurgu — mavi/cyan
+      { ids: ['myt1','myt2','myt3','myt4'],                                                                          cls: 'badge-aura-myth'    }, // 🟡 Arcane Mitoloji — altın/amber
+      { ids: ['his1','his2','his3','his4','phi1','phi2','phi3','phi4','ess1','ess2','ess3','ess4','sci1','sci2','sci3','sci4'], cls: 'badge-aura-neutral' }, // 🟤 Neutral — sepia
+      { ids: ['psy1','psy2','psy3','psy4'],                                                                          cls: 'badge-aura-human'   }, // 🟣 Human/Inner — lavanta
+      { ids: ['det1','det2','det3','det4'],                                                                          cls: 'badge-aura-action'  }, // ⚫ Action Polisiye — koyu gri
+    ];
+    let auraClass='';
+    if(s.earned){
+      const found = BADGE_AURA_MAP.find(entry => entry.ids.includes(b.id));
+      if(found) auraClass = ' ' + found.cls;
+    }
+    const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
+    const isOpen2=openBadgeId===b.id;
+    const relBooks=booksForBadge(b,books);
+    const MAX_BOOKS=5;
+    const storyCount=relBooks._storyCount||0;
+    const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
+    const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
+    const isShelfBadge=b.id==='secret_bedside'||b.id==='secret_forbidden';
+    const isForbiddenBadge=b.id==='secret_forbidden';
+    const shelfLink=isShelfBadge&&s.earned?(
+      b.id==='secret_bedside'
+        ?`<div style="margin-top:.75rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.7">İz bırakan kitapları biriktirdin. Artık, sana ait bir köşe var.<br>Okuma yolculuğunun sonunda, <span onclick="goToShelf('bedside')" style="color:var(--gold);text-decoration:underline;cursor:pointer;font-weight:600">başucu rafın</span> hazır.</div>`
+        :`<div style="margin-top:.75rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.7">Bazı kapılar merakla değil, bedelle açılır.<br>Geri dönmeyeceğini bilerek okudun.<br><span onclick="goToShelf('forbidden')" style="color:#7c3aed;text-decoration:underline;text-decoration-color:#4c1d95;text-underline-offset:3px;cursor:pointer;font-weight:600;border-bottom:1px solid #4c1d95">Yasaklı rafın</span> açıldı.</div>`
+    ):'';
+    const bookListHtml=relBooks.length===0&&!storyCount
+      ? (isSerisBadge||b.id.startsWith('secret_'))
+        ? `<div style="font-size:.88rem;color:var(--ink);padding:.4rem 0;font-style:italic">${b.desc}</div>${shelfLink}`
+        : '<div style="font-style:italic;opacity:.5;font-size:.8rem;padding:.5rem 0">Henüz ilgili kitap yok.</div>'
+      :relBooks.slice(0,MAX_BOOKS).map(bk=>'<div class="badge-book-item" onclick="openBook('+bk.id+');event.stopPropagation()">'
+          +'<span style="font-size:.85rem;font-weight:600;color:var(--ink)">'+bk.title+'</span>'
+          +(bk.author?'<span style="font-size:.75rem;color:var(--rust);font-style:italic"> — '+bk.author+'</span>':'')
+          +(bk.retroactive?'<span class="badge-book-past">geçmiş</span>':'')
+        +'</div>').join('')
+      +(relBooks.length>MAX_BOOKS?`<div style="font-size:.75rem;color:var(--rust);opacity:.6;font-style:italic;padding:.3rem 0">...ve ${relBooks.length-MAX_BOOKS} kitap daha</div>`:'')
+      +storyNote;
+    const tooltipHtml=isOpen2?`
+      <div class="badge-tooltip open" id="tooltip-${b.id}" onclick="event.stopPropagation()">
+        <div class="badge-tooltip-title">${isSerisBadge?'📖 Seri Bilgisi':'📚 İlgili Kitaplar ('+relBooks.length+')'}</div>
+        ${bookListHtml}
+      </div>`:'';
+    return`<div class="badge-tooltip-wrap" id="twrap-${b.id}">
+      ${tooltipHtml}
+      <div class="badge-card ${cls} ${isNew?'badge-shine-new':''} ${b.id==='secret_multi'?(isNew?'foggy-badge':'foggy-badge-rest'):''}" onclick="toggleBadgeDetail('${b.id}')" ${b.imgSrc?`style="overflow:hidden;position:relative;"`:''}>
+        ${b.id==='secret_multi'?'<span class="foggy-bug" title="şşt, kimseye söyleme">🐛</span>':''}
+        ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
+        ${isNew?'<span class="badge-new-dot"></span>':''}
+        ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
+        ${b.imgSrc?`
+          <div style="padding:.6rem .6rem .2rem;display:flex;justify-content:center;">
+            <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" onerror="badgeImgFallback(this,'${b.icon}')" />
+          </div>
+          <div style="padding:.3rem .6rem .5rem;text-align:center;">
+            <div class="badge-name" style="font-size:.78rem;margin-bottom:.25rem">${b.name}</div>
+            <div class="progress-wrap" style="margin:.15rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+            <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+          </div>
+        `:`
+        <div class="tier-label ${tier}">${tierLabels[tier]||tier}</div>
+        <span class="badge-icon">${b.icon}</span>
+        <div class="badge-name">${b.name}</div>
+        <div class="badge-desc">${b.desc}</div>
+        <div class="progress-wrap"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+        <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+        ${['streak3','streak6','streak12'].includes(b.id)?`<div style="font-family:'Space Mono',monospace;font-size:.55rem;color:var(--rust);opacity:.7;margin-top:.15rem">🔥 ${currentReadingStreak(books,new Date().getFullYear())} ay (${new Date().getFullYear()})</div>`:''}
+        ${!isOpen2?'':''}`}
+      </div>
+    </div>`;
+  }
+
+  document.getElementById('badgeContainer').innerHTML=BADGE_CATS.map((cat,ci)=>{
+    const allBadges=allBadgesOf(cat);
+    const catEarned=allBadges.filter(b=>bstat(b,books).earned).length;
+    const catTotal=allBadges.length;
+    const hasNew=allBadges.some(b=>pendingShimmerBadges.has(b.id));
+    const key='badgeCat-'+ci;
+    // Bir filtre aktifken (Kazanılanlar/İlerleyenler/Kilitli) kategoriler varsayılan
+    // olarak açık gelsin — kullanıcı zaten "sadece bunu göster" demiş, tek tek açması
+    // gerekmesin. "Tümü" görünümünde eski davranış (kapalı başla) korunuyor. Kullanıcının
+    // kendi elle kapattığı/açtığı bir tercihi varsa (prefs[key]) her zaman ona uyulur.
+    const isOpen=prefs[key]!==undefined?prefs[key]:(badgeFilter!=='all');
+
+    const chains=(cat.chains||[]).map(chain=>{
+      const filtered=chain.badges.filter(b=>{
+        const s=bstat(b,books);
+        const isSecret=b.id.startsWith('secret_')||b.id.startsWith('comb_');
+        // Gizli rozetler kazanılmamışsa hiç gösterme
+        if(isSecret&&!s.earned) return false;
+        if(badgeFilter==='earned') return s.earned;
+        if(badgeFilter==='progress') return !s.earned&&s.cur>0;
+        if(badgeFilter==='locked') return s.cur===0&&!s.earned;
+        return true;
+      });
+      return {...chain, badges:filtered};
+    }).filter(c=>c.badges.length>0);
+
+    if(!chains.length) return'';
+
+    const chainsHtml=chains.map(chain=>{
+      const chainEarned=chain.badges.filter(b=>bstat(b,books).earned).length;
+      const chainTotal=chain.badges.length;
+      const chainComplete=chainEarned===chainTotal;
+      const chainKey='chain-'+chain.id;
+      const chainOpen=prefs[chainKey]!==undefined?prefs[chainKey]:true;
+      return`<div class="badge-chain">
+        <div class="badge-chain-header" style="cursor:pointer" onclick="toggleSection('${chainKey}')">
+          <span class="badge-chain-label">${chain.label}</span>
+          <span style="display:flex;align-items:center;gap:.4rem">
+            <span class="badge-chain-count" style="color:${chainComplete?'var(--gold)':'var(--rust)'}">${chainEarned}/${chainTotal}${chainComplete?' ✦':''}</span>
+            <span class="acc-arrow ${chainOpen?'open':''}" id="arr-${chainKey}">▶</span>
+          </span>
+        </div>
+        <div class="acc-body ${chainOpen?'open':''}" id="body-${chainKey}">
+          <div class="badge-chain-cards" style="padding-top:.4rem">${chain.badges.map(b=>badgeCardHtml(b)).join('')}</div>
+        </div>
+      </div>`;
+    }).join('');
+
+    return`<div class="badge-category">
+      <div class="category-label acc-header" onclick="toggleSection('${key}')" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between">
+        <span>${cat.label}${hasNew?'<span style="display:inline-block;width:7px;height:7px;background:var(--rust);border-radius:50%;margin-left:.4rem;vertical-align:middle"></span>':''}</span>
+        <span style="display:flex;align-items:center;gap:.5rem">
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:${catEarned===catTotal?'var(--gold)':'var(--rust)'};opacity:.8">${catEarned}/${catTotal}</span>
+          <span class="acc-arrow ${isOpen?'open':''}" id="arr-${key}">▶</span>
+        </span>
+      </div>
+      <div class="acc-body ${isOpen?'open':''}" id="body-${key}">
+        <div style="padding:.5rem">${chainsHtml}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Kazanılmış rozetlere 3D tilt efekti
+  document.querySelectorAll('.badge-card.earned').forEach(card=>{
+    card.addEventListener('mousemove',function(e){
+      const rect=card.getBoundingClientRect();
+      const x=e.clientX-rect.left;
+      const y=e.clientY-rect.top;
+      const rotateY=(x-rect.width/2)/6;
+      const rotateX=-(y-rect.height/2)/6;
+      card.style.transform=`rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.03)`;
+    });
+    card.addEventListener('mouseleave',function(){
+      card.style.transform='';
+    });
+  });
+}
+
+function openAnubisModal(){
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
+  if(!overlay) return;
+  title.textContent='🗝️ Ashbless\'in İzinde';
+  subtitle.textContent='Tim Powers · Anubis Kapıları';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+    <p style="margin-bottom:1rem">Zamanın çizgisel olmadığını fark ettin. Ashbless'in izini sürerken, aslında kendi izine rastladın.</p>
+    <p style="margin-bottom:1.5rem">Bazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.</p>
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1.5rem"></div>
+    <div style="font-family:'Playfair Display',serif;font-size:.85rem;color:var(--leather);margin-bottom:.5rem;letter-spacing:.05em;text-align:center">Gecenin On İki Saati</div>
+    <div style="background:rgba(201,162,39,.06);border-left:3px solid var(--gold);padding:.9rem 1.1rem;border-radius:0 4px 4px 0;margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif;font-style:italic;font-size:.92rem;color:var(--leather);line-height:2">
+        "Ve bir nehir uzanır<br>
+        Alacakaranlıkla şafak arasında.<br>
+        Ve saatler mesafedir, değişken gecenin<br>
+        Engin gelgitinde ölçülen —<br>
+        Korku duymayacak kadar felakete mahkûm,<br>
+        İhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor<br>
+        Gözkamaştırıcı bir ışık gibi parlayan karanlığın içine<br>
+        Gecenin On İki Saati'nde."
+      </div>
+      <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7;margin-top:.75rem;text-align:right">— William Ashbless (buluntu metin)</div>
+    </div>
+  </div>`;
+  overlay.classList.add('open');
+  launchConfetti('secret');
+}
+
+function openAshblessModal(){
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
+  if(!overlay) return;
+  title.textContent='🗝️ Project Ashbless';
+  subtitle.textContent='The Armchair Adventurers · 2026';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--leather);margin-bottom:.5rem;font-style:italic;text-align:center">"Gerçek bir macera için çok tembel; okumayı bırakmak için fazla meraklı."</div>
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.8rem auto 1rem"></div>
+    <p style="margin-bottom:.9rem">Okumayı oyunlaştırma fikri üzerine düşünürken rozet fikri aklıma geldi. Rozet adlarını ve açıklamalarını önce deftere yazdım, sonra Notion'da listeledim. Niyetim kazandığım rozetlerin yanına tek tek tik atabilmekti. Ancak bir kitabın birden fazla rozeti tetiklemesi, sistemi takip etmeyi giderek zorlaştırdı. Bir noktadan sonra bu, keyifli bir fikir olmaktan çıkıp küçük bir karmaşaya dönüştü. Aradım, düşündüm, bulamadım...</p>
+    <p style="margin-bottom:.9rem;font-style:italic;text-align:center">Bir gün...</p>
+    <p style="margin-bottom:.9rem">Evrim Ağacı'nda karşıma çıkan bir videoda, "hiç kodlama bilmeden bile Claude ile uygulama yapabilirsiniz" diyordu. Zaten aylardır aklımı meşgul eden rozet projem vardı. Bu cümle, ertelemek için kalan son bahaneyi de ortadan kaldırdı. Ve <strong>8 Mart 2026'da Project Ashbless başladı.</strong></p>
+    <p style="margin-bottom:.9rem">Projenin adı: <em>Project Ashbless.</em> İsim, o dönem okuyup çok beğendiğim <em>Anubis Kapıları</em> kitabından geliyor. Benim için özel bir yeri var — uzun süre etkisinden çıkamadığım, bittiğinde bir süre boşluğunu hissettiğim, bazı sahneleri zihnimde yeniden yeniden dönen kitaplardan biri.</p>
+    <p style="margin-bottom:.9rem;font-size:.88rem;color:var(--rust);font-style:italic">Ashbless kimdi? Köpek Surat Joe şimdi nerede, kime benziyor? Antoian Kardeşliği hâlâ faaliyet gösteriyor mu? Gecenin On İki Saati'nde ne demek? Ya Dr. Romany neyin peşinde? Bu film gibi maceranın neden hâlâ bir dizisi yok? Yoksa sen hâlâ Anubis Kapıları'nı okumadın mı?</p>
+    <p style="margin-bottom:1.2rem">Eğer bu yazıyı okuyorsan, uygulamanın her alanını en az bir kez kullanmışsın demektir. Yani Project Ashbless rozetini açtın. Kısacası: sistemi keşfettin.<br><span style="font-size:.9rem;opacity:.7">(Bir de üstüne küçük bir konfeti patlattık. Hak ettin. 🎉)</span></p>
+    <div style="border-top:1px solid rgba(201,162,39,.2);padding-top:1rem;margin-bottom:1rem">
+      <div style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--leather);margin-bottom:.6rem">📚 The Armchair Adventurers Okuma Kulübü</div>
+      <p style="font-size:.9rem;margin-bottom:.75rem">Mayıs 2018'den bu yana var. Resmî bir kuruluş tarihi yok — yazmamışız. Hâlâ acemiyiz. Ama belki de bu yüzden devam ediyoruz. 🙂</p>
+      <div style="font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);opacity:.8;margin-bottom:.5rem">KULÜP KURALLARI</div>
+      <div style="font-size:.82rem;line-height:2">
+        <div><strong>1.</strong> "Bakmadan Geçme."</div>
+        <div><strong>2.</strong> 1. Madde değiştirilemez ve değiştirilmesi teklif dahi edilemez.</div>
+        <div><strong>3.</strong> Kulüp üyesi, bir diğer üyenin bilgi alışverişini engelleyecek davranışlarda bulunmamalıdır.</div>
+        <div><strong>4.</strong> Kulüp üyesi, bir diğer üyenin bilgilenmesini tehlikeye düşürecek bir davranışta bulunmamalıdır.</div>
+        <div><strong>5.</strong> Kulüp üyesi, kendi inisiyatifini kullanarak kulüp haklarını bir başka üyeye devredemez.</div>
+        <div><strong>6.</strong> Yıl içerisinde periyodik olarak üyelerin bilgi akışı kontrol edilebilir. Kontroller mail ile yapılacaktır.</div>
+        <div><strong>7.</strong> Kulüp hakkında duyuru yapıldığında her üyeye ulaşıldığından emin olunmalıdır.</div>
+        <div><strong>8.</strong> Öneri ve eleştiriler yapıcı yönde olacaksa dile getirilecektir. Gereksiz fikirler ortaya atılıp beyindeki çöplüğün dolmasına izin verilmeyecektir.</div>
+        <div><strong>9.</strong> Kitap okuma esnasında mutlaka uykunun alınmış olması gerekmektedir.</div>
+        <div><strong>10.</strong> Kitap okuma esnasında beyin yorgun olmamalı; alkol, uyuşturucu, antidepresan vb. maddeler vücutta bulunmamalıdır.</div>
+        <div><strong>11.</strong> Kitap okurken eleştirel bakış açısı elden bırakılmamalıdır.</div>
+        <div><strong>12.</strong> Peyami Safa'nın dediği gibi, "öğüterek okumak." Kitabın ana fikrini taşıyan cümleleri ağır ağır okuyup kendimizle münakaşa etmeliyiz.</div>
+        <div><strong>13.</strong> Okuma bittiği andan itibaren uyumak.</div>
+        <div><strong>14.</strong> Yolculuğun kısa süreceği ulaşım araçlarında kitap okunmamalıdır.</div>
+        <div><strong>15.</strong> Okumaya başlamak için okuma arzusunun doğmasını beklememek. Okuma arzusu çoğu zaman birkaç satır okuduktan sonra başlar.</div>
+      </div>
+    </div>
+    <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);opacity:.6;text-align:right;margin-top:.5rem">Nimet & Gweluien · Kurucu Asil Üyeler</div>
+  </div>`;
+  overlay.classList.add('open');
+  launchConfetti('ashbless');
+  notify('🗝️ Project Ashbless','Uygulamanın tüm bölümlerini keşfettin!',true);
+}
+
+function openCreatorModal(){
+  const overlay=document.getElementById('modalOverlay');
+  const title=document.getElementById('modalTitle');
+  const subtitle=document.getElementById('modalSubtitle');
+  const body=document.getElementById('modalBody');
+  const footer=document.getElementById('modalFooter');
+  if(!overlay) return;
+
+  // Üst cümle bankası
+  const TOP_SENTENCES=[
+    'Bu ekranın görünmemesi gerekiyordu.',
+    'Yetkisiz erişim tespit edilmedi.',
+    'Bu bilgi herkese açık değil.',
+    'Sistem bu katmanı gizlemek üzere tasarlandı.',
+    'Buraya kadar gelmen beklenmiyordu.',
+    'Görmemen gereken bir şeye baktın.',
+    'Kayıt altına alındın.',
+    'Bu noktadan sonrası izleniyor.',
+    'Erişim verildi… geçici olarak.',
+  ];
+
+  // NODE FRAGMENT grupları
+  const NODE_FRAGMENTS=[
+    {label:'NODE FRAGMENT I — EARLY SIGNALS',   logs:['log_07: rozet sistemi başlangıç parametresi = kağıt tabanlı işaretleme','log_23: rozet zorluk dengesi yeniden hesaplandı']},
+    {label:'NODE FRAGMENT II — SYSTEM DRIFT',   logs:['log_04: sistem başlangıç modu = kişisel kullanım','log_31: ses çıktısı konfigürasyonu — dobby (kedim) tarafından seçildi','log_19: sistem yönlendirme değişikliği kaydedildi (birden fazla revizyon)']},
+    {label:'NODE FRAGMENT III — PARTIAL ACCESS', logs:['log_52: gizli veri alanları aktif (kısmi görünürlük: fark eden kullanıcılar)','log_03: proje başlatma tarihi = 08.03.2026']},
+    {label:'NODE FRAGMENT IV — MEMORY LEAKS',   logs:['log_44: geliştirme birimi = claude + gweluien','log_11: sistem tasarım modu = kişisel prototip','log_38: bug düzeltme sayısı = ∞ / kayıt tutulmadı','log_56: feature count = 50+']},
+    {label:'NODE FRAGMENT V — HIDDEN ROUTES',   logs:['log_27: change request state = persistent (override loop detected)','log_09: gece oturum sayacı = undefined / düşük güven']},
+    {label:'NODE FRAGMENT VI — UNSTABLE LOGS',  logs:['log_47: hata analiz süresi = %50+ toplam runtime','log_33: kaynak tüketimi (çay/kahve) = ölçülemez','log_16: ilham kaynağı = anubis kapıları + oturma birimi']},
+    {label:'NODE FRAGMENT VII — FINAL TRACE',   logs:['log_58: geliştirici kimliği = claude (anthropic) + hggunay // alias: gweluien']},
+    {label:'NODE FRAGMENT VIII — CONTROLLED ERRORS', logs:['log_29: bazı bug\'lar sistemden bilinçli olarak çıkarılmadı']},
+  ];
+
+  const topSentence=TOP_SENTENCES[Math.floor(Math.random()*TOP_SENTENCES.length)];
+  const fragment=NODE_FRAGMENTS[Math.floor(Math.random()*NODE_FRAGMENTS.length)];
+
+  title.textContent='✨ Yaratıcının Tanığı';
+  subtitle.textContent='yetkisiz erişim — devam ediliyor';
+  footer.innerHTML=`<button class="btn" onclick="closeModal()">Kapat</button>`;
+
+  body.innerHTML=`<div style="font-family:'Crimson Pro',serif;color:var(--ink);line-height:1.8;padding:.5rem 0">
+
+    <!-- Üst cümle -->
+    <div style="font-family:'Space Mono',monospace;font-size:.95rem;color:#1a1208;letter-spacing:.04em;text-align:center;padding:.75rem 0 1rem;border-bottom:1px solid rgba(201,162,39,.2);margin-bottom:1.2rem">${topSentence}</div>
+
+    <!-- NODE FRAGMENT -->
+    <div style="margin-bottom:1.2rem">
+      <div style="font-family:'Space Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.12em;color:var(--rust);opacity:.7;margin-bottom:.6rem">${fragment.label}</div>
+      <div id="creator-log-block" style="background:#0d0d0d;border-radius:4px;padding:.75rem 1rem;position:relative;overflow:hidden">
+        ${fragment.logs.map(l=>`<div class="creator-log-line" style="font-family:'Space Mono',monospace;font-size:.72rem;color:#39ff14;line-height:2;position:relative">${l}</div>`).join('')}
+        <div style="position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,0,.015) 2px,rgba(0,255,0,.015) 4px);border-radius:4px"></div>
+      </div>
+    </div>
+
+    <!-- Ayırıcı -->
+    <div style="width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:.5rem auto 1.2rem"></div>
+
+    <!-- Sabit alt metin -->
+    <div style="font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--ink);line-height:2">
+      <p style="margin-bottom:.4rem">Bir kitap kulübü uygulaması bu kadar derin olmak zorunda mıydı?</p>
+      <p style="margin-bottom:.4rem;font-style:italic;color:var(--rust)">Belki de koltuğumuzdan kalkıp gerçek bir maceraya atmak daha kolaydı. Hayır. Ama işte buradayız.</p>
+      <p style="margin-bottom:.4rem">Her şey görünenlerden ibaret değildi.</p>
+      <p style="margin-bottom:.4rem">Satır aralarını okudun.</p>
+      <p style="margin-bottom:.4rem">Sistemin ardındaki sesi duydun.</p>
+      <p>Yaratıcının izine rastladın.</p>
+    </div>
+
+  </div>`;
+
+  // Modal açılış glitch+distortion+karıncalanma efekti
+  const modal=overlay.querySelector('.modal');
+  if(modal){
+    modal.style.transition='none';
+    modal.style.filter='hue-rotate(90deg) saturate(4) brightness(1.6)';
+    modal.style.transform='translateY(20px) skewX(6deg) translateX(8px)';
+    overlay.classList.add('open');
+
+    // Karıncalanma (static noise) overlay
+    const noise=document.createElement('canvas');
+    noise.style.cssText='position:absolute;inset:0;width:100%;height:100%;opacity:.35;pointer-events:none;z-index:9999;border-radius:4px;';
+    modal.style.position='relative';
+    modal.appendChild(noise);
+    const ctx2=noise.getContext('2d');
+    let noiseFrame;
+    function drawNoise(){
+      noise.width=modal.offsetWidth||400;
+      noise.height=modal.offsetHeight||500;
+      const img=ctx2.createImageData(noise.width,noise.height);
+      for(let i=0;i<img.data.length;i+=4){
+        const v=Math.random()<.5?0:255;
+        img.data[i]=img.data[i+1]=img.data[i+2]=v;
+        img.data[i+3]=Math.random()*180;
+      }
+      ctx2.putImageData(img,0,0);
+      noiseFrame=requestAnimationFrame(drawNoise);
+    }
+    drawNoise();
+
+    setTimeout(()=>{
+      modal.style.filter='hue-rotate(200deg) saturate(2) brightness(.5) contrast(2)';
+      modal.style.transform='translateY(15px) skewX(-4deg) translateX(-6px)';
+    },150);
+    setTimeout(()=>{
+      modal.style.filter='hue-rotate(300deg) saturate(3) brightness(1.3) contrast(1.5)';
+      modal.style.transform='translateY(8px) skewX(2deg) translateX(4px)';
+    },300);
+    setTimeout(()=>{
+      modal.style.filter='hue-rotate(0deg) saturate(5) brightness(.8) contrast(3)';
+      modal.style.transform='translateY(5px) skewX(-1deg) translateX(-2px)';
+    },450);
+    setTimeout(()=>{
+      modal.style.transition='filter .25s ease,transform .25s ease';
+      modal.style.filter='none';
+      modal.style.transform='translateY(0)';
+    },600);
+    setTimeout(()=>{
+      cancelAnimationFrame(noiseFrame);
+      if(noise.parentNode) noise.remove();
+    },850);
+  } else {
+    overlay.classList.add('open');
+  }
+
+  // Açılış sesi — 0-150ms jitter
+  setTimeout(()=>{_playGlitchSound(_getNmAudioCtx());}, Math.random()*150);
+
+  // Log glitch — 3-4sn aralıklı sürekli
+  let _creatorGlitchTimer=null;
+  function _runLogGlitch(){
+    const block=document.getElementById('creator-log-block');
+    if(!block||!overlay.classList.contains('open')){clearTimeout(_creatorGlitchTimer);return;}
+    const lines=block.querySelectorAll('.creator-log-line');
+    // 1-2 rastgele satırı glitch'le
+    const count=Math.floor(Math.random()*2)+1;
+    const picked=[];
+    while(picked.length<count&&picked.length<lines.length){
+      const idx=Math.floor(Math.random()*lines.length);
+      if(!picked.includes(idx))picked.push(idx);
+    }
+    picked.forEach(idx=>{
+      const el=lines[idx];
+      const orig=el.textContent;
+      const chars='█▓▒░⣿⡇⢸|/\\-_<>[]{}#@$%&*!?~^';
+      // Kısa glitch: 3 frame
+      let f=0;
+      const glitchInterval=setInterval(()=>{
+        if(f>=4){clearInterval(glitchInterval);el.textContent=orig;el.style.color='#39ff14';return;}
+        if(f%2===0){
+          el.textContent=orig.split('').map(c=>Math.random()<.25?chars[Math.floor(Math.random()*chars.length)]:c).join('');
+          el.style.color=f===0?'#ff00ff':'#00ffff';
+        } else {
+          el.textContent=orig;
+          el.style.color='#39ff14';
+        }
+        f++;
+      },60);
+    });
+    // Tüm bloğun kısa skew'i
+    block.style.transition='transform .05s steps(1)';
+    block.style.transform=`skewX(${(Math.random()-.5)*4}deg) translateX(${(Math.random()-.5)*6}px)`;
+    setTimeout(()=>{block.style.transform='none';},120);
+
+    _creatorGlitchTimer=setTimeout(_runLogGlitch, 3000+Math.random()*1000);
+  }
+  setTimeout(_runLogGlitch,1500);
+
+  // Idle ses — 8-22dk aralıklı, %70 ihtimal
+  const LEAK_TEXTS=[
+    'log_19... override detected',
+    'node fragment unstable',
+    'memory sector... incomplete',
+    'system drift detected...',
+  ];
+
+  function _playGlitchSound(ctx,volume){
+    const type=Math.floor(Math.random()*3);
+    if(type===0){
+      const buf=ctx.createBuffer(1,ctx.sampleRate*2.4,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(i<d.length*.3?1:Math.max(0,1-(i-d.length*.3)/(d.length*.7)));
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const g=ctx.createGain();g.gain.setValueAtTime(volume||.25,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+2.4);
+      s.connect(g);g.connect(ctx.destination);s.start();
+    } else if(type===1){
+      const buf=ctx.createBuffer(1,ctx.sampleRate*3.0,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*.4;
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const f=ctx.createBiquadFilter();f.type='bandpass';f.frequency.value=800;f.Q.value=0.5;
+      const g=ctx.createGain();g.gain.setValueAtTime(volume||.15,ctx.currentTime);g.gain.linearRampToValueAtTime((volume||.15)+.05,ctx.currentTime+.8);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+3.0);
+      s.connect(f);f.connect(g);g.connect(ctx.destination);s.start();
+    } else {
+      const buf=ctx.createBuffer(1,ctx.sampleRate*2.0,ctx.sampleRate);
+      const d=buf.getChannelData(0);
+      for(let i=0;i<d.length;i++)d[i]=i<200?(Math.random()*2-1)*(1-i/200):(Math.random()*2-1)*.3*(1-i/d.length);
+      const s=ctx.createBufferSource();s.buffer=buf;
+      const g=ctx.createGain();g.gain.setValueAtTime(volume||.3,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+2.0);
+      s.connect(g);g.connect(ctx.destination);s.start();
+    }
+  }
+
+  function _triggerDataLeak(){
+    const block=document.getElementById('creator-log-block');
+    if(!block) return;
+    const leak=document.createElement('div');
+    const txt=LEAK_TEXTS[Math.floor(Math.random()*LEAK_TEXTS.length)];
+    const chars='█▓▒░|/\\';
+    const glitched=txt.split('').map(c=>Math.random()<.3?chars[Math.floor(Math.random()*chars.length)]:c).join('');
+    leak.style.cssText='font-family:"Space Mono",monospace;font-size:.72rem;color:#ff00ff;line-height:2;opacity:0;transition:opacity .15s ease;';
+    leak.textContent=glitched;
+    block.appendChild(leak);
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{leak.style.opacity='1';}));
+    const dur=400+Math.random()*800;
+    setTimeout(()=>{
+      leak.style.opacity='0';
+      setTimeout(()=>{if(leak.parentNode)leak.remove();},200);
+    },dur);
+  }
+
+  let _creatorIdleSoundTimer=null;
+  function _playIdleSound(){
+    if(!overlay.classList.contains('open')) return;
+    if(Math.random()<.15) _triggerDataLeak();
+    _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
+  }
+  _creatorIdleSoundTimer=setTimeout(_playIdleSound, 480000+Math.random()*840000);
+  window._creatorCleanup=function(){
+    clearTimeout(_creatorIdleSoundTimer);
+    clearTimeout(_creatorGlitchTimer);
+  };
+}
+
+function toggleBadgeDetail(badgeId){
+  pendingShimmerBadges.delete(badgeId);
+  if(badgeId==='secret_ashbless'){openAshblessModal();return;}
+  if(badgeId==='secret_anubis'){openAnubisModal();return;}
+  if(badgeId==='secret_creator'){openCreatorModal();return;}
+
+  // Rom rozeti kalp animasyonu
+  if(['rom1','rom2','rom3','rom4'].includes(badgeId)){
+    const books=validBooks();
+    const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+    const badge=allB.find(b=>b.id===badgeId);
+    if(badge&&bstat(badge,books).earned){
+      const wrap=document.getElementById('twrap-'+badgeId);
+      const card=wrap?.querySelector('.badge-card');
+      if(card){
+        const duration=1.2;
+        const beats=4;
+        card.style.animation=`romHeartbeat ${duration}s ease-in-out ${beats},romAura ${duration}s ease-in-out ${beats}`;
+        setTimeout(()=>{card.style.animation='';},duration*beats*1000+100);
+      }
+    }
+  }
+  const wasOpen=openBadgeId===badgeId;
+  openBadgeId=wasOpen?null:badgeId;
+  renderBadges();
+  if(!wasOpen){
+    // Tooltip konumunu ayarla — sayfanın üstüne taşıyorsa aşağı, altına taşıyorsa yukarı aç
+    setTimeout(()=>{
+      const tooltip=document.getElementById('tooltip-'+badgeId);
+      const wrap=document.getElementById('twrap-'+badgeId);
+      if(tooltip&&wrap){
+        tooltip.style.display='block';
+        const wrapRect=wrap.getBoundingClientRect();
+        const tooltipW=Math.min(280,window.innerWidth-16);
+        const tooltipH=tooltip.offsetHeight||150;
+        // Yatay konum — ortala, taşma varsa düzelt
+        let left=wrapRect.left+wrapRect.width/2-tooltipW/2;
+        if(left<8) left=8;
+        if(left+tooltipW>window.innerWidth-8) left=window.innerWidth-tooltipW-8;
+        tooltip.style.left=left+'px';
+        tooltip.style.width=tooltipW+'px';
+        // Dikey konum — alan varsa altına, yoksa üstüne
+        const spaceBelow=window.innerHeight-wrapRect.bottom;
+        const spaceAbove=wrapRect.top;
+        if(spaceBelow>=tooltipH+10||spaceBelow>=spaceAbove){
+          tooltip.style.top=(wrapRect.bottom+6)+'px';
+          tooltip.style.bottom='auto';
+        } else {
+          tooltip.style.top=(wrapRect.top-tooltipH-6)+'px';
+          tooltip.style.bottom='auto';
+        }
+      }
+      // Açılan kazanılmış rozet parıldasın
+      const books=validBooks();
+      const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+      const badge=allB.find(b=>b.id===badgeId);
+      if(badge&&bstat(badge,books).earned){
+        const card=wrap?.querySelector('.badge-card');
+        if(card){card.classList.add('badge-shine-new');setTimeout(()=>card.classList.remove('badge-shine-new'),1500);}
+      }
+      // Rozet görünür alandan çıkınca tooltip kapat
+      if(wrap){
+        if(window._badgeObserver) window._badgeObserver.disconnect();
+        window._badgeObserver=new IntersectionObserver((entries)=>{
+          if(!entries[0].isIntersecting){
+            window._badgeObserver.disconnect();
+            closeBadgeTooltip();
+          }
+        },{threshold:0.1});
+        window._badgeObserver.observe(wrap);
+      }
+    },50);
+  }
+}
+
+function closeBadgeTooltip(){
+  openBadgeId=null;
+  renderBadges();
+}
+
+function shimmerEarnedBadges(){
+  const cards=document.querySelectorAll('.badge-card.earned');
+  cards.forEach((card,i)=>{
+    setTimeout(()=>{
+      card.classList.add('badge-shine');
+      setTimeout(()=>card.classList.remove('badge-shine'),1200);
+    }, i*80);
+  });
+}
+
+function shimmerNewBadges(prevEarned){
+  // prevEarned: Set of badge ids that were earned before re-render
+  const SECRET_IDS=new Set(['secret_ashbless','secret_bedside','secret_forbidden','secret_anubis','secret_month','secret_whale','secret_speed','secret_multi','secret_100pg']);
+  setTimeout(()=>{
+    document.querySelectorAll('.badge-card.earned').forEach(card=>{
+      const onclick=card.getAttribute('onclick')||'';
+      const m=onclick.match(/toggleBadgeDetail\('([^']+)'\)/);
+      if(m&&!prevEarned.has(m[1])){
+        card.classList.add('badge-shine');
+        setTimeout(()=>card.classList.remove('badge-shine'),3600);
+        const bid=m[1];
+        if(bid==='secret_creator') launchConfetti('creator');
+        else if(SECRET_IDS.has(bid)) launchConfetti('secret');
+        else launchConfetti('badge');
+      }
+    });
+  },80);
+}
+
+function currentEarnedBadgeIds(){
+  const books=validBooks();
+  const ids=new Set();
+  BADGE_CATS.forEach(cat=>cat.badges.forEach(b=>{if(bstat(b,books).earned)ids.add(b.id);}));
+  return ids;
+}
+
