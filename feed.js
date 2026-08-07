@@ -249,18 +249,24 @@ function renderFeed(append=false){
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
       const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      // 👍 butonuna sağ tıklayınca ek emoji paneli açılsın diye — diğer üç buton etkilenmiyor.
+      // Kutlama kartlarının (streak_milestone) zaten 👍'si yok, o yüzden orada eklenmiyor.
+      const thumbCtx=r==='👍'?(fnName,baseArgsJs)=>` oncontextmenu="openThumbPicker(event,'${fnName}',[${baseArgsJs}],this)"`:null;
       if(card.type==='story'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}',this)">
+        const ctx=thumbCtx?thumbCtx('toggleStoryReaction',`'${card.u}',${card.storyId}`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleStoryReaction('${card.u}',${card.storyId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='series_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleSeriesEventReaction('${card.u}',${card.seriesEventId},'${rEsc}',this)">
+        const ctx=thumbCtx?thumbCtx('toggleSeriesEventReaction',`'${card.u}',${card.seriesEventId}`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleSeriesEventReaction('${card.u}',${card.seriesEventId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='country_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleCountryEventReaction('${card.u}',${card.countryEventId},'${rEsc}',this)">
+        const ctx=thumbCtx?thumbCtx('toggleCountryEventReaction',`'${card.u}',${card.countryEventId}`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleCountryEventReaction('${card.u}',${card.countryEventId},'${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
@@ -271,17 +277,20 @@ function renderFeed(append=false){
         </button>`;
       }
       if(card.type==='badge'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}',this)">
+        const ctx=thumbCtx?thumbCtx('toggleBadgeEventReaction',`'${card.u}','${card.eventId}'`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleBadgeEventReaction('${card.u}','${card.eventId}','${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       if(card.type==='reading_event'){
-        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}',this)">
+        const ctx=thumbCtx?thumbCtx('toggleReadingEventReaction',`'${card.u}','${card.readingEventId}'`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}',this)">
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
       const qi=card.type==='quote'?card.quoteIdx:-1;
-      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
+      const ctx=thumbCtx?thumbCtx('toggleCardReaction',`'${card.type}','${card.u}',${card.bookId},${qi}`):'';
+      return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleCardReaction('${card.type}','${card.u}',${card.bookId},${qi},'${rEsc}',this)">
         ${r}${cnt>0?` · ${cnt}${names}`:''}
       </button>`;
     }).join('');
@@ -1110,6 +1119,55 @@ function toggleReaction(bookOwner,bookId,reaction){
   if(idx>-1) book.reactions[me].splice(idx,1);
   else book.reactions[me].push(reaction);
   saveDb();renderJournal();
+}
+
+// 👍 butonuna sağ tıklayınca açılan ek emoji paneli. Ayrı bir veri yapısı gerekmiyor — panelden
+// seçilen emoji, o kartın normal reaksiyon fonksiyonuna 👍 yerine aynı şekilde gönderiliyor
+// (reactions[me] zaten birden fazla emoji tutabilen bir dizi).
+const THUMB_PICKER_EMOJIS=['😂','😢','😤','🤯','❤️','💩'];
+function openThumbPicker(ev,fnName,baseArgs,btnEl){
+  ev.preventDefault();
+  closeThumbPicker();
+  const panel=document.createElement('div');
+  panel.className='thumb-picker';
+  panel.style.cssText='position:fixed;z-index:9000;background:var(--parchment);border:1px solid rgba(201,162,39,.45);'
+    +'border-radius:24px;padding:.35rem .5rem;display:flex;gap:.25rem;box-shadow:0 8px 24px rgba(0,0,0,.3);';
+  THUMB_PICKER_EMOJIS.forEach(em=>{
+    const b=document.createElement('button');
+    b.type='button';
+    b.textContent=em;
+    b.style.cssText='background:none;border:none;font-size:1.25rem;line-height:1;cursor:pointer;padding:.15rem .25rem;'
+      +'border-radius:50%;transition:transform .12s ease;';
+    b.onmouseenter=()=>{b.style.transform='scale(1.35)';};
+    b.onmouseleave=()=>{b.style.transform='';};
+    b.onclick=(e)=>{
+      e.stopPropagation();
+      window[fnName](...baseArgs,em,btnEl);
+      closeThumbPicker();
+    };
+    panel.appendChild(b);
+  });
+  document.body.appendChild(panel);
+  const rect=panel.getBoundingClientRect();
+  let x=ev.clientX-rect.width/2;
+  x=Math.max(6,Math.min(x,window.innerWidth-rect.width-6));
+  let y=ev.clientY-rect.height-12;
+  if(y<6) y=ev.clientY+12;
+  panel.style.left=x+'px';
+  panel.style.top=y+'px';
+  window._thumbPickerPanel=panel;
+  setTimeout(()=>document.addEventListener('click',closeThumbPicker,{once:true}),0);
+  document.addEventListener('keydown',_thumbPickerEscHandler);
+}
+function _thumbPickerEscHandler(e){
+  if(e.key==='Escape') closeThumbPicker();
+}
+function closeThumbPicker(){
+  if(window._thumbPickerPanel){
+    window._thumbPickerPanel.remove();
+    window._thumbPickerPanel=null;
+  }
+  document.removeEventListener('keydown',_thumbPickerEscHandler);
 }
 
 // Kart bazlı reaksiyon (değerlendirme veya alıntı)
