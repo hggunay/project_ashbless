@@ -329,7 +329,7 @@ const BADGE_CATS = [
       {id:'secret_anubis',   tier:'diamond', icon:'🗝️', name:'Ashbless\'in İzinde', desc:'Zamanın çizgisel olmadığını fark ettin. Ashbless\'in izini sürerken, aslında kendi izine rastladın.\nBazı hikâyeler okunmaz — yaşanır. Ve bazı isimler yazılmaz — hatırlanır.\n\nGecenin On İki Saati\n\n"Ve bir nehir uzanır\nAlacakaranlıkla şafak arasında.\nVe saatler mesafedir, değişken gecenin\nEngin gelgitinde ölçülen —\nKorku duymayacak kadar felakete mahkûm,\nİhtiyaçları kalmamış bu deniz yolcuları hızla çekiliyor\nGözkamaştırıcı bir ışık gibi parlayan karanlığın içine\nGecenin On İki Saati\'nde."\n— William Ashbless (buluntu metin)', imgSrc:'badges/badge_anubis.png',
         check:b=>flag(b.some(x=>(x.readingStatus==='new'||x.readingStatus==='past'||x.retroactive)&&(x.author||'').toLowerCase().includes('powers')&&(x.title||'').toLowerCase().includes('anubis')))},
       {id:'secret_month', tier:'diamond',icon:'📅', name:'Aylık Seri',      desc:'Tek bir ayda 3 veya daha fazla kitap bitir.', check:b=>cap(maxMonth(b),3)},
-      {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina',          desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
+      {id:'secret_whale', tier:'diamond',icon:'🐋', name:'Balina Avcısı', imgSrc:'badges/badge_secret_whale.png', desc:'1000 sayfadan uzun bir kitap oku.', check:b=>flag(b.some(x=>x.pages&&x.pages>=1000))},
       {id:'secret_speed', tier:'diamond',icon:'⚡', name:'Bir Solukta',     desc:'Bir kitabı tek günde bitir (okumaya başlama ve bitirme tarihi aynı olmalı).', check:b=>flag(b.some(x=>x.startDate&&x.endDate&&x.startDate===x.endDate))},
       {id:'secret_multi', tier:'diamond',icon:'🎪', name:'Çılgın Okuyucu', desc:'Aynı anda 3 kitap oku. Ama dikkat, ben biraz gelip geçiciyim.😶\u200d🌫️', check:(b,ctx)=>flag(((ctx&&ctx.readingCount!==undefined)?ctx.readingCount:(db.books[me]||[]).filter(x=>x.readingStatus==='reading').length)>=3)},
       {id:'secret_100pg', tier:'diamond',icon:'📑', name:'Maraton Günü',    desc:'Bir günde 100 sayfa oku ("Bir günde 100 sayfa" işaretle).', check:b=>flag(b.some(x=>x.hundredPages))},
@@ -766,7 +766,34 @@ function renderBadges(){
         ${isNew?'<span class="badge-new-tag">✨ YENİ</span>':''}
         ${isNew?'<span class="badge-new-dot"></span>':''}
         ${s.earned&&!isNew?'<span class="earned-stamp">✓</span>':''}
-        ${b.imgSrc?`
+        ${(()=>{
+          if(b.id!=='secret_whale') return '';
+          // Kitap sayfasındaki balinanın taban konum/boyutu, kullanıcının verdiği referans
+          // görselden (4.png) ölçülmüştü: sol=%33.5 üst=%28.17 genişlik=%21.5 yükseklik=%13.67.
+          // WHALE_ANIM.restScale bu boyutu MERKEZİ SABİT TUTARAK büyütüp küçültüyor. Değerler
+          // kullanıcıyla birlikte yerel bir test panelinde bulundu, son hâliyle kalıcı hale getirildi
+          // (test paneli deploy öncesi koddan kaldırıldı).
+          const rs=window.WHALE_ANIM?.restScale||1;
+          const baseW=21.5, baseH=13.67, baseL=33.5, baseT=28.17;
+          const w=baseW*rs, h=baseH*rs;
+          const l=baseL+baseW/2-w/2, t=baseT+baseH/2-h/2;
+          return `
+          <div class="tier-label ${tier}" style="position:relative;z-index:1;margin-top:.5rem">${tierLabels[tier]||tier}</div>
+          <div style="padding:.3rem .6rem .1rem;display:flex;justify-content:center;">
+            <div style="position:relative;width:55px;height:55px;">
+              <img src="${b.imgSrc}" style="width:100%;height:100%;object-fit:contain;display:block" onerror="badgeImgFallback(this,'📖')" />
+              <img id="whaleRealImg-${b.id}" src="badges/balina.png" style="position:absolute;left:${l}%;top:${t}%;width:${w}%;height:${h}%;object-fit:contain;transition:opacity .8s ease" />
+            </div>
+          </div>`;
+        })()}
+        ${b.id==='secret_whale'?`
+          <div style="padding:.15rem .6rem .5rem;text-align:center;">
+            <div class="badge-name" style="font-size:.78rem;margin-bottom:.15rem">${b.name}</div>
+            <div class="badge-desc" style="font-size:.68rem;margin-bottom:.25rem;-webkit-line-clamp:2">${b.desc}</div>
+            <div class="progress-wrap" style="margin:.15rem 0 .1rem"><div class="progress-fill ${s.earned?'done':''}" style="width:${s.pct}%"></div></div>
+            <div class="progress-text">${s.cur} / ${s.max} · %${s.pct}</div>
+          </div>
+        `:b.imgSrc?`
           <div style="padding:.6rem .6rem .2rem;display:flex;justify-content:center;">
             <img src="${b.imgSrc}" style="width:120px;height:120px;object-fit:contain;display:block;${s.earned?'':'filter:grayscale(1);opacity:.6'}" onerror="badgeImgFallback(this,'${b.icon}')" />
           </div>
@@ -1179,11 +1206,233 @@ function openCreatorModal(){
   };
 }
 
+// ── BALİNA AVCISI ROZETİ ETKİLEŞİM ANİMASYONU ──────────────────
+// Tüm zamanlamalar burada tek yerde — konsoldan canlı denemek için örn.:
+//   WHALE_ANIM.swimMs = 4000
+// yazıp rozete tekrar tıklamak yeterli, sayfa yenilemeye gerek yok.
+// Aşağıdaki değerler kullanıcının panelden deneyip beğendiği, KALICI hale getirilen son hâl
+// (2026-08-07). Panelden yine de değiştirilebilir — orada değişince sadece o oturum için geçerli
+// olur, kalıcı değişiklik için buradaki sayılar güncellenmeli.
+window.WHALE_ANIM = window.WHALE_ANIM || {
+  preDelayMs: 100,                                // tıklama sonrası ilk kalp atışından önceki bekleme
+  heartbeatScales: [1, 1.15, 1.4, 1.8, 2.5, 3.5, 5], // her atışın HAM zirve değeri — heartbeatIntensity ile ölçeklenir
+  heartbeatIntensity: 3.0,                        // 1 = ham değerler; 3.0 = kullanıcının seçtiği, çok daha belirgin büyüme
+  heartbeatBeatMs: [867, 800, 733, 667, 600, 533], // her atışın toplam süresi (0.30x hız çarpanı zaten uygulanmış hâli)
+  meltBlurPx: 6,                                  // yüzerken eriyip kaybolma sırasındaki bulanıklık miktarı
+  whaleScaleMult: 12.5,                           // yüzüp uzaklaşırken ulaşılacak son boyut (kalp atışının son zirvesine göre, aynı ölçek biriminde)
+  whaleIdleMs: 425,                               // zirve boyutuna ulaşınca yüzmeye başlamadan önceki kısa bekleme
+  swimMs: 2000,                                   // yüzüp ekrandan çıkarken AYNI ANDA eriyip kaybolma süresi
+  bubbleCount: 6,
+  restScale: 4.14,                                // rozet dinlenme hâlindeyken kitap sayfasındaki balinanın boyut çarpanı (merkezi sabit kalır) — kart kutusu 120→90→55px küçülürken görsel balinanın MUTLAK boyutu hep aynı kalsın diye orijinal 1.9'dan orantılı büyütüldü (120/55×1.9)
+  soundEnabled: true                              // her baloncukta kısa bir "cup" sesi çalsın mı
+};
+
+// Uygulamanın "Yaratıcının Tanığı" rozetindeki gibi (bkz. _playGlitchSound) dosya kullanmadan,
+// Web Audio API ile anlık sentezlenen kısa bir "cup" (baloncuk) sesi. Tüm ayarlar WHALE_SOUND'da
+// toplandı — değerler kullanıcıyla birlikte yerel bir test panelinde bulunup kalıcı hale getirildi.
+// Gerekirse konsoldan da anlık denenebilir, örn.:
+//   WHALE_SOUND.baseFreq=250; WHALE_SOUND.noteRise=0.6;
+// Kullanıcının panelden bulup beğendiği, KALICI hale getirilen ses değerleri (2026-08-07).
+window.WHALE_SOUND = window.WHALE_SOUND || {
+  baseFreq: 550,   // ilk (en kalın/bas) notanın perdesi — düşürünce daha kalın başlar
+  noteCount: 2,    // kaç ana nota art arda çalsın
+  noteRise: 0.35,  // her nota bir öncekinden ne kadar tiz olsun (0=hepsi aynı perde, 1=çok dramatik kalından inceye)
+  subMix: 1.00,    // bir oktav alttaki "kalınlaştırma" katmanının ana notaya oranı (0=ince/saf, 1=çok bas ağırlıklı)
+  tailCount: 1,    // ana notalardan sonra eklenen, hızla incelen "parıltı" notası sayısı
+  seqRise: 0.09    // BİR ANİMASYONDAKİ ardışık baloncuklar arasında perde kayması — pozitif: her
+                   // sonraki baloncuk bir öncekinden tizleşir (balina uzaklaşıp kabarcıklar yükseldikçe
+                   // incelen his), negatif: kalınlaşır, 0: sıradaki gibi sadece küçük rastgele fark
+};
+function _playBubbleSound(seqIndex){
+  if(!window.WHALE_ANIM?.soundEnabled) return;
+  try{
+    if(!window._whaleAudioCtx) window._whaleAudioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    const ctx=window._whaleAudioCtx;
+    if(ctx.state==='suspended') ctx.resume();
+    const S=window.WHALE_SOUND;
+    const noteCount=Math.max(1,Math.round(S.noteCount));
+    const seqMult=Math.pow(1+(S.seqRise||0), seqIndex||0); // aynı animasyondaki kaçıncı baloncuk olduğuna göre kademeli kaydırma
+    const base=S.baseFreq*seqMult*(0.92+Math.random()*0.16); // + hafif rastgelelik, her baloncuk biraz farklı çalsın
+    const mainPeak=.12, subPeak=mainPeak*S.subMix;
+    let lastFreq=base;
+    for(let n=0;n<noteCount;n++){
+      const t0=ctx.currentTime+n*0.06;
+      const freq=base*(1+n*S.noteRise);
+      lastFreq=freq;
+
+      const osc=ctx.createOscillator();
+      osc.type='triangle';
+      osc.frequency.setValueAtTime(freq*0.82,t0);
+      osc.frequency.exponentialRampToValueAtTime(freq*1.18,t0+.045);
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(mainPeak,t0+.014);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+.1);
+      osc.connect(g);g.connect(ctx.destination);
+      osc.start(t0);osc.stop(t0+.12);
+
+      // Kalınlaştırma katmanı — bir oktav alttan, subMix ile ayarlanan sessizlikte
+      if(subPeak>.0002){
+        const subOsc=ctx.createOscillator();
+        subOsc.type='sine';
+        subOsc.frequency.setValueAtTime(freq*0.41,t0);
+        subOsc.frequency.exponentialRampToValueAtTime(freq*0.59,t0+.045);
+        const subG=ctx.createGain();
+        subG.gain.setValueAtTime(.0001,t0);
+        subG.gain.exponentialRampToValueAtTime(subPeak,t0+.014);
+        subG.gain.exponentialRampToValueAtTime(.0001,t0+.1);
+        subOsc.connect(subG);subG.connect(ctx.destination);
+        subOsc.start(t0);subOsc.stop(t0+.12);
+      }
+    }
+
+    // Ana notalardan sonra eklenen, hızla incelen "parıltı" kuyruğu — saf ince ton, bas katmanı yok
+    const tailCount=Math.max(0,Math.round(S.tailCount));
+    for(let s=0;s<tailCount;s++){
+      const t0=ctx.currentTime+noteCount*0.06+s*0.05;
+      const freq=lastFreq*(1.5+s*0.4);
+      const osc=ctx.createOscillator();
+      osc.type='sine';
+      osc.frequency.setValueAtTime(freq*0.9,t0);
+      osc.frequency.exponentialRampToValueAtTime(freq*1.1,t0+.03);
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(.0001,t0);
+      g.gain.exponentialRampToValueAtTime(.08,t0+.01);
+      g.gain.exponentialRampToValueAtTime(.0001,t0+.09);
+      osc.connect(g);g.connect(ctx.destination);
+      osc.start(t0);osc.stop(t0+.1);
+    }
+  }catch(e){}
+}
+
+function triggerWhaleAnimation(badgeId){
+  // Not: toggleBadgeDetail() bu fonksiyonu çağırdıktan hemen sonra kendi akışında
+  // renderBadges()'i de çalıştırıyor (tooltip aç/kapa mantığı), bu da rozet kartlarının
+  // DOM'unu anında yeniden oluşturuyor. Ama bu, click anında SENKRON olarak bir kere oluyor;
+  // realImg referansını hemen aşağıda o render'dan SONRA (bu fonksiyon çağrıldığında) alıyoruz,
+  // ondan sonra sekans boyunca (birkaç saniye) başka bir kendiliğinden re-render olmuyor —
+  // bu yüzden referansı elde tutmak güvenli.
+  //
+  // Akış KESİNTİSİZ tek bir hareket: kalp atışı büyümeyi transform:scale() ile yapıyor, yüzme adımı
+  // da AYNI scale özelliğini kaldığı yerden devam ettirip (whaleScaleMult'a kadar) eş zamanlı olarak
+  // opacity/blur ile eritiyor. Kitap sayfasındaki GERÇEK balina görseli, kopya (overlay) yüzmeye
+  // başladığı anda gizlenir ("sayfa boş kalır"), animasyon bitince fade-in ile geri döner.
+  const realImg=document.getElementById('whaleRealImg-'+badgeId);
+  if(!realImg) return;
+  if(document.querySelector('.whale-anim-overlay')) return; // zaten oynuyorsa üst üste başlatma
+  const T=window.WHALE_ANIM;
+  const rect=realImg.getBoundingClientRect();
+  const baseW=rect.width||40, baseH=rect.height||26;
+  const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
+
+  const overlay=document.createElement('img');
+  overlay.className='whale-anim-overlay';
+  overlay.src=realImg.currentSrc||realImg.src;
+  overlay.style.cssText=`position:fixed;left:${cx}px;top:${cy}px;width:${baseW}px;height:${baseH}px;object-fit:contain;`
+    +`transform:translate(-50%,-50%) scale(1) rotate(0deg);opacity:1;filter:blur(0px);`
+    +`z-index:9999;pointer-events:none;will-change:transform,opacity,filter;`;
+  document.body.appendChild(overlay);
+
+  // Her atışı tek bir sıçrama yerine "yüksel + kısmen geri düş" olarak iki adıma bölüyoruz —
+  // gerçek kalp atışı hissi bu ikisi olmadan (düz büyüme) oluşmuyordu. Son atışta geri düşüş yok,
+  // zirve boyutunda kısa bir bekleme sonrası doğrudan yüzmeye/erimeye geçiyor.
+  const intensity=T.heartbeatIntensity||1;
+  const peaks=T.heartbeatScales.map(v=>1+(v-1)*intensity); // her zirveyi 1'den itibaren ölçekle
+  const frames=[];
+  let prevSettle=peaks[0];
+  for(let p=1;p<peaks.length;p++){
+    const peak=peaks[p];
+    const totalMs=T.heartbeatBeatMs[p-1]||180;
+    const riseMs=Math.round(totalMs*0.45);
+    frames.push({scale:peak, ms:riseMs});
+    if(p<peaks.length-1){
+      const settle=peak-(peak-prevSettle)*0.35;
+      frames.push({scale:settle, ms:totalMs-riseMs});
+      prevSettle=settle;
+    }
+  }
+  setTimeout(()=>{
+    let fi=0;
+    (function beat(){
+      if(fi>=frames.length){ setTimeout(swim,T.whaleIdleMs); return; }
+      const f=frames[fi];
+      overlay.style.transition=`transform ${f.ms}ms ease-in-out`;
+      overlay.style.transform=`translate(-50%,-50%) scale(${f.scale}) rotate(0deg)`;
+      fi++;
+      setTimeout(beat,f.ms);
+    })();
+  }, T.preDelayMs);
+
+  function swim(){
+    // Balina "sayfadan ayrılıyor" — gerçek görsel burada anında gizlenir (kopya zaten üstünü
+    // kaplıyordu), animasyon bitince fade-in ile geri gelecek.
+    realImg.style.transition='none';
+    realImg.style.opacity='0';
+    spawnBubbles();
+    overlay.style.transition=`transform ${T.swimMs}ms cubic-bezier(.3,0,.7,1), opacity ${T.swimMs}ms ease-in, filter ${T.swimMs}ms ease-in`;
+    overlay.style.transform=`translate(${window.innerWidth-cx+200}px,-60px) scale(${T.whaleScaleMult}) rotate(5deg)`;
+    overlay.style.opacity='0';
+    overlay.style.filter=`blur(${T.meltBlurPx}px)`;
+    setTimeout(finish, T.swimMs);
+  }
+
+  function finish(){
+    overlay.remove();
+    void realImg.offsetHeight; // reflow — opacity:0'ın oturduğundan emin ol, sonra geri fade-in başlasın
+    realImg.style.transition='opacity .8s ease';
+    realImg.style.opacity='1';
+  }
+
+  function spawnBubbles(){
+    // Baloncukları balinanın O ANKİ gerçek konum/boyutuna göre (getBoundingClientRect ile canlı
+    // ölçülerek) ve balinanın ÜSTÜNDE (daha yüksek z-index) oluşturuyoruz, yoksa büyümüş balinanın
+    // altında/gerisinde kalıp görünmez oluyorlardı.
+    if(T.bubbleCount<=0) return;
+    const spacing=Math.max(120, T.swimMs/(T.bubbleCount+1));
+    for(let b=0;b<T.bubbleCount;b++){
+      setTimeout(()=>{
+        if(!overlay.isConnected) return;
+        const r=overlay.getBoundingClientRect();
+        const whaleSize=Math.max(r.width,r.height)||baseW;
+        _playBubbleSound(b);
+        const bub=document.createElement('div');
+        bub.className='whale-anim-bubble';
+        // Görünürlük için hem oransal hem de mutlak bir alt sınır var — animasyonun başında
+        // balina henüz küçükken bile baloncuklar fark edilir kalsın diye. Parıltı, tek bir
+        // yumuşak box-shadow yerine iç+dış iki katmanlı, parlak/doygun bir glow ile yapılıyor.
+        const size=Math.max(13, whaleSize*(0.07+Math.random()*0.08));
+        const bx=r.left+r.width*(0.15+Math.random()*0.5);
+        const by=r.top+r.height*(0.1+Math.random()*0.4);
+        bub.style.cssText=`position:fixed;left:${bx}px;top:${by}px;`
+          +`width:${size}px;height:${size}px;border-radius:50%;background:radial-gradient(circle at 35% 30%, rgba(255,255,255,.95), rgba(120,210,255,.9) 55%, rgba(60,150,220,.85) 100%);`
+          +`border:${Math.max(1.5,size*.07)}px solid rgba(255,255,255,.9);`
+          +`box-shadow:0 0 ${size*.5}px ${size*.18}px rgba(120,210,255,.85), 0 0 ${size*1.4}px ${size*.5}px rgba(80,180,255,.5);`
+          +`z-index:10000;pointer-events:none;opacity:0;transform:scale(.4);`
+          +`transition:transform 1.4s ease-out, opacity 1.4s ease-out;`;
+        document.body.appendChild(bub);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>{
+          bub.style.opacity='1';
+          bub.style.transform=`translateY(-${size*(1.5+Math.random())}px) scale(1)`;
+        }));
+        setTimeout(()=>{bub.style.opacity='0';setTimeout(()=>bub.remove(),400);},1200);
+      }, b*spacing);
+    }
+  }
+}
+
 function toggleBadgeDetail(badgeId){
   pendingShimmerBadges.delete(badgeId);
   if(badgeId==='secret_ashbless'){openAshblessModal();return;}
   if(badgeId==='secret_anubis'){openAnubisModal();return;}
   if(badgeId==='secret_creator'){openCreatorModal();return;}
+
+  // Balina Avcısı rozeti — kalp atışı + erime + yüzen balina animasyonu
+  if(badgeId==='secret_whale'){
+    const books=validBooks();
+    const allB=BADGE_CATS.flatMap(c=>c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]));
+    const badge=allB.find(b=>b.id==='secret_whale');
+    if(badge&&bstat(badge,books).earned) triggerWhaleAnimation('secret_whale');
+  }
 
   // Rom rozeti kalp animasyonu
   if(['rom1','rom2','rom3','rom4'].includes(badgeId)){
