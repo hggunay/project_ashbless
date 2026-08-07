@@ -166,6 +166,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
 .acc-body.open{max-height:9999px;opacity:1;overflow:visible;}
 .acc-body.open{max-height:9999px;opacity:1;}
+/* Ekleme panelleri (+ Kitap/Hikâye/Giriş/Seri/Grup/Raf Ekle) için: .acc-body'nin 9999px hedefi
+   gerçek içerikten (~150-900px) o kadar büyük ki geçiş neredeyse anlık bitiyor gibi hissettiriyor.
+   Bu panellerin tamamı bu aralıkta kaldığı için 2000px hâlâ hiçbir içeriği kesmeyecek kadar bol ama
+   geçiş süresi boyunca gerçekten kayarak açılma hissi veriyor. */
+.add-acc-body{overflow:hidden;transition:max-height .4s ease,opacity .3s ease;max-height:0;opacity:0;}
+.add-acc-body.open{max-height:2000px;opacity:1;overflow:visible;}
 /* card-header içindeki accordion */
 .card-header.acc-header{cursor:pointer;}
 /* stats bölüm accordion */
@@ -903,7 +909,7 @@ try{
       <div class="stats-row" id="statsRow"></div>
       <div class="add-section" id="addBookSection">
         <button class="btn btn-primary" id="addBookToggleBtn" onclick="toggleAddBookSection()">+ Kitap Ekle</button>
-        <div class="acc-body" id="addBookAccBody">
+        <div class="add-acc-body" id="addBookAccBody">
         <div class="section-title">📖 Kitap Ekle</div>
         <!-- Okuma durumu — panel açılınca her zaman görünür -->
         <div class="chip-group-label" style="margin-bottom:.4rem">📖 Okuma durumu</div>
@@ -916,7 +922,7 @@ try{
 		  <span class="chip" data-val="coreading" onclick="selectReadingTime(this)">👥 Birlikte Okuyalım</span>
         </div>
 
-        <div class="acc-body" id="addBookFormBody">
+        <div class="add-acc-body" id="addBookFormBody">
         <!-- Kitap adı/ISBN + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
           <div class="field-group autocomplete-wrap" style="grid-column:1/-1">
@@ -1097,14 +1103,14 @@ try{
       <!-- Yeni Defter Girişi — EN ÜSTTE -->
       <div class="add-section" id="addJournalSection" style="margin-bottom:1rem">
         <button class="btn btn-primary" id="addJournalToggleBtn" onclick="toggleAddJournalSection()">+ Yeni Giriş Ekle</button>
-        <div class="acc-body" id="addJournalAccBody">
+        <div class="add-acc-body" id="addJournalAccBody">
         <div class="section-title">✏️ Yeni Giriş Ekle</div>
         <div class="chip-group-label">Giriş Türü</div>
         <div class="chip-group" id="journalEntryTypeChips" style="margin-bottom:.75rem">
           <span class="chip" data-val="review" onclick="selectJournalEntryType(this)">📖 Değerlendirme</span>
           <span class="chip" data-val="quote" onclick="selectJournalEntryType(this)">💬 Alıntı</span>
         </div>
-        <div class="acc-body" id="addJournalFormBody">
+        <div class="add-acc-body" id="addJournalFormBody">
         <div class="field-group" style="margin-bottom:.75rem">
           <span class="field-label">Kitap Seç *</span>
           <div class="autocomplete-wrap">
@@ -1208,7 +1214,7 @@ try{
       <!-- Hikâye Ekle formu -->
       <div class="add-section" id="addStorySection">
         <button class="btn btn-primary" id="addStoryToggleBtn" onclick="toggleAddStorySection()">+ Hikâye Ekle</button>
-        <div class="acc-body" id="addStoryAccBody">
+        <div class="add-acc-body" id="addStoryAccBody">
         <div class="section-title">📖 Hikâye Ekle</div>
         <!-- Her zaman görünür: başlık + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
@@ -1311,7 +1317,7 @@ try{
         <!-- Yeni Seri -->
         <div class="add-section" id="addSeriesSection" style="flex:1;min-width:260px">
           <button class="btn btn-primary" id="addSeriesToggleBtn" onclick="toggleAddSeriesSection()">+ Yeni Seri</button>
-          <div class="acc-body" id="addSeriesAccBody">
+          <div class="add-acc-body" id="addSeriesAccBody">
           <div class="section-title">➕ Yeni Seri</div>
           <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:flex-end">
             <div style="flex:1;min-width:150px">
@@ -1348,7 +1354,7 @@ try{
         <!-- Yeni Grup -->
         <div class="add-section" id="addPathSection" style="flex:0 0 220px;min-width:200px">
           <button class="btn btn-primary" id="addPathToggleBtn" onclick="toggleAddPathSection()" style="width:100%">+ Yeni Grup</button>
-          <div class="acc-body" id="addPathAccBody">
+          <div class="add-acc-body" id="addPathAccBody">
           <div class="section-title">🗂 Yeni Grup</div>
           <div class="field-label" style="margin-bottom:.3rem">Grup Adı *</div>
           <input class="book-input" id="newPathName" type="text" placeholder="örn: Asimov Evreni"/>
@@ -1403,7 +1409,7 @@ try{
       <div id="ssp-books">
       <div class="add-section" id="shelfAddSection">
         <button class="btn btn-primary" id="shelfAddToggleBtn" onclick="toggleShelfAddSection()">+ Raf / Kitap Ekle</button>
-        <div class="acc-body" id="shelfAddAccBody">
+        <div class="add-acc-body" id="shelfAddAccBody">
         <div class="section-title">🗄️ Kitap Rafım</div>
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <input class="book-input" id="shelfNewName" type="text" placeholder="Raf adı (örn: Odamdaki Kitaplık)" style="flex:1;min-width:160px"/>
@@ -1461,7 +1467,7 @@ try{
       <div id="ssp-mags" style="display:none">
       <div class="add-section" id="magAddSection">
         <button class="btn btn-primary" id="magAddToggleBtn" onclick="toggleMagAddSection()">+ Raf / Dergi Ekle</button>
-        <div class="acc-body" id="magAddAccBody">
+        <div class="add-acc-body" id="magAddAccBody">
         <div class="section-title">📰 Dergilerim</div>
         <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
           <input class="book-input" id="magNewName" type="text" placeholder="Raf adı (örn: Bilim Dergileri)" style="flex:1;min-width:160px"/>
