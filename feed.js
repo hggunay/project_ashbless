@@ -243,7 +243,13 @@ function renderFeed(append=false){
                 ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
                 :`review_${card.u}_${card.bookId}`;
     const reactionList=card.type==='streak_milestone'?milestoneReactionList:defaultReactionList;
-    return reactionList.map(r=>{
+    // Sağ-tık panelinden seçilmiş ama sabit listede olmayan emojiler (😂😢😤🤯❤️💩) —
+    // kullanılmışsa 👍'nin yanına ayrı buton olarak eklenmeli, yoksa veri kaydediliyor
+    // ama hiçbir yerde görünmüyor (bkz. 2026-08-08 canlı hata raporu).
+    const usedThumbEmojis=card.type==='streak_milestone'?[]:THUMB_PICKER_EMOJIS.filter(em=>
+      Object.values(card.reactions).some(arr=>Array.isArray(arr)&&arr.includes(em)));
+    const fullReactionList=[...reactionList,...usedThumbEmojis];
+    return fullReactionList.map(r=>{
       const myR=(card.reactions[me])||[];
       const active=myR.includes(r)?'active':'';
       const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
