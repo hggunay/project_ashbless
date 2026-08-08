@@ -96,11 +96,37 @@ function getFeedCards(){
     });
     const readingEvs=(db.readingEvents&&db.readingEvents[u])||[];
     readingEvs.forEach(ev=>{
-      cards.push({
+      // "finished" olayı zaten karşılığı olan "started" kartına gömülüyor (aşağıda) —
+      // ayrı bir kart olarak tekrar üretme. "finished_direct" (kitap hiç "okunuyor"
+      // olarak takip edilmeden doğrudan bitmiş eklendiğinde) bağımsız kalıyor, dokunulmadı.
+      if(ev.type==='finished'&&readingEvs.some(e=>e.bookId===ev.bookId&&e.type==='started')) return;
+      const card={
         type:'reading_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
         readingEventId:ev.id, bookId:ev.bookId, bookTitle:ev.bookTitle, author:ev.author,
         eventType:ev.type, variant:ev.variant, ts:ev.ts||0, reactions:ev.reactions||{},
-      });
+      };
+      // "started" kartı Yolculuk Güncesi'nin gövdesi oldu: notlar eklendikçe büyür,
+      // kitap bitince kendi içinde "✅ Bitti" ile kapanır ama akıştan hiç kalkmaz.
+      if(ev.type==='started'){
+        const bk=books.find(bo=>bo.id===ev.bookId);
+        const notes=(bk&&bk.journeyNotes)||[];
+        card.notes=notes;
+        card.startedTs=ev.ts||0;
+        // "Geri Al" ile kitap tekrar "okunuyor" durumuna alınabiliyor — geçmişte bir kez
+        // bitirilmiş OLMASI, kitabın ŞU AN bitmiş sayılacağı anlamına gelmiyor. Bu yüzden
+        // "finished" olayının varlığına değil, kitabın GÜNCEL durumuna bakılıyor.
+        card.finished=!!(bk&&(bk.readingStatus==='new'||bk.readingStatus==='past'||bk.endDate||bk.yearOnly));
+        card.finishedDate=(bk&&bk.endDate)||null;
+        const latestFinishedEv=card.finished
+          ?readingEvs.filter(e=>e.bookId===ev.bookId&&e.type==='finished').sort((a,b)=>(b.ts||0)-(a.ts||0))[0]
+          :null;
+        card.finishedTs=latestFinishedEv?(latestFinishedEv.ts||0):null;
+        // Kart, en son gerçek etkinliğe (yeni not veya kitabın bitirilmesi) göre akışta yukarı taşınır.
+        const tsCandidates=[card.ts,...notes.map(n=>n.ts||0)];
+        if(latestFinishedEv) tsCandidates.push(latestFinishedEv.ts||0);
+        card.ts=Math.max(...tsCandidates);
+      }
+      cards.push(card);
     });
   });
   // Birlikte okuma davetleri
@@ -186,6 +212,7 @@ function renderFeed(append=false){
   else if(feedFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
   else if(feedFilter==='stories') cards=cards.filter(c=>c.type==='story');
   else if(feedFilter==='coreading') cards=cards.filter(c=>c.type==='coreading_invite');
+  else if(feedFilter==='journey') cards=cards.filter(c=>c.type==='reading_event'&&c.eventType==='started');
 
   cards.sort((a,b)=>{
     // Birlikte okuma kartları aktifse en üste
@@ -372,15 +399,17 @@ ${(()=>{
           ?`streakm_${card.u}_${card.months}_${card.ts}`
           :card.type==='quote'
             ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-            :`review_${card.u}_${card.bookId}`;
+            :card.type==='reading_event'
+              ?`readingev_${card.u}_${card.readingEventId}`
+              :`review_${card.u}_${card.bookId}`;
     const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?'📖 okuma':' 💬 alıntı';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBookFromFeed('${card.u}',${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
-    return`<div class="journal-entry" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
+    return`<div class="journal-entry" id="feedcard_${cardKey}" style="${isNewCard?'border-left:3px solid var(--rust);':''}">
       <div class="journal-entry-header">
         <span style="font-size:1.3rem;display:inline-flex;align-items:center;cursor:pointer" onclick="viewMember('${card.u}')">${avatarHtml(card.userAvatar,"1.5rem")}</span>
         <div class="journal-entry-meta">
@@ -436,12 +465,44 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
             <span style="font-size:.8rem;color:var(--gold)">${card.desc}</span>
           </div>
         </div>
-      `:card.type==='reading_event'?`
-        ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'reading','${card.readingEventId}')" title="Sil">✕</button></div>`:''}
-        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
+      `:card.type==='reading_event'?(()=>{
+        const delBtn=card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'reading','${card.readingEventId}')" title="Sil">✕</button></div>`:'';
+        const headLine=`<div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           ${readingEventIcon(card.eventType)} <strong>${escapeHtml(card.userName)}</strong>, ${readingEventText(card)}
-        </div>
-      `:`
+        </div>`;
+        if(card.eventType!=='started') return delBtn+headLine;
+        // Yolculuk Güncesi: "başladı", her not ve (varsa) "bitirdi" tek kronolojik zaman
+        // çizelgesi olarak ele alınır. Kartta SADECE en güncel olan görünür; öncekiler
+        // "daha fazla göster" altında eskiden yeniye sıralı durur.
+        const timeline=[{ts:card.startedTs||0,
+          html:`${readingEventIcon('started')} <strong>${escapeHtml(card.userName)}</strong>, ${readingEventText(card)}`}];
+        (card.notes||[]).forEach(n=>{
+          timeline.push({ts:n.ts||0, page:n.page, html:escapeHtml(n.text)});
+        });
+        if(card.finished){
+          timeline.push({ts:card.finishedTs||card.ts||0,
+            html:`✅ <strong>${escapeHtml(card.userName)}</strong>, ${readingEventText({bookTitle:card.bookTitle,eventType:'finished'})}`});
+        }
+        timeline.sort((a,b)=>(b.ts||0)-(a.ts||0)); // en yeniden en eskiye
+        const latest=timeline[0];
+        const earlier=timeline.slice(1); // zaten en yeniden en eskiye sıralı
+        // Her satırın altında tarih (varsa sayfa no da) etiketi — kronolojik sırayı
+        // gözle de doğrulanabilir kılmak için.
+        const entryLine=(item)=>`<div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.5">${item.html}</div>
+          <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(26,18,8,.45);margin-top:.1rem">${item.page?'s. '+item.page+' · ':''}${fmtDate(item.ts)}</div>`;
+        const latestHtml=entryLine(latest);
+        // En güncel satır her zaman en üstte görünür; "daha fazla göster" butonu ve
+        // altında açılan geçmiş, kartın tamamı tek yönde (en yeniden en eskiye) okunsun
+        // diye AYNI yönde (en yeniden en eskiye) sıralı durur.
+        const toggleHtml=earlier.length?`
+          <div style="margin-top:.4rem">
+            <button class="feed-expand-btn" id="jn-btn-${cardKey}" onclick="toggleJourneyNotes('${cardKey}')">daha fazla göster (${earlier.length})</button>
+            <div id="jn-rest-${cardKey}" style="display:none;margin-top:.5rem;padding-top:.5rem;border-top:1px solid rgba(201,162,39,.15)">
+              ${earlier.map(item=>`<div style="margin-bottom:.5rem">${entryLine(item)}</div>`).join('')}
+            </div>
+          </div>`:'';
+        return delBtn+latestHtml+toggleHtml;
+      })():`
         <div class="journal-quote">
           <div class="journal-quote-text">${truncateHtml(card.text,cardKey)}</div>
           <div class="journal-quote-footer">
@@ -482,6 +543,15 @@ function truncateHtml(text,cardKey){
     <span class="feed-text-full" id="ftf-${cardKey}" style="display:none">${safe}</span>
     <button class="feed-expand-btn" id="feb-${cardKey}" onclick="toggleFeedText('${cardKey}')">daha fazla</button>
   </span>`;
+}
+
+function toggleJourneyNotes(key){
+  const rest=document.getElementById('jn-rest-'+key);
+  const btn=document.getElementById('jn-btn-'+key);
+  if(!rest) return;
+  const isOpen=rest.style.display!=='none';
+  rest.style.display=isOpen?'none':'';
+  if(btn) btn.textContent=isOpen?'daha fazla göster':'daha az göster';
 }
 
 function reactionNames(reactions,r,cardKey){

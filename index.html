@@ -893,6 +893,7 @@ try{
               <button class="filter-tab" onclick="filterFeed('quotes',this)">Alıntı</button>
               <button class="filter-tab" onclick="filterFeed('stories',this)">Hikâye</button>
               <button class="filter-tab" onclick="filterFeed('coreading',this)">👥 Birlikte</button>
+              <button class="filter-tab" onclick="filterFeed('journey',this)">📜 Yolculuk</button>
             </div>
           </div>
         </div>
@@ -4329,6 +4330,21 @@ function renderViewMode(book, fromShelf){
           onchange="saveFieldTyped(${book.id},'currentPage','number',this.value)"/>
         ${book.pages?`<span style="font-size:.8rem;color:var(--ink-light)">/ ${book.pages} sayfa</span>`:''}
       </div>
+      <div style="margin-top:.6rem">
+        <div style="font-size:.8rem;color:var(--ink-light)">📜 Yolculuk Notu</div>
+        <textarea id="journeyNoteText_${book.id}" maxlength="150" placeholder="${journeyPlaceholder()}"
+          style="width:100%;min-height:44px;resize:vertical;margin-top:.3rem;background:#fff;border:1px solid rgba(201,162,39,.5);border-radius:4px;padding:.4rem .5rem;font-size:.85rem;color:var(--ink);font-family:'Crimson Pro',serif"></textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:.3rem" onclick="addJourneyNote(${book.id},${fromShelf})">+ Ekle</button>
+      </div>
+    </div>`:'';
+
+  // Yolculuğu Gör linki — okuma bitse de notlar kaldığı sürece kalıcı (kart akıştan hiç kalkmıyor)
+  const journeyLinkHtml=isMe&&(book.journeyNotes||[]).length?`
+    <div class="vm-section">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:.8rem;color:var(--ink-light)">📜 Yolculuk Notları <span style="font-size:.65rem;opacity:.6">(${book.journeyNotes.length})</span></span>
+        <button onclick="goToJourneyCard(${book.id})" style="background:none;border:none;cursor:pointer;font-size:.72rem;color:var(--gold);font-family:'Space Mono',monospace;opacity:.8">📜 Yolculuğu Gör →</button>
+      </div>
     </div>`:'';
 
   // Kişisel not
@@ -4390,6 +4406,7 @@ function renderViewMode(book, fromShelf){
     </div>`:''}
 
     ${pageHtml}
+    ${journeyLinkHtml}
     ${ratingHtml}
     ${noteHtml}
     ${reviewHtml}
@@ -5278,6 +5295,35 @@ function setRating(bookId, rating){
   renderJournal();
 }
 
+const JOURNEY_NOTE_PLACEHOLDERS=[
+  "Şu an tam buradayım... 📖","Bırakmak istemedim ama...","Az kalsın kitabı kapatıyordum.",
+  "Karakterle aramız iyi değil.","Beklemediğim bir şey oldu.","Bugün sadece birkaç sayfa, ama olsun.",
+  "Yavaş gidiyor ama bırakmıyorum."
+];
+function journeyPlaceholder(){
+  return JOURNEY_NOTE_PLACEHOLDERS[Math.floor(Math.random()*JOURNEY_NOTE_PLACEHOLDERS.length)];
+}
+function addJourneyNote(bookId,fromShelf){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  const ta=document.getElementById('journeyNoteText_'+bookId);
+  if(!ta) return;
+  const text=ta.value.trim();
+  if(!text) return;
+  if(!book.journeyNotes) book.journeyNotes=[];
+  book.journeyNotes.push({text, page:book.currentPage||null, ts:Date.now()});
+  saveDb();
+  renderViewMode(book,fromShelf); // görüntüleme modunda kal, hızlı ardışık giriş için
+}
+function goToJourneyCard(bookId){
+  const evs=(db.readingEvents&&db.readingEvents[me])||[];
+  const started=evs.filter(e=>e.bookId===bookId&&e.type==='started').sort((a,b)=>b.ts-a.ts)[0];
+  closeModal();
+  showPanel('feed');
+  setTimeout(()=>{
+    if(started) document.getElementById('feedcard_readingev_'+me+'_'+started.id)?.scrollIntoView({behavior:'smooth',block:'center'});
+  },150);
+}
 function addQuote(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
