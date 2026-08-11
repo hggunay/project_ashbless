@@ -256,31 +256,21 @@ function renderFeed(append=false){
   }
 
   function feedReactionHtml(card){
-   const cardKey=card.type==='story'
-      ?`story_${card.u}_${card.storyId}`
-      :card.type==='series_event'
-        ?`seriesev_${card.u}_${card.seriesEventId}`
-        :card.type==='country_event'
-          ?`countryev_${card.u}_${card.countryEventId}`
-          :card.type==='badge'
-            ?`badge_${card.u}_${card.badgeId}_${card.ts}`
-            :card.type==='reading_event'
-              ?`readingev_${card.u}_${card.readingEventId}`
-              :card.type==='quote'
-                ?`quote_${card.u}_${card.bookId}_${card.quoteIdx}`
-                :`review_${card.u}_${card.bookId}`;
+    const cardKey=feedCardKey(card);
+    // K6: gösterilen reaksiyonlar = kaydın içindeki eski veri + aa-v4/reactions düğümü.
+    const reactions=mergedReactions(cardKey,card.reactions);
     const reactionList=card.type==='streak_milestone'?milestoneReactionList:defaultReactionList;
     // Sağ-tık panelinden seçilmiş ama sabit listede olmayan emojiler (😂😢😤🤯❤️💩) —
     // kullanılmışsa 👍'nin yanına ayrı buton olarak eklenmeli, yoksa veri kaydediliyor
     // ama hiçbir yerde görünmüyor (bkz. 2026-08-08 canlı hata raporu).
     const usedThumbEmojis=card.type==='streak_milestone'?[]:THUMB_PICKER_EMOJIS.filter(em=>
-      Object.values(card.reactions).some(arr=>Array.isArray(arr)&&arr.includes(em)));
+      Object.values(reactions).some(arr=>Array.isArray(arr)&&arr.includes(em)));
     const fullReactionList=[...reactionList,...usedThumbEmojis];
     return fullReactionList.map(r=>{
-      const myR=(card.reactions[me])||[];
+      const myR=reactions[me]||[];
       const active=myR.includes(r)?'active':'';
-      const cnt=Object.values(card.reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
-      const names=cnt>0?reactionNames(card.reactions,r,cardKey):'';
+      const cnt=Object.values(reactions).filter(arr=>Array.isArray(arr)&&arr.includes(r)).length;
+      const names=cnt>0?reactionNames(reactions,r,cardKey):'';
       const rEsc=r.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
       // 👍 butonuna sağ tıklayınca ek emoji paneli açılsın diye — diğer üç buton etkilenmiyor.
       // Kutlama kartlarının (streak_milestone) zaten 👍'si yok, o yüzden orada eklenmiyor.
@@ -604,94 +594,130 @@ function flashReactionPop(oldBtn){
   }
 }
 
+// ── REAKSİYON DEPOSU (K6) ────────────────────────────────────────────────────
+// Reaksiyonlar eskiden ait oldukları kaydın (kitap/hikâye/olay) İÇİNDE duruyordu.
+// Bu iki ayrı soruna yol açıyordu:
+//  (1) Ortak "diğer alanlar" bloğuna yazıldıkları için her reaksiyon çakışma
+//      kontrolüne giriyordu — iki üye aynı anda aktifken kırmızı "SUNUCUYA
+//      KAYDEDİLEMEDİ (çakışma…)" bandı çıkıp reaksiyon geri alınıyordu.
+//  (2) BAŞKASININ kitabındaki değerlendirme/alıntı reaksiyonu hiç kaydedilmiyordu:
+//      saveDb() Firebase'e yalnızca db.books[me]'yi yazar, o yüzden başkasının
+//      kaydına yazılan reaksiyon sayfa yenilenince sessizce kayboluyordu
+//      (bildirim gidiyordu, veri gitmiyordu — kullanıcı 2026-08-11'de doğruladı).
+// Çözüm: her reaksiyon kendi yaprağına yazılıyor →
+//      aa-v4/reactions/<kartKimliği>/<kullanıcı> = [emoji,...]
+// Kimse kimsenin yaprağına dokunmadığı için çakışma imkânsız; kartın sahibinin kim
+// olduğu da önemsiz hale geliyor.
+// ESKİ VERİYE DOKUNULMUYOR: taşıma/toplu yazma YOK. Kayıtların içindeki eski
+// reaksiyonlar okunmaya devam ediyor, yalnızca yeni yazmalar bu düğüme gidiyor;
+// mergedReactions() ikisini ekranda birleştiriyor.
+// Firebase boş diziyi saklamadığı için "artık hiç reaksiyonum yok" durumu açık bir
+// işaretle yazılıyor — yoksa kayıt silinir ve eski gömülü reaksiyon geri canlanırdı.
+const REACTION_EMPTY='-';
+
+function reactionPathKey(cardKey){
+  return String(cardKey).replace(/[.#$/\[\]]/g,'_');
+}
+
+// Kart kimliği — feedReactionHtml'deki data-cardkey ile AYNI değeri üretmeli.
+function feedCardKey(card){
+  switch(card.type){
+    case 'story':            return `story_${card.u}_${card.storyId}`;
+    case 'series_event':     return `seriesev_${card.u}_${card.seriesEventId}`;
+    case 'country_event':    return `countryev_${card.u}_${card.countryEventId}`;
+    case 'badge':            return `badge_${card.u}_${card.badgeId}_${card.ts}`;
+    // Yığın kartları eskiden bu listede hiç yoktu ve sondaki review dalına düşüyordu —
+    // yani bir üyenin TÜM yığın kartları `review_<üye>_undefined` kimliğini paylaşıyordu.
+    // Kimlik artık veri anahtarı olduğu için düzeltildi.
+    case 'streak_milestone': return `sm_${card.u}_${card.months}_${card.ts}`;
+    case 'reading_event':    return `readingev_${card.u}_${card.readingEventId}`;
+    case 'quote':            return `quote_${card.u}_${card.bookId}_${card.quoteIdx}`;
+    default:                 return `review_${card.u}_${card.bookId}`;
+  }
+}
+
+// Gösterim için: eski gömülü reaksiyonlar + yeni düğüm. Yeni düğüm kullanıcı bazında
+// üstün gelir (birisi reaksiyonunu geri çekmişse eski kayıttan geri gelmemeli).
+function mergedReactions(cardKey,embedded){
+  const out={};
+  for(const [u,arr] of Object.entries(embedded||{})) if(Array.isArray(arr)) out[u]=arr;
+  const fresh=(db.reactions&&db.reactions[reactionPathKey(cardKey)])||{};
+  for(const [u,val] of Object.entries(fresh)){
+    if(val===REACTION_EMPTY) delete out[u];
+    else if(Array.isArray(val)) out[u]=val;
+  }
+  return out;
+}
+
+// Emojiyi ekler/çıkarır ve YALNIZCA kendi yaprağını yazar.
+// Dönen değer: emoji eklendiyse true (bildirim yalnızca eklemede gönderilir).
+function applyReactionToggle(cardKey,embedded,reaction){
+  const current=mergedReactions(cardKey,embedded)[me];
+  const list=Array.isArray(current)?[...current]:[];
+  const idx=list.indexOf(reaction);
+  const added=idx===-1;
+  if(added) list.push(reaction); else list.splice(idx,1);
+  const key=reactionPathKey(cardKey);
+  const value=list.length?list:REACTION_EMPTY;
+  if(!db.reactions) db.reactions={};
+  if(!db.reactions[key]) db.reactions[key]={};
+  db.reactions[key][me]=value;
+  fbSet('aa-v4/reactions/'+key+'/'+me,value);
+  return added;
+}
+
 function toggleSeriesEventReaction(owner,eventId,reaction,btnEl){
   if(!db.seriesEvents||!db.seriesEvents[owner]) return;
   const ev=db.seriesEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
-  if(!ev.reactions) ev.reactions={};
-  if(!ev.reactions[me]) ev.reactions[me]=[];
-  const idx=ev.reactions[me].indexOf(reaction);
-  if(idx>-1) ev.reactions[me].splice(idx,1);
-  else{
-    ev.reactions[me].push(reaction);
-    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.seriesName||'seri');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`seriesev_${owner}_${eventId}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.seriesName||'seri');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 function toggleStoryReaction(storyOwner,storyId,reaction,btnEl){
   if(!db.stories||!db.stories[storyOwner]) return;
   const story=db.stories[storyOwner].find(s=>s.id===storyId);
   if(!story) return;
-  if(!story.reactions) story.reactions={};
-  if(!story.reactions[me]) story.reactions[me]=[];
-  const idx=story.reactions[me].indexOf(reaction);
-  if(idx>-1) story.reactions[me].splice(idx,1);
-  else{
-    story.reactions[me].push(reaction);
-    if(storyOwner!==me) pushReactionNotif(storyOwner,me,reaction,story.title||'hikâye');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`story_${storyOwner}_${storyId}`,story.reactions,reaction);
+  if(added&&storyOwner!==me) pushReactionNotif(storyOwner,me,reaction,story.title||'hikâye');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 function toggleStreakMilestoneReaction(owner,eventId,reaction,btnEl){
   if(!db.streakEvents||!db.streakEvents[owner]) return;
   const ev=db.streakEvents[owner].find(e=>`sm_${owner}_${e.months}_${e.ts}`===eventId);
   if(!ev) return;
-  if(!ev.reactions) ev.reactions={};
-  if(!ev.reactions[me]) ev.reactions[me]=[];
-  const idx=ev.reactions[me].indexOf(reaction);
-  if(idx>-1) ev.reactions[me].splice(idx,1);
-  else{
-    ev.reactions[me].push(reaction);
-    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.months+' aylık seri');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`sm_${owner}_${ev.months}_${ev.ts}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.months+' aylık seri');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 function toggleCountryEventReaction(owner,eventId,reaction,btnEl){
   if(!db.countryEvents||!db.countryEvents[owner]) return;
   const ev=db.countryEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
-  if(!ev.reactions) ev.reactions={};
-  if(!ev.reactions[me]) ev.reactions[me]=[];
-  const idx=ev.reactions[me].indexOf(reaction);
-  if(idx>-1) ev.reactions[me].splice(idx,1);
-  else{
-    ev.reactions[me].push(reaction);
-    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`countryev_${owner}_${eventId}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 function toggleBadgeEventReaction(owner,eventId,reaction,btnEl){
   if(!db.badgeEvents||!db.badgeEvents[owner]) return;
   const ev=db.badgeEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
-  if(!ev.reactions) ev.reactions={};
-  if(!ev.reactions[me]) ev.reactions[me]=[];
-  const idx=ev.reactions[me].indexOf(reaction);
-  if(idx>-1) ev.reactions[me].splice(idx,1);
-  else{
-    ev.reactions[me].push(reaction);
-    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.name||'rozet');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`badge_${owner}_${ev.badgeId}_${ev.ts}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.name||'rozet');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 function toggleReadingEventReaction(owner,eventId,reaction,btnEl){
   if(!db.readingEvents||!db.readingEvents[owner]) return;
   const ev=db.readingEvents[owner].find(e=>e.id===eventId);
   if(!ev) return;
-  if(!ev.reactions) ev.reactions={};
-  if(!ev.reactions[me]) ev.reactions[me]=[];
-  const idx=ev.reactions[me].indexOf(reaction);
-  if(idx>-1) ev.reactions[me].splice(idx,1);
-  else{
-    ev.reactions[me].push(reaction);
-    if(owner!==me) pushReactionNotif(owner,me,reaction,ev.bookTitle||'kitap');
-  }
-  saveDb();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(`readingev_${owner}_${eventId}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.bookTitle||'kitap');
+  renderFeed();flashReactionPop(btnEl);
 }
 
 // Kullanıcının kendi rozet/okuma-olayı kartını akıştan silmesi — küçük ✕, inline "emin misin?" onayı
@@ -1250,23 +1276,20 @@ function closeThumbPicker(){
 function toggleCardReaction(type,bookOwner,bookId,quoteIdx,reaction,btnEl){
   const book=(db.books[bookOwner]||[]).find(b=>b.id===bookId);
   if(!book) return;
-  let reactObj;
+  // K6: kitap kaydına artık YAZMIYORUZ. Başkasının kitabına yazılan reaksiyon
+  // Firebase'e hiç ulaşmıyordu (saveDb yalnızca db.books[me]'yi gönderir).
+  let embedded,cardKey;
   if(type==='review'){
-    if(!book.reviewReactions) book.reviewReactions={};
-    reactObj=book.reviewReactions;
+    embedded=book.reviewReactions;
+    cardKey=`review_${bookOwner}_${bookId}`;
   } else {
     if(!book.quotes||!book.quotes[quoteIdx]) return;
-    if(!book.quotes[quoteIdx].reactions) book.quotes[quoteIdx].reactions={};
-    reactObj=book.quotes[quoteIdx].reactions;
+    embedded=book.quotes[quoteIdx].reactions;
+    cardKey=`quote_${bookOwner}_${bookId}_${quoteIdx}`;
   }
-  if(!reactObj[me]) reactObj[me]=[];
-  const idx=reactObj[me].indexOf(reaction);
-  if(idx>-1) reactObj[me].splice(idx,1);
-  else{
-    reactObj[me].push(reaction);
-    if(bookOwner!==me) pushReactionNotif(bookOwner,me,reaction,book.title||'kitap');
-  }
-  saveDb();renderJournal();renderFeed();flashReactionPop(btnEl);
+  const added=applyReactionToggle(cardKey,embedded,reaction);
+  if(added&&bookOwner!==me) pushReactionNotif(bookOwner,me,reaction,book.title||'kitap');
+  renderJournal();renderFeed();flashReactionPop(btnEl);
 }
 
 function copyCardQuote(bookOwner,bookId,quoteIdx){

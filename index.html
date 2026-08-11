@@ -2104,9 +2104,12 @@ async function loadDb(fbOnly){
   try{
     const data=await fbGet('aa-v4');
     if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.readingSessions)db.readingSessions={};
-  if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};
+  if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};if(!db.reactions)db.reactions={};
       // readingSessions ayrı path'ten yükle
       try{const rs=await fbGet('aa-v4/readingSessions');if(rs)db.readingSessions=rs;}catch(e){}
+      // K6: reaksiyonlar ayrı düğümde (aa-v4/reactions) — herkes yalnızca kendi
+      // yaprağına yazdığı için çakışma kontrolüne hiç girmiyorlar. Bkz. feed.js.
+      try{const rx=await fbGet('aa-v4/reactions');if(rx)db.reactions=rx;}catch(e){}
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
       // Avatar'ları ayrı node'dan yükle
@@ -2118,7 +2121,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2159,7 +2162,8 @@ async function _saveDbNow(){
     // notifications hariç — her kullanıcı kendi/başkasının bildirimini granüler pushNotification()
     // ile yazıyor. books ve readingSessions de hariç (K3): ikisi kendi granüler yoluna yazılıyor.
     // savedAt da karşılaştırmadan hariç — o zaten her kayıtta değişen bir alan.
-    const {shelf,notifications,readingSessions,books,savedAt,...restFields}={...db};
+    // reactions da hariç (K6): her üye yalnızca kendi yaprağına granüler yazıyor.
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -2193,7 +2197,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
