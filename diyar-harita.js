@@ -224,9 +224,19 @@ function dhStilEkle() {
   opacity:var(--karartma,0);
   -webkit-mask-image:var(--maske); mask-image:var(--maske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
-.dhDiyar .dhEtiket { position:absolute; font-size:15px; letter-spacing:.22em;
-  text-transform:uppercase; color:#f3e6cd; pointer-events:none;
-  text-shadow:0 1px 4px rgba(0,0,0,.85), 0 0 14px rgba(0,0,0,.6); }
+/* Etiket boyutu kamera yakınlığına göre TERS ölçekleniyor: dünya
+   koordinatında sabit 15px yazı, uzaklaşınca ekranda 5-6 piksele düşüp
+   okunmaz hâle geliyordu. --olcek her kamera hareketinde güncelleniyor,
+   böylece yazı ekranda hep ~13px kalıyor. Üst sınır (44px dünya) çok
+   yakınlaşınca yazının devleşmesini engelliyor. */
+.dhDiyar .dhEtiket { position:absolute;
+  font-size:min(calc(13px / var(--olcek, 1)), 44px);
+  letter-spacing:.18em; text-transform:uppercase; color:#f3e6cd; pointer-events:none;
+  white-space:nowrap; transition:opacity .3s ease;
+  text-shadow:0 1px 4px rgba(0,0,0,.9), 0 0 16px rgba(0,0,0,.75); }
+/* Uzaktayken etiket okunacak boyuta çıkamıyor (uzun adlar görselden taşardı),
+   o yüzden hiç gösterilmiyor: yeterince yaklaşınca yumuşakça beliriyor. */
+#dhKutu.etiketUzak .dhEtiket { opacity:0; }
 #dhKutu.etiketsiz .dhDiyar .dhEtiket { display:none; }
 #dhBos { position:absolute; inset:0; display:grid; place-items:center; text-align:center;
          color:#cbbb95; font-size:.9rem; line-height:1.7; padding:1.5rem; z-index:6; }
@@ -264,9 +274,17 @@ body.dhDetayAcik #dhDetay { display:flex; }
   border-radius:8px; background:none; border:1px solid rgba(226,207,170,.28); opacity:.55; }
 #dhSahneler button img { width:100%; height:100%; object-fit:cover; display:block; }
 #dhSahneler button.secili { opacity:1; border-color:#c9a24a; }
-#dhDetayKapat { position:absolute; top:-8px; right:-8px; width:38px; height:38px; border-radius:50%;
-  font:20px/1 sans-serif; cursor:pointer; color:#f0e2c4;
-  background:rgba(32,26,20,.92); border:1px solid rgba(226,207,170,.28); }
+/* z-index ŞART: buton kartın ilk çocuğu, görsel ondan SONRA geliyor ve
+   HTML'de sonra gelen eleman üste çiziliyordu. Buton görselin sağ üst
+   köşesiyle çakıştığı için tıklamalar görsele gidiyor, panel kapanmıyordu
+   (2026-08-12'de kullanıcı bildirdi: "5-6 kez tıkladıktan sonra çıkıyor" —
+   o da tıklamanın nihayet kartın dışına düşmesiydi).
+   Dokunmatik için hedef de büyütüldü: 38 -> 46px. */
+#dhDetayKapat { position:absolute; top:-10px; right:-10px; z-index:3;
+  width:46px; height:46px; border-radius:50%;
+  font:22px/1 sans-serif; cursor:pointer; color:#f0e2c4;
+  background:rgba(32,26,20,.94); border:1px solid rgba(226,207,170,.35); }
+#dhDetayKapat:hover { background:rgba(60,48,36,.98); }
 
 /* Ayar şeridi — YALNIZCA test hesabında. Kilit açılırken silinecek. */
 #dhAyarAc { margin-top:.5rem; font-size:.8rem; }
@@ -349,6 +367,11 @@ function dhKamUygula() {
   dhKamSinirla();
   DH.dunya.style.transform = 'translate(' + DH.kam.x.toFixed(1) + 'px,' +
     DH.kam.y.toFixed(1) + 'px) scale(' + DH.kam.s.toFixed(4) + ')';
+  // Etiketler bu değere göre ters ölçekleniyor (bkz. .dhEtiket kuralı).
+  DH.dunya.style.setProperty('--olcek', DH.kam.s.toFixed(4));
+  // 0.30'un altında yazı ekranda 13px'e çıkamıyor (üst sınır devreye giriyor);
+  // okunmayan etiketi göstermek yerine gizliyoruz.
+  DH.kutu.classList.toggle('etiketUzak', DH.kam.s < 0.30);
 }
 function dhEkranaDunya(mx, my) {
   const r = DH.kutu.getBoundingClientRect();
