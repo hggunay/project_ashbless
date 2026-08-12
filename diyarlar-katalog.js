@@ -216,7 +216,13 @@ const DIYAR_KATALOG = [
     id: 'harikalar-diyari',
     ad: 'Harikalar Diyarı',
     sahneler: [
-      { dosya: 'wonderland.webp' }
+      { dosya: 'wonderland1.webp' },
+      { dosya: 'wonderland2.webp' },
+      { dosya: 'wonderland3.webp' },
+      { dosya: 'wonderland4.webp' },
+      { dosya: 'wonderland5.webp' },
+      { dosya: 'wonderland6.webp' },
+      { dosya: 'alice.webp', ad: 'Alice' }
     ],
     tetikleyiciler: {
       kitaplar: [
@@ -268,6 +274,108 @@ const DIYAR_KATALOG = [
           takmaAdlar: ['The Ballad of Songbirds and Snakes'] }
       ],
       seriler: ['Açlık Oyunları', 'The Hunger Games']
+    }
+  },
+
+  {
+    id: 'yarim-kan-kampi',
+    ad: 'Yarım Kan Kampı',
+    not: 'Yunan tanrılarının çocukları için tek güvenli yer.',
+    sahneler: [
+      { dosya: 'percy-jackson1.webp' },
+      { dosya: 'percy-jackson2.webp' },
+      { dosya: 'percy-jackson3.webp' }
+    ],
+    tetikleyiciler: {
+      // Riordan'ın Kane Günlükleri (Mısır) ve Magnus Chase (İskandinav)
+      // serileri başka dünyalarda geçiyor — yazar tabanlı tetikleyici YOK.
+      baslikIcerir: [
+        { yazar: 'Rick Riordan', baslikIcerir: 'Percy Jackson' }
+      ],
+      kitaplar: [
+        { baslik: 'Şimşek Hırsızı',    yazar: 'Rick Riordan', takmaAdlar: ['The Lightning Thief'] },
+        { baslik: 'Canavarlar Denizi', yazar: 'Rick Riordan', takmaAdlar: ['The Sea of Monsters'] },
+        { baslik: 'Titan\'ın Laneti',  yazar: 'Rick Riordan', takmaAdlar: ["The Titan's Curse"] },
+        { baslik: 'Labirent Savaşı',   yazar: 'Rick Riordan', takmaAdlar: ['The Battle of the Labyrinth'] },
+        { baslik: 'Son Olimposlu',     yazar: 'Rick Riordan', takmaAdlar: ['The Last Olympian'] }
+      ],
+      seriler: ['Percy Jackson', 'Percy Jackson ve Olimposlular']
+    }
+  },
+
+  {
+    id: 'karanlik-cevherler',
+    ad: 'Lyra\'nın Dünyası',
+    not: 'Herkesin ruhu yanında yürür.',
+    sahneler: [
+      { dosya: 'altin-pusula1.webp' },
+      { dosya: 'altin-pusula2.webp' },
+      { dosya: 'altin-pusula3.webp' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Altın Pusula',    yazar: 'Philip Pullman', takmaAdlar: ['Northern Lights', 'The Golden Compass'] },
+        { baslik: 'Kehanet Bıçağı',  yazar: 'Philip Pullman', takmaAdlar: ['The Subtle Knife'] },
+        { baslik: 'Amber Dürbün',    yazar: 'Philip Pullman', takmaAdlar: ['The Amber Spyglass'] }
+      ],
+      seriler: ['Karanlık Cevherler', 'His Dark Materials', 'Altın Pusula']
+    }
+  },
+
+  {
+    id: 'kita',
+    ad: 'Kıta',
+    not: 'Canavar avcısının yolu buradan geçer.',
+    sahneler: [
+      { dosya: 'witcher1.webp' },
+      { dosya: 'witcher2.webp' },
+      { dosya: 'witcher3.webp' }
+    ],
+    tetikleyiciler: {
+      // Sapkowski'nin kitaplarının tamamı bu dünyada geçiyor.
+      yazarlar: ['Andrzej Sapkowski'],
+      seriler: ['The Witcher', 'Witcher']
+    }
+  },
+
+  {
+    id: 'fantasya',
+    ad: 'Fantasya',
+    not: 'Hiçliğin yuttuğu ülke — bir okuyucu adını koyana kadar.',
+    sahneler: [
+      { dosya: 'fantasya1.webp' },
+      { dosya: 'fantasya2.webp' }
+    ],
+    tetikleyiciler: {
+      // Ende'nin Momo'su başka bir dünyada — yazar tabanlı tetikleyici YOK.
+      kitaplar: [
+        { baslik: 'Bitmeyecek Öykü', yazar: 'Michael Ende',
+          takmaAdlar: ['The Neverending Story', 'Bitmeyen Öykü', 'Die unendliche Geschichte'] }
+      ]
+    }
+  },
+
+  {
+    id: 'kara-kule',
+    ad: 'Kara Kule',
+    not: 'Bütün dünyaların ekseni.',
+    sahneler: [
+      { dosya: 'kara-kule1.webp' },
+      { dosya: 'kara-kule2.webp' },
+      { dosya: 'kara-kule3.webp' }
+    ],
+    tetikleyiciler: {
+      // King'in Derry kitaplarından ayrı bir dünya; ikisi çakışmıyor.
+      kitaplar: [
+        { baslik: 'Silahşor',              yazar: 'Stephen King', takmaAdlar: ['The Gunslinger', 'Kara Kule 1'] },
+        { baslik: 'Üçün Çekilişi',         yazar: 'Stephen King', takmaAdlar: ['The Drawing of the Three'] },
+        { baslik: 'Kayıp Diyarlar',        yazar: 'Stephen King', takmaAdlar: ['The Waste Lands'] },
+        { baslik: 'Büyücü ve Cam Küre',    yazar: 'Stephen King', takmaAdlar: ['Wizard and Glass'] },
+        { baslik: 'Calla\'nın Kurtları',   yazar: 'Stephen King', takmaAdlar: ['Wolves of the Calla'] },
+        { baslik: 'Susannah\'ın Şarkısı',  yazar: 'Stephen King', takmaAdlar: ["Song of Susannah"] },
+        { baslik: 'Kara Kule',             yazar: 'Stephen King', takmaAdlar: ['The Dark Tower'] }
+      ],
+      seriler: ['Kara Kule', 'The Dark Tower']
     }
   },
 

@@ -33,11 +33,14 @@ const DH = {
   slotHarita: new Map(),
   yerlesim: [],
   kesifler: new Set(),
-  // Kullanıcının 2026-08-09'da seçip onayladığı ayarlar
+  // Gökşin'in 2026-08-12'de GERÇEK CİHAZDA ayarlayıp onayladığı değerler.
+  // (Önceki set 2026-08-09'da önizlemede seçilmişti; aralık 603→922 büyüdü,
+  //  görsel 90→80 küçüldü. Bu ikisi birlikte sis deliğinin görselin daha
+  //  büyük kısmını açmasını sağlıyor: delik yarıçapı 0.20→0.29 aralığa çıktı.)
   ayar: {
-    zemin: 'karanlikdeniz', solgun: 0, doseme: 160, dalga: 46,
+    zemin: 'karanlikdeniz', solgun: 0, doseme: 220, dalga: 37,
     sis: true, etiket: true, grid: false,
-    aralik: 603, gorsel: 90, yumusak: 64, sekil: 170, daginik: 13,
+    aralik: 922, gorsel: 80, yumusak: 65, sekil: 197, daginik: 9,
     kenar: 6, anim: 'dagil'
   }
 };
@@ -185,7 +188,12 @@ function dhStilEkle() {
   s.textContent = `
 #dhKutu { position:relative; width:100%; height:min(70vh,560px); overflow:hidden;
           background:#0a0f16; border-radius:8px; touch-action:none;
-          --sisRenk:#4e6076; --cizgi:rgba(176,202,232,.17);
+          /* Keşfedilmemiş alan TAMAMEN SİYAH (2026-08-12, Gökşin'in isteği).
+             Eskiden mavimsi bir sis rengiydi (#4e6076) ve altındaki deniz
+             dokusu hafifçe seziliyordu. Şimdi hiçbir şey görünmüyor —
+             harita karanlıkta duran adalar hâline geliyor.
+             Geri almak için tek yapılacak bu rengi değiştirmek. */
+          --sisRenk:#000000; --cizgi:rgba(176,202,232,.17);
           --isik1:rgba(196,224,255,.42); --isik2:rgba(150,186,226,.22);
           --isik3:rgba(120,160,200,0); --golge:rgba(0,0,0,.55); }
 #dhDunya { position:absolute; top:0; left:0; transform-origin:0 0; cursor:grab; }
@@ -228,15 +236,23 @@ function dhStilEkle() {
   background:rgba(8,12,18,.86); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   align-items:center; justify-content:center; }
 body.dhDetayAcik #dhDetay { display:flex; }
-#dhDetayKart { position:relative; max-width:min(92vw,900px); max-height:92vh;
+/* Görsel kaynağı 1024x1024. Panel eskiden min(72vh,100%) ile sınırlıydı ve
+   PC'de ~415 CSS pikselde kalıyordu — kaynağın yarısından azı. Kağıt-kesme
+   dokusunun görünmemesinin sebebi buydu, webp sıkıştırması değil (ölçüldü:
+   ortalama fark 255'te 2). Sınır 1024'e kadar açıldı: artık büyük ekranda
+   görsel neredeyse birebir çözünürlükte gösteriliyor. */
+#dhDetayKart { position:relative; max-width:min(96vw,1024px); max-height:96vh;
   display:flex; flex-direction:column; align-items:center; color:#f0e2c4; text-align:center; }
-#dhDetaySahne { position:relative; width:min(72vh,100%); aspect-ratio:1/1; display:grid; place-items:center; }
+#dhDetaySahne { position:relative; width:min(78vh,100%,1024px); aspect-ratio:1/1; display:grid; place-items:center; }
 #dhDetaySahne img { width:100%; height:100%; object-fit:cover; display:block;
   -webkit-mask-image:var(--dmaske); mask-image:var(--dmaske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
   filter:drop-shadow(0 10px 40px rgba(0,0,0,.7)); }
+/* Vinyet dışarı çekildi: eskiden %42'de başlıyordu ve görselin kenarındaki
+   kağıt-kesme katmanlarını da söndürüyordu. Artık %58'de başlıyor —
+   üretim logosunun durduğu köşe hâlâ kapanıyor ama desen görünür kalıyor. */
 #dhDetaySahne::after { content:""; position:absolute; inset:0; pointer-events:none;
-  background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(6,11,18,0) 42%, rgba(6,11,18,.55) 72%, rgba(6,11,18,.95) 100%);
+  background:radial-gradient(ellipse 50% 50% at 50% 50%, rgba(6,11,18,0) 58%, rgba(6,11,18,.45) 80%, rgba(6,11,18,.92) 100%);
   -webkit-mask-image:var(--dmaske); mask-image:var(--dmaske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
 #dhDetayAd { margin-top:12px; font-size:22px; letter-spacing:.18em; text-transform:uppercase; }
@@ -478,7 +494,12 @@ function dhCiz() {
     el.setAttribute('width', DH.DUNYA); el.setAttribute('height', DH.DUNYA);
   });
   document.getElementById('dhSisTaban').setAttribute('fill',
-    getComputedStyle(DH.kutu).getPropertyValue('--sisRenk').trim() || '#4e6076');
+    getComputedStyle(DH.kutu).getPropertyValue('--sisRenk').trim() || '#000000');
+  // Sis siyah olduğu için bulut dokusu görünmez (overlay harmanı siyah zeminde
+  // siyah kalır) — hesaplanmasına da gerek yok. Kapatmak aynı zamanda her
+  // yakınlaştırmada yeniden çizilen bir turbulans deseninden kurtarıyor,
+  // yani zayıf donanımda gözle görülür bir performans kazancı.
+  document.getElementById('dhSisBulut').setAttribute('opacity', '0');
   // Sis kenarının yayılması ARALIK'la ölçeklensin; sabit kalırsa küçük
   // deliklerde kenar taşıp komşu diyarın üzerine geliyor.
   document.getElementById('dhKaydir').setAttribute('scale', (W * 0.055).toFixed(1));
