@@ -1390,7 +1390,16 @@ try{
         <div id="statsContainer"></div>
       </div>
       <div id="sPanel-map" style="display:none;padding:.75rem 0">
+        <!-- Harita türü geçişi — YALNIZCA test hesabında görünür.
+             Diğer üyeler bu satırı hiç görmez, dünya haritasını aynen görür. -->
+        <div id="diyarToggleSatir" style="display:none;gap:.4rem;margin-bottom:.75rem;justify-content:center;flex-wrap:wrap">
+          <button id="hTab-dunya" class="filter-tab active" onclick="switchHaritaTuru('dunya')">🌍 Dünya Haritası</button>
+          <button id="hTab-diyar" class="filter-tab" onclick="switchHaritaTuru('diyar')">✨ Hayali Diyarlar Haritası</button>
+        </div>
         <div id="mapContainer" style="max-width:960px;margin:0 auto;border:1px solid rgba(201,162,39,.3);border-radius:8px;overflow:hidden;background:#1a0f00"></div>
+        <div id="diyarSarmal" style="display:none;max-width:960px;margin:0 auto">
+          <div id="diyarHaritaKutu"></div>
+        </div>
       </div>
     </div>
 
@@ -1725,6 +1734,8 @@ try{
                     <li>Yeni ülke sistemi kurulmadan önce eklenmiş eski kitaplar için</li>
                   </ul>
                   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Eksik Ülkeleri Ekle</button>
+                  <!-- Test kilidi içinde; diyarKilidiUygula() görünürlüğü ayarlıyor -->
+                  <button id="diyarBackfillBtn" class="btn btn-sm" style="display:none;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillRealmEvents()">🗺️ Eksik Diyarları Ekle</button>
                 </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Profilimi sil</div>
@@ -1775,6 +1786,12 @@ try{
 <script src="shelves.js"></script>
 <script src="avatar.js"></script>
 <script src="shelf.js"></script>
+<!-- Hayali Diyarlar Haritası (2026-08-12). Şimdilik yalnızca test hesabında
+     görünüyor — bkz. DIYAR_TEST_HESAPLARI / diyarTestModu(). -->
+<script src="diyarlar-katalog.js"></script>
+<script src="diyar-esleme.js"></script>
+<script src="diyarlar.js"></script>
+<script src="diyar-harita.js"></script>
 
 <script>
 (function(){emailjs.init({publicKey:'nUPA309NC_qlxeVQn'});})();
@@ -2104,12 +2121,17 @@ async function loadDb(fbOnly){
   try{
     const data=await fbGet('aa-v4');
     if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.readingSessions)db.readingSessions={};
-  if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};if(!db.reactions)db.reactions={};
+  if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};if(!db.reactions)db.reactions={};if(!db.realmEvents)db.realmEvents={};
       // readingSessions ayrı path'ten yükle
       try{const rs=await fbGet('aa-v4/readingSessions');if(rs)db.readingSessions=rs;}catch(e){}
       // K6: reaksiyonlar ayrı düğümde (aa-v4/reactions) — herkes yalnızca kendi
       // yaprağına yazdığı için çakışma kontrolüne hiç girmiyorlar. Bkz. feed.js.
       try{const rx=await fbGet('aa-v4/reactions');if(rx)db.reactions=rx;}catch(e){}
+      // Hayali Diyarlar keşifleri de aynı desende: aa-v4/realmEvents/<kullanıcı>,
+      // kişi başına ayrı yol, koşulsuz yazma. Aşağıdaki ÜÇ destructure'dan da
+      // hariç tutulmalı — tutulmazsa ortak bloğa karışıp çakışma kontrolüne
+      // girer (K6'da reaksiyonlarda yaşanan hatanın aynısı olur).
+      try{const re=await fbGet('aa-v4/realmEvents');if(re)db.realmEvents=re;}catch(e){}
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
       // Avatar'ları ayrı node'dan yükle
@@ -2121,7 +2143,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2163,7 +2185,7 @@ async function _saveDbNow(){
     // ile yazıyor. books ve readingSessions de hariç (K3): ikisi kendi granüler yoluna yazılıyor.
     // savedAt da karşılaştırmadan hariç — o zaten her kayıtta değişen bir alan.
     // reactions da hariç (K6): her üye yalnızca kendi yaprağına granüler yazıyor.
-    const {shelf,notifications,readingSessions,books,savedAt,reactions,...restFields}={...db};
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -2197,7 +2219,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
@@ -4065,6 +4087,7 @@ async function addBook(){
   else if(book.readingStatus==='new') pushReadingEvent(book,'finished_direct');
 
   propagateSeriesInfo(book); // eksik seri bilgilerini diğer kitaplara yay
+  diyarKesifKontrol();       // hayali diyar açtı mı? (test kilidi içinde)
   await saveDb();
   checkAndOfferSeriesLink(book);
 
@@ -5091,6 +5114,7 @@ async function finishReading(bookId){
   const month=book.endDate.substring(0,7);
   book.month=month;
   pushReadingEvent(book,'finished');
+  diyarKesifKontrol();       // hayali diyar açtı mı? (test kilidi içinde)
   saveDb();
   // Seri tamamlanma kontrolü
   if(book.series){
@@ -5433,6 +5457,7 @@ function addStory(){
     addedAt:new Date().toISOString(),
   };
   db.stories[me].push(story);
+  diyarKesifKontrol();       // öykü de diyar açabilir (King'in Derry öyküleri)
   saveDb();
   checkAndAwardBadges(prevValid,500,prevCtx);
   // Formu sıfırla
@@ -5706,6 +5731,7 @@ function startReadingStory(storyId){
   const story=db.stories[me].find(s=>s.id===storyId);
   if(!story) return;
   story.status='read';
+  diyarKesifKontrol();
   saveDb();renderStories();
   notify('📖 Okumaya Başlandı',`"${story.title}" okundu listesine taşındı.`);
 }
@@ -5982,7 +6008,71 @@ function switchStatsTab(tab){
   document.getElementById('sPanel-map').style.display = tab==='map'?'':'none';
   document.getElementById('sTab-stats').classList.toggle('active', tab==='stats');
   document.getElementById('sTab-map').classList.toggle('active', tab==='map');
-  if(tab==='map') renderMap();
+  if(tab==='map'){
+    const tog=document.getElementById('diyarToggleSatir');
+    if(tog) tog.style.display = diyarTestModu() ? 'flex' : 'none';
+    if(!diyarTestModu()) switchHaritaTuru('dunya');
+    renderMap();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// HAYALİ DİYARLAR — TEST KİLİDİ
+// ══════════════════════════════════════════════════════════════════════
+// Özellik hazır ama henüz yalnızca test hesabında açık. Bu listede olmayan
+// biri için: toggle görünmez, harita çizilmez, KEŞİF KAYDI DA YAZILMAZ.
+//
+// Yazmanın da kapalı olması bilinçli: özellik doğrulanmadan herkes için veri
+// biriktirirsek, yapıyı değiştirmemiz gerektiğinde temizlenecek veri oluşur.
+// Kilit açıldığında backfillRealmEvents() herkesin geçmişini geriye dönük
+// dolduruyor — beklemenin hiçbir kaybı yok.
+//
+// KİLİDİ AÇMAK İÇİN: aşağıdaki listeyi boşaltmak YETMEZ (boş liste = kimse).
+// diyarTestModu() doğrudan `return true` yapılmalı, ayrıca diyar-harita.js
+// içindeki geçici ayar şeridi (dhAyarSeridi) silinmeli.
+const DIYAR_TEST_HESAPLARI = ['deneme'];
+function diyarTestModu(){
+  return DIYAR_TEST_HESAPLARI.includes(me);
+}
+
+// Kitap/hikâye durumu değiştiğinde çağrılır. Tek tek "şu kitap şu diyarı
+// açar mı" kancaları yerine, zaten test edilmiş onarım fonksiyonunu sessiz
+// modda çalıştırıyor: kütüphaneden yeniden türetip YALNIZCA eksik olanı
+// ekliyor. Hiçbir şey silmiyor/ezmiyor, defalarca çağrılması zararsız.
+// Böylece "bitirme yolu" eklendiğinde (ör. yeni bir buton) kanca eklemeyi
+// unutma riski de ortadan kalkıyor.
+// Kilide bağlı arayüz parçalarının görünürlüğü. Giriş yapıldıktan sonra
+// (me belli olunca) çalışması gerekiyor; renderSafe her render'da çağırıyor.
+function diyarKilidiUygula(){
+  const btn=document.getElementById('diyarBackfillBtn');
+  if(btn) btn.style.display = diyarTestModu() ? '' : 'none';
+  const tog=document.getElementById('diyarToggleSatir');
+  if(tog && !diyarTestModu()) tog.style.display='none';
+}
+
+function diyarKesifKontrol(){
+  if(!diyarTestModu()) return;
+  if(typeof backfillRealmEvents!=='function') return;
+  try{
+    const n=backfillRealmEvents(true);
+    if(n>0) notify('🗺️ Yeni diyar keşfedildi!', n+' hayali diyar haritana eklendi.');
+  }catch(e){ console.warn('[diyar] keşif kontrolü:',e); }
+}
+
+function switchHaritaTuru(tur){
+  const diyar = tur==='diyar' && diyarTestModu();
+  document.getElementById('mapContainer').style.display = diyar?'none':'';
+  document.getElementById('diyarSarmal').style.display = diyar?'':'none';
+  const a=document.getElementById('hTab-dunya'), b=document.getElementById('hTab-diyar');
+  if(a) a.classList.toggle('active', !diyar);
+  if(b) b.classList.toggle('active', diyar);
+  if(diyar){
+    renderDiyarHarita('diyarHaritaKutu');
+    // ⚠️ GEÇİCİ: ayar şeridi yalnızca test hesabında. Kilit açılırken silinecek.
+    dhAyarSeridi(document.getElementById('diyarSarmal'));
+  } else {
+    renderMap();
+  }
 }
 
 // ── DÜNYA HARİTASI ────────────────────────────────────────────
@@ -6660,11 +6750,13 @@ function falKapat() {
   }, 2000);
 }
 function render(){
+  diyarKilidiUygula();
   renderBanners();renderStats();renderBookList();renderBadges();renderMembers();renderFeed();renderSeriesList();
 }
 
 // Modal açıkken çağrılacak güvenli render — modal'a dokunmaz
 function renderSafe(){
+  diyarKilidiUygula();
   const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
   if(modalOpen){
     renderStats();renderBookList();renderBadges();renderMembers();renderSeriesList();
