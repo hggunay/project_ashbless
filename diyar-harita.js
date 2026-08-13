@@ -908,6 +908,17 @@ if (typeof module !== 'undefined' && module.exports) {
                      DH_KESIF_SIRASI, dhDelikYaricapi, dhDelikAc };
 }
 
+// Harita KURULUYSA içeriği yeniden çizer ve kamerayı olduğu yerde bırakır.
+// Yeni bir diyar keşfedildiğinde kullanıcının baktığı yer sıfırlanmasın diye
+// ayrı duruyor — renderDiyarHarita() her çağrıldığında haritayı ortalıyor,
+// sekme değiştirirken doğru ama "arada bir kitap eklendi" durumunda değil.
+// Kurulu değilse false döner, çağıran taraf tam kurulumu yapar.
+function yenileDiyarHarita() {
+  if (!DH.kurulu || !document.getElementById('dhKutu')) return false;
+  dhCiz();
+  return true;
+}
+
 function renderDiyarHarita(kapId) {
   if (!DH.kurulu || !document.getElementById('dhKutu')) {
     if (!dhKur(kapId || 'diyarHaritaKutu')) return;

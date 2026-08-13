@@ -5133,8 +5133,8 @@ async function finishReading(bookId){
   } else {
     notify('✅ Tamamlandı!',`"${book.title}" okundu listesine eklendi.`);
   }
-  // Harita sekmesi açıksa yenile
-  if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
+  // Harita sekmesi açıksa yenile (dünya ya da diyar — hangisi görünüyorsa)
+  renderHaritaAcikOlan();
   // Rozet kontrolü — snapshot fonksiyon başında (prevValid) alınmıştı
   checkAndAwardBadges(prevValid, baseDelay+2000);
 }
@@ -6059,6 +6059,23 @@ function diyarKesifKontrol(){
   }catch(e){ console.warn('[diyar] keşif kontrolü:',e); }
 }
 
+// Harita paneli açıksa, HANGİ harita görünüyorsa onu yeniler.
+// Eskiden üç ayrı yerde doğrudan renderMap() çağrılıyordu; Hayali Diyarlar
+// sekmesi açıkken kitap eklenince altta gizli duran dünya haritası yenileniyor,
+// ekrandaki diyar haritası olduğu gibi kalıyordu — yeni keşfedilen diyar sayfa
+// yenilenene kadar görünmüyordu (2026-08-13'te Gökşin bildirdi).
+// yenileDiyarHarita() kamerayı korur; harita henüz kurulmamışsa false döner ve
+// tam kurulum yapılır.
+function renderHaritaAcikOlan(){
+  if(document.getElementById('sPanel-map')?.style.display==='none') return;
+  const sarmal=document.getElementById('diyarSarmal');
+  if(sarmal && sarmal.style.display!=='none'){
+    if(typeof yenileDiyarHarita!=='function' || !yenileDiyarHarita()) renderDiyarHarita('diyarHaritaKutu');
+  } else {
+    renderMap();
+  }
+}
+
 function switchHaritaTuru(tur){
   const diyar = tur==='diyar' && diyarTestModu();
   document.getElementById('mapContainer').style.display = diyar?'none':'';
@@ -6760,7 +6777,7 @@ function renderSafe(){
   const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
   if(modalOpen){
     renderStats();renderBookList();renderBadges();renderMembers();renderSeriesList();
-    if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
+    renderHaritaAcikOlan();
 
   } else {
     render();
@@ -7432,7 +7449,7 @@ function renderGenreChips(bookId){
 
 function renderSafeNoModal(){
   renderStats();renderBookList();renderBadges();renderMembers();
-  if(document.getElementById('sPanel-map')?.style.display!=='none') renderMap();
+  renderHaritaAcikOlan();
 }
 
 
