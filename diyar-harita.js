@@ -37,10 +37,17 @@ const DH = {
   // (Önceki set 2026-08-09'da önizlemede seçilmişti; aralık 603→922 büyüdü,
   //  görsel 90→80 küçüldü. Bu ikisi birlikte sis deliğinin görselin daha
   //  büyük kısmını açmasını sağlıyor: delik yarıçapı 0.20→0.29 aralığa çıktı.)
+  //
+  // 2026-08-13: aralık 922 → 700, döşeme 220 → 167. Katalog 26 diyara çıktı,
+  // 4. halka açılmadan sığmıyordu (bkz. DH_KESIF_SIRASI kapasite notu).
+  // Açılış görünümü DEĞİŞMEZ: açılış yakınlığı r.width/(aralık*3.2) ile
+  // hesaplandığı için ekranda yine ~3 diyar yan yana duruyor. Değişen tek
+  // şey uzaklaşınca daha çok diyar görülebilmesi. Döşeme de aynı oranda
+  // küçüldü (220*700/922≈167), yoksa deniz dokusu diyarlara göre irileşirdi.
   ayar: {
-    zemin: 'karanlikdeniz', solgun: 0, doseme: 220, dalga: 37,
+    zemin: 'karanlikdeniz', solgun: 0, doseme: 167, dalga: 37,
     sis: true, etiket: true, grid: false,
-    aralik: 922, gorsel: 80, yumusak: 65, sekil: 197, daginik: 9,
+    aralik: 700, gorsel: 80, yumusak: 65, sekil: 197, daginik: 9,
     kenar: 6, anim: 'dagil'
   }
 };
@@ -85,21 +92,59 @@ function dhSapma(q, r) {
   return [ (a - Math.floor(a)) - 0.5, (b - Math.floor(b)) - 0.5 ];
 }
 
-// Merkeze GERÇEK PİKSEL uzaklığına göre sıralı pozisyonlar.
-// (Komşu-komşu yayılan BFS kullanılırsa küme 3 sütun genişliğinde ama çok
-//  uzun bir şerit hâline geliyor — ekranın orta hattında alt alta dizilmiş
-//  görünüyorlar. Piksel uzaklığına göre sıralayınca küme yuvarlak çıkıyor.)
+// ── KEŞİF SIRASI ──────────────────────────────────────────────────────
+// Elle yazılmış ASİMETRİK sıra (2026-08-13, Gökşin).
+//
+// Önceden slotlar merkeze piksel uzaklığına göre sıralanıyordu. Sonuç
+// kaçınılmaz olarak halka halka dolan bir ROZET/ÇİÇEK: 6. keşifte merkezin
+// altı komşusu da doluyor ve harita "keşfedilmiş" değil "tasarlanmış"
+// görünüyor. Koordinat sistemi ve geometri aynı kaldı, yalnızca slotların
+// DOLMA SIRASI değişti.
+//
+// Sıradaki üç kasıtlı numara:
+//   • #16-#18 merkezin dibindeki üç slot — en sona bırakıldı, böylece ilk
+//     15 keşif boyunca kümenin İÇİNDE sisli cepler kalıyor.
+//   • #4 ve #10 hiçbir dolu komşusu olmayan ADA (1,5 aralık ötede, arada
+//     sis şeridi kalıyor; köprü çizilmiyor çünkü komşu değiller).
+//   • Halkalar sırayla değil karışık tüketiliyor (#3 en dış halkada).
+//
+// ⚠️ KAPASİTE (2026-08-13'te yeniden hesaplandı): kaç diyarın sığacağını
+// belirleyen şey DH.DUNYA / aralık ORANI'dır, tek başına ikisi değil —
+// yerleşimin her ölçüsü aralıkla birlikte ölçekleniyor. Halkalar:
+//   merkez 1 · 1. halka 6 · 2. halka 6 · 3. halka 6 · 4. halka 12  = 31 slot
+// Katalog 17'den 26 diyara çıkınca 19 slot yetmedi; 4. halka açıldı ve
+// aralık 922 → 700 küçültüldü (dünyayı 5400'e büyütmek yerine — büyük kamera
+// elemanı bilinen performans tuzağı, küçültmenin ise maliyeti yok).
+// Ölçüldü: 31 slotun en dar olanında bile görsel kenarı dünya sınırından
+// 131px içeride. 31'i geçilecekse ya aralık daha da küçülmeli ya da bu liste
+// 5. halkayla (6 slot daha) uzatılmalı.
+const DH_KESIF_SIRASI = [
+  [0,0], [1,-1], [0,1], [2,-1], [-2,0], [-1,1], [1,1], [-1,-1], [2,1], [-2,1],
+  [0,-2], [1,-2], [2,0], [0,2], [-2,-1], [-1,-2], [0,-1], [1,0], [-1,0],
+  // 4. halka — aynı mantık sürüyor: yönler karışık tüketiliyor, komşu
+  // slotlar atlanıyor, hiçbir halka sırayla tamamlanmıyor.
+  [3,-1], [-1,-3], [2,2], [-3,0], [1,2], [2,-2], [-2,2], [3,0], [-1,2],
+  [-2,-2], [1,-3], [-3,-1]
+];
+
+// Liste yetmezse (katalog büyürse) eskisi gibi merkeze en yakın boş
+// slotlarla tamamlanır — harita bozulmaz, sadece dış halkalar simetrik dolar.
 function dhPozisyonlar(adet) {
+  const liste = DH_KESIF_SIRASI.slice(0, adet).map(([q, r]) => ({ q, r }));
+  if (liste.length >= adet) return liste;
+
+  const alinan = new Set(liste.map(p => p.q + ',' + p.r));
   const yari = Math.ceil(Math.sqrt(Math.max(1, adet))) + 3;
-  const liste = [];
+  const kalan = [];
   for (let q = -yari; q <= yari; q++) {
     for (let r = -yari; r <= yari; r++) {
+      if (alinan.has(q + ',' + r)) continue;
       const m = dhHexMerkezi(q, r, 1);
-      liste.push({ q, r, d: m.x * m.x + m.y * m.y });
+      kalan.push({ q, r, d: m.x * m.x + m.y * m.y });
     }
   }
-  liste.sort((a, b) => a.d - b.d || a.q - b.q || a.r - b.r);
-  return liste.slice(0, adet);
+  kalan.sort((a, b) => a.d - b.d || a.q - b.q || a.r - b.r);
+  return liste.concat(kalan.slice(0, adet - liste.length));
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -124,25 +169,15 @@ function dhYerlesim(kullanici) {
     .map(e => DIYAR_KATALOG.find(d => d.id === e.diyarId))
     .filter(Boolean);
 
-  const sira = dhPozisyonlar(katalog.length * 6 + 12);
-  const dolu = new Set();
-  const sonuc = [];
-  katalog.forEach((d, i) => {
-    const rnd = dhUretec(dhTohumla(kullanici + '|' + d.id));
-    const pencere = Math.min(sira.length, i + 3);
-    const bas = Math.floor(rnd() * pencere);
-    for (let j = 0; j < sira.length; j++) {
-      const p = sira[(bas + j) % sira.length];
-      const k = p.q + ',' + p.r;
-      if (dolu.has(k)) continue;
-      dolu.add(k);
-      // Katalog kaydının KOPYASI + konum (sarmalanmaz — sarmalanınca
-      // slot.diyar.sahneler bir kat aşağıda kalıp undefined oluyordu).
-      sonuc.push(Object.assign({}, d, { q: p.q, r: p.r }));
-      break;
-    }
-  });
-  return sonuc;
+  // i. keşif → sıranın i. slotu, oynatma YOK.
+  // (Eskiden her diyar [0, i+2] arasından rastgele bir yerden başlayıp ilk
+  //  boş slotu alıyordu; slotlar zaten simetrik dolduğu için bu ufak bir
+  //  çeşitlilik katıyordu. Sıra artık elle tasarlandığına göre aynı rastgelelik
+  //  tasarımı bozar: araya boşluk girip planlanan cepler/adalar kayıyordu.)
+  const sira = dhPozisyonlar(katalog.length);
+  // Katalog kaydının KOPYASI + konum (sarmalanmaz — sarmalanınca
+  // slot.diyar.sahneler bir kat aşağıda kalıp undefined oluyordu).
+  return katalog.map((d, i) => Object.assign({}, d, { q: sira[i].q, r: sira[i].r }));
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -186,8 +221,12 @@ function dhStilEkle() {
   const s = document.createElement('style');
   s.id = 'dhStil';
   s.textContent = `
+/* user-select:none ŞART — fareyle haritayı kaydırırken tarayıcı metin seçimi
+   başlatıyor, seçime giren görseller Chrome'da maviye boyanıyordu. Mobilde
+   görünmüyordu çünkü dokunma seçim başlatmıyor (touch-action:none). */
 #dhKutu { position:relative; width:100%; height:min(70vh,560px); overflow:hidden;
           background:#0a0f16; border-radius:8px; touch-action:none;
+          -webkit-user-select:none; user-select:none;
           /* Keşfedilmemiş alan TAMAMEN SİYAH (2026-08-12, Gökşin'in isteği).
              Eskiden mavimsi bir sis rengiydi (#4e6076) ve altındaki deniz
              dokusu hafifçe seziliyordu. Şimdi hiçbir şey görünmüyor —
@@ -215,7 +254,10 @@ function dhStilEkle() {
 .dhDiyar { position:absolute; display:grid; place-items:center; }
 .dhDiyar::before { content:""; position:absolute; inset:-18%; border-radius:50%;
   background:radial-gradient(ellipse 50% 50% at 50% 50%, var(--isik1) 0%, var(--isik2) 48%, var(--isik3) 80%); }
+/* -webkit-user-drag:none — görselin kendisi sürüklenip "hayalet" kopyası
+   imlece yapışıyordu; kaydırma o anda kesiliyordu. */
 .dhDiyar img { position:relative; width:100%; height:auto; display:block;
+  -webkit-user-drag:none;
   filter:drop-shadow(0 6px 18px var(--golge));
   -webkit-mask-image:var(--maske); mask-image:var(--maske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
@@ -266,6 +308,12 @@ body.dhDetayAcik #dhDetay { display:flex; }
   -webkit-mask-image:var(--dmaske); mask-image:var(--dmaske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat; }
 #dhDetayAd { margin-top:12px; font-size:22px; letter-spacing:.18em; text-transform:uppercase; }
+/* Sahnenin kendi adı (Hogwarts, 9¾ Peronu...). Katalogda "ad" alanı
+   yazılmamış sahnelerde gizleniyor — o zaman panel eskisi gibi diyar adı + açan kitap
+   ile yetiniyor. BÜYÜK HARFE ÇEVRİLMİYOR: özel mekan adlarında rakam ve
+   kesir işareti oluyor, versal hepsini okunmaz hâle getiriyor. */
+#dhDetaySahneAd { margin-top:5px; font-size:15px; letter-spacing:.06em; color:#f0d9a4; }
+#dhDetaySahneAd:empty { display:none; }
 #dhDetayNot { margin-top:6px; font-size:13px; font-style:italic; opacity:.78; max-width:60ch; }
 #dhDetayKitap { margin-top:8px; font-size:12px; opacity:.72; line-height:1.7; max-width:66ch; }
 #dhDetayKitap b { color:#f0d9a4; }
@@ -389,6 +437,10 @@ function dhOlaylar() {
 
   DH.kutu.addEventListener('pointerdown', ev => {
     if (ev.button !== 0) return;
+    // Faredeki seçim/görsel-sürükleme davranışını daha başlarken kes (CSS'teki
+    // user-select:none ile birlikte). Tıklama pointerup'ta elle işlendiği için
+    // burada varsayılanı iptal etmek bir şey kaybettirmiyor.
+    if (ev.pointerType === 'mouse') ev.preventDefault();
     surukle = { x: ev.clientX, y: ev.clientY, kx: DH.kam.x, ky: DH.kam.y,
                 hareket: 0, tip: ev.pointerType || 'mouse' };
     DH.kutu.classList.add('suruklerken');
@@ -604,37 +656,74 @@ function dhYerlestir(sl) {
 }
 
 function dhDelikAc(sl) {
-  const R = dhDelikYaricapi(), A = DH.ayar;
+  const R = dhDelikYaricapi(), A = DH.ayar, W = A.aralik;
   const g = document.createElementNS(DH.NS, 'g');   // filtre üst grupta
+  // Siluet diyara bağlı: aynı diyar her yeniden çizimde aynı şekli alsın
+  // (dhCiz her ayar değişiminde ve detay panelinden dönüşte çalışıyor).
+  const rnd = dhUretec(dhTohumla(sl.diyar.id + '|delik'));
 
+  // Kusursuz daire + 60°'lik aralıklarla altı EŞ yaprak = altıgen/çiçek
+  // siluet (2026-08-13'te Gökşin bildirdi: "hex sınırları görünüyor" —
+  // görünen şey çizgi değil, sisin açıldığı alanın kendi şekliydi).
+  // Ana delik hafifçe elipsleştirildi; yapraklar aşağıda düzensizleştiriliyor.
   const ana = document.createElementNS(DH.NS, 'ellipse');
   ana.setAttribute('cx', sl.cx.toFixed(1));
   ana.setAttribute('cy', sl.cy.toFixed(1));
-  ana.setAttribute('rx', R.toFixed(1));
-  ana.setAttribute('ry', R.toFixed(1));
+  ana.setAttribute('rx', (R * (0.93 + rnd() * 0.14)).toFixed(1));
+  ana.setAttribute('ry', (R * (0.93 + rnd() * 0.14)).toFixed(1));
   ana.setAttribute('fill', '#000');
   g.appendChild(ana);
 
-  // YAPRAKLAR — ana delik yarıçapı ~0.20*ARALIK iken görsel 0.90*ARALIK
-  // genişliğinde; yani komşusu boş bir diyarın yalnızca ortası görünüyordu.
+  // YAPRAKLAR — ana delik yarıçapı ~0.29*ARALIK iken görsel 0.80*ARALIK
+  // genişliğinde; yani yapraksız bırakılırsa diyarın yalnızca ortası görünür.
   // Delik bu kadar küçük çünkü DOLU bir komşunun görseline dokunmamalı.
   // Komşu slotta diyar yoksa korunacak bir şey de yok — o yöne açılabilir.
+  const bosYon = [], doluKomsu = [];
   dhKomsular(sl.q, sl.r).forEach(([kq, kr]) => {
     const komsu = DH.slotHarita.get(kq + ',' + kr);
-    if (komsu && komsu.diyar) return;
-    const hedef = komsu || { cx: sl.cx, cy: sl.cy };
-    let dx = hedef.cx - sl.cx, dy = hedef.cy - sl.cy;
+    if (!komsu) return;                                  // gridin dışı
+    if (komsu.diyar) { doluKomsu.push(komsu); return; }
+    const dx = komsu.cx - sl.cx, dy = komsu.cy - sl.cy;
     const uz = Math.hypot(dx, dy);
-    if (uz < 1) return;
-    dx /= uz; dy /= uz;
-    const yp = document.createElementNS(DH.NS, 'ellipse');
-    yp.setAttribute('cx', (sl.cx + dx * A.aralik * 0.28).toFixed(1));
-    yp.setAttribute('cy', (sl.cy + dy * A.aralik * 0.28).toFixed(1));
-    yp.setAttribute('rx', (A.aralik * 0.26).toFixed(1));
-    yp.setAttribute('ry', (A.aralik * 0.26).toFixed(1));
-    yp.setAttribute('fill', '#000');
-    g.appendChild(yp);
+    if (uz > 1) bosYon.push(Math.atan2(dy, dx));
   });
+
+  // Hiçbir leke DOLU komşunun görseline değmemeli. Yaprakların açısı artık
+  // saptığı için "yalnızca boş yöne aç" kuralı tek başına yetmiyor: leke
+  // dolu komşuya yaklaşıyorsa küçültülüyor, iyice küçülüyorsa çizilmiyor.
+  const guvenli = W * ((A.gorsel / 100) * 0.5 + 0.02);
+  function leke(x, y, r) {
+    doluKomsu.forEach(k => { r = Math.min(r, Math.hypot(x - k.cx, y - k.cy) - guvenli); });
+    if (r < W * 0.06) return;
+    const e = document.createElementNS(DH.NS, 'ellipse');
+    e.setAttribute('cx', x.toFixed(1)); e.setAttribute('cy', y.toFixed(1));
+    e.setAttribute('rx', r.toFixed(1)); e.setAttribute('ry', r.toFixed(1));
+    e.setAttribute('fill', '#000');
+    g.appendChild(e);
+  }
+
+  // Altı yöne de aynı boyda yaprak açılınca siluet altıgen çıkıyordu. İki
+  // müdahale: (a) yönlerin bir kısmı hiç açılmıyor — bu tarafta diyarın kıyısı
+  // siste kalıyor; (b) kalanların açısı ±18°, uzaklığı ve boyu sapıyor.
+  for (let i = bosYon.length - 1; i > 0; i--) {           // Fisher-Yates
+    const j = Math.floor(rnd() * (i + 1));
+    const t = bosYon[i]; bosYon[i] = bosYon[j]; bosYon[j] = t;
+  }
+  const atla = bosYon.length >= 5 ? 2 : (bosYon.length >= 3 ? 1 : 0);
+  bosYon.slice(0, bosYon.length - atla).forEach(yon => {
+    const aci = yon + (rnd() - 0.5) * 0.63;
+    const uz  = W * (0.22 + rnd() * 0.11);
+    leke(sl.cx + Math.cos(aci) * uz, sl.cy + Math.sin(aci) * uz, W * (0.19 + rnd() * 0.09));
+  });
+
+  // Serpinti: siluette kalan düzgün kavisleri de kırıyor. Yönü tamamen
+  // serbest; dolu komşuya denk gelirse yukarıdaki kısıt zaten söndürüyor.
+  const serpinti = 1 + Math.floor(rnd() * 2);
+  for (let i = 0; i < serpinti; i++) {
+    const aci = rnd() * Math.PI * 2;
+    const uz  = W * (0.28 + rnd() * 0.10);
+    leke(sl.cx + Math.cos(aci) * uz, sl.cy + Math.sin(aci) * uz, W * (0.09 + rnd() * 0.06));
+  }
 
   document.getElementById('dhDelikler').appendChild(g);
 }
@@ -676,7 +765,8 @@ function dhDetayKur() {
     '<div id="dhDetayKart">' +
       '<button id="dhDetayKapat" title="Kapat">✕</button>' +
       '<div id="dhDetaySahne"><img id="dhDetayGorsel" alt=""></div>' +
-      '<div id="dhDetayAd"></div><div id="dhDetayNot"></div>' +
+      '<div id="dhDetayAd"></div><div id="dhDetaySahneAd"></div>' +
+      '<div id="dhDetayNot"></div>' +
       '<div id="dhDetayKitap"></div><div id="dhSahneler"></div>' +
     '</div>';
   document.body.appendChild(d);
@@ -700,6 +790,8 @@ function dhSahneGoster(diyar, i) {
   const img = document.getElementById('dhDetayGorsel');
   img.alt = diyar.ad + (s.ad ? ' — ' + s.ad : '');
   img.src = encodeURI(dhGorselYolu(s.dosya));
+  // Sahne adı yalnızca katalogda yazılmışsa görünür (CSS'te :empty gizliyor).
+  document.getElementById('dhDetaySahneAd').textContent = s.ad || '';
   // Haritadakiyle AYNI maske üreteci — aynı tohumla aynı siluet.
   // Kenarları söndüren vinyet de bu maskeyi kullanıyor (üretim logosu
   // görsellerin sağ alt köşesinde; burada sönüyor).
@@ -812,7 +904,8 @@ function dhAyarSeridi(kap) {
 // Node testinde saf fonksiyonlar okunabilsin diye (tarayıcıda etkisiz).
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = { DH, dhTohumla, dhUretec, dhHexMerkezi, dhKomsular,
-                     dhPozisyonlar, dhKesifSirasi, dhYerlesim, dhMaskeUret };
+                     dhPozisyonlar, dhKesifSirasi, dhYerlesim, dhMaskeUret,
+                     DH_KESIF_SIRASI, dhDelikYaricapi, dhDelikAc };
 }
 
 function renderDiyarHarita(kapId) {

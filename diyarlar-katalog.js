@@ -140,11 +140,10 @@ const DIYAR_KATALOG = [
     id: 'buyucu-dunyasi',
     ad: 'Büyücü Dünyası',
     sahneler: [
-      { dosya: 'hp1.webp' },
-      { dosya: 'hp2.webp' },
-      { dosya: 'hp3.webp' },
-      { dosya: 'hp4.webp' },
-      { dosya: 'hp5.webp' }
+      { dosya: 'hp1.webp', ad: 'Hogwarts' },
+      { dosya: 'hp2.webp', ad: 'Hogwarts' },
+      { dosya: 'hp3.webp', ad: '9¾ Peronu' },
+      { dosya: 'hp5.webp', ad: 'Hogwarts' }
     ],
     tetikleyiciler: {
       // 7 kitabın hepsi, Türkçe de İngilizce de olsa, adında "Harry Potter" geçer.
@@ -158,9 +157,12 @@ const DIYAR_KATALOG = [
   {
     id: 'narnia',
     ad: 'Narnia',
+    // 2026-08-13: iki sahne eklendi (gemi + dolap).
     not: 'Gardırobun arkasında, kar altında bir lamba direği.',
     sahneler: [
-      { dosya: 'narnia.webp' }
+      { dosya: 'narnia.webp' },
+      { dosya: 'narnia2.webp', ad: 'Şafak Yıldızı' },
+      { dosya: 'narnia3.webp', ad: 'Dolap' }
     ],
     tetikleyiciler: {
       // C.S. Lewis'in Narnia dışı kitapları da var — yazar tabanlı tetikleyici YOK.
@@ -198,7 +200,6 @@ const DIYAR_KATALOG = [
     id: 'oz',
     ad: 'Oz',
     sahneler: [
-      { dosya: 'oz1.webp' },
       { dosya: 'oz2.webp' }
     ],
     tetikleyiciler: {
@@ -221,8 +222,7 @@ const DIYAR_KATALOG = [
       { dosya: 'wonderland3.webp' },
       { dosya: 'wonderland4.webp' },
       { dosya: 'wonderland5.webp' },
-      { dosya: 'wonderland6.webp' },
-      { dosya: 'alice.webp', ad: 'Alice' }
+      { dosya: 'wonderland6.webp' }
     ],
     tetikleyiciler: {
       kitaplar: [
@@ -332,8 +332,32 @@ const DIYAR_KATALOG = [
       { dosya: 'witcher3.webp' }
     ],
     tetikleyiciler: {
-      // Sapkowski'nin kitaplarının tamamı bu dünyada geçiyor.
-      yazarlar: ['Andrzej Sapkowski'],
+      // ⚠️ Eskiden `yazarlar: ['Andrzej Sapkowski']` idi ve yorumda "kitaplarının
+      // tamamı bu dünyada geçiyor" yazıyordu — bu DOĞRU DEĞİL: Hussite Üçlemesi
+      // 15. yüzyıl Bohemyası'nda geçen tarihî bir seri, Witcher evreniyle ilgisi yok.
+      // Sapkowski yaşıyor ve yazmaya devam ediyor, yani liste ileride de büyüyebilir.
+      // KURAL: `yazarlar` yalnızca külliyatı kapanmış ve tek dünyada geçen
+      // yazarlar için (Tolkien, Baum). Yaşayan yazara asla.
+      //
+      // Türkçe baskıların adları ortak bir kelime paylaşmadığı için Narnia'daki
+      // gibi tek tek yazıldı. baslikIcerir 'Witcher' ise İngilizce baskıları ve
+      // "The Witcher: ..." biçimindeki adları yakalıyor.
+      // Türkçe adlar Gökşin'in doğruladığı listeden (2026-08-13). Takma adlarda
+      // hem İngilizce özgün adlar hem de olası alternatif çeviriler duruyor —
+      // yazar koşulu zorunlu olduğu için fazladan takma ad yanlış eşleşme yaratmaz.
+      kitaplar: [
+        { baslik: 'Son Dilek',        yazar: 'Andrzej Sapkowski', takmaAdlar: ['The Last Wish'] },
+        { baslik: 'Kader Kılıcı',     yazar: 'Andrzej Sapkowski', takmaAdlar: ['Sword of Destiny'] },
+        { baslik: 'Elflerin Kanı',    yazar: 'Andrzej Sapkowski', takmaAdlar: ['Blood of Elves', 'Elf Kanı'] },
+        { baslik: 'Nefret Çağı',      yazar: 'Andrzej Sapkowski', takmaAdlar: ['Time of Contempt', 'Küçümseme Zamanı', 'Hor Görme Zamanı'] },
+        { baslik: 'Ateşle İmtihan',   yazar: 'Andrzej Sapkowski', takmaAdlar: ['Baptism of Fire', 'Ateşin Vaftizi'] },
+        { baslik: 'Kırlangıç Kulesi', yazar: 'Andrzej Sapkowski', takmaAdlar: ['The Tower of the Swallow'] },
+        { baslik: 'Gölün Hanımı',     yazar: 'Andrzej Sapkowski', takmaAdlar: ['The Lady of the Lake', 'Göl Leydisi', 'Gölün Leydisi'] },
+        { baslik: 'Fırtına Sezonu',   yazar: 'Andrzej Sapkowski', takmaAdlar: ['Season of Storms', 'Fırtına Mevsimi'] }
+      ],
+      baslikIcerir: [
+        { yazar: 'Andrzej Sapkowski', baslikIcerir: 'Witcher' }
+      ],
       seriler: ['The Witcher', 'Witcher']
     }
   },
@@ -383,11 +407,162 @@ const DIYAR_KATALOG = [
     id: 'cesur-yeni-dunya',
     ad: 'Cesur Yeni Dünya',
     sahneler: [
-      { dosya: 'cesur-yeni-dunya.webp' }
+      { dosya: 'cesur-yeni-dunya.webp', ad: 'Vahşi Bölge' }
     ],
     tetikleyiciler: {
       kitaplar: [
         { baslik: 'Cesur Yeni Dünya', yazar: 'Aldous Huxley', takmaAdlar: ['Brave New World'] }
+      ]
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // 2026-08-13'te eklenen dokuz diyar.
+  // Hepsinde tetikleyici BAŞLIK KOŞULLU (kitaplar / baslikIcerir), hiçbirinde
+  // `yazarlar` yok — bu yazarların her kitabı aynı dünyada geçmiyor:
+  // Gaiman'dan iki ayrı diyar çıkıyor (Düşlem, Duvar'ın Ardı), Wells'ten iki
+  // ayrı diyar (Eloi Ülkesi, Dr. Moreau'nun Adası), King'in Empis'i Derry ve
+  // Kara Kule'den bağımsız.
+  // ══════════════════════════════════════════════════════════════════
+
+  {
+    id: 'duslem',
+    ad: 'Düşlem',
+    sahneler: [
+      { dosya: 'duslem1.webp', ad: 'Düş Sarayı' },
+      { dosya: 'duslem2.webp', ad: 'Boynuz ve Fildişi Kapılar' },
+      { dosya: 'duslem3.webp', ad: 'Kütüphane' },
+      { dosya: 'duslem4.webp', ad: 'Galeri' }
+    ],
+    tetikleyiciler: {
+      // Bütün ciltler, dil fark etmeksizin, adında "Sandman" taşıyor.
+      baslikIcerir: [
+        { yazar: 'Neil Gaiman', baslikIcerir: 'Sandman' }
+      ]
+    }
+  },
+
+  {
+    id: 'duvarin-ardi',
+    ad: 'Duvar\'ın Ardı',
+    not: 'Duvardaki gedikten geçilir; ötesi Faerie\'dir.',
+    sahneler: [
+      { dosya: 'duvarin-ardi1.webp', ad: 'Duvardaki Gedik' },
+      { dosya: 'duvarin-ardi2.webp', ad: 'Stormhold' },
+      { dosya: 'duvarin-ardi3.webp', ad: 'Panayır' },
+      { dosya: 'duvarin-ardi4.webp', ad: 'Çukur' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Yıldız Tozu', yazar: 'Neil Gaiman', takmaAdlar: ['Stardust'] }
+      ]
+    }
+  },
+
+  {
+    id: 'empis',
+    ad: 'Empis',
+    sahneler: [
+      { dosya: 'empis1.webp' },
+      { dosya: 'empis2.webp' },
+      { dosya: 'empis3.webp' },
+      { dosya: 'empis4.webp' },
+      { dosya: 'empis5.webp' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Peri Masalı', yazar: 'Stephen King', takmaAdlar: ['Fairy Tale'] }
+      ]
+    }
+  },
+
+  {
+    id: 'trisolaris',
+    ad: 'Trisolaris',
+    sahneler: [
+      { dosya: 'trisolaris1.webp', ad: 'Kaotik Çağ' },
+      { dosya: 'trisolaris2.webp', ad: 'Üç Cisim Oyunu' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Üç Cisim Problemi', yazar: 'Cixin Liu',
+          takmaAdlar: ['The Three-Body Problem', 'Üç Cisim'] }
+      ]
+    }
+  },
+
+  {
+    id: 'babil-kitapligi',
+    ad: 'Babil Kitaplığı',
+    sahneler: [
+      { dosya: 'babil-kitapligi.webp', ad: 'Cehennem' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Cehenneme Kısa Bir Ziyaret', yazar: 'Steven L. Peck',
+          takmaAdlar: ['A Short Stay in Hell'] }
+      ]
+    }
+  },
+
+  {
+    id: 'preservation',
+    ad: 'Preservation',
+    sahneler: [
+      { dosya: 'preservation.webp' }
+    ],
+    tetikleyiciler: {
+      // Martha Wells — H.G. Wells DEĞİL. Başlık koşulu olduğu için ikisi
+      // birbirine karışmıyor.
+      baslikIcerir: [
+        { yazar: 'Martha Wells', baslikIcerir: 'Katilbot' },
+        { yazar: 'Martha Wells', baslikIcerir: 'Murderbot' }
+      ]
+    }
+  },
+
+  {
+    id: 'moreau-adasi',
+    ad: 'Dr. Moreau\'nun Adası',
+    not: 'Güney Pasifik; yaklaşık 5° güney enlemi, 105° batı boylamı civarı.',
+    sahneler: [
+      { dosya: 'moreau.webp' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Dr. Moreau\'nun Adası', yazar: 'H.G. Wells',
+          takmaAdlar: ['The Island of Doctor Moreau', 'The Island of Dr. Moreau',
+                       'Doktor Moreau\'nun Adası'] }
+      ]
+    }
+  },
+
+  {
+    id: 'magrathea',
+    ad: 'Magrathea',
+    not: 'Gezegen üreten gezegen.',
+    sahneler: [
+      { dosya: 'magrathea.webp' }
+    ],
+    tetikleyiciler: {
+      baslikIcerir: [
+        { yazar: 'Douglas Adams', baslikIcerir: 'Otostopçu' },
+        { yazar: 'Douglas Adams', baslikIcerir: 'Hitchhiker' }
+      ]
+    }
+  },
+
+  {
+    id: 'eloi-ulkesi',
+    ad: 'Eloi Ülkesi',
+    not: '802.701 yılı. Londra\'dan geriye hiçbir şey kalmamış.',
+    sahneler: [
+      { dosya: 'eloi.webp' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Zaman Makinesi', yazar: 'H.G. Wells',
+          takmaAdlar: ['The Time Machine', 'Zaman Makinası'] }
       ]
     }
   }
