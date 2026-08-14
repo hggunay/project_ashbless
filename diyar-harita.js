@@ -461,9 +461,6 @@ function dhKamUygula() {
     // okunmayan etiketi göstermek yerine gizliyoruz.
     DH.kutu.classList.toggle('etiketUzak', DH.kam.s < 0.30);
   }
-  // Bu, ölçek bloğunun DIŞINDA kalmalı: yakınken sağa sola kaydırınca ekrana
-  // YENİ giren diyarların da tam boya geçmesi gerekiyor.
-  dhBuyugeGec();
 }
 // ── Kamera güncellemesini kare başına teke indir ──────────────────────
 // Girdi olayları ekranın çizebildiğinden hızlı geliyor: dokunmatikte saniyede
@@ -472,8 +469,12 @@ function dhKamUygula() {
 // pürüzsüz görünse bile parmağın ARKASINDAN geliyor — Gökşin 2026-08-14'te
 // tablette bildirdi: "sanki 1 saniye geriden geliyormuş gibi". Görünüm
 // değişmiyor, yalnızca aynı kare içindeki fazla çizimler birleştiriliyor.
-let dhKamKare = 0;
+let dhKamKare = 0, dhDurduSayac = 0;
 function dhKamIste() {
+  // Fare tekerleğinde "parmak kalktı" anı yok; hareket durduktan kısa süre
+  // sonra tam boy görsele geçişi burada tetikliyoruz.
+  clearTimeout(dhDurduSayac);
+  dhDurduSayac = setTimeout(dhBuyugeGec, 250);
   if (dhKamKare) return;
   dhKamKare = requestAnimationFrame(() => { dhKamKare = 0; dhKamUygula(); });
 }
@@ -482,7 +483,17 @@ function dhKamIste() {
 // geride kalırdı.
 function dhKamHemen() {
   if (dhKamKare) { cancelAnimationFrame(dhKamKare); dhKamKare = 0; }
+  clearTimeout(dhDurduSayac); dhDurduSayac = 0;
   dhKamUygula();
+  // Tam boy görsele geçiş YALNIZCA hareket bittiğinde. Eskiden her kamera
+  // güncellemesinde çağrılıyordu, yani kullanıcı parmağıyla yakınlaştırırken
+  // harita bir yandan kayıyor bir yandan 1024'lük görseller indirilip
+  // açılıyordu. Gökşin 2026-08-14'te telefonda bildirdi: "sürüklerken/
+  // yakınlaştırırken ağır" — ve tam da küçük görseller canlıya çıktıktan
+  // sonra başlamıştı, çünkü öncesinde her şey zaten büyük yükleniyordu ve
+  // geçiş diye bir an yoktu. Hareket sırasında fazladan iş yapmamak, bu
+  // dosyadaki diğer akıcılık düzeltmeleriyle aynı ilke.
+  dhBuyugeGec();
 }
 
 function dhEkranaDunya(mx, my) {
