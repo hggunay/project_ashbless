@@ -967,11 +967,32 @@ function dhPerdeBirak(no) {
   DH.kutu.classList.remove('perdeli');
 }
 
+// Açılışta EKRANDA OLAN diyarların görselini seçer. Hepsini beklemek yanlıştı
+// (2026-08-14, Gökşin tablette bildirdi: "sis açıldığında son 1-2 görsel hâlâ
+// yükleniyordu") — 16 görsel tablette 5 sn'lik emniyet frenini tetikliyor,
+// fren de perdeyi yükleme bitmeden açıyordu. Ekran dışındaki diyarlar zaten
+// görünmüyor; kullanıcı haritayı gezerken sessizce yükleniyorlar.
+// Ölçüm .dhDiyar kutusundan yapılıyor, img'den DEĞİL: img'in yüksekliği
+// auto ve görsel yüklenene kadar 0, yani daha yüklenmemiş olanları ölçemezdik.
+function dhAcilistaGorunenler() {
+  const k = DH.kutu.getBoundingClientRect();
+  const payX = k.width * 0.1, payY = k.height * 0.1;   // kenara yakınlar da dahil
+  return Array.prototype.slice.call(
+      document.querySelectorAll('#dhKat .dhDiyar'))
+    .filter(el => {
+      const r = el.getBoundingClientRect();
+      return r.right  > k.left   - payX && r.left < k.right  + payX &&
+             r.bottom > k.top    - payY && r.top  < k.bottom + payY;
+    })
+    .map(el => el.querySelector('img'))
+    .filter(Boolean);
+}
+
 function dhPerdeCoz() {
   const no = DH.perdeNo;
-  const gorseller = Array.prototype.slice.call(
-    document.querySelectorAll('#dhKat img'));
-  if (!gorseller.length) { dhPerdeBirak(no); return; }   // hiç keşif yok
+  const gorseller = dhAcilistaGorunenler();
+  // Hiç keşif yok ya da açılışta hiçbiri ekranda değil: beklenecek bir şey yok.
+  if (!gorseller.length) { dhPerdeBirak(no); return; }
 
   let bitti = false;
   const birak = () => { if (bitti) return; bitti = true; dhPerdeBirak(no); };
