@@ -368,7 +368,14 @@ function dhKur(kapId) {
       '<div id="dhDunya">' +
         '<div id="dhZemin"></div><div id="dhDoku"></div><div id="dhKat"></div>' +
         '<svg id="dhSis"><defs>' +
-          '<filter id="dhSisKenar" x="-50%" y="-50%" width="200%" height="200%">' +
+          // Filtre alanı -50%/200% idi: kaplanan alan nesnenin DÖRT KATI.
+          // Gereken taşma aslında küçük (yer değiştirme ~38px + bulanıklık
+          // ~13px, toplam ~76px), oysa buradaki yüzdeler keşif alanının
+          // tamamına göre hesaplanıyor ve o alan binlerce piksel. -20%/140%
+          // ile işlenen alan yaklaşık YARIYA iniyor, görünüm aynı kalıyor:
+          // tek diyar keşfedilmişken bile (en küçük durum, ~630px) payı
+          // 126px oluyor, gereken 76px'in üstünde.
+          '<filter id="dhSisKenar" x="-20%" y="-20%" width="140%" height="140%">' +
             '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="2" seed="9" result="g"/>' +
             '<feDisplacementMap id="dhKaydir" in="SourceGraphic" in2="g" scale="44" ' +
               'xChannelSelector="R" yChannelSelector="G" result="d"/>' +
@@ -399,6 +406,9 @@ function dhKur(kapId) {
 
   DH.kutu  = document.getElementById('dhKutu');
   DH.dunya = document.getElementById('dhDunya');
+  // #dhDunya yeni baştan yaratıldı, üstündeki --olcek gitti; önbelleği sıfırla
+  // yoksa ilk dhKamUygula "değişmedi" sanıp değişkeni hiç yazmaz.
+  DH.sonOlcek = null;
   document.getElementById('dhDoku').style.backgroundImage = 'url("diyarlar/deniz-dokusu.png")';
 
   dhDetayKur();
@@ -424,12 +434,24 @@ function dhKamUygula() {
   dhKamSinirla();
   DH.dunya.style.transform = 'translate(' + DH.kam.x.toFixed(1) + 'px,' +
     DH.kam.y.toFixed(1) + 'px) scale(' + DH.kam.s.toFixed(4) + ')';
-  // Etiketler bu değere göre ters ölçekleniyor (bkz. .dhEtiket kuralı).
-  DH.dunya.style.setProperty('--olcek', DH.kam.s.toFixed(4));
-  // 0.30'un altında yazı ekranda 13px'e çıkamıyor (üst sınır devreye giriyor);
-  // okunmayan etiketi göstermek yerine gizliyoruz.
-  DH.kutu.classList.toggle('etiketUzak', DH.kam.s < 0.30);
-  dhBuyugeGec();   // yeterince yakınlaşıldıysa ekrandakiler tam boya geçsin
+
+  // --olcek YALNIZCA yakınlık değiştiğinde yazılıyor. Eskiden her karede
+  // yazılıyordu; etiketlerin punto'su bu değişkene bağlı olduğu için
+  // (`.dhEtiket` kuralındaki calc), sadece sağa sola KAYDIRIRKEN bile
+  // tüm etiketlerin yazı boyutu yeniden hesaplanıyordu — yakınlık hiç
+  // değişmediği hâlde. Gökşin 2026-08-14'te tablette bildirdi: etiket
+  // kapalıyken takılma azalıyor. Kaydırmada artık hiç maliyeti yok.
+  const olcekYazi = DH.kam.s.toFixed(4);
+  if (olcekYazi !== DH.sonOlcek) {
+    DH.sonOlcek = olcekYazi;
+    DH.dunya.style.setProperty('--olcek', olcekYazi);
+    // 0.30'un altında yazı ekranda 13px'e çıkamıyor (üst sınır devreye giriyor);
+    // okunmayan etiketi göstermek yerine gizliyoruz.
+    DH.kutu.classList.toggle('etiketUzak', DH.kam.s < 0.30);
+  }
+  // Bu, ölçek bloğunun DIŞINDA kalmalı: yakınken sağa sola kaydırınca ekrana
+  // YENİ giren diyarların da tam boya geçmesi gerekiyor.
+  dhBuyugeGec();
 }
 function dhEkranaDunya(mx, my) {
   const r = DH.kutu.getBoundingClientRect();
