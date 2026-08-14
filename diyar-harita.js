@@ -429,6 +429,7 @@ function dhKamUygula() {
   // 0.30'un altında yazı ekranda 13px'e çıkamıyor (üst sınır devreye giriyor);
   // okunmayan etiketi göstermek yerine gizliyoruz.
   DH.kutu.classList.toggle('etiketUzak', DH.kam.s < 0.30);
+  dhBuyugeGec();   // yeterince yakınlaşıldıysa ekrandakiler tam boya geçsin
 }
 function dhEkranaDunya(mx, my) {
   const r = DH.kutu.getBoundingClientRect();
@@ -517,6 +518,58 @@ function dhOlaylar() {
 // ÇİZİM
 // ══════════════════════════════════════════════════════════════════════
 function dhGorselYolu(dosya) { return 'diyarlar/' + dosya; }
+function dhKucukYolu(dosya) { return 'diyarlar/kucuk/' + dosya; }
+
+// ── Küçük görsel kopyaları ────────────────────────────────────────────
+// Kaynak görseller 1024x1024; haritada 100-270 px, panelin küçük sahne
+// karelerinde 52 px gösteriliyorlar. Tam boy açmak boşa iş: açılış
+// süresinin çoğu indirme değil, bu çözme işiydi (2026-08-14 ölçümü).
+// "diyarlar/kucuk/" içinde aynı adla 512'lik kopyalar duruyor.
+//
+// KOPYA YOKSA BÜYÜĞÜNE DÜŞER (onerror). Bu kasıtlı: Gökşin ileride yeni bir
+// görsel eklediğinde küçük kopyasını üretmeyi unutsa da -- ya da Claude Code
+// erişimi olmasa da -- harita çalışmaya devam etsin, sadece o görsel yavaş
+// açılsın. Küçük kopyaları üretmek için: "hayali diyar görselleri" klasöründeki
+// "▶ GÖRSEL KÜÇÜLT" dosyasına çift tıkla.
+//
+// ⚠️ DEPLOY: diyar-harita.js ile birlikte "diyarlar/kucuk" klasörü de
+// yüklenmeli. Yüklenmezse uygulama bozulmaz ama her görsel önce boşuna
+// aranıp sonra büyüğüne düşer -- yani ilk açılış BUGÜNKÜNDEN yavaş olur.
+function dhGorselAta(img, dosya, kucukKullan) {
+  const buyuk = encodeURI(dhGorselYolu(dosya));
+  if (!kucukKullan) { img.src = buyuk; return; }
+  img.dataset.buyuk = buyuk;
+  img.onerror = function () { this.onerror = null; this.src = buyuk; };
+  img.src = encodeURI(dhKucukYolu(dosya));
+}
+
+// Küçük kopya 512 px; görselin dünya boyu aralık*(gorsel/100) = ~630 px.
+// Ekranda 512 pikseli aşınca esnetilmiş görünmeye başlar, o noktada büyüğe
+// geçiyoruz. Eşiğin altında kalırken büyük dosya hiç indirilmiyor.
+function dhBuyukEsigi() {
+  return 512 / (DH.ayar.aralik * (DH.ayar.gorsel / 100));
+}
+
+// Yakınlaşınca YALNIZCA ekranda olan diyarları büyük görsele çevirir.
+// Hepsini çevirmek, görünmeyen onlarca görseli boşuna indirmek olurdu.
+function dhBuyugeGec() {
+  if (!DH.kutu || DH.kam.s < dhBuyukEsigi()) return;
+  // Her kamera hareketinde çalışıyor. Çevrilecek görsel kalmadıysa hemen çık:
+  // aşağıdaki döngü diyar başına getBoundingClientRect çağırıyor ve bu, tam
+  // yakınlaştırılmışken sürükleme sırasında her karede yerleşim hesabı demek.
+  if (!document.querySelector('#dhKat img[data-buyuk]')) return;
+  const k = DH.kutu.getBoundingClientRect();
+  document.querySelectorAll('#dhKat .dhDiyar').forEach(el => {
+    const img = el.querySelector('img');
+    if (!img || !img.dataset.buyuk) return;          // zaten büyük
+    const r = el.getBoundingClientRect();
+    if (r.right < k.left || r.left > k.right ||
+        r.bottom < k.top || r.top > k.bottom) return; // ekran dışı
+    img.onerror = null;
+    img.src = img.dataset.buyuk;
+    delete img.dataset.buyuk;
+  });
+}
 
 function dhSecilenSahne(diyar) {
   const s = (diyar && diyar.sahneler) || [];
@@ -651,7 +704,7 @@ function dhYerlestir(sl) {
   const dosya = dhSecilenSahne(sl.diyar).dosya;
   kutu.innerHTML = '<img alt="' + sl.diyar.ad + '">' +
                    '<span class="dhEtiket">' + sl.diyar.ad + '</span>';
-  kutu.querySelector('img').src = encodeURI(dhGorselYolu(dosya));
+  dhGorselAta(kutu.querySelector('img'), dosya, true);   // harita: küçük kopya
 
   const tohum = dhTohumla(sl.diyar.id + '|' + dosya);
   kutu.style.setProperty('--maske', dhMaskeUret(tohum, DH.ayar.yumusak, DH.ayar.sekil / 100));
@@ -798,7 +851,9 @@ function dhSahneGoster(diyar, i) {
   const s = diyar.sahneler[i] || diyar.sahneler[0];
   const img = document.getElementById('dhDetayGorsel');
   img.alt = diyar.ad + (s.ad ? ' — ' + s.ad : '');
-  img.src = encodeURI(dhGorselYolu(s.dosya));
+  // Detay paneli 1024 px'e kadar büyüyor — burada TAM BOY görsel kullanılır,
+  // kalite düşmesin. Küçük kopyalar yalnızca harita ve sahne kareleri için.
+  dhGorselAta(img, s.dosya, false);
   // Sahne adı yalnızca katalogda yazılmışsa görünür (CSS'te :empty gizliyor).
   document.getElementById('dhDetaySahneAd').textContent = s.ad || '';
   // Haritadakiyle AYNI maske üreteci — aynı tohumla aynı siluet.
@@ -824,7 +879,8 @@ function dhDetayAc(diyar) {
       const b = document.createElement('button');
       b.title = s.ad || ('Sahne ' + (i + 1));
       b.innerHTML = '<img alt="">';
-      b.querySelector('img').src = encodeURI(dhGorselYolu(s.dosya));
+      // Sahne kareleri 52 px — küçük kopya fazlasıyla yeter.
+      dhGorselAta(b.querySelector('img'), s.dosya, true);
       b.addEventListener('click', () => dhSahneGoster(diyar, i));
       kutu.appendChild(b);
     });
