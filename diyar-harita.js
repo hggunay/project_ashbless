@@ -251,6 +251,14 @@ function dhStilEkle() {
 #dhGrid circle { fill:var(--cizgi); }
 #dhVinyet { position:absolute; inset:0; z-index:5; pointer-events:none;
             background:radial-gradient(ellipse 75% 75% at 50% 50%, rgba(0,0,0,0) 45%, rgba(0,0,0,.58) 100%); }
+/* Açılış perdesi — sisle aynı renk, KUTUNUN üstünde duruyor (dünyanın değil:
+   4000x4000 dünyaya konan katman bilinen performans tuzağı, bkz. dosya başı).
+   z-index 7: vinyetin (5) ve "henüz keşif yok" yazısının (6) de üstünde.
+   Gerilirken anında kapanır (transition:none), bırakılırken yumuşakça açılır. */
+#dhPerde { position:absolute; inset:0; z-index:7; pointer-events:none;
+           background:var(--sisRenk); opacity:0; transition:opacity .5s ease; }
+#dhKutu.perdeli #dhPerde { opacity:1; transition:none; }
+@media (prefers-reduced-motion: reduce) { #dhPerde { transition:none; } }
 .dhDiyar { position:absolute; display:grid; place-items:center; }
 .dhDiyar::before { content:""; position:absolute; inset:-18%; border-radius:50%;
   background:radial-gradient(ellipse 50% 50% at 50% 50%, var(--isik1) 0%, var(--isik2) 48%, var(--isik3) 80%); }
@@ -386,6 +394,7 @@ function dhKur(kapId) {
         '<svg id="dhGrid"></svg>' +
       '</div>' +
       '<div id="dhVinyet"></div>' +
+      '<div id="dhPerde"></div>' +
     '</div>';
 
   DH.kutu  = document.getElementById('dhKutu');
@@ -919,14 +928,78 @@ function yenileDiyarHarita() {
   return true;
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// AÇILIŞ PERDESİ
+// ══════════════════════════════════════════════════════════════════════
+// Sekmeye ilk girildiğinde diyar görselleri tek tek beliriyordu; Gökşin
+// bunu "ilk yüklemede takılıyor gibi" diye bildirdi (2026-08-13). Sorun
+// hız değil dağınıklık: harita hazır olmadan gösteriliyor. Çözüm, yükleme
+// bitene kadar her şeyi sis renginde bir perdenin arkasında tutup tek
+// hamlede açmak.
+//
+// SÜRE BİLEREK SABİT DEĞİL — perde yükleme ne kadar sürerse o kadar kalır,
+// bir kare fazla değil. Sabit bir bekleme koymak hazır olan haritayı boşuna
+// bekletir; yorucu his oradan gelir. Görseller önbellekteyse (ikinci giriş)
+// perde neredeyse hiç görünmeden geçer, doğrusu da bu.
+//
+// Yalnızca renderDiyarHarita() perdeyi gerer, yenileDiyarHarita() GERMEZ:
+// kullanıcı haritaya bakarken kitap eklediğinde harita kararmamalı.
+// Emniyet freni (ms). ÖLÇÜLDÜ (2026-08-14, PC + yerel sunucu, 16 diyar):
+// ilk giriş 2277 ms — bunun 524 ms'i indirme, kalanı 1024x1024 görsellerin
+// çözülmesi. İkinci giriş 54 ms (önbellek). Telefonda ve gerçek internette
+// ilk giriş bundan yavaş olacağı için fren 2.5 sn'de tutulamaz: sürekli
+// devreye girer ve perde hiçbir işe yaramaz. Fren bir zamanlama ayarı DEĞİL,
+// yalnızca "görsel hiç gelmezse perde asılı kalmasın" emniyetidir — bu yüzden
+// beklenen en kötü süreden rahatça yüksek olmalı.
+const DH_PERDE_ENCOK = 5000;
+
+function dhPerdeGer() {
+  if (!DH.kutu) return;
+  DH.perdeNo = (DH.perdeNo || 0) + 1;
+  DH.kutu.classList.add('perdeli');
+}
+
+// Perde beklerken kullanıcı sekmeler arasında gidip gelirse ikinci bir açılış
+// başlıyor. Numara kontrolü, biten ESKİ beklemenin yeni perdeyi vaktinden önce
+// açmasını engelliyor.
+function dhPerdeBirak(no) {
+  if (!DH.kutu || DH.perdeNo !== no) return;
+  DH.kutu.classList.remove('perdeli');
+}
+
+function dhPerdeCoz() {
+  const no = DH.perdeNo;
+  const gorseller = Array.prototype.slice.call(
+    document.querySelectorAll('#dhKat img'));
+  if (!gorseller.length) { dhPerdeBirak(no); return; }   // hiç keşif yok
+
+  let bitti = false;
+  const birak = () => { if (bitti) return; bitti = true; dhPerdeBirak(no); };
+
+  // Emniyet freni: bozuk bir görsel ya da kopan bağlantı yüzünden perde
+  // kapalı kalmasın. Takılı perde, çözmeye çalıştığımız takılmadan beterdir.
+  setTimeout(birak, DH_PERDE_ENCOK);
+
+  // decode() "çizmeye hazır" demek, load() sadece "indi" demek — aradaki fark
+  // tam olarak gözle görülen zıplamanın kaynağı. allSettled: tek bir bozuk
+  // görsel diğerlerini rehin almasın. (requestAnimationFrame KULLANILMIYOR:
+  // sekme arka plandayken hiç çalışmıyor, perde asılı kalırdı.)
+  const bekle = gorseller.map(img =>
+    img.decode ? img.decode()
+               : new Promise(r => { img.onload = r; img.onerror = r; }));
+  Promise.allSettled(bekle).then(birak);
+}
+
 function renderDiyarHarita(kapId) {
   if (!DH.kurulu || !document.getElementById('dhKutu')) {
     if (!dhKur(kapId || 'diyarHaritaKutu')) return;
   }
+  dhPerdeGer();   // çizimden ÖNCE: görsellerin belirmesi perdenin arkasında kalsın
   dhCiz();
   // Açılış yakınlığı kutu genişliğine bağlı: ~3 diyar yan yana görünsün.
   // Sabit bir değer bırakılırsa telefonda tek bir diyar ekranı taşırıyor.
   const r = DH.kutu.getBoundingClientRect();
   DH.kam.s = Math.max(dhEnAzOlcek(), Math.min(0.85, r.width / (DH.ayar.aralik * 3.2)));
   dhOrtala(DH.DUNYA / 2, DH.DUNYA / 2);
+  dhPerdeCoz();   // kamera yerleştikten SONRA: perde açılınca her şey yerli yerinde
 }
