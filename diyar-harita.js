@@ -1001,8 +1001,13 @@ function yenileDiyarHarita() {
 // Yalnızca renderDiyarHarita() perdeyi gerer, yenileDiyarHarita() GERMEZ:
 // kullanıcı haritaya bakarken kitap eklediğinde harita kararmamalı.
 // Emniyet freni (ms). ÖLÇÜLDÜ (2026-08-14, PC + yerel sunucu, 16 diyar):
-// ilk giriş 2277 ms — bunun 524 ms'i indirme, kalanı 1024x1024 görsellerin
-// çözülmesi. İkinci giriş 54 ms (önbellek). Telefonda ve gerçek internette
+// ilk giriş 1650-2280 ms, ikinci giriş 27-54 ms (önbellek).
+// ⚠️ Bu sürenin "görsel çözme"den geldiği ilk sanılmıştı; YANLIŞ çıktı.
+// Parçalara ayrılınca: çizim 92 ms, ağ 887 ms, kalanı ağı beklemek. Yerel test
+// sunucusu (tek iş parçacıklı PowerShell) istekleri sırayla veriyor — 16 istek
+// 0-7 ms'de başlayıp 370→887 ms arasında dosya başına ~32 ms'lik merdivenle
+// bitiyor. Yani yerel ölçüm dosya boyutuna DEĞİL sunucunun kuyruğuna bağlı;
+// burada görsel küçültmenin etkisi ölçülemez. Telefonda ve gerçek internette
 // ilk giriş bundan yavaş olacağı için fren 2.5 sn'de tutulamaz: sürekli
 // devreye girer ve perde hiçbir işe yaramaz. Fren bir zamanlama ayarı DEĞİL,
 // yalnızca "görsel hiç gelmezse perde asılı kalmasın" emniyetidir — bu yüzden
