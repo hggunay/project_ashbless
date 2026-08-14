@@ -376,7 +376,11 @@ function dhKur(kapId) {
           // tek diyar keşfedilmişken bile (en küçük durum, ~630px) payı
           // 126px oluyor, gereken 76px'in üstünde.
           '<filter id="dhSisKenar" x="-20%" y="-20%" width="140%" height="140%">' +
-            '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="2" seed="9" result="g"/>' +
+            // numOctaves 2 → 1 (2026-08-14, Gökşin onayladı): her katman ayrı
+            // bir gürültü geçişi demek, ikincisi yalnızca ince ayrıntı katıyor.
+            // Sis en pahalı katman olduğu için buradaki kazanç gerçek; karşılığı
+            // sis kenarının bir tık sadeleşmesi. Geri almak için tek rakam.
+            '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="1" seed="9" result="g"/>' +
             '<feDisplacementMap id="dhKaydir" in="SourceGraphic" in2="g" scale="44" ' +
               'xChannelSelector="R" yChannelSelector="G" result="d"/>' +
             '<feGaussianBlur id="dhBulanik" in="d" stdDeviation="14"/>' +
@@ -422,7 +426,15 @@ function dhEnAzOlcek() {
   const r = DH.kutu.getBoundingClientRect();
   return Math.max(r.width / DH.DUNYA, r.height / DH.DUNYA);
 }
-function dhOlcekSinirla(s) { return Math.min(2.5, Math.max(dhEnAzOlcek(), s)); }
+// En çok yakınlık 2.5 → 1.6 (2026-08-14). Gerekçe sayısal: görseller 1024 px
+// kaynaktan geliyor ve dünyada aralık*(gorsel/100) ≈ 630 birim kaplıyorlar,
+// yani ekranda 1024 piksele 1024/630 ≈ 1.63 katta ulaşıyorlar. Ondan sonrası
+// yeni ayrıntı göstermiyor, sadece aynı görüntüyü esnetiyor — eski 2.5 sınırında
+// görsel kendi çözünürlüğünün 1.5 katına şişiyordu. Sınırı buraya çekmek
+// görünürde hiçbir ayrıntı kaybettirmiyor ama sis filtresinin EN PAHALI olduğu
+// bölgeyi tamamen ortadan kaldırıyor (Gökşin bildirdi: "ne kadar çok zoom
+// yapılırsa o kadar takılıyor").
+function dhOlcekSinirla(s) { return Math.min(1.6, Math.max(dhEnAzOlcek(), s)); }
 function dhKamSinirla() {
   const r = DH.kutu.getBoundingClientRect();
   DH.kam.s = dhOlcekSinirla(DH.kam.s);
