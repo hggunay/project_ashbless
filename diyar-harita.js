@@ -465,6 +465,26 @@ function dhKamUygula() {
   // YENİ giren diyarların da tam boya geçmesi gerekiyor.
   dhBuyugeGec();
 }
+// ── Kamera güncellemesini kare başına teke indir ──────────────────────
+// Girdi olayları ekranın çizebildiğinden hızlı geliyor: dokunmatikte saniyede
+// 120'ye kadar pointermove üretilebiliyor, ekran ise 60 kare çiziyor. Her
+// olayda doğrudan dhKamUygula() çağrılınca istekler sıraya giriyor ve harita
+// pürüzsüz görünse bile parmağın ARKASINDAN geliyor — Gökşin 2026-08-14'te
+// tablette bildirdi: "sanki 1 saniye geriden geliyormuş gibi". Görünüm
+// değişmiyor, yalnızca aynı kare içindeki fazla çizimler birleştiriliyor.
+let dhKamKare = 0;
+function dhKamIste() {
+  if (dhKamKare) return;
+  dhKamKare = requestAnimationFrame(() => { dhKamKare = 0; dhKamUygula(); });
+}
+// Hareket bitince bekleyen kareyi iptal edip son konumu hemen uygula: sekme
+// arka plana alınırsa requestAnimationFrame hiç çalışmaz ve harita bir adım
+// geride kalırdı.
+function dhKamHemen() {
+  if (dhKamKare) { cancelAnimationFrame(dhKamKare); dhKamKare = 0; }
+  dhKamUygula();
+}
+
 function dhEkranaDunya(mx, my) {
   const r = DH.kutu.getBoundingClientRect();
   return { x: (mx - r.left - DH.kam.x) / DH.kam.s, y: (my - r.top - DH.kam.y) / DH.kam.s };
@@ -495,7 +515,7 @@ function dhOlaylar() {
     const dx = ev.clientX - surukle.x, dy = ev.clientY - surukle.y;
     surukle.hareket = Math.max(surukle.hareket, Math.abs(dx) + Math.abs(dy));
     DH.kam.x = surukle.kx + dx; DH.kam.y = surukle.ky + dy;
-    dhKamUygula();
+    dhKamIste();
   });
   DH.kutu.addEventListener('pointerup', ev => {
     if (!surukle) return;
@@ -505,10 +525,12 @@ function dhOlaylar() {
     const kisa = surukle.hareket < esik;
     surukle = null;
     DH.kutu.classList.remove('suruklerken');
+    dhKamHemen();
     if (kisa) dhTiklama(ev.clientX, ev.clientY);
   });
   DH.kutu.addEventListener('pointercancel', () => {
     surukle = null; DH.kutu.classList.remove('suruklerken');
+    dhKamHemen();
   });
 
   DH.kutu.addEventListener('wheel', ev => {
@@ -522,7 +544,7 @@ function dhOlaylar() {
     const mx = ev.clientX - r.left, my = ev.clientY - r.top;
     DH.kam.x = mx - (mx - DH.kam.x) * (DH.kam.s / eski);
     DH.kam.y = my - (my - DH.kam.y) * (DH.kam.s / eski);
-    dhKamUygula();
+    dhKamIste();
   }, { passive: false });
 
   DH.kutu.addEventListener('touchstart', ev => {
@@ -543,9 +565,9 @@ function dhOlaylar() {
     DH.kam.s = dhOlcekSinirla(cimdik.s * oran);
     DH.kam.x = cimdik.mx - (cimdik.mx - cimdik.kx) * (DH.kam.s / cimdik.s);
     DH.kam.y = cimdik.my - (cimdik.my - cimdik.ky) * (DH.kam.s / cimdik.s);
-    dhKamUygula();
+    dhKamIste();
   }, { passive: false });
-  DH.kutu.addEventListener('touchend', () => { cimdik = null; });
+  DH.kutu.addEventListener('touchend', () => { cimdik = null; dhKamHemen(); });
 }
 
 // ══════════════════════════════════════════════════════════════════════
