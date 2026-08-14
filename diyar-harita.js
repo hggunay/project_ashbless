@@ -1071,6 +1071,24 @@ function dhAcilistaGorunenler() {
     .filter(Boolean);
 }
 
+// Bir görselin GERÇEKTEN çizmeye hazır olmasını bekler.
+//
+// Neden doğrudan img.decode() DEĞİL (2026-08-14'te canlıda yaşandı): küçük
+// kopyalar siteye yüklenmemişti, her görsel önce 404 alıp dhGorselAta'nın
+// yedeğiyle büyüğüne düşüyordu. decode() ilk istekte reddedilince perde
+// "hazır" sanıp açılıyor, sonra büyük görseller tek tek gözün önünde
+// çiziliyordu — yani yedek devreye girdiğinde perde işlevini kaybediyordu.
+//
+// Çözüm: 'error' dinlenmiyor. Yedek yeni bir 'load' doğuracak; onu bekliyoruz.
+// İkisi de başarısızsa hiç çözülmez ve perdeyi emniyet freni açar (doğrusu bu).
+function dhGorselHazir(img) {
+  const coz = () => (img.decode ? img.decode().catch(() => {}) : Promise.resolve());
+  if (img.complete && img.naturalWidth) return coz();
+  return new Promise(res => {
+    img.addEventListener('load', () => coz().then(res), { once: true });
+  });
+}
+
 function dhPerdeCoz() {
   const no = DH.perdeNo;
   const gorseller = dhAcilistaGorunenler();
@@ -1084,14 +1102,9 @@ function dhPerdeCoz() {
   // kapalı kalmasın. Takılı perde, çözmeye çalıştığımız takılmadan beterdir.
   setTimeout(birak, DH_PERDE_ENCOK);
 
-  // decode() "çizmeye hazır" demek, load() sadece "indi" demek — aradaki fark
-  // tam olarak gözle görülen zıplamanın kaynağı. allSettled: tek bir bozuk
-  // görsel diğerlerini rehin almasın. (requestAnimationFrame KULLANILMIYOR:
-  // sekme arka plandayken hiç çalışmıyor, perde asılı kalırdı.)
-  const bekle = gorseller.map(img =>
-    img.decode ? img.decode()
-               : new Promise(r => { img.onload = r; img.onerror = r; }));
-  Promise.allSettled(bekle).then(birak);
+  // (requestAnimationFrame KULLANILMIYOR: sekme arka plandayken hiç çalışmıyor,
+  // perde asılı kalırdı.)
+  Promise.allSettled(gorseller.map(dhGorselHazir)).then(birak);
 }
 
 function renderDiyarHarita(kapId) {
