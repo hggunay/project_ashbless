@@ -380,11 +380,20 @@ function dhKur(kapId) {
           // tek diyar keşfedilmişken bile (en küçük durum, ~630px) payı
           // 126px oluyor, gereken 76px'in üstünde.
           '<filter id="dhSisKenar" x="-20%" y="-20%" width="140%" height="140%">' +
-            // numOctaves 2 → 1 (2026-08-14, Gökşin onayladı): her katman ayrı
-            // bir gürültü geçişi demek, ikincisi yalnızca ince ayrıntı katıyor.
-            // Sis en pahalı katman olduğu için buradaki kazanç gerçek; karşılığı
-            // sis kenarının bir tık sadeleşmesi. Geri almak için tek rakam.
-            '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="1" seed="9" result="g"/>' +
+            // numOctaves: 2 → 1 (2026-08-14) → 2 (2026-08-17, GERİ ALINDI).
+            // 14 Ağustos'ta performans için 1'e düşürülmüştü; bedeli sis kenarının
+            // bir tık sadeleşmesiydi ve Gökşin bunu isteyerek kabul etmişti. O
+            // gerekçe ARTIK YOK: sis her karede değil, çizim başına BİR KEZ
+            // hesaplanıyor (bkz. dhSisRasterle). Yani ödenen görsel bedelin
+            // karşılığında artık hiçbir şey alınmıyordu.
+            // ÖLÇÜLDÜ (2026-08-17, önbellek kırılarak, 2 tur × 5 örnek):
+            // resim üretimi oktav 1'de ~291 ms, oktav 2'de ~321 ms — çizim
+            // başına ~30 ms. Bu süre açılışta perdenin arkasında geçiyor
+            // (toplam ~1650 ms) ve sonra yalnızca yeni keşifte tekrarlanıyor.
+            // KARE SÜRESİ DEĞİŞMİYOR: oktav 2 ile de her yakınlıkta ~17 ms
+            // (ayrıca ölçüldü) — tuval sonuçta bir bitmap, nasıl üretildiği
+            // kullanım maliyetini etkilemiyor.
+            '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="2" seed="9" result="g"/>' +
             '<feDisplacementMap id="dhKaydir" in="SourceGraphic" in2="g" scale="44" ' +
               'xChannelSelector="R" yChannelSelector="G" result="d"/>' +
             '<feGaussianBlur id="dhBulanik" in="d" stdDeviation="14"/>' +
