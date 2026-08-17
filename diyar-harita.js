@@ -48,7 +48,12 @@ const DH = {
     zemin: 'karanlikdeniz', solgun: 0, doseme: 167, dalga: 37,
     sis: true, etiket: true, grid: false,
     aralik: 700, gorsel: 80, yumusak: 65, sekil: 197, daginik: 9,
-    kenar: 6, anim: 'dagil'
+    kenar: 6, anim: 'dagil',
+    // Azami yakınlık artık sabit bir sayı DEĞİL, ekran genişliğine oranlı:
+    // "en fazla yakınlaştığında bir diyar görseli pencerenin yüzde kaçını
+    // kaplasın". Bkz. dhEnCokOlcek(). Gökşin telefonda kaydırakla ayarlayıp
+    // beğendiği değeri söyleyecek; bu sayı o zaman sabitlenecek.
+    doluluk: 90
   }
 };
 
@@ -456,7 +461,34 @@ function dhEnAzOlcek() {
 // görünürde hiçbir ayrıntı kaybettirmiyor ama sis filtresinin EN PAHALI olduğu
 // bölgeyi tamamen ortadan kaldırıyor (Gökşin bildirdi: "ne kadar çok zoom
 // yapılırsa o kadar takılıyor").
-function dhOlcekSinirla(s) { return Math.min(1.6, Math.max(dhEnAzOlcek(), s)); }
+// ── Azami yakınlık ────────────────────────────────────────────────────
+// İKİ sınırın küçüğü alınıyor, çünkü iki ayrı sebep var:
+//
+//   1) GÖRSEL ÇÖZÜNÜRLÜĞÜ (1.6, sabit) — kaynak görseller 1024 px ve dünyada
+//      ~630 birim kaplıyorlar, yani 1.63 katta ekranda kendi çözünürlüklerine
+//      ulaşıyorlar. Ötesi yeni ayrıntı değil, büyütülmüş bulanıklık.
+//
+//   2) EKRANA ORAN (yeni, 2026-08-17) — "bir diyar pencerenin en fazla yüzde
+//      kaçını kaplasın". Gökşin bildirdi: "çok gereksiz çok fazla zoom yapıyor,
+//      bir görselin adeta burnuna kadar girmek hoş durmuyor." Şikâyet
+//      TELEFONA ÖZGÜ ve sebebi sınırın sabit bir sayı olmasıydı: 1.6 katta bir
+//      diyar ekranda 896 px kaplıyor — PC'de (1366 px) genişliğin %66'sı,
+//      tablette (~1100 px) %81'i, ama TELEFONDA (390 px) %230'u. Yani aynı
+//      rakam küçük ekranda orantısız büyük çıkıyordu. Orana çevrilince his
+//      her cihazda aynı oluyor; PC ve tablette 1.6 sınırı zaten devrede kaldığı
+//      için orada hiçbir şey değişmiyor.
+//
+// Not: yakınlığı kısmak performansa da yarıyor ama ARTIK SEBEBİ SİS DEĞİL —
+// sis rasterleştiği için maliyeti yakınlıktan bağımsız (her yakınlıkta ~17 ms).
+// Kalan kazanç diyar görsellerinden geliyor (dhBuyugeGec eşiği aşılmıyor).
+function dhEnCokOlcek() {
+  const r = DH.kutu.getBoundingClientRect();
+  const gorselDunya = DH.ayar.aralik * (DH.ayar.gorsel / 100);
+  const oranli = (r.width * (DH.ayar.doluluk / 100)) / gorselDunya;
+  // En az sınırının altına inmemeli, yoksa dar pencerede harita kilitlenir.
+  return Math.max(dhEnAzOlcek(), Math.min(1.6, oranli));
+}
+function dhOlcekSinirla(s) { return Math.min(dhEnCokOlcek(), Math.max(dhEnAzOlcek(), s)); }
 function dhKamSinirla() {
   const r = DH.kutu.getBoundingClientRect();
   DH.kam.s = dhOlcekSinirla(DH.kam.s);
@@ -1089,7 +1121,11 @@ const DH_AYAR_ALANLARI = [
   ['daginik', 'Dağınıklık',   0,   25, 1],
   ['kenar',   'Kenar',        0,   85, 1],
   ['doseme',  'Döşeme',      40,  220, 1],
-  ['dalga',   'Dalga',        0,  100, 1]
+  ['dalga',   'Dalga',        0,  100, 1],
+  // En fazla yakınlaştığında bir diyarın pencere genişliğine oranı (%).
+  // 230 = bugünkü davranış (telefonda diyar ekrana sığmıyor), 100 = tam ekran,
+  // 75 = etrafında sis ve komşular görünür kalıyor.
+  ['doluluk', 'Azami yakınlık %', 40, 230, 1]
 ];
 
 function dhAyarSeridi(kap) {
@@ -1121,6 +1157,12 @@ function dhAyarSeridi(kap) {
       DH.ayar[k] = +ev.target.value;
       const g = s.querySelector('[data-v="' + k + '"]');
       if (g) g.textContent = ev.target.value;
+      // Azami yakınlık YALNIZCA kamerayı ilgilendiriyor. dhCiz() çağırmak
+      // sis rasterini her kaydırak adımında boşuna yeniden üretirdi (~300 ms,
+      // telefonda daha fazla) ve kaydırak takılmış hissettirirdi. Kamerayı
+      // yeniden sınırlamak yeterli: kullanıcı sınırın ötesindeyse geri çekilir,
+      // değilse hiçbir şey olmaz.
+      if (k === 'doluluk') { dhKamHemen(); return; }
     } else if (b) {
       DH.ayar[b] = ev.target.checked;
     } else return;
