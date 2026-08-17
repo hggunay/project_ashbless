@@ -393,6 +393,14 @@ function dhKur(kapId) {
             // KARE SÜRESİ DEĞİŞMİYOR: oktav 2 ile de her yakınlıkta ~17 ms
             // (ayrıca ölçüldü) — tuval sonuçta bir bitmap, nasıl üretildiği
             // kullanım maliyetini etkilemiyor.
+            //
+            // ⚠️ AMA GÖKŞİN FARKI GÖREMEDİ (2026-08-17, yerel test sayfasında
+            // bakıp): "gayet akıcıydı, harita görünümü iyiydi, bir fark
+            // hissetmedim." Yani bu ayarın ALGILANABİLİR bir faydası yok.
+            // 1'e geri çevrilmedi çünkü dosya o sırada zaten depoya yüklenmişti
+            // ve geri almak, görünürde aynı sonuç için fazladan bir yükleme
+            // gerektirecekti. Sis kenarının ayrıntısını artırma fikri ileride
+            // yine akla gelirse: DENENDİ, ÖLÇÜLDÜ, KULLANICI GÖREMEDİ.
             '<feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="2" seed="9" result="g"/>' +
             '<feDisplacementMap id="dhKaydir" in="SourceGraphic" in2="g" scale="44" ' +
               'xChannelSelector="R" yChannelSelector="G" result="d"/>' +
