@@ -237,7 +237,7 @@ function dhStilEkle() {
           --isik3:rgba(120,160,200,0); --golge:rgba(0,0,0,.55); }
 #dhDunya { position:absolute; top:0; left:0; transform-origin:0 0; cursor:grab; }
 #dhKutu.suruklerken #dhDunya { cursor:grabbing; }
-#dhZemin,#dhDoku,#dhKat,#dhSis,#dhGrid { position:absolute; top:0; left:0; }
+#dhZemin,#dhDoku,#dhKat,#dhSis,#dhSisTuval,#dhGrid { position:absolute; top:0; left:0; }
 #dhZemin { background:radial-gradient(ellipse 65% 50% at 50% 45%, rgba(58,88,120,.30) 0%, rgba(58,88,120,0) 72%),
                      radial-gradient(ellipse 110% 85% at 50% 48%, #1d2c3c 0%, #131e2a 55%, #070c12 100%); }
 #dhDoku { pointer-events:none; background-repeat:repeat; background-position:center;
@@ -245,6 +245,10 @@ function dhStilEkle() {
 #dhKat { pointer-events:none; }
 #dhSis { display:block; transition:opacity .5s ease; }
 #dhKutu.sissiz #dhSis { opacity:0; }
+/* Sisin tuvale çizilmiş kopyası — normalde ekranda görünen sis BUDUR, yukarıdaki
+   canlı SVG yalnızca onu üretmeye yarayan kaynak. Gerekçesi dhSisRasterle()'de. */
+#dhSisTuval { display:none; pointer-events:none; transition:opacity .5s ease; }
+#dhKutu.sissiz #dhSisTuval { opacity:0; }
 #dhGrid { pointer-events:none; opacity:0; transition:opacity .3s; }
 #dhKutu.gridAcik #dhGrid { opacity:1; }
 #dhGrid polygon { fill:none; stroke:var(--cizgi); stroke-width:1.2; }
@@ -402,6 +406,7 @@ function dhKur(kapId) {
           '<rect id="dhSisBulut" x="0" y="0" fill="url(#dhBulutDesen)" opacity="0.28" ' +
                 'style="mix-blend-mode:overlay"/>' +
         '</g></svg>' +
+        '<canvas id="dhSisTuval"></canvas>' +
         '<svg id="dhGrid"></svg>' +
       '</div>' +
       '<div id="dhVinyet"></div>' +
@@ -758,6 +763,92 @@ function dhCiz() {
                   'Bir diyarda geçen kitabı bitirdiğinde burası canlanacak.</div>';
     DH.kutu.appendChild(b);
   }
+
+  // Sis geometrisi bu noktada tamam; ekranda gösterilecek kopyayı üret.
+  dhSisRasterle();
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// SİS RASTERİ
+// ══════════════════════════════════════════════════════════════════════
+// Sis, haritanın EN PAHALI katmanı. Canlı bir SVG olarak durduğu sürece
+// yakınlık her değiştiğinde (yani çimdiklemenin HER karesinde) baştan
+// hesaplanıyor ve maliyeti yakınlıkla birlikte büyüyor. Çözüm: sis bir kez
+// resme dönüştürülüp öyle gösteriliyor. Resim ölçeklemek ucuz ve maliyeti
+// yakınlıktan bağımsız.
+//
+// ÖLÇÜM (2026-08-17, PC + yerel sunucu, 16 diyar, 390x700 kutu; her karede
+// yakınlık değişerek — yani gerçek çimdikleme gibi; kare başına en hızlı süre):
+//
+//   yakınlık   canlı SVG    <img> içinde SVG    TUVAL
+//      0.8       83 ms           83 ms          33 ms
+//      1.6      250 ms          250 ms          33 ms
+//      3.0      467 ms          467 ms          33 ms
+//      4.4      467 ms          467 ms          33 ms
+//
+// Gökşin'in telefonu (Redmi Note 10 Pro, piksel yoğunluğu 2.75, 120 Hz) en çok
+// yakınlıkta PC'nin 4.4'üne denk geliyor — orada 467 ms saniyede 2 kare demek.
+// Bildirdiği belirti buydu: "özellikle yakınlaştırınca ağırlaşıyor, parmağımı
+// geriden takip ediyor". Sisi kapatınca düzelmesi de bunu doğruluyordu.
+//
+// ⚠️ TUVAL ŞART, <img> YETMEZ (ölçüldü, yukarıdaki orta sütun): Chrome bir
+// SVG'yi <img> içinde de VEKTÖR olarak tutar ve ölçek değişince yeniden çizer —
+// yani hiçbir şey kazandırmaz. Kazanç ancak gerçek bir bitmap ile geliyor.
+//
+// ⚠️ ÖNCE DENENİP ÇÜRÜTÜLENLER (tekrar denemeye gerek yok, hepsi ölçüldü):
+// yumuşak kenar filtresini kapatmak · sis katmanının yüzeyini 4000'den 1000'e
+// düşürmek · maskeyi tamamen kaldırmak · 92 sis deliğini silmek. Dördü de en
+// yakında hiçbir şey değiştirmedi. Pahalı olan sisin bir parçası değil,
+// çizilmesinin kendisi.
+//
+// Çözünürlük 2048: sisin en ince ayrıntısı bulanıklık yarıçapı (aralık*0.018
+// ≈ 12.6 dünya birimi). 2048'de bir piksel 1.95 dünya birimi, yani o bulanıklık
+// ~6.5 piksele yayılıyor — yumuşaklık korunuyor. 1024'te 3.2 piksele düşer,
+// sınırda kalır. Yükseltmek de bedava değil: tuval bellekte en x boy x 4 bayt
+// tutuyor (2048'de ~17 MB, 4096'da ~67 MB — telefon için fazla).
+const DH_SIS_RASTER = 2048;
+
+function dhSisRasterle() {
+  const svg = document.getElementById('dhSis');
+  const tuval = document.getElementById('dhSisTuval');
+  if (!svg || !tuval) return;
+
+  // Yeni raster hazır olana kadar CANLI sis görünür kalıyor: sis bir an bile
+  // kalkmamalı (Gökşin, 2026-08-17 — "kullanım sırasında bir kez bile kalkacak
+  // olursa amacından çıkmış olur"). Eski rasteri bırakmak da olmazdı, yeni
+  // keşfedilen diyarın deliği onda yok.
+  svg.style.display = '';
+  tuval.style.display = 'none';
+
+  // Sıra numarası: art arda iki çizim olursa geciken ESKİ rasterin yeniyi
+  // ezmesini engelliyor (perdedeki dhPerdeNo ile aynı mantık).
+  const no = (DH.sisNo = (DH.sisNo || 0) + 1);
+
+  const kopya = svg.cloneNode(true);
+  kopya.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  kopya.setAttribute('viewBox', '0 0 ' + DH.DUNYA + ' ' + DH.DUNYA);
+  kopya.setAttribute('width', DH_SIS_RASTER);
+  kopya.setAttribute('height', DH_SIS_RASTER);
+  kopya.removeAttribute('id');
+
+  const img = new Image();
+  img.onload = function () {
+    if (DH.sisNo !== no || !document.getElementById('dhSisTuval')) return;
+    tuval.width = DH_SIS_RASTER; tuval.height = DH_SIS_RASTER;
+    tuval.style.width = DH.DUNYA + 'px';
+    tuval.style.height = DH.DUNYA + 'px';
+    const c = tuval.getContext('2d');
+    c.clearRect(0, 0, DH_SIS_RASTER, DH_SIS_RASTER);
+    c.drawImage(img, 0, 0, DH_SIS_RASTER, DH_SIS_RASTER);
+    tuval.style.display = 'block';
+    svg.style.display = 'none';
+  };
+  // GÜVENLİK AĞI: raster üretilemezse hiçbir şey yapma — canlı SVG zaten
+  // görünür durumda kalıyor. Harita yavaşlar ama BOZULMAZ, sis de kaybolmaz.
+  // (Küçük görsellerdeki onerror -> büyüğüne düş deseniyle aynı mantık.)
+  img.onerror = function () {};
+  img.src = 'data:image/svg+xml;charset=utf-8,' +
+            encodeURIComponent(new XMLSerializer().serializeToString(kopya));
 }
 
 function dhYerlestir(sl) {
