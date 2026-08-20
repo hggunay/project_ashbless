@@ -6011,7 +6011,11 @@ function switchStatsTab(tab){
   if(tab==='map'){
     const tog=document.getElementById('diyarToggleSatir');
     if(tog) tog.style.display = diyarTestModu() ? 'flex' : 'none';
-    if(!diyarTestModu()) switchHaritaTuru('dunya');
+    if(!diyarTestModu()) switchHaritaTuru('dunya', true);
+    // Bulut görselleri 442 KB ve çözülmesi ~275 ms sürüyor. Kullanıcı diyar
+    // sekmesine basınca bunu beklemesin diye harita paneli açılır açılmaz
+    // arka planda indiriliyor. Test hesabı dışında hiç indirilmiyor.
+    else if(typeof dhBulutOnYukle==='function') dhBulutOnYukle();
     renderMap();
   }
 }
@@ -6076,7 +6080,23 @@ function renderHaritaAcikOlan(){
   }
 }
 
-function switchHaritaTuru(tur){
+// Harita türü değişimi BULUT GEÇİŞİNİN arkasında yapılıyor: bulutlar iki
+// yandan gelip ekranı gizler, değişim kapalıyken olur, harita hazır olunca
+// bulutlar yanlara çekilir. Ayrıntı ve ayarlar diyar-harita.js'te.
+// Bulut kodu yoksa (dosya yüklenmediyse) geçiş eskisi gibi anında olur.
+// animasyonsuz=true: kullanıcının başlatmadığı, durum sıfırlayan çağrılar
+// (bkz. switchStatsTab). Onlarda bulut oynamamalı.
+// ⚠️ Bulut geçişi de hayali harita gibi YALNIZCA TEST HESABINDA çalışır —
+// diyarTestModu() kontrolü olmadan, haritayı hiç görmeyen kullanıcılar da
+// sekmeyi açarken bulut animasyonu izlerdi.
+function switchHaritaTuru(tur, animasyonsuz){
+  const isi = () => haritaTuruUygula(tur);
+  if (!animasyonsuz && diyarTestModu() && typeof dhBulutGecisi === 'function')
+    dhBulutGecisi(isi);
+  else isi();
+}
+
+function haritaTuruUygula(tur){
   const diyar = tur==='diyar' && diyarTestModu();
   document.getElementById('mapContainer').style.display = diyar?'none':'';
   document.getElementById('diyarSarmal').style.display = diyar?'':'none';
@@ -6090,6 +6110,20 @@ function switchHaritaTuru(tur){
   } else {
     renderMap();
   }
+  haritayiOrtala(diyar);
+}
+
+// Hayali haritaya geçince çerçeve aşağı doğru uzuyor; sayfa olduğu yerde
+// kalırsa haritanın alt yarısı ekranın dışında kalıyor. Gökşin istedi:
+// "harita ekranda ortalansın, kamera aşağıya doğru kaysın."
+// Kaydırma bulutlar KAPALIYKEN yapıldığı için gözle görünmüyor — o yüzden
+// yumuşak kaydırma değil, anında.
+function haritayiOrtala(diyar){
+  const el = document.getElementById(diyar ? 'diyarSarmal' : 'mapContainer');
+  if(!el) return;
+  const r = el.getBoundingClientRect();
+  const hedef = window.scrollY + r.top - Math.max(0, (window.innerHeight - r.height) / 2);
+  window.scrollTo({ top: Math.max(0, hedef), behavior: 'auto' });
 }
 
 // ── DÜNYA HARİTASI ────────────────────────────────────────────

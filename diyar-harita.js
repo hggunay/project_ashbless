@@ -1302,6 +1302,212 @@ function dhPerdeCoz() {
   Promise.allSettled(gorseller.map(dhGorselHazir)).then(birak);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// BULUT GEÇİŞİ
+// ══════════════════════════════════════════════════════════════════════
+// Dünya haritası ↔ hayali harita geçişinde bulutlar iki yandan kayarak
+// gelip ortada buluşuyor, ekranı gizliyor; arkada harita değişiyor;
+// harita HAZIR OLUNCA bulutlar yanlara çekilip siliniyor.
+//
+// Dizilim Gökşin'in ELLE yerleştirmesidir (2026-08-20), rastgele üretim
+// DEĞİL. Değiştirmek gerekirse tezgâh duruyor:
+// "hayali diyar görselleri\bulut-denemesi.html" — orada düzenleyip
+// "Ayarları kopyala" ile çıkan JSON buraya yapıştırılır.
+//
+// ⚠️ KATMAN TÜM EKRANI kaplıyor (position:fixed), yalnızca harita kutusunu
+// değil. Sebep: hayali haritaya geçerken kutu aşağı doğru uzuyor ve sayfa
+// kaydırılıyor (harita ekranda ortalansın diye, Gökşin istedi). Katman
+// yalnızca kutuyu örtseydi bu kayma kenarlardan görünürdü.
+//
+// ⚠️ SÜRE SABİT DEĞİL: bulutlar harita hazır olana kadar kapalı bekliyor
+// (Gökşin'in kararı). Böylece animasyon süs olmaktan çıkıp gerçekten
+// beklenecek süreyi dolduruyor. Emniyet freni DH_PERDE_ENCOK.
+const DH_BULUT_DOSYA = ['bulut-1.webp', 'bulut-2.webp', 'bulut-3.webp'];
+// Kaynak görsellerin en/boy oranları (1200×436, 1200×466, 1200×435).
+// Sabit yazılı ki yerleşim görsel yüklenmesini beklemeden hesaplanabilsin.
+// Görseller değişirse bu üç sayı da güncellenmeli.
+const DH_BULUT_ORAN = [2.7523, 2.5751, 2.7586];
+
+const DH_BULUT_GECIS = { kapanis: 1500, acilis: 2500, kayma: 210, sonum: 100,
+                         egri: 'cubic-bezier(.5,0,.75,0)' };
+const DH_BULUT_OLCU  = { bindirme: 14, disTasma: 18 };
+const DH_BULUT_DIZILIM = {
+  sol: [
+    { s:0, x:0.4036, y:0.3954, h:1.0240, d:0,   a:true  },
+    { s:1, x:0.2038, y:0.6525, h:0.6917, d:0,   a:false },
+    { s:1, x:0.3796, y:0.5218, h:0.6361, d:0,   a:false },
+    { s:2, x:0.2168, y:1.0163, h:0.9237, d:-24, a:false },
+    { s:1, x:0.3307, y:1.1253, h:1.2021, d:12,  a:false },
+    { s:1, x:0.3932, y:0.8137, h:0.5000, d:0,   a:false },
+    { s:1, x:0.4467, y:0.2778, h:0.7777, d:0,   a:false }
+  ],
+  sag: [
+    { s:0, x:0.7669, y:0.5196, h:0.9503, d:0,   a:false },
+    { s:0, x:0.7428, y:-0.2930, h:0.8750, d:-6, a:true  },
+    { s:1, x:0.5866, y:0.1253, h:0.8325, d:-12, a:false },
+    { s:2, x:0.7305, y:0.0577, h:0.6748, d:0,   a:false },
+    { s:1, x:0.6319, y:-0.0142, h:0.9469, d:0,  a:true  }
+  ]
+};
+
+let dhBulutKat = null, dhBulutOnYuklendi = false;
+
+// Bulut görselleri toplam ~442 KB ve ÇÖZÜLMELERİ ~275 ms sürüyor (ölçüldü,
+// 2026-08-20). Geçiş anında indirilirse kullanıcı sekmeye basar, bir saniye
+// hiçbir şey olmaz, sonra bulutlar gelir — o ölü an animasyonu bozuyor.
+// Harita paneli açılır açılmaz arka planda indirilip çözülüyor.
+// Yalnızca test hesabında çağrılıyor (bkz. index.html switchStatsTab).
+function dhBulutOnYukle() {
+  if (dhBulutOnYuklendi) return;
+  dhBulutOnYuklendi = true;
+  DH_BULUT_DOSYA.forEach(d => {
+    const im = new Image();
+    im.onload = () => { if (im.decode) im.decode().catch(() => {}); };
+    im.src = 'diyarlar/' + d;
+  });
+}
+
+function dhBulutStil() {
+  if (document.getElementById('dhBulutStil')) return;
+  const s = document.createElement('style');
+  s.id = 'dhBulutStil';
+  s.textContent =
+    '#dhBulutKat{position:fixed;inset:0;z-index:9500;pointer-events:none;overflow:hidden}' +
+    '#dhBulutKat.tiklanir{pointer-events:auto;cursor:pointer}' +
+    '#dhBulutKat .dhBulutGrup{position:absolute;left:0;top:0;will-change:transform,opacity}' +
+    '#dhBulutKat img{position:absolute;user-select:none;-webkit-user-drag:none}';
+  document.head.appendChild(s);
+}
+
+// Katmanı kurar ve bulutları o anki EKRAN ölçüsüne göre yerleştirir.
+function dhBulutKur() {
+  dhBulutStil();
+  if (dhBulutKat) dhBulutKat.remove();
+  const en = window.innerWidth, boy = window.innerHeight;
+  const ov  = DH_BULUT_OLCU.bindirme / 100 * boy;
+  const dis = DH_BULUT_OLCU.disTasma / 100 * boy;
+  const seritBoy = Math.round(boy / 2 + ov + dis);
+  const seritEn  = Math.round(en * 1.6);
+  const sol = Math.round((en - seritEn) / 2);
+  const ust = { sol: Math.round(boy / 2 + ov - seritBoy) };
+  const alt = { sol: Math.round(boy / 2 - ov) };
+
+  dhBulutKat = document.createElement('div');
+  dhBulutKat.id = 'dhBulutKat';
+
+  const gruplar = {};
+  [['sol', ust.sol], ['sag', alt.sol]].forEach(([ad, tepe]) => {
+    const g = document.createElement('div');
+    g.className = 'dhBulutGrup';
+    g.style.width = seritEn + 'px'; g.style.height = seritBoy + 'px';
+    g.style.left = sol + 'px'; g.style.top = tepe + 'px';
+    DH_BULUT_DIZILIM[ad].forEach(b => {
+      const img = document.createElement('img');
+      img.src = 'diyarlar/' + DH_BULUT_DOSYA[b.s];
+      const h = b.h * seritBoy, w = h * DH_BULUT_ORAN[b.s];
+      img.style.width = w + 'px'; img.style.height = h + 'px';
+      img.style.left = (b.x * seritEn - w / 2) + 'px';
+      img.style.top  = (b.y * seritBoy - h / 2) + 'px';
+      img.style.transform = 'rotate(' + b.d + 'deg)' + (b.a ? ' scaleX(-1)' : '');
+      g.appendChild(img);
+    });
+    gruplar[ad] = g;
+    dhBulutKat.appendChild(g);
+  });
+  document.body.appendChild(dhBulutKat);
+  return { gruplar, en };
+}
+
+// acilma: 0 = kapalı (ekran gizli) · 1 = tamamen açık (ekran temiz)
+function dhBulutDurum(gruplar, en, acilma, sure) {
+  const k = acilma * en * (DH_BULUT_GECIS.kayma / 100);
+  const f = DH_BULUT_GECIS.sonum / 100;
+  const op = f > 0 ? Math.max(0, Math.min(1, 1 - (acilma - (1 - f)) / f)) : 1;
+  const gecis = sure ? ('transform ' + sure + 'ms ' + DH_BULUT_GECIS.egri +
+                        ',opacity ' + sure + 'ms ' + DH_BULUT_GECIS.egri) : 'none';
+  gruplar.sol.style.transition = gecis; gruplar.sag.style.transition = gecis;
+  gruplar.sol.style.transform = 'translateX(' + (-k) + 'px)';
+  gruplar.sag.style.transform = 'translateX(' + ( k) + 'px)';
+  gruplar.sol.style.opacity = op; gruplar.sag.style.opacity = op;
+}
+
+// Beklerken dokunulursa hemen biter (Gökşin: "sık ziyaretlerde usandırıcı
+// olmasın"). durum, o geçişe ait tekil nesne: atlandı bilgisi ve o an
+// bekleyen adımı uyandıracak işlev.
+//
+// ⚠️ İlk hâli çalışmıyordu: atlama yalnızca O AN bekleyen adımı bitiriyordu,
+// ardından gelen açılış beklemesi sıfırdan tam süre işliyordu — dokunmak
+// hiçbir şeyi kısaltmıyordu (ölçüldü: 4920 ms). Artık atlandı bilgisi geçiş
+// boyunca taşınıyor ve sonraki beklemeler hiç başlamıyor.
+function dhBekle(ms, durum) {
+  if (durum.atlandi) return Promise.resolve();
+  return new Promise(res => {
+    let bitti = false, t = 0;
+    const fin = () => { if (bitti) return; bitti = true; clearTimeout(t);
+                        if (durum.uyandir === fin) durum.uyandir = null; res(); };
+    t = setTimeout(fin, ms);
+    durum.uyandir = fin;
+  });
+}
+
+// Haritanın çizmeye hazır olmasını bekler — perdeyle AYNI ölçüt.
+function dhHaritaHazir() {
+  return new Promise(res => {
+    let bitti = false;
+    const fin = () => { if (bitti) return; bitti = true; res(); };
+    setTimeout(fin, DH_PERDE_ENCOK);          // emniyet freni
+    if (!DH.kutu || !document.getElementById('dhKat')) { fin(); return; }
+    const g = dhAcilistaGorunenler();
+    if (!g.length) { fin(); return; }
+    Promise.allSettled(g.map(dhGorselHazir)).then(fin);
+  });
+}
+
+// isFn: bulutlar KAPALIYKEN çalışacak iş (harita değişimi, kaydırma…).
+//
+// ⚠️ AYNI ANDA İKİ GEÇİŞ ÇALIŞAMAZ. switchHaritaTuru bu fonksiyonu beklemeden
+// dönüyor; sekmeye hızlı iki kez basılırsa ikinci çağrı birincinin katmanını
+// siler, sonra birincisi ikincininkini kaldırır ve ekran bulutla kaplı
+// kalabilir. Meşgulken yeni istek yok sayılıyor — düğmeler zaten orada,
+// kullanıcı animasyon bitince tekrar basabilir.
+let dhBulutMesgul = false;
+async function dhBulutGecisi(isFn) {
+  const azHareket = window.matchMedia &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (azHareket) { await isFn(); return; }          // erişilebilirlik: animasyon yok
+  if (dhBulutMesgul) { return; }
+  dhBulutMesgul = true;
+
+  const { gruplar, en } = dhBulutKur();
+  const kat = dhBulutKat;                           // kendi katmanını tut
+  const durum = { atlandi: false, uyandir: null };
+  kat.classList.add('tiklanir');
+  const atla = () => { durum.atlandi = true; if (durum.uyandir) durum.uyandir(); };
+  kat.addEventListener('pointerdown', atla);
+
+  dhBulutDurum(gruplar, en, 1, 0);                  // açık (ekran dışında) başla
+  void kat.offsetWidth;                             // tarayıcı başlangıcı görsün
+  dhBulutDurum(gruplar, en, 0, DH_BULUT_GECIS.kapanis);   // iki yandan gelip kapan
+  await dhBekle(DH_BULUT_GECIS.kapanis, durum);
+
+  try { await isFn(); } catch (e) {}                // iş patlasa da bulut açılmalı
+  // ⚠️ Bu bekleme ATLANMAZ, atlansa bile: yarım yüklenmiş bir haritayı
+  // açmak, beklemekten kötü. Zaten ikinci ziyarette önbellekten anında döner.
+  await dhHaritaHazir();
+
+  if (durum.atlandi) {
+    dhBulutDurum(gruplar, en, 1, 0);                // dokunuldu: sona atla
+  } else {
+    dhBulutDurum(gruplar, en, 1, DH_BULUT_GECIS.acilis);  // yanlara çekil + sil
+    await dhBekle(DH_BULUT_GECIS.acilis, durum);
+  }
+
+  kat.removeEventListener('pointerdown', atla);
+  kat.remove();
+  if (dhBulutKat === kat) dhBulutKat = null;
+  dhBulutMesgul = false;
+}
+
 function renderDiyarHarita(kapId) {
   if (!DH.kurulu || !document.getElementById('dhKutu')) {
     if (!dhKur(kapId || 'diyarHaritaKutu')) return;
