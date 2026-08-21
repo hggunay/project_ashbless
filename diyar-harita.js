@@ -253,6 +253,11 @@ function dhStilEkle() {
 /* Sisin tuvale çizilmiş kopyası — normalde ekranda görünen sis BUDUR, yukarıdaki
    canlı SVG yalnızca onu üretmeye yarayan kaynak. Gerekçesi dhSisRasterle()'de. */
 #dhSisTuval { display:none; pointer-events:none; transition:opacity .5s ease; }
+/* Keşif animasyonunun yaması: sisin O ANKİ hâlinden kırpılmış kopya, silinerek
+   eriyor. dhKat'ın İÇİNDE ama z-index'i var — dhDunya bir yığın bağlamı
+   (transform'u var) ve sis katmanlarının z-index'i yok, dolayısıyla 3 yamayı
+   SİSİN ÜSTÜNE çıkarıyor. */
+.dhKesifYama { position:absolute; pointer-events:none; z-index:3; }
 #dhKutu.sissiz #dhSisTuval { opacity:0; }
 #dhGrid { pointer-events:none; opacity:0; transition:opacity .3s; }
 #dhKutu.gridAcik #dhGrid { opacity:1; }
@@ -790,15 +795,26 @@ function dhCiz() {
   }
   grid.innerHTML = gridParcalar.join('');
 
-  DH.slotlar.forEach(sl => {
-    if (sl.diyar) { dhYerlestir(sl); dhDelikAc(sl); }
-  });
+  // ⚠️ BEKLEYEN KEŞFİN SİSİ HİÇ AÇILMAZ (2026-08-22).
+  // Önceki iki hâlde de delik ve köprüler herkes için çiziliyordu; keşfedilmemiş
+  // diyar yalnızca üstüne konan bir örtüyle gizleniyordu. Gökşin canlıda gördü:
+  // "yanyana iki diyar keşfediyoruz... mavi arkaplan üstünde 2 kara delik var".
+  // Sis açık olduğu için altındaki DENİZ görünüyordu, örtüler de onun ortasında
+  // yüzen lekeler gibi duruyordu — oysa keşfedilmemiş alan baştan sona karanlık
+  // olmalı. Delik ve köprüler artık animasyon BİTİNCE ekleniyor
+  // (bkz. dhKesifOynat), sis o an bir kez yeniden üretiliyor.
+  DH.cizimNo = (DH.cizimNo || 0) + 1;
   DH.slotlar.forEach(sl => {
     if (!sl.diyar) return;
+    dhYerlestir(sl);
+    if (!dhBekliyor(sl.diyar.id)) dhDelikAc(sl);
+  });
+  DH.slotlar.forEach(sl => {
+    if (!sl.diyar || dhBekliyor(sl.diyar.id)) return;
     dhKomsular(sl.q, sl.r).forEach(([kq, kr]) => {
       if (kq < sl.q || (kq === sl.q && kr < sl.r)) return;      // her çifti bir kez
       const k = DH.slotHarita.get(kq + ',' + kr);
-      if (k && k.diyar) dhKopruCiz(sl, k);
+      if (k && k.diyar && !dhBekliyor(k.diyar.id)) dhKopruCiz(sl, k);
     });
   });
 
@@ -857,17 +873,27 @@ function dhCiz() {
 // tutuyor (2048'de ~17 MB, 4096'da ~67 MB — telefon için fazla).
 const DH_SIS_RASTER = 2048;
 
-function dhSisRasterle() {
+// Söz döndürüyor: yeni raster EKRANA GELDİĞİNDE çözülüyor.
+//
+// sessiz=true → ESKİ RASTER ekranda kalır, canlı SVG'ye hiç geçilmez. Yalnızca
+// keşif animasyonu kullanıyor: orada değişen bölgenin üstünde zaten sisin
+// kopyası (yama) duruyor, yani eski rasterin o diyarın deliğini içermemesi
+// görünmüyor. Kazancı gerçek — canlı SVG en pahalı katman, 300 ms boyunca
+// ekranda tutmak animasyonun tam ortasına denk geliyordu.
+function dhSisRasterle(sessiz) {
+ return new Promise(bitti => {
   const svg = document.getElementById('dhSis');
   const tuval = document.getElementById('dhSisTuval');
-  if (!svg || !tuval) return;
+  if (!svg || !tuval) { bitti(); return; }
 
   // Yeni raster hazır olana kadar CANLI sis görünür kalıyor: sis bir an bile
   // kalkmamalı (Gökşin, 2026-08-17 — "kullanım sırasında bir kez bile kalkacak
-  // olursa amacından çıkmış olur"). Eski rasteri bırakmak da olmazdı, yeni
-  // keşfedilen diyarın deliği onda yok.
-  svg.style.display = '';
-  tuval.style.display = 'none';
+  // olursa amacından çıkmış olur"). Eski rasteri bırakmak normalde olmazdı,
+  // yeni keşfedilen diyarın deliği onda yok — sessiz kipin şartı da bu.
+  if (!sessiz) {
+    svg.style.display = '';
+    tuval.style.display = 'none';
+  }
 
   // Sıra numarası: art arda iki çizim olursa geciken ESKİ rasterin yeniyi
   // ezmesini engelliyor (perdedeki dhPerdeNo ile aynı mantık).
@@ -882,7 +908,7 @@ function dhSisRasterle() {
 
   const img = new Image();
   img.onload = function () {
-    if (DH.sisNo !== no || !document.getElementById('dhSisTuval')) return;
+    if (DH.sisNo !== no || !document.getElementById('dhSisTuval')) { bitti(); return; }
     tuval.width = DH_SIS_RASTER; tuval.height = DH_SIS_RASTER;
     tuval.style.width = DH.DUNYA + 'px';
     tuval.style.height = DH.DUNYA + 'px';
@@ -891,13 +917,19 @@ function dhSisRasterle() {
     c.drawImage(img, 0, 0, DH_SIS_RASTER, DH_SIS_RASTER);
     tuval.style.display = 'block';
     svg.style.display = 'none';
+    bitti();
   };
-  // GÜVENLİK AĞI: raster üretilemezse hiçbir şey yapma — canlı SVG zaten
-  // görünür durumda kalıyor. Harita yavaşlar ama BOZULMAZ, sis de kaybolmaz.
-  // (Küçük görsellerdeki onerror -> büyüğüne düş deseniyle aynı mantık.)
-  img.onerror = function () {};
+  // GÜVENLİK AĞI: raster üretilemezse canlı SVG'ye düş. Harita yavaşlar ama
+  // BOZULMAZ, sis de kaybolmaz. (Küçük görsellerdeki onerror -> büyüğüne düş
+  // deseniyle aynı mantık.) Sessiz kipte de düşülüyor: eski raster, yeni
+  // açılan deliği içermiyor.
+  img.onerror = function () {
+    if (DH.sisNo === no) { svg.style.display = ''; tuval.style.display = 'none'; }
+    bitti();
+  };
   img.src = 'data:image/svg+xml;charset=utf-8,' +
             encodeURIComponent(new XMLSerializer().serializeToString(kopya));
+ });
 }
 
 function dhYerlestir(sl) {
@@ -919,6 +951,9 @@ function dhYerlestir(sl) {
   // boyutlarda kutunun dibine düşüp hâlâ sisli bölgede kayboluyordu).
   const R = dhDelikYaricapi();
   kutu.querySelector('.dhEtiket').style.bottom = Math.max(4, g / 2 - R * 0.66) + 'px';
+
+  // Bekleyen keşif: görsel gizli başlar, keşif animasyonu onu belirtir.
+  if (DH.bekleyen && DH.bekleyen.has(sl.diyar.id)) kutu.style.opacity = '0';
 
   document.getElementById('dhKat').appendChild(kutu);
   sl.el = kutu;
@@ -1303,6 +1338,298 @@ function dhPerdeCoz() {
 }
 
 // ══════════════════════════════════════════════════════════════════════
+// KEŞİF ANİMASYONU
+// ══════════════════════════════════════════════════════════════════════
+// Yeni bir diyar keşfedildiğinde, haritaya ilk girişte sis o diyarın üstünde
+// DAĞINIK parçalar halinde eriyor ve diyar beliriyor.
+//
+// ⚠️ SİS HER KAREDE YENİDEN ÜRETİLMİYOR. Sis 2026-08-17'de tuvale rasterlendi
+// (dhSisRasterle) ve telefondaki akıcılık oradan geliyor; 4 saniye boyunca
+// her karede yeniden üretmek o kazancı geri verirdi. Bunun yerine keşfedilmemiş
+// diyarın sisi dhCiz'de HİÇ AÇILMIYOR (delik de köprü de çizilmiyor); sırası
+// gelince sis bir kez açılıp yeniden üretiliyor ve üstüne, açılmadan ÖNCEKİ
+// hâlinin kopyası (yama) konuyor. Animasyon o yamadan parça silmekten ibaret.
+//
+// Ayarlar Gökşin'in deneme tezgâhında onayladığı değerler:
+// sure=4000 · parca=8 · dagi=45% · gecikme=55% · kenar=85%
+// govdeR / govdeAralik = gövde parçalarının son yarıçapı (aralık cinsinden).
+//   ⚠️ AYARI BÜYÜTME. Ölçüldü (2026-08-22): parçalar delikten belirgin büyük
+//   olunca erime p≈0,6'da her şeyi açıp bitiyor ve geriye 1,6 saniye ölü zaman
+//   kalıyor — Gökşin'in bildirdiği "bir süre duruyor, hiçbir şey olmuyor" tam
+//   olarak buydu. Değerler, erimenin deliğin kıyısına p=1'de varması için
+//   seçildi.
+// kopruBasla = köprülerin erimeye başladığı an; sonuncusu p=1'de bitiyor.
+// sonum      = yamanın sonundaki kısa sönüm.
+const DH_KESIF = { sure: 4000, parca: 8, dagi: 0.45, gecikme: 0.55, kenar: 0.85,
+                   govdeR: 0.50, govdeAralik: 0.18, kopruBasla: 0.42,
+                   kameraSure: 900, sonum: 260 };
+
+// Bekleyen (henüz izlenmemiş) keşiflerin diyar id'leri.
+DH.bekleyen = new Set();
+function dhBekliyor(id) { return !!(DH.bekleyen && DH.bekleyen.has(id)); }
+
+// Son bakış zamanı — dünya haritasındaki desenin AYNISI (map.js:437-467):
+// Firebase birincil, localStorage çevrimdışı yedek. Aynı ekranda iki farklı
+// mekanizma olmasın diye bilerek aynı şekilde yazıldı.
+function dhSonBakis() {
+  try {
+    if (typeof db !== 'undefined' && db.users && db.users[me] &&
+        typeof db.users[me].diyarVisit === 'number') return db.users[me].diyarVisit;
+    return parseInt(localStorage.getItem('aa-diyar-visit-' + me) || '0', 10) || 0;
+  } catch (e) { return 0; }
+}
+function dhBakisiYaz() {
+  const t = Date.now();
+  try {
+    if (typeof db !== 'undefined' && db.users && db.users[me]) {
+      db.users[me].diyarVisit = t;
+      if (typeof saveDb === 'function') saveDb();
+    }
+  } catch (e) {}
+  try { localStorage.setItem('aa-diyar-visit-' + me, String(t)); } catch (e) {}
+}
+
+// Son bakıştan SONRA keşfedilmiş diyarlar. Keşif sırasına göre döner.
+function dhBekleyenKesifler() {
+  const son = dhSonBakis();
+  return dhKesifSirasi(me)
+    .filter(e => new Date(e.ts).getTime() > son)
+    .map(e => e.diyarId);
+}
+
+// Diyarın çevresinden, SİSİN O ANKİ HÂLİNİ olduğu gibi kırpıp üste koyar.
+//
+// ⚠️ ÖRTÜYÜ ELDE ÇİZMEYE ÇALIŞMA. İki kez denendi, ikisi de Gökşin'in gözüne
+// takıldı:
+//   1) dikdörtgen dolgu → komşunun açık alanını örten siyah kare;
+//   2) diyarın şeklinde leke → diyar açılınca eritecek bir şey kalmıyor,
+//      animasyon donuyor, sonra delik ve köprüler bir anda beliriyor
+//      ("bir süre duruyor... sonra pat diye çevresindeki arkaplan mavisi
+//      ortaya çıkıp komşu görselle birleşiyor", 2026-08-22).
+// Elde çizilen her şekil ya eksik ya fazla kalıyor. Sisin KENDİ kopyası ise
+// tanımı gereği tam: ekrandaki rasterden kırpıldığı için üste konduğu anda
+// hiçbir şeyi değiştirmiyor, komşunun açık alanı açık kalıyor, kenarları
+// sisin kendi düzensiz kenarı oluyor.
+//
+// Yarıçap 1.25*aralık: açılacak her şeyi içine almalı — delik yaprakları
+// (~0.61*aralık) ve keşfedilmiş komşulara giden köprüler (komşu merkezi
+// 0.866*aralık'ta). Ötesinde sis zaten değişmiyor.
+function dhSisYamasi(sl) {
+  const tuval = document.getElementById('dhSisTuval');
+  if (!tuval || !tuval.width) return null;          // raster yoksa yama da yok
+  const H = DH.ayar.aralik * 1.25;                  // dünya biriminde yarı boy
+  const kk = tuval.width / DH.DUNYA;                // dünya birimi → raster pikseli
+  const COZ = Math.max(64, Math.round(2 * H * kk));
+
+  const c = document.createElement('canvas');
+  c.width = COZ; c.height = COZ;
+  c.className = 'dhKesifYama';
+  c.style.left = (sl.cx - H) + 'px';
+  c.style.top  = (sl.cy - H) + 'px';
+  c.style.width = (2 * H) + 'px'; c.style.height = (2 * H) + 'px';
+
+  const ctx = c.getContext('2d');
+  ctx.drawImage(tuval, (sl.cx - H) * kk, (sl.cy - H) * kk, 2 * H * kk, 2 * H * kk,
+                       0, 0, COZ, COZ);
+
+  document.getElementById('dhKat').appendChild(c);
+  return { el: c, ctx, COZ, H };
+}
+
+// Erimenin parçaları. İKİ TÜR var ve ikincisi zorunlu:
+//
+//  · GÖVDE — diyarın üstünde dağınık açılan lekeler; Gökşin'in tezgâhta
+//    onayladığı desen. p=govdeBitis'te tamamlanıyor.
+//  · KÖPRÜ — açılmış her komşuya doğru SIRAYLA ilerleyen lekeler. Bunlar
+//    olmadan erime diyarla birlikte bitiyor, sonra delik ve köprüler bir anda
+//    beliriyordu (Gökşin, 2026-08-22: "bir süre duruyor, hiçbir şey olmuyor.
+//    sonra pat diye çevresindeki arkaplan mavisi ortaya çıkıp komşu görselle
+//    birleşiyor"). Ölçüldü: gövde parçaları tek başına p≈0,6'da her şeyi
+//    açıyor, geri kalan 1,6 saniye ölü zaman oluyordu.
+//
+// Cömert yarıçap SORUN DEĞİL, tersine gerekli: yamanın altındaki sis zaten son
+// hâlde, yani fazla silmek fazla açmak değil, yalnızca sisi ortaya çıkarmak.
+// Erimenin GÖRÜNEN şekli deliğin ve köprülerin kendi şekli oluyor.
+function dhKesifParcalari(sl, COZ, H) {
+  const olcek = COZ / (2 * H);            // dünya birimi → yama pikseli
+  const yari = COZ / 2;
+  const W = DH.ayar.aralik, g = W * (DH.ayar.gorsel / 100);
+  const rnd = dhUretec(dhTohumla(sl.diyar.id + '|kesif'));
+  const parcalar = [];
+
+  for (let i = 0; i < DH_KESIF.parca; i++) {
+    const aci = (i / DH_KESIF.parca) * Math.PI * 2 + rnd() * 1.1;
+    const uz  = W * 0.34 * DH_KESIF.dagi * (0.4 + rnd() * 1.6);
+    parcalar.push({
+      x: yari + Math.cos(aci) * uz * olcek,
+      y: yari + Math.sin(aci) * uz * olcek,
+      r: W * (DH_KESIF.govdeR + rnd() * DH_KESIF.govdeAralik) * olcek,
+      gec: (i / DH_KESIF.parca) * DH_KESIF.gecikme * (0.5 + rnd()),
+      bit: 1
+    });
+  }
+
+  // Köprüler: komşunun merkezine doğru dört adım. Son adım tam p=1'de bitiyor,
+  // yani animasyonun son anına kadar gözle görülür bir şey oluyor.
+  dhKomsular(sl.q, sl.r).forEach(([kq, kr]) => {
+    const k = DH.slotHarita.get(kq + ',' + kr);
+    if (!k || !k.diyar || dhBekliyor(k.diyar.id)) return;
+    const dx = k.cx - sl.cx, dy = k.cy - sl.cy;
+    [0.30, 0.55, 0.80, 1.0].forEach((f, i) => {
+      const gec = DH_KESIF.kopruBasla + (1 - DH_KESIF.kopruBasla) * (i / 4);
+      parcalar.push({
+        x: yari + dx * f * olcek, y: yari + dy * f * olcek,
+        r: g * 0.62 * olcek, gec, bit: Math.min(1, gec + 0.34)
+      });
+    });
+  });
+  return parcalar;
+}
+
+// Parçaları p ilerlemesine göre yamadan siler.
+function dhKesifErit(ctx, parcalar, p) {
+  ctx.globalCompositeOperation = 'destination-out';
+  parcalar.forEach(pa => {
+    const y = Math.max(0, Math.min(1, (p - pa.gec) / Math.max(0.05, pa.bit - pa.gec)));
+    if (!y) return;
+    const R = pa.r * y;
+    const gr = ctx.createRadialGradient(pa.x, pa.y, 0, pa.x, pa.y, R);
+    gr.addColorStop(0, 'rgba(0,0,0,1)');
+    gr.addColorStop(DH_KESIF.kenar, 'rgba(0,0,0,1)');
+    gr.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = gr;
+    ctx.beginPath(); ctx.arc(pa.x, pa.y, R, 0, Math.PI * 2); ctx.fill();
+  });
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+// Kamerayı bir noktaya yumuşakça kaydırır.
+//
+// ⚠️ HEDEF ÖNCE SINIRLANIYOR. dhKamSinirla kamerayı dünyanın içinde tutuyor;
+// uzaktayken bir diyarı ekranın tam ortasına almak çoğu zaman MÜMKÜN DEĞİL.
+// Ham hedefe doğru yumuşatılırsa kamera ilk karelerde duvara çarpıp orada
+// kalıyor: kısa bir kayma, sonra hiçbir şey. Gökşin 2026-08-22'de bunu gördü
+// ("kamera kaymıyor... kaymıyoruz, zıplıyoruz"). Ulaşılabilir hedefe
+// yumuşatınca hareket sürenin tamamına yayılıyor.
+// Hiç yer kalmamışsa (tam uzaklaşmış harita) beklemeden dönüyor — yoksa
+// ekranda hiçbir şeyin olmadığı ölü bir saniye oluyor.
+function dhKameraKaydir(dx, dy, sure) {
+  return new Promise(res => {
+    const r = DH.kutu.getBoundingClientRect();
+    const x0 = DH.kam.x, y0 = DH.kam.y;
+    const g = DH.DUNYA * DH.kam.s;
+    const x1 = Math.min(0, Math.max(r.width  - g, r.width  / 2 - dx * DH.kam.s));
+    const y1 = Math.min(0, Math.max(r.height - g, r.height / 2 - dy * DH.kam.s));
+    if (!sure || Math.hypot(x1 - x0, y1 - y0) < 1) {
+      DH.kam.x = x1; DH.kam.y = y1; dhKamUygula(); res(); return;
+    }
+    const t0 = performance.now();
+    (function adim(t) {
+      const p = Math.min(1, (t - t0) / sure);
+      const e = p < 0.5 ? 2*p*p : 1 - Math.pow(-2*p + 2, 2) / 2;   // ease-in-out
+      DH.kam.x = x0 + (x1 - x0) * e; DH.kam.y = y0 + (y1 - y0) * e;
+      dhKamUygula();
+      if (p < 1) requestAnimationFrame(adim); else res();
+    })(t0);
+  });
+}
+
+// Tek bir diyarın keşif animasyonu.
+//
+// AKIŞ (sırası önemli):
+//   1. Sisin o anki hâli diyarın çevresinden kırpılıp üste konuyor (yama).
+//      Kopya olduğu için ekranda hiçbir şey değişmiyor.
+//   2. Sis GERÇEKTEN açılıyor: delik + köprüler çiziliyor, raster sessizce
+//      yenileniyor. Yama üstünü örttüğü için bu da görünmüyor.
+//   3. Kamera diyara kayıyor.
+//   4. Yama parça parça eriyor — altından SON HÂL çıkıyor: önce diyar, sonra
+//      çevresindeki deniz, sonra komşulara uzanan köprüler. Kesintisiz.
+//   5. Yama kaldırılıyor. Altındaki zaten son hâl olduğu için hiçbir şey
+//      değişmiyor — ne sıçrama, ne devir, ne bekleme.
+//
+// Bu sıra Gökşin'in 2026-08-22'de bildirdiği iki kusurun karşılığı: erime
+// artık diyarla bitmiyor (denizi ve köprüyü de o eritiyor), sonunda da
+// eklenecek bir şey kalmıyor.
+function dhKesifOynat(sl, durum) {
+  return new Promise(async res => {
+    const cizim = DH.cizimNo;
+    const yama = dhSisYamasi(sl);
+
+    // Sis açılıyor; yama perdeliyor. Köprü çifti YALNIZCA burada kuruluyor —
+    // dhCiz bekleyen diyarın hiçbir köprüsünü çizmiyor, çift iki kez çizilmiş
+    // olmuyor.
+    if (DH.cizimNo === cizim) {
+      DH.bekleyen.delete(sl.diyar.id);
+      dhDelikAc(sl);
+      dhKomsular(sl.q, sl.r).forEach(([kq, kr]) => {
+        const k = DH.slotHarita.get(kq + ',' + kr);
+        if (k && k.diyar && !dhBekliyor(k.diyar.id)) dhKopruCiz(sl, k);
+      });
+      if (sl.el) sl.el.style.opacity = '';
+      await dhSisRasterle(!!yama);       // yama varsa sessiz: canlı SVG'ye hiç geçme
+    }
+    if (!yama) { res(); return; }        // raster yoksa animasyonsuz aç, sis bozulmasın
+
+    const { ctx, COZ } = yama;
+    // ⚠️ Parçalar KAMERADAN ÖNCE hesaplanıyor: köprü parçaları o an açılmış
+    // komşulara bakıyor ve sıradaki diyar araya girmemeli.
+    const parcalar = dhKesifParcalari(sl, COZ, yama.H);
+    await dhKameraKaydir(sl.cx, sl.cy, durum.atlandi ? 0 : DH_KESIF.kameraSure);
+
+    const t0 = performance.now();
+    (function kare(t) {
+      const p = durum.atlandi ? 1 : Math.min(1, (t - t0) / DH_KESIF.sure);
+      dhKesifErit(ctx, parcalar, p);
+
+      if (p < 1) { requestAnimationFrame(kare); return; }
+      // Yamanın köşelerinde kalan artık, altındaki sisin AYNISI — kaldırmak
+      // görünmez. Yine de kısa bir sönüm konuyor: eritilmemiş bir kırıntı
+      // kalırsa sertçe kaybolmasın.
+      const sonum = durum.atlandi ? 0 : DH_KESIF.sonum;
+      yama.el.style.transition = 'opacity ' + sonum + 'ms linear';
+      yama.el.style.opacity = '0';
+      setTimeout(() => yama.el.remove(), sonum + 60);
+      res();
+    })(t0);
+  });
+}
+
+// Bekleyen tüm keşifleri sırayla oynatır. Ekrana dokunulursa hepsi atlanır.
+//
+// ⚠️ AYNI ANDA İKİ KUYRUK ÇALIŞAMAZ. renderDiyarHarita her çağrıldığında
+// kuyruğu tetikliyor; harita birden çok kez çizilirse (sekme değişimi, detay
+// panelinden dönüş, ayar şeridi) ikinci kuyruk birincisi bitmeden başlıyor ve
+// animasyonlar üst üste biniyordu — ölçümde aynı anda 2 örtü görüldü.
+// (Bulut geçişindeki dhBulutMesgul kilidiyle aynı sınıftan hata.)
+let dhKesifOynuyor = false;
+async function dhKesifKuyrugu() {
+  if (dhKesifOynuyor || !DH.bekleyen.size) return;
+  dhKesifOynuyor = true;
+  const durum = { atlandi: false };
+  const atla = () => { durum.atlandi = true; };
+  DH.kutu.addEventListener('pointerdown', atla, { once: false });
+
+  try {
+    for (const id of Array.from(DH.bekleyen)) {
+      const sl = DH.slotlar.find(s => s.diyar && s.diyar.id === id);
+      if (sl) await dhKesifOynat(sl, durum);
+    }
+  } finally {
+    // Hata çıksa da kilit ve dinleyici mutlaka bırakılmalı; yoksa keşif
+    // animasyonu bir daha hiç oynamaz.
+    DH.kutu.removeEventListener('pointerdown', atla);
+    // Sırası gelmeyen kalmışsa (slot bulunamadı, arada harita yeniden çizildi)
+    // o diyarın sisi hâlâ kapalı ve görseli gizli. Kuyruk kapanırken harita
+    // normal hâliyle bir kez daha çiziliyor ki hiçbir diyar görünmez kalmasın.
+    const eksik = DH.bekleyen.size > 0;
+    DH.bekleyen.clear();
+    dhBakisiYaz();
+    dhKesifOynuyor = false;
+    if (eksik) dhCiz();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // BULUT GEÇİŞİ
 // ══════════════════════════════════════════════════════════════════════
 // Dünya haritası ↔ hayali harita geçişinde bulutlar iki yandan kayarak
@@ -1322,6 +1649,10 @@ function dhPerdeCoz() {
 // ⚠️ SÜRE SABİT DEĞİL: bulutlar harita hazır olana kadar kapalı bekliyor
 // (Gökşin'in kararı). Böylece animasyon süs olmaktan çıkıp gerçekten
 // beklenecek süreyi dolduruyor. Emniyet freni DH_PERDE_ENCOK.
+// Bulutlar diğer harita görselleriyle birlikte `diyarlar/` altında duruyor.
+// (2026-08-20'de kısa süre `images/` denendi ve geri alındı — canlıdaki yer
+// burası, kodla canlı ayrı düşmesin.)
+const DH_BULUT_KLASOR = 'diyarlar/';
 const DH_BULUT_DOSYA = ['bulut-1.webp', 'bulut-2.webp', 'bulut-3.webp'];
 // Kaynak görsellerin en/boy oranları (1200×436, 1200×466, 1200×435).
 // Sabit yazılı ki yerleşim görsel yüklenmesini beklemeden hesaplanabilsin.
@@ -1363,7 +1694,7 @@ function dhBulutOnYukle() {
   DH_BULUT_DOSYA.forEach(d => {
     const im = new Image();
     im.onload = () => { if (im.decode) im.decode().catch(() => {}); };
-    im.src = 'diyarlar/' + d;
+    im.src = DH_BULUT_KLASOR + d;
   });
 }
 
@@ -1403,7 +1734,7 @@ function dhBulutKur() {
     g.style.left = sol + 'px'; g.style.top = tepe + 'px';
     DH_BULUT_DIZILIM[ad].forEach(b => {
       const img = document.createElement('img');
-      img.src = 'diyarlar/' + DH_BULUT_DOSYA[b.s];
+      img.src = DH_BULUT_KLASOR + DH_BULUT_DOSYA[b.s];
       const h = b.h * seritBoy, w = h * DH_BULUT_ORAN[b.s];
       img.style.width = w + 'px'; img.style.height = h + 'px';
       img.style.left = (b.x * seritEn - w / 2) + 'px';
@@ -1513,6 +1844,9 @@ function renderDiyarHarita(kapId) {
     if (!dhKur(kapId || 'diyarHaritaKutu')) return;
   }
   dhPerdeGer();   // çizimden ÖNCE: görsellerin belirmesi perdenin arkasında kalsın
+  // Bekleyen keşifler ÇİZİMDEN ÖNCE belirleniyor: dhYerlestir bunlara bakıp
+  // diyar görselini gizli başlatıyor, animasyon onu açıyor.
+  DH.bekleyen = new Set(dhBekleyenKesifler());
   dhCiz();
   // Açılış yakınlığı kutu genişliğine bağlı: ~3 diyar yan yana görünsün.
   // Sabit bir değer bırakılırsa telefonda tek bir diyar ekranı taşırıyor.
@@ -1520,4 +1854,6 @@ function renderDiyarHarita(kapId) {
   DH.kam.s = Math.max(dhEnAzOlcek(), Math.min(0.85, r.width / (DH.ayar.aralik * 3.2)));
   dhOrtala(DH.DUNYA / 2, DH.DUNYA / 2);
   dhPerdeCoz();   // kamera yerleştikten SONRA: perde açılınca her şey yerli yerinde
+  // Bekleyen keşifler varsa, harita göründükten sonra sırayla oynat.
+  if (DH.bekleyen.size) dhHaritaHazir().then(dhKesifKuyrugu);
 }
