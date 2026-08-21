@@ -6109,14 +6109,29 @@ function switchHaritaTuru(tur, animasyonsuz){
 // dünya haritası arada hiç görünmeyecek. Bulut geçişi oynuyor, bulutlar
 // kapalıyken harita değişiyor, açılınca o diyarın keşif animasyonu başlıyor.
 //
-// Animasyonu dhDiyaraGit yürütüyor (diyar-harita.js): haritanın kurulmasını VE
-// bulut geçişinin bitmesini bekliyor. Buradan beklenemez — switchHaritaTuru
-// geçişi başlatıp hemen dönüyor.
+// ⚠️ BULUT GEÇİŞİ BURADAN, AKIŞ SAYFASINDAYKEN BAŞLIYOR — sekme değişimini de
+// örtmesi için. İlk hâlde geçişi switchHaritaTuru başlatıyordu, yani ancak
+// harita ekranı AÇILDIKTAN sonra; harita daha önce bir kez açılmışsa hazır
+// çizili hâli bir an görünüyordu. Gökşin 2026-08-22'de bildirdi: "harita her
+// şey açık olarak gözüküyor, sonra bulut animasyonu oynuyor, sonra harita yine
+// ortaya çıkıyor." Önerdiği çözüm buydu ve doğruydu: bulut katmanı zaten
+// position:fixed ile TÜM EKRANI kaplıyor, panel değişimini de gizleyebiliyor.
+//
+// switchHaritaTuru'ya animasyonsuz=true veriliyor: geçiş zaten oynuyor.
+// ⚠️ İç içe çağırmak sessizce BOZAR — dhBulutGecisi meşgulken isFn'i hiç
+// çalıştırmadan dönüyor, yani harita türü hiç değişmezdi.
 function openDiyarFromFeed(diyarId){
   if(!diyarTestModu()) return;
-  showPanel('stats', document.querySelector('.nav-tab[onclick*="stats"]'));
-  switchStatsTab('map');
-  switchHaritaTuru('diyar');
+  // Bulut görselleri henüz indirilmemiş olabilir (harita paneli hiç açılmadıysa).
+  if(typeof dhBulutOnYukle==='function') dhBulutOnYukle();
+  const isi = () => {
+    showPanel('stats', document.querySelector('.nav-tab[onclick*="stats"]'));
+    switchStatsTab('map');
+    switchHaritaTuru('diyar', true);
+  };
+  if(typeof dhBulutGecisi==='function') dhBulutGecisi(isi); else isi();
+  // Animasyonu dhDiyaraGit yürütüyor (diyar-harita.js). Buradan beklenemez —
+  // dhBulutGecisi geçişi başlatıp hemen dönüyor.
   if(typeof dhDiyaraGit==='function') dhDiyaraGit(diyarId);
 }
 

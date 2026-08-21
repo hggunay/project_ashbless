@@ -630,11 +630,17 @@ function dhKesifTekrar(mod, diyarId) {
   dhHaritaHazir().then(dhKesifKuyrugu);
 }
 
-// Akış kartından bir diyara gelinince: harita kurulsun, BULUT GEÇİŞİ BİTSİN,
-// sonra o diyarın keşif animasyonu oynasın.
+// Akış kartından bir diyara gelinince o diyarın keşif animasyonunu hazırlar.
 //
-// ⚠️ Bulutları beklemek şart — geçiş 2,5 saniye sürüyor ve beklenmezse
-// animasyonun ilk yarısı kapalı bulutların ARDINDA oynayıp bitiyor.
+// ⚠️ SİS, BULUTLAR AÇILMADAN ÖNCE KAPANMALI. dhKesifTekrar iki iş yapıyor:
+// dhCiz ile diyarın sisini HEMEN kapatıyor, oynatmayı ise kuyruğa bırakıyor
+// (kuyruk bulutların açılmasını kendisi bekliyor). Bu yüzden burada bulutlar
+// BEKLENMİYOR — beklenirse bulutlar açıldığında diyar bir an keşfedilmiş
+// görünüyor, sonra üstü sisle kapanıyordu.
+//
+// ⚠️ ÖNCE BU GEZİNMENİN ÇİZİMİ BEKLENİYOR. Harita daha önce açılmışsa
+// DH.kurulu zaten true; beklemeden davranılırsa hazırlık, hemen ardından gelen
+// renderDiyarHarita tarafından eziliyor. Ölçüt DH.cizimNo — her dhCiz'de artıyor.
 async function dhDiyaraGit(diyarId) {
   // ⚠️ HER AŞAMANIN KENDİ BÜTÇESİ VAR, ortak bir emniyet freni DEĞİL. İlk hâli
   // tek bir 20 sn'lik bütçeyi üçü arasında paylaştırıyordu; ilk aşama yavaş
@@ -646,8 +652,9 @@ async function dhDiyaraGit(diyarId) {
     while (performance.now() < son && kosul()) await new Promise(r => setTimeout(r, 90));
     res();
   });
+  const ilkCizim = DH.cizimNo || 0;
+  await bekle(() => (DH.cizimNo || 0) === ilkCizim, 15000);
   await bekle(() => !(DH.kurulu && DH.slotlar && DH.slotlar.length), 15000);
-  await bekle(() => dhBulutMesgul, 15000);
   // Bu diyar zaten sıradaysa (ilk kez görülüyor) kendi kuyruğu oynatacak;
   // ikinci kez tetiklemek animasyonu üst üste bindirirdi.
   if (DH.bekleyen && DH.bekleyen.has(diyarId)) return;
