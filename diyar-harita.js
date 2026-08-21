@@ -331,10 +331,18 @@ body.dhDetayAcik #dhDetay { display:flex; }
    görsel neredeyse birebir çözünürlükte gösteriliyor. */
 #dhDetayKart { position:relative; max-width:min(96vw,1024px); max-height:96vh;
   display:flex; flex-direction:column; align-items:center; color:#f0e2c4; text-align:center; }
-#dhDetaySahne { position:relative; width:min(78vh,100%,1024px); aspect-ratio:1/1; display:grid; place-items:center; }
+/* touch-action:pan-y ŞART — sahneler arası yatay kaydırma için. Olmazsa
+   tarayıcı yatay parmak hareketini kendi kaydırması sanıp olayları kesiyor;
+   dikey hareket serbest kalsın diye "none" değil "pan-y". */
+#dhDetaySahne { position:relative; width:min(78vh,100%,1024px); aspect-ratio:1/1;
+  display:grid; place-items:center; touch-action:pan-y; }
+/* -webkit-user-drag:none — haritadaki görsellerle aynı sebep: fareyle
+   kaydırırken görselin "hayalet" kopyası imlece yapışıp hareketi kesiyor. */
 #dhDetaySahne img { width:100%; height:100%; object-fit:cover; display:block;
+  -webkit-user-drag:none; user-select:none;
   -webkit-mask-image:var(--dmaske); mask-image:var(--dmaske);
   -webkit-mask-repeat:no-repeat; mask-repeat:no-repeat;
+  transition:opacity .18s ease;
   filter:drop-shadow(0 10px 40px rgba(0,0,0,.7)); }
 /* Vinyet dışarı çekildi: eskiden %42'de başlıyordu ve görselin kenarındaki
    kağıt-kesme katmanlarını da söndürüyordu. Artık %58'de başlıyor —
@@ -1177,9 +1185,49 @@ function dhDetayKur() {
   document.body.appendChild(d);
   document.getElementById('dhDetayKapat').addEventListener('click', dhDetayKapat);
   d.addEventListener('click', ev => { if (ev.target.id === 'dhDetay') dhDetayKapat(); });
+  dhSahneKaydirmaKur();
   window.addEventListener('keydown', ev => {
-    if (ev.key === 'Escape' && document.body.classList.contains('dhDetayAcik')) dhDetayKapat();
+    if (!document.body.classList.contains('dhDetayAcik')) return;
+    if (ev.key === 'Escape') dhDetayKapat();
+    // Masaüstünde kaydırmanın karşılığı ok tuşları.
+    else if (ev.key === 'ArrowRight') dhSahneAtla(1);
+    else if (ev.key === 'ArrowLeft')  dhSahneAtla(-1);
   });
+}
+
+// ── Sahneler arası geçiş ──────────────────────────────────────────────
+// Küçük sahne kareleri baştan beri vardı; eksik olan hareketin kendisiydi
+// (Gökşin 2026-08-22'de hatırlattı: "birden fazla görseli olan diyarın resmini
+// büyüttüğümüzde kaydırarak resimler arası geçiş yapabilecektik").
+//
+// yon: +1 sonraki · -1 önceki. Uçlarda başa/sona SARIYOR — 2-4 sahnelik küçük
+// bir galeride durdurmak, kullanıcıya "bozuk mu?" dedirtiyor.
+function dhSahneAtla(yon) {
+  if (!DH.detay) return;
+  const n = (DH.detay.diyar.sahneler || []).length;
+  if (n < 2) return;
+  dhSahneGoster(DH.detay.diyar, (DH.detay.i + yon + n) % n);
+}
+
+// Kaydırma. Eşik 40 px ve hareket YATAY olmalı — yoksa her dokunuş sahne
+// değiştirir, panelde dikey kaydırma da imkânsızlaşırdı.
+function dhSahneKaydirmaKur() {
+  const sahne = document.getElementById('dhDetaySahne');
+  if (!sahne || sahne.dataset.kaydirma) return;
+  sahne.dataset.kaydirma = '1';
+  let bas = null;
+  sahne.addEventListener('pointerdown', ev => {
+    if (!DH.detay || (DH.detay.diyar.sahneler || []).length < 2) return;
+    bas = { x: ev.clientX, y: ev.clientY, id: ev.pointerId };
+  });
+  sahne.addEventListener('pointerup', ev => {
+    if (!bas || ev.pointerId !== bas.id) { bas = null; return; }
+    const dx = ev.clientX - bas.x, dy = ev.clientY - bas.y;
+    bas = null;
+    if (Math.abs(dx) < 40 || Math.abs(dx) <= Math.abs(dy)) return;
+    dhSahneAtla(dx < 0 ? 1 : -1);          // sola çekmek "sonraki"
+  });
+  sahne.addEventListener('pointercancel', () => { bas = null; });
 }
 
 function dhAcanKitaplar(diyar) {
@@ -1194,9 +1242,20 @@ function dhSahneGoster(diyar, i) {
   const s = diyar.sahneler[i] || diyar.sahneler[0];
   const img = document.getElementById('dhDetayGorsel');
   img.alt = diyar.ad + (s.ad ? ' — ' + s.ad : '');
+  DH.detay = { diyar, i };                 // kaydırma ve ok tuşları buradan okuyor
+
+  // Kısa sönüm: maske ve görsel aynı anda değiştiği için sert geçişte
+  // bir kare boyunca eski maske yeni görselin üstünde kalıyor.
+  // ⚠️ Yükleme dinleyicisi src'DEN ÖNCE bağlanmalı; ayrıca önbellekten gelen
+  // görselde load hiç tetiklenmeyebilir, o yüzden complete kontrolü de var —
+  // yoksa görsel opacity 0'da takılı kalır.
+  const goster = () => { img.style.opacity = '1'; };
+  img.style.opacity = '0';
+  img.addEventListener('load', goster, { once: true });
   // Detay paneli 1024 px'e kadar büyüyor — burada TAM BOY görsel kullanılır,
   // kalite düşmesin. Küçük kopyalar yalnızca harita ve sahne kareleri için.
   dhGorselAta(img, s.dosya, false);
+  if (img.complete && img.naturalWidth) goster();
   // Sahne adı yalnızca katalogda yazılmışsa görünür (CSS'te :empty gizliyor).
   document.getElementById('dhDetaySahneAd').textContent = s.ad || '';
   // Haritadakiyle AYNI maske üreteci — aynı tohumla aynı siluet.
@@ -1234,7 +1293,8 @@ function dhDetayAc(diyar) {
 
 function dhDetayKapat() {
   document.body.classList.remove('dhDetayAcik');
-  dhCiz();      // sahne tercihi değişmiş olabilir
+  DH.detay = null;          // panel kapalıyken ok tuşları sahne değiştirmesin
+  dhCiz();                  // sahne tercihi değişmiş olabilir
 }
 
 // ══════════════════════════════════════════════════════════════════════
