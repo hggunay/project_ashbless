@@ -891,7 +891,9 @@ function dhCiz() {
   dhOynatTazele();
 
   // Sis geometrisi bu noktada tamam; ekranda gösterilecek kopyayı üret.
-  dhSisRasterle();
+  // Söz saklanıyor: keşif animasyonu yamayı BU rasterden kırpıyor, hazır
+  // olmadan başlarsa eski rasteri kopyalar (bkz. dhKesifKuyrugu).
+  DH.sisSozu = dhSisRasterle();
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -1667,6 +1669,17 @@ async function dhKesifKuyrugu() {
   if (dhKesifOynuyor || !DH.bekleyen.size) return;
   dhKesifOynuyor = true;
   dhOynatTazele();                    // düğmeler oynarken pasif
+
+  // ⚠️ ÇİZİMİN RASTERİ BEKLENMELİ. Yama, ekrandaki rasterin kopyası; dhCiz onu
+  // yeniden üretmeye başlar ama BEKLEMEZ (~300 ms). Beklenmezse yama, deliğin
+  // hâlâ AÇIK olduğu ESKİ rasterden kırpılıyor: boş çıkıyor, eritecek bir şey
+  // kalmıyor, diyar anında beliriyor — ama sayaç yine 4 sn işlediği için
+  // düğmeler boşuna kapalı kalıyor. Gökşin 2026-08-22'de "Tekrar Oynat"ta
+  // gördü: "görsel siyah olup hemen beliriyor, yanıp söner gibi; ama buton
+  // kapalı kalmaya devam ediyor". İlk açılışta gizleniyordu, çünkü orada
+  // görsellerin yüklenmesi rastere zaman tanıyor.
+  try { await DH.sisSozu; } catch (e) {}
+
   const durum = { atlandi: false };
   const atla = () => { durum.atlandi = true; };
   DH.kutu.addEventListener('pointerdown', atla, { once: false });
