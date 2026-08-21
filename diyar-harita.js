@@ -273,6 +273,38 @@ function dhStilEkle() {
            background:var(--sisRenk); opacity:0; transition:opacity .5s ease; }
 #dhKutu.perdeli #dhPerde { opacity:1; transition:none; }
 @media (prefers-reduced-motion: reduce) { #dhPerde { transition:none; } }
+/* ── ÇERÇEVE VE SÜSLER ────────────────────────────────────────────────
+   Gökşin'in Canva'da hazırladığı altın çizimler (siyah zeminden saydama
+   çevrildi). Hepsi KUTUYA sabit — dünyaya değil; harita kaydırılıp
+   yakınlaştırılsa da yerlerinde duruyorlar.
+   z-index 8: vinyetin (5), "henüz keşif yok" yazısının (6) ve perdenin (7)
+   üstünde — perde inerken de çerçeve görünsün, boş bir çerçeveli harita gibi
+   dursun. Oynatma düğmeleri (aynı 8) DOM'da sonra geldiği için üstte kalıyor.
+   pointer-events:none ŞART — süslerin şeffaf kenarları haritanın
+   kaydırılmasını yutardı (bulut tezgâhında tam olarak bu tuzağa düşülmüştü). */
+#dhCerceve { position:absolute; inset:0; z-index:8; pointer-events:none;
+             overflow:hidden; border-radius:8px; }
+/* Köşeleri birleştiren ince altın çizgi. Tek parça kenar görseli KULLANILMIYOR:
+   kenar uzunluğu telefonda ~546 px, PC'de ~960 px — tek görsel orada ya ezilir
+   ya döşenirken ekleme yerlerinden bozulur. Köşeler sabit + çizgi esner. */
+#dhCerceve::before { content:""; position:absolute; inset:7px; border-radius:5px;
+                     border:1px solid rgba(201,162,39,.30); }
+.dhKose { position:absolute; width:var(--koseBoy,64px); height:var(--koseBoy,64px);
+          opacity:.92; }
+/* Tek köşe çizimi aynalanarak dördü de üretiliyor. */
+.dhKose.k1 { top:0; left:0; }
+.dhKose.k2 { top:0; right:0; transform:scaleX(-1); }
+.dhKose.k3 { bottom:0; left:0; transform:scaleY(-1); }
+.dhKose.k4 { bottom:0; right:0; transform:scale(-1,-1); }
+/* Pusula YALNIZCA dar ekranda. Geniş ekranda gemi kendi pusulasıyla geliyor,
+   ikisi birden görünürse haritada iki pusula olurdu. */
+/* Köşe süsünün ALTINDA duruyor (top = köşe boyu x 1.05): aynı hizada
+   konunca 360 px'lik ekranda süsle çakışıyordu, ölçüldü. */
+#dhPusula { position:absolute; width:var(--pusulaBoy,72px); opacity:.60;
+            top:calc(var(--koseBoy,64px) * 1.05); right:calc(var(--koseBoy,64px) * .34); }
+/* Gemi YALNIZCA geniş ekranda: telefonda kutu 360x546 ve zaten dar. */
+#dhGemi { position:absolute; left:2.5%; bottom:1.5%; height:var(--gemiBoy,180px);
+          width:auto; opacity:.38; }
 /* Keşif animasyonunu yeniden oynatma düğmeleri — dünya haritasındakilerin
    (map.js, #map-anim-btns) hayali harita karşılığı, aynı yer ve aynı dil.
    z-index 8: vinyetin (5), "henüz keşif yok" yazısının (6) ve perdenin (7)
@@ -460,6 +492,11 @@ function dhKur(kapId) {
       '</div>' +
       '<div id="dhVinyet"></div>' +
       '<div id="dhPerde"></div>' +
+      '<div id="dhCerceve">' +
+        '<img class="dhKose k1" alt=""><img class="dhKose k2" alt="">' +
+        '<img class="dhKose k3" alt=""><img class="dhKose k4" alt="">' +
+        '<img id="dhPusula" alt=""><img id="dhGemi" alt="">' +
+      '</div>' +
       '<div id="dhOynat" style="display:none">' +
         '<button type="button" data-mod="son">▶ Tekrar Oynat</button>' +
         '<button type="button" data-mod="hepsi">⏮ Baştan Oynat</button>' +
@@ -476,6 +513,7 @@ function dhKur(kapId) {
   dhDetayKur();
   dhOlaylar();
   dhOynatKur();
+  dhSusKur();
   DH.kurulu = true;
   return true;
 }
@@ -591,6 +629,54 @@ function dhOrtala(dx, dy) {
   DH.kam.x = r.width / 2 - dx * DH.kam.s;
   DH.kam.y = r.height / 2 - dy * DH.kam.s;
   dhKamUygula();
+}
+
+// ── Çerçeve ve süsler ─────────────────────────────────────────────────
+// ⚠️ DEPLOY: bu üç dosya da "diyarlar/" klasörüne yüklenmeli —
+//    diyar-kose.webp · diyar-pusula.webp · diyar-gemi.webp
+// Yüklenmezlerse harita BOZULMAZ: her görsel onerror'da kendini gizliyor,
+// geriye yalnızca ince altın çizgi kalıyor.
+const DH_SUS = { koseOran: 0.105, koseEnAz: 44, koseEnCok: 92,
+                 pusulaOran: 0.10, pusulaEnAz: 58, pusulaEnCok: 88,
+                 gemiEsik: 560, gemiYukOran: 0.46, gemiEnOran: 0.26 };
+
+function dhSusKur() {
+  const c = document.getElementById('dhCerceve');
+  if (!c || c.dataset.kurulu) return;
+  c.dataset.kurulu = '1';
+  const ata = (el, dosya) => {
+    if (!el) return;
+    el.onerror = function () { this.style.visibility = 'hidden'; };
+    el.src = encodeURI('diyarlar/' + dosya);
+  };
+  c.querySelectorAll('.dhKose').forEach(k => ata(k, 'diyar-kose.webp'));
+  ata(document.getElementById('dhPusula'), 'diyar-pusula.webp');
+  ata(document.getElementById('dhGemi'),   'diyar-gemi.webp');
+  // Tablet döndürüldüğünde kutu genişliği değişiyor; boyutlar ve gemi/pusula
+  // seçimi yeniden hesaplanmalı. dhCiz her boyut değişiminde çalışmıyor.
+  window.addEventListener('resize', dhSusTazele);
+}
+
+// Boyutlar kutunun GERÇEK genişliğine göre — ortam sorgusu (media query)
+// pencereyi ölçer, kutuyu değil; kutu ise `min(960px, kapsayıcı)` olduğu için
+// ikisi aynı şey değil.
+function dhSusTazele() {
+  const c = document.getElementById('dhCerceve');
+  if (!c || !DH.kutu) return;
+  const r = DH.kutu.getBoundingClientRect();
+  const sinirla = (v, az, cok) => Math.round(Math.max(az, Math.min(cok, v)));
+  c.style.setProperty('--koseBoy', sinirla(r.width * DH_SUS.koseOran,
+                                           DH_SUS.koseEnAz, DH_SUS.koseEnCok) + 'px');
+  c.style.setProperty('--pusulaBoy', sinirla(r.width * DH_SUS.pusulaOran,
+                                             DH_SUS.pusulaEnAz, DH_SUS.pusulaEnCok) + 'px');
+  c.style.setProperty('--gemiBoy', Math.round(Math.min(r.height * DH_SUS.gemiYukOran,
+                                                       r.width * DH_SUS.gemiEnOran)) + 'px');
+  // Geniş ekranda gemi (kendi pusulasıyla), dar ekranda ayrı pusula.
+  // İkisi birden asla görünmüyor — yoksa haritada iki pusula olurdu.
+  const genis = r.width >= DH_SUS.gemiEsik;
+  const gemi = document.getElementById('dhGemi'), pusula = document.getElementById('dhPusula');
+  if (gemi)   gemi.style.display   = genis ? '' : 'none';
+  if (pusula) pusula.style.display = genis ? 'none' : '';
 }
 
 // Yeniden oynatma düğmeleri.
@@ -935,6 +1021,7 @@ function dhCiz() {
   }
 
   dhOynatTazele();
+  dhSusTazele();
 
   // Sis geometrisi bu noktada tamam; ekranda gösterilecek kopyayı üret.
   // Söz saklanıyor: keşif animasyonu yamayı BU rasterden kırpıyor, hazır
