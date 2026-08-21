@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -1397,7 +1397,7 @@ try{
         <div id="statsContainer"></div>
       </div>
       <div id="sPanel-map" style="display:none;padding:.75rem 0">
-        <!-- Harita türü geçişi — YALNIZCA test hesabında görünür.
+        <!-- Harita türü geçişi. 2026-08-22'de herkese açıldı.
              Diğer üyeler bu satırı hiç görmez, dünya haritasını aynen görür. -->
         <div id="diyarToggleSatir" style="display:none;gap:.4rem;margin-bottom:.75rem;justify-content:center;flex-wrap:wrap">
           <button id="hTab-dunya" class="filter-tab active" onclick="switchHaritaTuru('dunya')">🌍 Dünya Haritası</button>
@@ -1741,7 +1741,8 @@ try{
                     <li>Yeni ülke sistemi kurulmadan önce eklenmiş eski kitaplar için</li>
                   </ul>
                   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillCountryEvents()">🌍 Eksik Ülkeleri Ekle</button>
-                  <!-- Test kilidi içinde; diyarKilidiUygula() görünürlüğü ayarlıyor -->
+                  <!-- Ülke karşılığıyla aynı: onarım düğmesi herkeste açık.
+                       Görünürlüğü diyarKilidiUygula() ayarlıyor. -->
                   <button id="diyarBackfillBtn" class="btn btn-sm" style="display:none;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="backfillRealmEvents()">🗺️ Eksik Diyarları Ekle</button>
                 </div>
                 <div style="border-top:1px solid rgba(160,82,45,.2);padding-top:1rem">
@@ -1793,8 +1794,8 @@ try{
 <script src="shelves.js"></script>
 <script src="avatar.js"></script>
 <script src="shelf.js"></script>
-<!-- Hayali Diyarlar Haritası (2026-08-12). Şimdilik yalnızca test hesabında
-     görünüyor — bkz. DIYAR_TEST_HESAPLARI / diyarTestModu(). -->
+<!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
+     bkz. diyarTestModu(). -->
 <script src="diyarlar-katalog.js"></script>
 <script src="diyar-esleme.js"></script>
 <script src="diyarlar.js"></script>
@@ -6028,22 +6029,27 @@ function switchStatsTab(tab){
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// HAYALİ DİYARLAR — TEST KİLİDİ
+// HAYALİ DİYARLAR — KİLİT AÇIK (2026-08-22)
 // ══════════════════════════════════════════════════════════════════════
-// Özellik hazır ama henüz yalnızca test hesabında açık. Bu listede olmayan
-// biri için: toggle görünmez, harita çizilmez, KEŞİF KAYDI DA YAZILMAZ.
+// Özellik 2026-08-22'de HERKESE AÇILDI (Gökşin onayladı, öncesinde Firebase
+// yedeği alındı). Uzunca bir süre yalnızca 'deneme' hesabında açıktı; o
+// dönemde harita çizilmiyor ve KEŞİF KAYDI DA YAZILMIYORDU — özellik
+// doğrulanmadan herkes için veri biriktirmemek için bilinçli bir karardı.
 //
-// Yazmanın da kapalı olması bilinçli: özellik doğrulanmadan herkes için veri
-// biriktirirsek, yapıyı değiştirmemiz gerektiğinde temizlenecek veri oluşur.
-// Kilit açıldığında backfillRealmEvents() herkesin geçmişini geriye dönük
-// dolduruyor — beklemenin hiçbir kaybı yok.
-//
-// KİLİDİ AÇMAK İÇİN: aşağıdaki listeyi boşaltmak YETMEZ (boş liste = kimse).
-// diyarTestModu() doğrudan `return true` yapılmalı, ayrıca diyar-harita.js
-// içindeki geçici ayar şeridi (dhAyarSeridi) silinmeli.
-const DIYAR_TEST_HESAPLARI = ['deneme'];
+// Fonksiyon SİLİNMEDİ, çünkü onlarca yerden çağrılıyor ve ileride yeni bir
+// özelliği aynı şekilde kademeli açmak gerekebilir. Şimdilik herkese true.
 function diyarTestModu(){
-  return DIYAR_TEST_HESAPLARI.includes(me);
+  return true;
+}
+
+// Ayar şeridi (dhAyarSeridi) HERKESE AÇILMADI — nihai tasarımda haritanın
+// altında kaydıraklı ayar yoktur. Yalnızca bu hesapta duruyor ki Gökşin
+// haritanın görünümünü ileride gerçek cihazda ayarlamaya devam edebilsin
+// ("harita görünümü kapanmış değil, ertelenmiş bir konu"). Tamamen kalksın
+// istenirse: aşağıdaki listeyi boşaltmak yeterli.
+const DIYAR_AYAR_HESAPLARI = ['deneme'];
+function diyarAyarModu(){
+  return DIYAR_AYAR_HESAPLARI.includes(me);
 }
 
 // Kitap/hikâye durumu değiştiğinde çağrılır. Tek tek "şu kitap şu diyarı
@@ -6143,9 +6149,15 @@ function haritaTuruUygula(tur){
   if(a) a.classList.toggle('active', !diyar);
   if(b) b.classList.toggle('active', diyar);
   if(diyar){
+    // ⚠️ ÇİZİMDEN ÖNCE, HER AÇILIŞTA. Kilit açılana kadar keşif kaydı hiç
+    // yazılmıyordu, yani mevcut kullanıcıların realmEvents'i BOŞ. Bu çağrı
+    // olmasaydı kitaplarında Narnia da olsa harita "Henüz hiçbir hayali diyar
+    // keşfetmedin" derdi — diyarKesifKontrol yalnızca kitap/öykü değiştiğinde
+    // çalışıyor, girişte değil. Zaten eklenmişse hiçbir şey yapmıyor.
+    diyarKesifKontrol();
     renderDiyarHarita('diyarHaritaKutu');
-    // ⚠️ GEÇİCİ: ayar şeridi yalnızca test hesabında. Kilit açılırken silinecek.
-    dhAyarSeridi(document.getElementById('diyarSarmal'));
+    // Ayar şeridi herkese açılmadı — gerekçesi diyarAyarModu()'nda.
+    if(diyarAyarModu()) dhAyarSeridi(document.getElementById('diyarSarmal'));
   } else {
     renderMap();
   }

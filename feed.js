@@ -80,10 +80,10 @@ function getFeedCards(){
       });
     });
     // Hayali diyar keşifleri — ülke kartının (country_event) kardeşi.
-    // ⚠️ diyarTestModu() KAPISI ŞART: harita henüz herkese açık değil. Kapı
-    // olmasa test hesabının keşif kartları herkesin akışına düşer ve
-    // dokunulduğunda göremeyecekleri bir haritaya götürmeye çalışır.
-    // Kilit açılırken bu kapı da kalkacak.
+    // diyarTestModu() kapısı 2026-08-22'de kilit açılınca fiilen kalktı
+    // (artık herkese true döner). Çağrı BIRAKILDI: ileride harita yeniden
+    // kademeli açılırsa kartların da onunla birlikte gizlenmesi gerekiyor —
+    // kapıyı silmek o bağı koparırdı.
     if(typeof diyarTestModu!=='function'||diyarTestModu()){
       const realmEvs=(db.realmEvents&&db.realmEvents[u])||[];
       realmEvs.forEach(ev=>{
