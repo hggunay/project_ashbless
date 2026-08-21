@@ -615,6 +615,13 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .journal-copy-btn:hover{opacity:1;border-color:var(--gold);}
 .feed-expand-btn{background:none;border:none;cursor:pointer;font-size:.75rem;color:var(--gold);font-family:'Space Mono',monospace;padding:0;margin-left:.3rem;opacity:.8;transition:opacity .15s;}
 .feed-expand-btn:hover{opacity:1;text-decoration:underline;}
+/* Hayali diyar keşif kartı. Görselin ŞEKLİ buradan değil, feed.js'teki
+   REALM_CARD_SHAPE sabitinden geliyor (satır içi stil) — tek yerden değişsin. */
+.realm-feed-card{display:flex;align-items:center;gap:.8rem;font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;border-radius:8px;padding:.5rem;transition:background .15s;}
+.realm-feed-go{cursor:pointer;}
+.realm-feed-go:hover{background:rgba(201,162,39,.07);}
+.realm-feed-img{width:68px;height:68px;flex:0 0 68px;object-fit:cover;display:block;
+  filter:drop-shadow(0 3px 8px rgba(0,0,0,.35));}
 .badge-feed-card{border-radius:8px;padding:.6rem;position:relative;overflow:hidden;}
 .badge-feed-card.tier-bronze{border-left:3px solid #cd7f32;background:rgba(205,127,50,.08);animation:glowPulseBronze 2s ease-in-out 4;}
 .badge-feed-card.tier-silver{border-left:3px solid #b0b0b8;background:rgba(176,176,184,.08);animation:glowPulseSilver 2s ease-in-out 4;}
@@ -6094,6 +6101,23 @@ function switchHaritaTuru(tur, animasyonsuz){
   if (!animasyonsuz && diyarTestModu() && typeof dhBulutGecisi === 'function')
     dhBulutGecisi(isi);
   else isi();
+}
+
+// Akıştaki keşif kartından haritaya git.
+//
+// Gökşin'in kararı (2026-08-21): karttan DOĞRUDAN hayali haritaya geçilecek,
+// dünya haritası arada hiç görünmeyecek. Bulut geçişi oynuyor, bulutlar
+// kapalıyken harita değişiyor, açılınca o diyarın keşif animasyonu başlıyor.
+//
+// Animasyonu dhDiyaraGit yürütüyor (diyar-harita.js): haritanın kurulmasını VE
+// bulut geçişinin bitmesini bekliyor. Buradan beklenemez — switchHaritaTuru
+// geçişi başlatıp hemen dönüyor.
+function openDiyarFromFeed(diyarId){
+  if(!diyarTestModu()) return;
+  showPanel('stats', document.querySelector('.nav-tab[onclick*="stats"]'));
+  switchStatsTab('map');
+  switchHaritaTuru('diyar');
+  if(typeof dhDiyaraGit==='function') dhDiyaraGit(diyarId);
 }
 
 function haritaTuruUygula(tur){

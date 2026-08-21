@@ -616,13 +616,44 @@ function dhOynatTazele() {
 }
 
 // mod: 'son' → yalnızca son keşif · 'hepsi' → boş haritadan başlayarak hepsi
-function dhKesifTekrar(mod) {
+//      'tek' → yalnızca diyarId'si verilen keşif (akış kartından geliniyor)
+function dhKesifTekrar(mod, diyarId) {
   if (dhKesifOynuyor) return;
   const sira = dhKesifSirasi(me).map(e => e.diyarId);
   if (!sira.length) return;
-  DH.bekleyen = new Set(mod === 'hepsi' ? sira : sira.slice(-1));
+  const liste = mod === 'hepsi' ? sira
+              : mod === 'tek'   ? sira.filter(id => id === diyarId)
+              :                   sira.slice(-1);
+  if (!liste.length) return;
+  DH.bekleyen = new Set(liste);
   dhCiz();
   dhHaritaHazir().then(dhKesifKuyrugu);
+}
+
+// Akış kartından bir diyara gelinince: harita kurulsun, BULUT GEÇİŞİ BİTSİN,
+// sonra o diyarın keşif animasyonu oynasın.
+//
+// ⚠️ Bulutları beklemek şart — geçiş 2,5 saniye sürüyor ve beklenmezse
+// animasyonun ilk yarısı kapalı bulutların ARDINDA oynayıp bitiyor.
+async function dhDiyaraGit(diyarId) {
+  // ⚠️ HER AŞAMANIN KENDİ BÜTÇESİ VAR, ortak bir emniyet freni DEĞİL. İlk hâli
+  // tek bir 20 sn'lik bütçeyi üçü arasında paylaştırıyordu; ilk aşama yavaş
+  // olunca (harita kurulumu) sonrakilere hiç süre kalmıyor ve animasyon sessizce
+  // hiç oynamıyordu. Ölçümde görüldü. Süreler cömert: bunlar yoklama
+  // döngüsünün ÜST SINIRI, normalde çok önce çıkılıyor, beklemenin bedeli yok.
+  const bekle = (kosul, ms) => new Promise(async res => {
+    const son = performance.now() + ms;
+    while (performance.now() < son && kosul()) await new Promise(r => setTimeout(r, 90));
+    res();
+  });
+  await bekle(() => !(DH.kurulu && DH.slotlar && DH.slotlar.length), 15000);
+  await bekle(() => dhBulutMesgul, 15000);
+  // Bu diyar zaten sıradaysa (ilk kez görülüyor) kendi kuyruğu oynatacak;
+  // ikinci kez tetiklemek animasyonu üst üste bindirirdi.
+  if (DH.bekleyen && DH.bekleyen.has(diyarId)) return;
+  // Süregelen bir kuyruk "Baştan Oynat" olabilir — 16 diyar ~80 saniye sürüyor.
+  await bekle(() => dhKesifOynuyor, 120000);
+  dhKesifTekrar('tek', diyarId);
 }
 
 function dhOlaylar() {
@@ -1679,6 +1710,16 @@ async function dhKesifKuyrugu() {
   // kapalı kalmaya devam ediyor". İlk açılışta gizleniyordu, çünkü orada
   // görsellerin yüklenmesi rastere zaman tanıyor.
   try { await DH.sisSozu; } catch (e) {}
+
+  // ⚠️ BULUT GEÇİŞİ DE BEKLENMELİ. renderDiyarHarita kuyruğu bulutlar HÂLÂ
+  // KAPALIYKEN tetikliyor (geçişin "harita değişsin" adımının içinden);
+  // beklenmezse animasyonun ilk ~2,5 saniyesi açılan bulutların ardında
+  // görünmeden geçiyor.
+  if (typeof dhBulutMesgul !== 'undefined') {
+    const bitis = performance.now() + 12000;
+    while (dhBulutMesgul && performance.now() < bitis)
+      await new Promise(r => setTimeout(r, 90));
+  }
 
   const durum = { atlandi: false };
   const atla = () => { durum.atlandi = true; };

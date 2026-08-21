@@ -79,6 +79,27 @@ function getFeedCards(){
         ts:ev.ts||0, reactions:ev.reactions||{},
       });
     });
+    // Hayali diyar keşifleri — ülke kartının (country_event) kardeşi.
+    // ⚠️ diyarTestModu() KAPISI ŞART: harita henüz herkese açık değil. Kapı
+    // olmasa test hesabının keşif kartları herkesin akışına düşer ve
+    // dokunulduğunda göremeyecekleri bir haritaya götürmeye çalışır.
+    // Kilit açılırken bu kapı da kalkacak.
+    if(typeof diyarTestModu!=='function'||diyarTestModu()){
+      const realmEvs=(db.realmEvents&&db.realmEvents[u])||[];
+      realmEvs.forEach(ev=>{
+        const diyar=(typeof DIYAR_KATALOG!=='undefined'?DIYAR_KATALOG:[]).find(d=>d.id===ev.diyarId);
+        if(!diyar) return;                       // katalogdan kalkmış diyar: kart üretme
+        cards.push({
+          type:'realm_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+          realmEventId:ev.id, diyarId:ev.diyarId, diyarAd:diyar.ad,
+          // Sahne tercihi kişiye özel (localStorage) — başkasının kartında
+          // benim tercihimi göstermek yanlış olur, o yüzden hep ilk sahne.
+          diyarGorsel:((diyar.sahneler||[])[0]||{}).dosya||'',
+          bookTitle:ev.baslik, author:ev.yazar||null,
+          ts:new Date(ev.ts).getTime()||ev.id||0, reactions:{},
+        });
+      });
+    }
     const streakEvs=(db.streakEvents&&db.streakEvents[u])||[];
     streakEvs.forEach(ev=>{
       cards.push({
@@ -293,6 +314,12 @@ function renderFeed(append=false){
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
+      if(card.type==='realm_event'){
+        const ctx=thumbCtx?thumbCtx('toggleRealmEventReaction',`'${card.u}',${card.realmEventId}`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleRealmEventReaction('${card.u}',${card.realmEventId},'${rEsc}',this)">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
       if(card.type==='streak_milestone'){
         const evId=`sm_${card.u}_${card.months}_${card.ts}`;
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}" onclick="toggleStreakMilestoneReaction('${card.u}','${evId}','${rEsc}',this)">
@@ -385,6 +412,8 @@ ${(()=>{
       ?`story_${card.u}_${card.storyId}`
       :card.type==='country_event'
         ?`countryev_${card.u}_${card.countryEventId}`
+        :card.type==='realm_event'
+        ?`realmev_${card.u}_${card.realmEventId}`
         :card.type==='streak_milestone'
           ?`streakm_${card.u}_${card.months}_${card.ts}`
           :card.type==='quote'
@@ -392,10 +421,12 @@ ${(()=>{
             :card.type==='reading_event'
               ?`readingev_${card.u}_${card.readingEventId}`
               :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
+      :card.type==='realm_event'
+      ?`<span class="journal-entry-book">${escapeHtml(card.diyarAd)||'—'}</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBookFromFeed('${card.u}',${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
@@ -436,6 +467,22 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5">
           🌍 <strong>${escapeHtml(card.userName)}</strong>, <strong>${escapeHtml(card.country)}</strong>'yı haritasına ekledi!
           ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em>${card.author?' — '+escapeHtml(card.author):''} ile yeni bir ülkeye açıldı</div>`:''}
+        </div>
+      `:card.type==='realm_event'?`
+        ${''/* ⚠️ SİLME (✕) DÜĞMESİ YOK ve olmamalı. Ülke kartında var ama diyar
+              kartında olamaz: keşif kaydı haritanın ta kendisi. diyarlar.js'in
+              en başında yazdığı gibi "keşif KALICIDIR, kaydı silen bir kod yolu
+              bilerek YOK" — kartı silmek diyarı haritadan da silerdi. Ayrıca
+              confirmFeedEventDelete sonunda saveDb() çağırıyor, oysa realmEvents
+              kendi granüler yolunda duruyor; silme zaten kalıcı olmazdı, kart
+              sayfa yenilenince geri gelirdi. */}
+        <div class="realm-feed-card${card.u===me?' realm-feed-go':''}" ${card.u===me?`onclick="openDiyarFromFeed('${card.diyarId}')" title="Haritada göster"`:''}>
+          ${realmCardImageHtml(card)}
+          <div>
+            🗺️ <strong>${escapeHtml(card.userName)}</strong> yeni bir diyar keşfetti: <strong>${escapeHtml(card.diyarAd)}</strong>
+            ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em>${card.author?' — '+escapeHtml(card.author):''} ile yeni bir diyara açıldı</div>`:''}
+            ${card.u===me?`<div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem">🗺️ haritada göster →</div>`:''}
+          </div>
         </div>
       `:card.type==='streak_milestone'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'streak_milestone','sm_${card.u}_${card.months}_${card.ts}')" title="Sil">✕</button></div>`:''}
@@ -594,6 +641,43 @@ function flashReactionPop(oldBtn){
   }
 }
 
+// ── KEŞİF KARTI ──────────────────────────────────────────────────────────────
+// ⚠️ DİYAR ADINA TÜRKÇE EK GETİRME. Kart metni bilerek
+// "<üye> yeni bir diyar keşfetti: <Diyar>" biçiminde — ad cümlenin SONUNDA ve
+// hiç ek almıyor. Gökşin 2026-08-22'de böyle istedi, gerekçesi doğru:
+// "Narnia'yı" doğru ama "Empis'i", "Arrakis'i" olmalı; ek adın son sesine göre
+// değişiyor ve katalog büyüdükçe yanlış çıkması kaçınılmaz.
+// (Aynı tuzak ülke kartında hâlâ duruyor: `${card.country}'yı`. Dokunulmadı,
+//  ayrı bir iş.)
+//
+// ── Kartın görseli ───────────────────────────────────────────────────────────
+// Şekil TEK YERDEN değişiyor. Gökşin karar verince burayı çevir:
+//   'asimetrik' → haritadaki yırtık kenar maskesi (aynı tohum, aynı üreteç,
+//                 yani kart haritadan kopmuş bir parça gibi durur)
+//   'kare'      → tam 1:1, hafif yuvarlatılmış köşe
+//   'madalyon'  → daire, ince altın çerçeve
+const REALM_CARD_SHAPE='asimetrik';
+
+function realmCardImageHtml(card){
+  if(!card.diyarGorsel) return '';
+  const kucuk=encodeURI('diyarlar/kucuk/'+card.diyarGorsel);
+  const buyuk=encodeURI('diyarlar/'+card.diyarGorsel);
+  // Küçük kopya yoksa büyüğüne düş — haritadaki (dhGorselAta) desenin aynısı.
+  const fb=`onerror="this.onerror=null;this.src='${buyuk}'"`;
+  let stil='';
+  if(REALM_CARD_SHAPE==='asimetrik'&&typeof dhMaskeUret==='function'&&typeof dhTohumla==='function'){
+    const sert=(typeof DH!=='undefined'&&DH.ayar)?DH.ayar.yumusak:65;
+    const sekil=((typeof DH!=='undefined'&&DH.ayar)?DH.ayar.sekil:197)/100;
+    const m=dhMaskeUret(dhTohumla(card.diyarId+'|'+card.diyarGorsel),sert,sekil);
+    stil=`-webkit-mask-image:${m};mask-image:${m};-webkit-mask-repeat:no-repeat;mask-repeat:no-repeat;`;
+  } else if(REALM_CARD_SHAPE==='madalyon'){
+    stil='border-radius:50%;border:1px solid rgba(201,162,39,.55);';
+  } else {
+    stil='border-radius:6px;';
+  }
+  return `<img class="realm-feed-img" src="${kucuk}" ${fb} alt="${escapeHtml(card.diyarAd)}" loading="lazy" style="${stil}">`;
+}
+
 // ── REAKSİYON DEPOSU (K6) ────────────────────────────────────────────────────
 // Reaksiyonlar eskiden ait oldukları kaydın (kitap/hikâye/olay) İÇİNDE duruyordu.
 // Bu iki ayrı soruna yol açıyordu:
@@ -625,6 +709,7 @@ function feedCardKey(card){
     case 'story':            return `story_${card.u}_${card.storyId}`;
     case 'series_event':     return `seriesev_${card.u}_${card.seriesEventId}`;
     case 'country_event':    return `countryev_${card.u}_${card.countryEventId}`;
+    case 'realm_event':      return `realmev_${card.u}_${card.realmEventId}`;
     case 'badge':            return `badge_${card.u}_${card.badgeId}_${card.ts}`;
     // Yığın kartları eskiden bu listede hiç yoktu ve sondaki review dalına düşüyordu —
     // yani bir üyenin TÜM yığın kartları `review_<üye>_undefined` kimliğini paylaşıyordu.
@@ -699,6 +784,20 @@ function toggleCountryEventReaction(owner,eventId,reaction,btnEl){
   if(!ev) return;
   const added=applyReactionToggle(`countryev_${owner}_${eventId}`,ev.reactions,reaction);
   if(added&&owner!==me) pushReactionNotif(owner,me,reaction,ev.country||'yeni ülke');
+  renderFeed();flashReactionPop(btnEl);
+}
+
+// Diyar keşfi. ⚠️ Olay kaydına HİÇ dokunmuyor: reaksiyonlar K6 deseniyle
+// kendi düğümlerinde (aa-v4/reactions/...) duruyor, realmEvents yalnızca
+// okunuyor. Böylece başkasının keşfine tepki vermek onun granüler yoluna
+// yazmaya çalışmıyor.
+function toggleRealmEventReaction(owner,eventId,reaction,btnEl){
+  if(!db.realmEvents||!db.realmEvents[owner]) return;
+  const ev=db.realmEvents[owner].find(e=>e.id===eventId);
+  if(!ev) return;
+  const diyar=(typeof DIYAR_KATALOG!=='undefined'?DIYAR_KATALOG:[]).find(d=>d.id===ev.diyarId);
+  const added=applyReactionToggle(`realmev_${owner}_${eventId}`,ev.reactions,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,(diyar&&diyar.ad)||'yeni diyar');
   renderFeed();flashReactionPop(btnEl);
 }
 
