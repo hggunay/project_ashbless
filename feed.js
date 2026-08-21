@@ -89,6 +89,18 @@ function getFeedCards(){
       realmEvs.forEach(ev=>{
         const diyar=(typeof DIYAR_KATALOG!=='undefined'?DIYAR_KATALOG:[]).find(d=>d.id===ev.diyarId);
         if(!diyar) return;                       // katalogdan kalkmış diyar: kart üretme
+        // ⚠️ RETROAKTİF KİTAP KART ÜRETMEZ — ama HARİTADAN DA SİLİNMEZ.
+        // Bu asimetri kasıtlı ve badges.js'teki "retroaktif sözleşmesi" ile aynı
+        // mantıkta: harita bir KOLEKSİYON (geçmişte okunan da sayılmalı), akış
+        // kartı ise bir DUYURU. Retroaktif kitapta genelde endDate yok, olayın
+        // tarihi addedAt yani BUGÜN oluyor; süzülmezse biri 20 eski kitabını
+        // girdiğinde akışın tepesine 20 taze keşif kartı düşerdi. Ülke kartı da
+        // (checkAndAddCountryEvent / backfillCountryEvents) aynı sebeple
+        // retroaktifi dışlıyor.
+        if(ev.kaynak==='kitap'){
+          const kitap=((db.books&&db.books[u])||[]).find(b=>b.id===ev.kaynakId);
+          if(kitap&&kitap.retroactive) return;
+        }
         cards.push({
           type:'realm_event', u, userName:user.displayName, userAvatar:user.avatar||'📚',
           realmEventId:ev.id, diyarId:ev.diyarId, diyarAd:diyar.ad,
