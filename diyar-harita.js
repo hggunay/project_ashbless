@@ -273,6 +273,20 @@ function dhStilEkle() {
            background:var(--sisRenk); opacity:0; transition:opacity .5s ease; }
 #dhKutu.perdeli #dhPerde { opacity:1; transition:none; }
 @media (prefers-reduced-motion: reduce) { #dhPerde { transition:none; } }
+/* Keşif animasyonunu yeniden oynatma düğmeleri — dünya haritasındakilerin
+   (map.js, #map-anim-btns) hayali harita karşılığı, aynı yer ve aynı dil.
+   z-index 8: vinyetin (5), "henüz keşif yok" yazısının (6) ve perdenin (7)
+   üstünde. Perde açılırken gizleniyor, altında bir şey varmış izlenimi olmasın. */
+#dhOynat { position:absolute; bottom:12px; left:50%; transform:translateX(-50%);
+  z-index:8; display:flex; gap:6px; flex-wrap:wrap; justify-content:center;
+  transition:opacity .3s ease; }
+#dhKutu.perdeli #dhOynat { opacity:0; pointer-events:none; }
+#dhOynat button { background:rgba(26,15,0,.75); border:1px solid rgba(201,162,39,.6);
+  border-radius:6px; cursor:pointer; font-size:.72rem; color:var(--gold,#c9a227);
+  padding:.35rem .8rem; font-family:'Space Mono',monospace;
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); }
+#dhOynat button:last-child { border-color:rgba(201,162,39,.4); }
+#dhOynat button:disabled { opacity:.45; cursor:default; }
 .dhDiyar { position:absolute; display:grid; place-items:center; }
 .dhDiyar::before { content:""; position:absolute; inset:-18%; border-radius:50%;
   background:radial-gradient(ellipse 50% 50% at 50% 50%, var(--isik1) 0%, var(--isik2) 48%, var(--isik3) 80%); }
@@ -438,6 +452,10 @@ function dhKur(kapId) {
       '</div>' +
       '<div id="dhVinyet"></div>' +
       '<div id="dhPerde"></div>' +
+      '<div id="dhOynat" style="display:none">' +
+        '<button type="button" data-mod="son">▶ Tekrar Oynat</button>' +
+        '<button type="button" data-mod="hepsi">⏮ Baştan Oynat</button>' +
+      '</div>' +
     '</div>';
 
   DH.kutu  = document.getElementById('dhKutu');
@@ -449,6 +467,7 @@ function dhKur(kapId) {
 
   dhDetayKur();
   dhOlaylar();
+  dhOynatKur();
   DH.kurulu = true;
   return true;
 }
@@ -564,6 +583,46 @@ function dhOrtala(dx, dy) {
   DH.kam.x = r.width / 2 - dx * DH.kam.s;
   DH.kam.y = r.height / 2 - dy * DH.kam.s;
   dhKamUygula();
+}
+
+// Yeniden oynatma düğmeleri.
+//
+// ⚠️ pointerdown DURDURULMALI. Harita kutusunun kendi pointerdown'ı hemen
+// setPointerCapture çağırıyor; durdurulmazsa düğmeye basmak haritayı
+// sürüklemeye başlıyor ve click hiç oluşmuyor.
+//
+// ⚠️ dhAyarSeridi'nin İÇİNE KOYMA: o şerit geçici, kilit açılırken silinecek.
+// Bu düğmeler kalıcı bir özellik (dünya haritasında da var).
+function dhOynatKur() {
+  const kap = document.getElementById('dhOynat');
+  if (!kap || kap.dataset.kurulu) return;
+  kap.dataset.kurulu = '1';
+  kap.addEventListener('pointerdown', ev => ev.stopPropagation());
+  kap.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', ev => {
+      ev.stopPropagation();
+      dhKesifTekrar(b.dataset.mod);
+    });
+  });
+}
+
+// Hiç keşif yoksa düğmelerin işi yok; animasyon oynarken de basılamamalı.
+function dhOynatTazele() {
+  const kap = document.getElementById('dhOynat');
+  if (!kap) return;
+  const adet = (typeof dhKesifSirasi === 'function' ? dhKesifSirasi(me) : []).length;
+  kap.style.display = adet ? '' : 'none';
+  kap.querySelectorAll('button').forEach(b => { b.disabled = dhKesifOynuyor; });
+}
+
+// mod: 'son' → yalnızca son keşif · 'hepsi' → boş haritadan başlayarak hepsi
+function dhKesifTekrar(mod) {
+  if (dhKesifOynuyor) return;
+  const sira = dhKesifSirasi(me).map(e => e.diyarId);
+  if (!sira.length) return;
+  DH.bekleyen = new Set(mod === 'hepsi' ? sira : sira.slice(-1));
+  dhCiz();
+  dhHaritaHazir().then(dhKesifKuyrugu);
 }
 
 function dhOlaylar() {
@@ -828,6 +887,8 @@ function dhCiz() {
                   'Bir diyarda geçen kitabı bitirdiğinde burası canlanacak.</div>';
     DH.kutu.appendChild(b);
   }
+
+  dhOynatTazele();
 
   // Sis geometrisi bu noktada tamam; ekranda gösterilecek kopyayı üret.
   dhSisRasterle();
@@ -1605,6 +1666,7 @@ let dhKesifOynuyor = false;
 async function dhKesifKuyrugu() {
   if (dhKesifOynuyor || !DH.bekleyen.size) return;
   dhKesifOynuyor = true;
+  dhOynatTazele();                    // düğmeler oynarken pasif
   const durum = { atlandi: false };
   const atla = () => { durum.atlandi = true; };
   DH.kutu.addEventListener('pointerdown', atla, { once: false });
@@ -1625,7 +1687,7 @@ async function dhKesifKuyrugu() {
     DH.bekleyen.clear();
     dhBakisiYaz();
     dhKesifOynuyor = false;
-    if (eksik) dhCiz();
+    if (eksik) dhCiz(); else dhOynatTazele();
   }
 }
 
