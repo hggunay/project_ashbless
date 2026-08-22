@@ -2347,7 +2347,9 @@ function readBooksOf(user, opts={}){
     if(!hasBeenFinished && !(isPaused&&includePaused)) return false;
     if(hasBeenFinished && excludeRetroactive && b.retroactive) return false;
     if(dateRange){
-      const d=b.endDate||b.month||b.yearOnly||'';
+      // yearOnly SAYI olarak saklanıyor (bkz. saveFieldTyped: parseInt) — metin
+      // muamelesi görmeden önce String()'e çevrilmeli, yoksa .startsWith patlar.
+      const d=String(b.endDate||b.month||b.yearOnly||'');
       if(!d) return false;
       if(dateRange.year && !d.startsWith(String(dateRange.year))) return false;
       if(dateRange.month && !d.startsWith(dateRange.month)) return false;
@@ -7084,7 +7086,7 @@ function renderBookList(){
     const years=new Set();
     readBooks.forEach(b=>{
       if(b.endDate) years.add(b.endDate.substring(0,4));
-      else if(b.yearOnly) years.add(b.yearOnly);
+      else if(b.yearOnly) years.add(String(b.yearOnly)); // sayı eklenirse aynı yıl iki kez listelenir
       else if(b.month) years.add(b.month.substring(0,4));
     });
     if(yearSel) yearSel.innerHTML='<option value="">📅 Yıl</option>'+[...years].sort().reverse().map(y=>`<option value="${y}"${y===curYear?' selected':''}>${y}</option>`).join('');
@@ -7107,23 +7109,25 @@ function renderBookList(){
   if(filterFormat) filteredBooks=filteredBooks.filter(b=>(b.formats||[]).includes(filterFormat));
   if(filterRating) filteredBooks=filteredBooks.filter(b=>(b.rating||0)>=parseFloat(filterRating));
   if(filterYear) filteredBooks=filteredBooks.filter(b=>{
-    const y=b.endDate?b.endDate.substring(0,4):(b.yearOnly||b.month||'').substring(0,4);
+    const y=b.endDate?b.endDate.substring(0,4):String(b.yearOnly||b.month||'').substring(0,4);
     return y===filterYear;
   });
 
   // Sıralama
   filteredBooks.sort((a,b)=>{
     if(sortMode==='date_asc'){
-      const da=a.endDate||a.yearOnly||(a.month?a.month+'-01':'0000');
-      const db_=b.endDate||b.yearOnly||(b.month?b.month+'-01':'0000');
+      // String() şart: yearOnly sayıdır, sayıda localeCompare yok → sıralama patlar
+      // ve liste hiç çizilmez (sayaç dolu, liste boş görünür).
+      const da=String(a.endDate||a.yearOnly||(a.month?a.month+'-01':'0000'));
+      const db_=String(b.endDate||b.yearOnly||(b.month?b.month+'-01':'0000'));
       return da.localeCompare(db_);
     } else if(sortMode==='alpha'){
       return (a.title||'').localeCompare(b.title||'','tr');
     } else if(sortMode==='rating'){
       return (b.rating||0)-(a.rating||0);
     } else { // date_desc
-      const da=a.endDate||a.yearOnly||(a.month?a.month+'-99':'0000');
-      const db_=b.endDate||b.yearOnly||(b.month?b.month+'-99':'0000');
+      const da=String(a.endDate||a.yearOnly||(a.month?a.month+'-99':'0000'));
+      const db_=String(b.endDate||b.yearOnly||(b.month?b.month+'-99':'0000'));
       if(da!==db_) return db_.localeCompare(da);
       return (a.title||'').localeCompare(b.title||'','tr');
     }
