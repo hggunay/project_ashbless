@@ -4094,6 +4094,18 @@ function bookMonth(b){
   const d=normalizeDate(b.endDate)||normalizeDate(b.month);
   return d?d.substring(0,7):null;
 }
+// Kitabın YILI — ayı bilinmese bile. yearOnly modundaki kitapların (ör. "2018'de
+// okudum ama ayını bilmiyorum") ayı yoktur, dolayısıyla bookMonth() null döner ve
+// aya dayalı her sayım onları haklı olarak dışarıda bırakır. Ama YIL biliniyor:
+// yıllık grafik onları saymazsa kitap eksik görünür. Aya dayalı yerlerde (aylık
+// grafik, seri/streak hesabı) bookMonth kullanılmaya devam etmeli — orada dışarıda
+// kalmaları doğru.
+function bookYear(b){
+  const m=bookMonth(b);
+  if(m) return m.substring(0,4);
+  if(b.yearOnly) return String(b.yearOnly);
+  return null;
+}
 
 
 // ── ADD BOOK ──────────────────────────────────────────────────
@@ -6526,7 +6538,7 @@ parentRows.forEach(r=>{
 
   // Yıllık okuma
   const yearCount={};
- books.forEach(b=>{const m=bookMonth(b);if(m){const y=m.substring(0,4);yearCount[y]=(yearCount[y]||0)+1;}});
+ books.forEach(b=>{const y=bookYear(b);if(y)yearCount[y]=(yearCount[y]||0)+1;});
   const years=Object.entries(yearCount).sort((a,b)=>a[0].localeCompare(b[0]));
 
   // Kadın/erkek yazar
