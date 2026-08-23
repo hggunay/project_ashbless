@@ -2124,6 +2124,25 @@ async function fbPatch(path,data){
   }catch(e){showSaveError('bağlantı');return false;}
 }
 
+// ── K7: KİTAP + RAF BAYATLIK KORUMASI ────────────────────────
+// aa-v4/books/<kişi> ve aa-shelf, "bu yola yalnızca ben yazarım, çakışma olamaz"
+// varsayımıyla hiçbir kontrol olmadan bellekten komple yazılıyordu. Varsayım
+// yanlıştı: tek kişinin birden fazla CİHAZI olabiliyor. 2026-08-22'de telefonda
+// açık kalmış bayat bir sekme, kapatılırken (beforeunload) belleğindeki eski
+// listeyi yazıp o gün aktarılan 102 kitabı sessizce sildi.
+//
+// Çözüm: her yolun yanında bir zaman damgası düğümü. Yazmadan önce uzaktaki
+// damgaya bakılır; bizim en son gördüğümüzden yeniyse araya başka bir cihaz
+// girmiş demektir — yazma iptal edilir, taze veri alınır, kullanıcı uyarılır.
+//
+// Damgalar bilerek aa-v4'ün DIŞINDA duruyor: içeride olsalardı fbGet('aa-v4')
+// ile db'ye düşüp aşağıdaki ortak "diğer alanlar" bloğuna karışırlardı — K6'da
+// reaksiyonlarda yaşanan hatanın aynısı olurdu.
+let _booksTsSeen={}, _shelfTsSeen={};
+// Son başarıyla gönderilen hal — değişmediyse ne sorgu ne yazma yapılıyor.
+// (Yalnızca kitap ilerlemesi girildiğinde rafın boşuna yazılmasını da önler.)
+let _lastBooksSnapshot=null, _lastShelfSnapshot=null;
+
 async function loadDb(fbOnly){
   // Firebase'den yükle
   try{
@@ -2142,6 +2161,14 @@ async function loadDb(fbOnly){
       try{const re=await fbGet('aa-v4/realmEvents');if(re)db.realmEvents=re;}catch(e){}
       // Shelf ayrı node'dan yükle
       try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
+      // K7: bayatlık damgaları. Tüm kullanıcıların haritası olarak tutuluyor,
+      // çünkü loadDb() giriş yapılmadan da çalışabiliyor (me henüz null olabilir)
+      // ve hesap değiştirilince yeniden yüklenmeyebiliyor.
+      // Çekilemezse boş kalır → damga 0 sayılır → ilk kayıtta koruma tetiklenip
+      // taze veri alınır. Gereksiz bir uyarı doğurabilir ama güvenli yön budur.
+      try{const bts=await fbGet('aa-books-ts');_booksTsSeen=bts||{};}catch(e){_booksTsSeen={};}
+      try{const sts=await fbGet('aa-shelf-ts');_shelfTsSeen=sts||{};}catch(e){_shelfTsSeen={};}
+      _lastBooksSnapshot=null; _lastShelfSnapshot=null;
       // Avatar'ları ayrı node'dan yükle
       try{
         const avatars=await fbGet('aa-avatars');
@@ -2174,14 +2201,46 @@ async function loadDb(fbOnly){
 // güncelleyip iki kullanıcıyı birbirine karşı sahte "çakışma"ya düşürüyordu.
 let _lastOtherFieldsSnapshot=null;
 async function _saveDbNow(){
-  let ok=false, nerede='';
+  let ok=false, nerede='', bayat='';
   // K3: kitaplar, aşağıdaki "diğer alanlar" (users/badges/streaks/settings vb.) çakışma
-  // kontrolünden TAMAMEN bağımsız, koşulsuz olarak doğrudan kullanıcının kendi yoluna
-  // yazılıyor. Bu yola yalnızca ben yazarım, başka kimse yazmaz — o yüzden burada gerçek
-  // bir çakışma olamaz; "diğer alanlar" çakışsa bile kitap ilerlemesi kaybolmamalı.
+  // kontrolünden bağımsız, doğrudan kullanıcının kendi yoluna yazılıyor — "diğer alanlar"
+  // çakışsa bile kitap ilerlemesi kaybolmamalı.
+  // K7: ama artık koşulsuz DEĞİL. Aynı hesabın başka bir cihazı araya girmiş olabilir;
+  // yazmadan önce aa-books-ts/<kişi> damgasına bakıyoruz.
   try{
-    ok = await fbSet('aa-v4/books/'+me, db.books[me]||[]);
-    if(!ok) nerede='kitaplar';
+    const myList=db.books[me]||[];
+    const booksSnapshot=JSON.stringify(myList);
+    if(booksSnapshot===_lastBooksSnapshot){
+      // Kitaplarda bu kayıttan beri hiçbir değişiklik yok — ne sorgu ne yazma.
+      // Bayat sekmenin en sık yaptığı şey buydu: hiç değişmemiş bir listeyi
+      // durmadan geri yazmak.
+      ok=true;
+    }else{
+      const remoteBooksTs=(await fbGet('aa-books-ts/'+me))||0;
+      if(remoteBooksTs>(_booksTsSeen[me]||0)){
+        // Bu hesabın kitaplarını başka bir cihaz bizden sonra yazmış. Bizim
+        // belleğimizdeki liste bayat — üzerine yazarsak orada kaydedilenler silinir.
+        try{localStorage.setItem('aa-v4-kitap-reddedilen-'+Date.now(),booksSnapshot);}catch(e){}
+        const taze=await fbGet('aa-v4/books/'+me);
+        db.books[me]=Array.isArray(taze)?taze:[];
+        _booksTsSeen[me]=remoteBooksTs;
+        _lastBooksSnapshot=JSON.stringify(db.books[me]);
+        renderSafe();
+        bayat='kitap';
+        ok=true; // teknik bir hata yok, bilinçli olarak yazmadık
+      }else{
+        const yeniTs=Date.now();
+        ok = await fbSet('aa-v4/books/'+me, myList);
+        if(!ok) nerede='kitaplar';
+        else{
+          // Damga yazmadan SONRA basılıyor: sıra ters olsaydı ve yazma
+          // başarısız olsaydı, damga "yeni veri var" diye yalan söylerdi.
+          await fbSet('aa-books-ts/'+me, yeniTs);
+          _booksTsSeen[me]=yeniTs;
+          _lastBooksSnapshot=booksSnapshot;
+        }
+      }
+    }
   }catch(e){
     ok=false;
     nerede=(e&&e.message)?e.message:'beklenmeyen hata';
@@ -2233,6 +2292,9 @@ async function _saveDbNow(){
         renderSafe();
         if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
         else showSaveError(nerede);
+        // K7: bu erken çıkış, yukarıda kitap tarafında bayatlık yakalanmışsa onun
+        // uyarısını yutuyordu — iki uyarı birden görünsün.
+        if(bayat) showBayatUyari(bayat);
         return;
       }
       db.savedAt = Date.now();
@@ -2241,9 +2303,35 @@ async function _saveDbNow(){
       if(!patchOk){ ok=false; nerede='ana veri'; }
       else{ _lastOtherFieldsSnapshot=otherSnapshot; }
     }
-    if(ok&&shelf&&Object.keys(shelf).length){
-      const shelfOk = await fbSet('aa-shelf',shelf);
-      if(!shelfOk){ ok=false; nerede='raf'; }
+    // K7: raf ARTIK KİŞİ BAŞINA yazılıyor. Önceden 'aa-shelf' düğümünün tamamı —
+    // yani TÜM üyelerin rafları — tek blok halinde bellekten geri yazılıyordu:
+    // bayat bir sekmem başkasının rafını da silebiliyordu. Yükleme tarafı aynı
+    // kaldı (aa-shelf'in tamamını okumaya devam ediyor), yalnızca yazma daraldı.
+    const myShelfData=(shelf&&shelf[me])?shelf[me]:null;
+    if(ok&&myShelfData){
+      const shelfSnapshot=JSON.stringify(myShelfData);
+      if(shelfSnapshot!==_lastShelfSnapshot){
+        const remoteShelfTs=(await fbGet('aa-shelf-ts/'+me))||0;
+        if(remoteShelfTs>(_shelfTsSeen[me]||0)){
+          try{localStorage.setItem('aa-raf-reddedilen-'+Date.now(),shelfSnapshot);}catch(e){}
+          const tazeRaf=await fbGet('aa-shelf/'+me);
+          if(!db.shelf) db.shelf={};
+          db.shelf[me]=tazeRaf||{shelves:{},books:[]};
+          _shelfTsSeen[me]=remoteShelfTs;
+          _lastShelfSnapshot=JSON.stringify(db.shelf[me]);
+          renderSafe();
+          bayat=bayat?'kitap ve raf':'raf';
+        }else{
+          const yeniTs=Date.now();
+          const shelfOk = await fbSet('aa-shelf/'+me, myShelfData);
+          if(!shelfOk){ ok=false; nerede='raf'; }
+          else{
+            await fbSet('aa-shelf-ts/'+me, yeniTs);
+            _shelfTsSeen[me]=yeniTs;
+            _lastShelfSnapshot=shelfSnapshot;
+          }
+        }
+      }
     }
   }catch(e){
     ok=false;
@@ -2255,6 +2343,9 @@ async function _saveDbNow(){
   updateAdminBadge();
   if(!ok){ showSaveError(nerede); return; }
   hideSaveError();
+  // K7: bayatlık nedeniyle yazmadıysak "✓ kaydedildi" GÖSTERİLMEMELİ — kaydedilmedi.
+  if(bayat){ showBayatUyari(bayat); return; }
+  hideBayatUyari();
   // Mikro feedback — modal header'ında, layout bozmadan
   const modalOpen=document.getElementById('modalOverlay')?.classList.contains('open');
   if(modalOpen){
@@ -2286,6 +2377,23 @@ function showSaveError(nerede){
 }
 function hideSaveError(){
   const el=document.getElementById('_saveError');
+  if(el) el.remove();
+}
+// K7: "bu sekme bayatlamış" uyarısı. Kırmızı kayıt hatasından bilerek ayrı ve
+// başka renkte: orada bir şey BOZULDU, burada bir şey KORUNDU.
+function showBayatUyari(ne){
+  let el=document.getElementById('_bayatUyari');
+  if(!el){
+    el=document.createElement('div');
+    el.id='_bayatUyari';
+    el.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#7a5a1f;color:#fff;font-family:'Space Mono',monospace;font-size:.72rem;line-height:1.5;padding:.65rem 1rem;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.5);cursor:pointer";
+    el.onclick=()=>el.remove();
+    document.body.appendChild(el);
+  }
+  el.innerHTML='⏳ BU SEKME BAYATLAMIŞ ('+ne+') — başka bir cihazında daha yeni kayıt var. Buradaki değişiklik <b>uygulanmadı</b>, ekran sunucudaki güncel haliyle yenilendi. Değişikliği hâlâ istiyorsan şimdi tekrar yap.<br><span style="opacity:.65">(kapatmak için tıkla)</span>';
+}
+function hideBayatUyari(){
+  const el=document.getElementById('_bayatUyari');
   if(el) el.remove();
 }
 // ── Kaydetme kuyruğu — art arda gelen saveDb() çağrılarını tek yazmada birleştirir ──
@@ -2540,7 +2648,13 @@ function deleteAllBooks(){
 function deleteAllUserData(u){
   delete db.users[u];
   delete db.books[u];
+  // K7: raf artık kişi başına yazılıyor (aa-shelf/<kişi>). Eskiden düğümün tamamı
+  // topluca yazıldığı için buradaki delete sunucuya da yansıyordu; artık yansımaz,
+  // bu yüzden granüler olarak ayrıca siliniyor — bildirimlerde ve oturumlarda
+  // (aşağıda) zaten yapılan şeyin aynısı.
   if(db.shelf) delete db.shelf[u];
+  fbSet('aa-shelf/'+u, null);
+  fbSet('aa-shelf-ts/'+u, null);
   if(db.stories) delete db.stories[u];
   if(db.seriesData) delete db.seriesData[u];
   if(db.seriesEvents) delete db.seriesEvents[u];
@@ -2770,15 +2884,46 @@ function importData(input){
       if(data.readingSessions) db.readingSessions={...db.readingSessions,...data.readingSessions};
       if(data.mapReset) db.mapReset={...db.mapReset,...data.mapReset};
       if(data.forgotRequests) db.forgotRequests=[...(db.forgotRequests||[]),...(Array.isArray(data.forgotRequests)?data.forgotRequests:[])];
+      // K7: içe aktarma BİLİNÇLİ bir "bu dosya kazansın" işlemi — bayatlık kontrolü
+      // burada devreye girmemeli. Girseydi, aktarımın hemen ardından saveDb()
+      // sunucudaki eski listeyi geri çekip az önce birleştirdiğimiz veriyi silerdi
+      // ve kullanıcı yine de "✅ içe aktarıldı" mesajını görürdü.
+      // Damgaları uzaktakiyle eşitleyerek yazmanın geçmesini sağlıyoruz; aşağıda
+      // taze damga basılınca da diğer cihazlar bu veriyi ezemez hale geliyor.
+      try{const bts=await fbGet('aa-books-ts');_booksTsSeen=bts||{};}catch(e){}
+      try{const sts=await fbGet('aa-shelf-ts');_shelfTsSeen=sts||{};}catch(e){}
+      _lastBooksSnapshot=null; _lastShelfSnapshot=null;
       await saveDb();
       // K3: books ve readingSessions genel kayıttan hariç tutuluyor (bkz. saveDb) — içe
       // aktarılan, birden fazla kullanıcıya ait olabilecek veriyi kendi granüler
       // yollarına ayrıca yazıyoruz, yoksa saveDb() yalnızca giriş yapan üyenin
       // kitaplarını Firebase'e gönderir, diğerlerininki yerelde kalır.
       if(data.books){
+        const icAktarimTs=Date.now();
         for(const u of Object.keys(data.books)){
-          try{ await fbSet('aa-v4/books/'+u, db.books[u]||[]); }catch(e){}
+          try{
+            await fbSet('aa-v4/books/'+u, db.books[u]||[]);
+            // K7: damgayı da bas. Basmazsak diğer cihazlardaki eski sekmeler
+            // "ben daha yeniyim" sanıp aktarılan kitapların üzerine yazar —
+            // 2026-08-22'de 102 kitabın kaybolduğu senaryo tam olarak buydu.
+            await fbSet('aa-books-ts/'+u, icAktarimTs);
+            _booksTsSeen[u]=icAktarimTs;
+          }catch(e){}
         }
+        try{_lastBooksSnapshot=JSON.stringify(db.books[me]||[]);}catch(e){}
+      }
+      // K7: raf da kişi başına yazılıyor (bkz. saveDb) — içe aktarılan diğer
+      // üyelerin rafları yoksa hiç sunucuya gitmezdi.
+      if(data.shelf){
+        const rafTs=Date.now();
+        for(const u of Object.keys(data.shelf)){
+          try{
+            await fbSet('aa-shelf/'+u, db.shelf[u]||null);
+            await fbSet('aa-shelf-ts/'+u, rafTs);
+            _shelfTsSeen[u]=rafTs;
+          }catch(e){}
+        }
+        try{_lastShelfSnapshot=JSON.stringify((db.shelf&&db.shelf[me])||null);}catch(e){}
       }
       if(data.readingSessions){
         try{ await fbSet('aa-v4/readingSessions', db.readingSessions); }catch(e){}
