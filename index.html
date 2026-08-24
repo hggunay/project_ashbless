@@ -7,9 +7,14 @@
 <meta name="description" content="Kitap okuma rozet takip uygulaması">
 <meta name="theme-color" content="#1a0f00">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<!-- Chrome artık standart adı istiyor; apple- öneki yalnızca iOS için kalıyor.
+     İkisi birden duruyor, biri kaldırılırsa o platform PWA desteğini kaybeder. -->
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Armchair">
 <link rel="apple-touch-icon" href="images/ikon.jpg">
+<!-- Bu satır olmadan tarayıcı /favicon.ico arıyor, depoda yok, konsola 404 düşüyordu. -->
+<link rel="icon" href="images/ikon.jpg" type="image/jpeg">
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22images/ikon.jpg%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D">
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%20100%20100'%3E%3Crect%20width%3D'100'%20height%3D'100'%20fill%3D'%231a0f00'%2F%3E%3Ctext%20y%3D'.9em'%20font-size%3D'80'%20x%3D'10'%3E%F0%9F%93%9A%3C%2Ftext%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -2645,16 +2650,48 @@ function deleteAllBooks(){
 }
 
 // Bir kullanıcının TÜM verilerini siler — profil silme akışının iki giriş noktası da bunu kullanır (Ö34)
-function deleteAllUserData(u){
+//
+// ── G3 (2026-08-24) ──────────────────────────────────────────────────────────
+// Bu fonksiyon 14 alanı bellekten siliyordu ama ALTISI sunucuya hiç ulaşmıyordu:
+// books, avatars, realmEvents, streakBreakEvents, aa-books-ts ve reactions.
+// Sebep: K3/K6/K7 gereği bu alanlar ortak bloktan hariç tutuldu; `delete db.x[u]`
+// artık saveDb() tarafından yazılmıyor. Kullanıcıya "profilin ve TÜM verilerin
+// kalıcı olarak silinecek" deniyordu ama kitapları sunucuda duruyordu.
+// Canlıda kanıtı vardı: profili silinmiş `ortaparmak` kullanıcısının
+// streakBreakEvents kaydı hâlâ duruyordu.
+//
+// Artık her biri kendi granüler yoluna null yazılıyor. Ortak bloğa GÜVENİLMİYOR:
+// o yazma çakışma kontrolüne takılıp reddedilebilir, granüler yazma takılmaz.
+//
+// REACTIONS BİLEREK SİLİNMİYOR (Gökşin'in kararı, 2026-08-24): başkasının
+// kartındaki tepki kaybolmasın; onun yerine ad çözümü `uyeGorunenAd()` ile
+// "Silinmiş hesap" olarak gösteriliyor.
+// ⚠️ async: her granüler silme BEKLENİYOR. Eskiden `fbSet` çağrıları beklenmeden
+// bırakılıyordu; kullanıcı "sil" dedikten hemen sonra sekmeyi kapatırsa bir kısmı
+// hiç gitmeyebilirdi — yarım silinmiş hesap, en kötü sonuç. Çağıran iki yer de
+// (deleteProfile, confirmDeleteProfile) artık await ediyor.
+async function deleteAllUserData(u){
+  // Boş/tanımsız bir değerle çağrılırsa 'aa-v4/books/undefined' gibi yollara
+  // yazardık. Silme geri alınamaz — önce kimliği doğrula.
+  if(typeof u!=='string'||!u.trim()){ console.error('deleteAllUserData: geçersiz kullanıcı',u); return; }
   delete db.users[u];
   delete db.books[u];
+  // books (K3) ortak bloktan hariç — granüler silinmeli, yoksa sunucuda kalır
+  await fbSet('aa-v4/books/'+u, null);
+  await fbSet('aa-books-ts/'+u, null);
+  // avatar ayrı kök düğümde duruyor, ortak kayda hiç dahil değil
+  await fbSet('aa-avatars/'+u, null);
+  if(db.realmEvents) delete db.realmEvents[u];
+  await fbSet('aa-v4/realmEvents/'+u, null);
+  if(db.streakBreakEvents) delete db.streakBreakEvents[u];
+  await fbSet('aa-v4/streakBreakEvents/'+u, null);
   // K7: raf artık kişi başına yazılıyor (aa-shelf/<kişi>). Eskiden düğümün tamamı
   // topluca yazıldığı için buradaki delete sunucuya da yansıyordu; artık yansımaz,
   // bu yüzden granüler olarak ayrıca siliniyor — bildirimlerde ve oturumlarda
   // (aşağıda) zaten yapılan şeyin aynısı.
   if(db.shelf) delete db.shelf[u];
-  fbSet('aa-shelf/'+u, null);
-  fbSet('aa-shelf-ts/'+u, null);
+  await fbSet('aa-shelf/'+u, null);
+  await fbSet('aa-shelf-ts/'+u, null);
   if(db.stories) delete db.stories[u];
   if(db.seriesData) delete db.seriesData[u];
   if(db.seriesEvents) delete db.seriesEvents[u];
@@ -2668,22 +2705,38 @@ function deleteAllUserData(u){
   // readingSessions de (K3) genel kayıttan hariç tutulduğu için, silinen katılımcı
   // her etkilenen oturumun kendi granüler yoluna ayrıca yazılmalı
   if(db.readingSessions){
-    Object.entries(db.readingSessions).forEach(([sid,s])=>{
+    for(const [sid,s] of Object.entries(db.readingSessions)){
       if(s.participants&&s.participants[u]){
         delete s.participants[u];
-        fbSet('aa-v4/readingSessions/'+sid+'/participants/'+u, null);
+        await fbSet('aa-v4/readingSessions/'+sid+'/participants/'+u, null);
       }
-    });
+    }
   }
   // notifications, Ö6 gereği ana kayıttan hariç tutuluyor — ayrıca granüler siliniyor
   if(db.notifications) delete db.notifications[u];
-  fbSet('aa-v4/notifications/'+u, null);
+  await fbSet('aa-v4/notifications/'+u, null);
 }
 
-function deleteProfile(){
+// ── G3 yan gereksinimi: silinmiş hesabın adı ────────────────────────────────
+// Profili silinen üyenin başkalarının kartlarına bıraktığı tepkiler BİLEREK
+// duruyor (Gökşin'in kararı). Ama `db.users` içinde artık kaydı olmadığı için
+// eski kod ham kullanıcı adını basıyordu — kartta "ortaparmak" gibi, artık var
+// olmayan bir isim görünüyordu. Onun yerine nötr bir etiket gösteriliyor.
+//
+// ⚠️ `db.users` HENÜZ YÜKLENMEMİŞ olabilir (açılış anı). O durumda herkesi
+// "Silinmiş hesap" diye göstermemek için ham ada düşülüyor.
+function uyeGorunenAd(u){
+  if(!u) return 'Silinmiş hesap';
+  const kayit=db.users&&db.users[u];
+  if(kayit) return kayit.displayName||u;
+  if(!db.users||!Object.keys(db.users).length) return u;
+  return 'Silinmiş hesap';
+}
+
+async function deleteProfile(){
   if(!confirm('Profilin ve tüm verilerin kalıcı olarak silinecek. Emin misin?')) return;
   if(!confirm('Bu işlem geri alınamaz! Devam etmek istiyor musun?')) return;
-  deleteAllUserData(me);
+  await deleteAllUserData(me);   // silmeler bitmeden çıkış yapma
   saveDb();
   logout();
 }
@@ -7068,12 +7121,14 @@ function confirmDeleteBooks(){
   setTimeout(()=>{btn.textContent='🗑️ Tüm Kitapları Sil';btn.dataset.confirming='';btn.style.background='';},8000);
 }
 
-function confirmDeleteProfile(){
+async function confirmDeleteProfile(){
   const btn=document.querySelector('[onclick="confirmDeleteProfile()"]');
   const desc=document.getElementById('deleteProfileDesc');
   const originalDesc='Hesabın ve tüm verilerin kalıcı olarak silinir. Bu işlem geri alınamaz.';
   if(btn.dataset.confirming==='2'){
-    deleteAllUserData(me);
+    // Silme sürerken ikinci kez tıklanmasın; istekler bitmeden çıkış da yapılmasın.
+    btn.disabled=true; btn.textContent='Siliniyor…';
+    await deleteAllUserData(me);
     saveDb();logout();
     return;
   }

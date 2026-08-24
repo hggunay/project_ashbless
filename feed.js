@@ -606,7 +606,9 @@ function toggleJourneyNotes(key){
 function reactionNames(reactions,r,cardKey){
   const users=Object.entries(reactions).filter(([u,arr])=>Array.isArray(arr)&&arr.includes(r));
   if(!users.length) return '';
-  const names=users.map(([u])=>u===me?'Sen':escapeHtml(db.users[u]&&db.users[u].displayName||u));
+  // G3: profili silinmiş üyenin tepkisi kartta duruyor; adı `uyeGorunenAd()` ile
+  // "Silinmiş hesap" olarak çözülüyor (index.html).
+  const names=users.map(([u])=>u===me?'Sen':escapeHtml(uyeGorunenAd(u)));
   if(names.length<=2) return ' · '+names.join(', ');
   const rKey=(cardKey+'_'+r).replace(/[^a-zA-Z0-9_]/g,'_');
   const visible=names.slice(0,2).join(', ');
