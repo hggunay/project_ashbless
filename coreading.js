@@ -72,6 +72,38 @@ async function respondCoreading(sessionId, response){
   }
   renderSafe();
 }
+// ── G1: BAŞKASININ KİTAP LİSTESİNE GÜVENLİ DOKUNMA ───────────────────────────
+// Bir kullanıcının kitaplarındaki `coreadingSession` bağını temizler.
+//
+// KURAL: başkasının kitap listesi ASLA komple yazılmaz. Ne bellekten, ne de
+// "sunucudan çek → değiştir → geri yaz" ile. İkincisi masum görünüyor ama
+// çekmeyle yazma arasında o kişi kitap eklerse yazma onu siler — düzeltmeye
+// çalıştığımız hatanın küçük penceresi.
+//
+// Onun yerine PATCH: tek kitabın tek alanına dokunuyor. En kötü ihtimalle
+// (arada dizi kaydıysa) yanlış kitabın kozmetik bir alanını temizler;
+// HİÇBİR KOŞULDA kitap silemez.
+//
+// Bilerek YAPILMAYAN: o kişinin K7 damgasını (`aa-books-ts/<kişi>`) güncellemek.
+// Güncelleseydik onun açık sekmesi kendini bayat sayar, bir sonraki kaydı
+// reddedilir ve değişikliği hiç okunmayan localStorage yedeğine düşerdi (G10).
+// Bizim değişikliğimiz kozmetik, onun kitapları değil. Karşılığında onun sekmesi
+// eski etiketi geri yazabilir — o da bir sonraki sayfa açılışında düzelir.
+async function birlikteOkumaBaginiTemizle(kisi, sessionId){
+  let taze;
+  try{ taze=await fbGet('aa-v4/books/'+kisi); }catch(e){ return 0; }
+  if(!taze) return 0;
+  // Firebase seyrek diziyi nesne olarak döndürebilir; iki biçimi de karşıla.
+  const anahtarlar=Array.isArray(taze)?taze.map((_,i)=>i):Object.keys(taze);
+  let temizlenen=0;
+  for(const k of anahtarlar){
+    const kitap=taze[k];
+    if(!kitap||kitap.coreadingSession!==sessionId) continue;
+    const ok=await fbPatch('aa-v4/books/'+kisi+'/'+k, {coreadingSession:null});
+    if(ok) temizlenen++;
+  }
+  return temizlenen;
+}
 async function cancelCoreading(sessionId){
   if(!me) return;
   if(!db.readingSessions||!db.readingSessions[sessionId]) return;
@@ -83,16 +115,35 @@ async function cancelCoreading(sessionId){
   // veritabanını bellekten yazdığı için (K3) oturum Firebase'den de tümüyle siliniyordu,
   // ama katılımcıların kitaplarındaki `coreadingSession` referansı öksüz kalıp
   // "Birlikte Okunuyor" sekmesinde tıklanamayan bir kitap olarak asılı kalıyordu.
-  // Bunun yerine, bağlı olan tüm kitaplardaki referansı temizliyoruz. books de (K3) genel
-  // kayıttan hariç tutulduğundan, kendi kitabımız dışında değiştirdiğimiz her kullanıcının
-  // listesini kendi granüler yoluna ayrıca yazmamız gerekiyor.
-  for(const [u,list] of Object.entries(db.books||{})){
-    let changed=false;
-    (list||[]).forEach(b=>{
-      if(b.coreadingSession===sessionId){ delete b.coreadingSession; changed=true; }
+  // Bunun yerine, bağlı olan tüm kitaplardaki referansı temizliyoruz.
+  //
+  // ── G1 (2026-08-24) ────────────────────────────────────────────────────────
+  // Burada eskiden şu satır vardı:
+  //     if(changed && u!==me) await fbSet('aa-v4/books/'+u, list);
+  // `list` sayfa AÇILDIĞINDA yüklenmiş kopyaydı. Oturumu iptal eden kişi,
+  // diğer katılımcının TÜM kitap listesini kendi bayat kopyasından yazıyordu —
+  // arkadaş o sırada kitap eklediyse siliniyordu. Hata mesajı yok, iptal eden
+  // fark etmiyor. 2026-08-22'de 102 kitabı yok eden mekanizmanın aynısı, ama
+  // zarar BAŞKASINA gidiyordu.
+  // Artık başkasının listesi HİÇBİR KOŞULDA komple yazılmıyor; bkz.
+  // birlikteOkumaBaginiTemizle().
+  // Yerel kopyayı da güncelle ki ekran hemen doğru görünsün.
+  const yereldeBagli=new Set();
+  for(const u of Object.keys(db.books||{})){
+    (db.books[u]||[]).forEach(b=>{
+      if(b.coreadingSession===sessionId){ delete b.coreadingSession; yereldeBagli.add(u); }
     });
-    if(changed&&u!==me) await fbSet('aa-v4/books/'+u, list);
   }
+  // Kimleri sunucuda temizleyeceğiz: oturumun katılımcıları + yerel kopyada bağlı
+  // görünenler. Katılımcı listesi tek başına yetmez sanılabilir ama tersi de doğru:
+  // yerel kopya bayat olabileceği için, biz açtıktan SONRA kitap bağlayan bir
+  // katılımcı `yereldeBagli` içinde görünmez. İkisinin birleşimi ikisini de kapsıyor.
+  const temizlenecek=new Set([
+    ...Object.keys(db.readingSessions[sessionId].participants||{}),
+    ...yereldeBagli
+  ]);
+  temizlenecek.delete(me);   // kendi listemiz saveDb() + K7 üzerinden yazılıyor
+  for(const u of temizlenecek) await birlikteOkumaBaginiTemizle(u, sessionId);
   saveDb();
   document.getElementById('cancelConfirm')?.remove();
   renderSafe();
