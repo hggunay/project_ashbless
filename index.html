@@ -1700,16 +1700,25 @@ try{
             </div>
             <div class="detail-acc-body" id="body-set-backup">
               <div style="padding-top:.75rem">
-                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Verilerini yedekle veya yeni cihaza taşı. Tüm üyelerin verileri dışa aktarılır.</div>
-                <div style="font-size:.75rem;color:var(--rust);margin-bottom:.75rem">⚠️ İçe aktarma, birleştirme değil DEĞİŞTİRMEdir: yedekteki bir üyenin/kitabın verisi, o an sunucudaki güncel veriyle eşleşiyorsa üzerine tamamen yazılır. Yedek tarihinden sonra eklenenler kaybolabilir. Sadece elindeki en güncel yedeği geri yüklerken kullan.</div>
+                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Kendi verini yedekle veya yeni bir cihaza taşı. İnen dosya <b>yalnızca sana ait</b> verileri içerir; diğer üyelerin verisine hiçbir şekilde dokunulmaz.</div>
+                <div style="font-size:.75rem;color:var(--rust);margin-bottom:.75rem">⚠️ Geri yükleme birleştirme değil <b>değiştirmedir</b>: kitapların, rafın ve ilerlemen dosyadaki hâline döner, dosyanın tarihinden sonra eklediklerin kaybolur.<br><br>💡 Bu yüzden geri yüklemeye başlamadan önce <b>mevcut verinin bir kopyası cihazına inecek</b> (<i>armchair-geri-al-…json</i>). Yanlış dosya seçersen onunla geri dönebilirsin — yani indirme iki kere olur, bu normaldir. Şifren değişmez.</div>
                 <div style="display:flex;gap:.75rem;flex-wrap:wrap">
-                  <button class="btn btn-primary btn-sm" onclick="exportData()">📥 Veriyi Dışa Aktar</button>
+                  <button class="btn btn-primary btn-sm" onclick="kisiselYedekAl()">📥 Verimi Yedekle</button>
                   <label class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink);cursor:pointer;border:1px solid rgba(201,162,39,.3)">
-                    📤 Veriyi İçe Aktar
-                    <input type="file" accept=".json" onchange="importData(this)" style="display:none"/>
+                    📤 Yedekten Geri Yükle
+                    <input type="file" accept=".json" onchange="kisiselYedekYukle(this)" style="display:none"/>
                   </label>
                 </div>
                 <div id="importStatus" style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.85rem;color:var(--moss);margin-top:.5rem;min-height:1.2rem"></div>
+
+                <!-- Tam veritabanı yedeği — yalnızca uygulama sahibine görünür.
+                     Görünürlüğü renderSettings() içinde SAHIP sabitine göre ayarlanıyor. -->
+                <div id="tamYedekKutusu" style="display:none;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
+                  <div style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.5rem">🗄️ Tam Veritabanı Yedeği</div>
+                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Veritabanının <b>birebir kopyası</b> — Firebase panelinden aldığının aynısı, tüm üyeler ve tüm düğümler dahil. Telefondan da alınabilir.<br>Geri yükleme uygulamadan yapılmaz: Firebase panelinde <b>Import JSON</b> ile kök düğüme yüklenir.</div>
+                  <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--ink);border:1px solid rgba(160,82,45,.3)" onclick="tamYedekAl()">🗄️ Tam Yedek Al</button>
+                  <div id="tamYedekStatus" style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.85rem;color:var(--moss);margin-top:.5rem;min-height:1.2rem"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -2813,6 +2822,10 @@ function renderSettings(){
       reqBox.style.display='none';
     }
   }
+  // Tam veritabanı yedeği yalnızca sahibe görünür (perde, kilit değil — bkz. SAHIP)
+  const tamKutu=document.getElementById('tamYedekKutusu');
+  if(tamKutu) tamKutu.style.display=(me===SAHIP)?'block':'none';
+
   const adminList=document.getElementById('adminMemberList');
   if(adminList){
     const others=Object.keys(db.users).filter(u=>u!==me);
@@ -2877,125 +2890,219 @@ async function adminResetPassword(u){
   notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
 }
 
-function exportData(){
-  const data={
-    version:'aa-v4',
-    exportDate:new Date().toISOString(),
-    users:db.users,
-    books:db.books,
-    stories:db.stories||{},
-    seriesData:db.seriesData||{},
-    seriesEvents:db.seriesEvents||{},
-    shelf:db.shelf||{},
-    archivedNotes:db.archivedNotes||{},
-    countryEvents:db.countryEvents||{},
-    settings:db.settings||{},
-    notifications:db.notifications||{},
-    badgeEvents:db.badgeEvents||{},
-    streakEvents:db.streakEvents||{},
-    streakBreakEvents:db.streakBreakEvents||{},
-    readingSessions:db.readingSessions||{},
-    mapReset:db.mapReset||{},
-    forgotRequests:db.forgotRequests||[],
-  };
-  const json=JSON.stringify(data,null,2);
-  const blob=new Blob([json],{type:'application/json'});
+// ── KİŞİSEL YEDEK (G5/G6) ────────────────────────────────────────────
+// ESKİDEN: "Yedek Al" HERKESİN verisini tek dosyaya yazıyor, "İçe Aktar" da
+// herkesin verisini o dosyadaki güne geri döndürüyordu. Yani pazartesi alınan
+// yedek çarşamba yüklendiğinde, arkadaşının salı eklediği kitaplar siliniyordu —
+// üstelik kullanıcı yalnızca kendi verisini geri yüklediğini sanarak.
+//
+// ARTIK: dışa aktarma da geri yükleme de YALNIZCA giriş yapan üyeyi kapsıyor.
+// Başkasının verisine yazan bir yol kalmadı. Tüm veritabanının yedeği ayrı bir
+// iş (bkz. tamYedekAl) ve yalnızca sahibinde.
+//
+// Aşağıdaki liste TAHMİN DEĞİL: 2026-08-25'te canlı veritabanının her düğümünün
+// anahtarları üye adlarıyla karşılaştırılarak ölçüldü. Ortak olan üçü bilerek
+// DIŞARIDA — tek kişinin verisi olmadıkları için birinin yedeğiyle geri
+// yüklenmeleri başkalarını etkilerdi:
+//   reactions       → anahtar hedef gönderinin id'si, tepkiyi bırakanın değil
+//   readingSessions → anahtar oturum id'si; oturum birden çok kişinin ortak malı
+//   settings        → googleBooksKey, uygulama geneli tek ayar
+const KISISEL_DUGUMLER=['users','books','badgeEvents','countryEvents','notifications',
+  'readingEvents','realmEvents','seriesData','stories','streakBreakEvents','streakEvents'];
+
+// Uygulamanın sahibi. Tam yedek butonu yalnızca ona görünür.
+// DİKKAT: bu bir KİLİT DEĞİL, perde. Veritabanı şu an tamamen açık; adresini
+// bilen herkes uygulamaya girmeden de tüm veriyi okuyabiliyor. Gerçek kilit
+// Firebase kurallarıyla gelecek (G9). Buradaki tek amaç, sıradan bir üyenin
+// "herkesin verisi" butonuna denk gelmemesi.
+const SAHIP='hggunay';
+
+function dosyaIndir(nesne,dosyaAdi){
+  const blob=new Blob([JSON.stringify(nesne,null,2)],{type:'application/json'});
   const url=URL.createObjectURL(blob);
   const a=document.createElement('a');
-  a.href=url;
-  a.download=`armchair-yedek-${todayLocal()}.json`;
-  a.click();
-  URL.revokeObjectURL(url);
-  notify('📥 Yedek Alındı','Tüm veriler başarıyla indirildi.');
+  a.href=url; a.download=dosyaAdi;
+  document.body.appendChild(a); a.click(); a.remove();
+  // Hemen revoke edilirse bazı tarayıcılar indirmeyi yarıda kesiyor.
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
-function importData(input){
+// Bir üyenin verisini SUNUCUDAN taze çekip paketler. Yerel db bayat olabilir;
+// yedeğin yanlış bir anı dondurmaması için doğrudan kaynaktan okunuyor.
+// Sunucuya ulaşılamazsa yereldeki halle devam edilir (yedeksiz kalmaktan iyi).
+async function kisiselYedegiOlustur(kisi){
+  const kok=await fbGet('');
+  const v4=(kok&&kok['aa-v4'])||null;
+  const paket={version:'aa-v4-kisisel',kisi:kisi,exportDate:new Date().toISOString(),
+               kaynak:v4?'sunucu':'yerel'};
+  for(const d of KISISEL_DUGUMLER){
+    const kaynak=v4?v4[d]:db[d];
+    const deger=kaynak?kaynak[kisi]:undefined;
+    // Dosya biçimi ESKİSİYLE AYNI (üye adına göre anahtarlı) — böylece eski
+    // yedek dosyaları da aynı kodla okunabiliyor, ayrı bir yol gerekmiyor.
+    if(deger!==undefined&&deger!==null) paket[d]={[kisi]:deger};
+  }
+  const raf=kok?((kok['aa-shelf']||{})[kisi]):((db.shelf||{})[kisi]);
+  if(raf!==undefined&&raf!==null) paket.shelf={[kisi]:raf};
+  const av=kok?((kok['aa-avatars']||{})[kisi]):undefined;
+  if(av!==undefined&&av!==null) paket.avatars={[kisi]:av};
+  return paket;
+}
+
+async function kisiselYedekAl(){
+  const durum=document.getElementById('importStatus');
+  const yaz=t=>{if(durum)durum.textContent=t;};
+  yaz('⏳ Verilerin toplanıyor…');
+  try{
+    const paket=await kisiselYedegiOlustur(me);
+    dosyaIndir(paket,`armchair-${me}-${todayLocal()}.json`);
+    const n=((paket.books||{})[me]||[]).length;
+    yaz(`✅ Yedeğin indi — ${n} kitap. Dosya yalnızca senin verini içeriyor.`);
+    notify('📥 Yedek Alındı','Kendi verilerin indirildi.');
+  }catch(e){
+    yaz('⚠️ Yedek alınamadı: '+e.message);
+  }
+}
+
+// Tam veritabanı yedeği — yalnızca sahibe görünür.
+// Kökün BİREBİR kopyası indiriliyor: elle sayılmış alan listesi yok, dolayısıyla
+// "bir alanı yedeğe eklemeyi unutmuşuz" hatası (G7) yapısal olarak imkânsız.
+// Uygulamaya yeni bir düğüm eklendiğinde yedek kendiliğinden onu da kapsar.
+// Geri yükleme bilerek YOK: Firebase panelinden "Import JSON" ile kök düğüme
+// yüklenir, orada ne yapıldığı görülerek yapılır.
+async function tamYedekAl(){
+  const durum=document.getElementById('tamYedekStatus');
+  const yaz=t=>{if(durum)durum.textContent=t;};
+  yaz('⏳ Veritabanının tamamı indiriliyor…');
+  const kok=await fbGet('');
+  if(!kok){yaz('⚠️ Veritabanı okunamadı — internetini kontrol et.');return;}
+  dosyaIndir(kok,`armchair-TAM-yedek-${todayLocal()}.json`);
+  const kb=Math.round(JSON.stringify(kok).length/1024);
+  yaz(`✅ Tam yedek indi (${kb} KB). Firebase panelinde "Import JSON" ile kök düğüme geri yüklenir.`);
+  notify('🗄️ Tam Yedek Alındı',`Veritabanının birebir kopyası indirildi (${kb} KB).`);
+}
+
+function dosyayiOku(file){
+  // Blob.text() eski iOS Safari'de yok; FileReader her yerde çalışıyor.
+  return new Promise((coz,red)=>{
+    const r=new FileReader();
+    r.onload=()=>coz(r.result);
+    r.onerror=()=>red(new Error('dosya okunamadı'));
+    r.readAsText(file);
+  });
+}
+
+async function kisiselYedekYukle(input){
   const file=input.files[0];
+  input.value=''; // aynı dosya tekrar seçilebilsin
   if(!file) return;
-  const reader=new FileReader();
-  reader.onload=async(e)=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!data.users||!data.books){
-        document.getElementById('importStatus').textContent='⚠️ Geçersiz dosya formatı.';
-        return;
-      }
-      // Mevcut veriyle birleştir — DİKKAT: aynı isimli kullanıcı/anahtar TAMAMEN değişir, iç içe birleştirme yapılmaz
-      db.users={...db.users,...data.users};
-      db.books={...db.books,...data.books};
-      if(data.stories) db.stories={...db.stories,...data.stories};
-      if(data.seriesData) db.seriesData={...db.seriesData,...data.seriesData};
-      if(data.seriesEvents) db.seriesEvents={...db.seriesEvents,...data.seriesEvents};
-      if(data.shelf) db.shelf={...db.shelf,...data.shelf};
-      if(data.archivedNotes) db.archivedNotes={...db.archivedNotes,...data.archivedNotes};
-      if(data.countryEvents) db.countryEvents={...db.countryEvents,...data.countryEvents};
-      if(data.settings) db.settings={...db.settings,...data.settings};
-      if(data.notifications) db.notifications={...db.notifications,...data.notifications};
-      if(data.badgeEvents) db.badgeEvents={...db.badgeEvents,...data.badgeEvents};
-      if(data.streakEvents) db.streakEvents={...db.streakEvents,...data.streakEvents};
-      if(data.streakBreakEvents) db.streakBreakEvents={...db.streakBreakEvents,...data.streakBreakEvents};
-      if(data.readingSessions) db.readingSessions={...db.readingSessions,...data.readingSessions};
-      if(data.mapReset) db.mapReset={...db.mapReset,...data.mapReset};
-      if(data.forgotRequests) db.forgotRequests=[...(db.forgotRequests||[]),...(Array.isArray(data.forgotRequests)?data.forgotRequests:[])];
-      // K7: içe aktarma BİLİNÇLİ bir "bu dosya kazansın" işlemi — bayatlık kontrolü
-      // burada devreye girmemeli. Girseydi, aktarımın hemen ardından saveDb()
-      // sunucudaki eski listeyi geri çekip az önce birleştirdiğimiz veriyi silerdi
-      // ve kullanıcı yine de "✅ içe aktarıldı" mesajını görürdü.
-      // Damgaları uzaktakiyle eşitleyerek yazmanın geçmesini sağlıyoruz; aşağıda
-      // taze damga basılınca da diğer cihazlar bu veriyi ezemez hale geliyor.
-      try{const bts=await fbGet('aa-books-ts');_booksTsSeen=bts||{};}catch(e){}
-      try{const sts=await fbGet('aa-shelf-ts');_shelfTsSeen=sts||{};}catch(e){}
-      _lastBooksSnapshot=null; _lastShelfSnapshot=null;
-      await saveDb();
-      // K3: books ve readingSessions genel kayıttan hariç tutuluyor (bkz. saveDb) — içe
-      // aktarılan, birden fazla kullanıcıya ait olabilecek veriyi kendi granüler
-      // yollarına ayrıca yazıyoruz, yoksa saveDb() yalnızca giriş yapan üyenin
-      // kitaplarını Firebase'e gönderir, diğerlerininki yerelde kalır.
-      if(data.books){
-        const icAktarimTs=Date.now();
-        for(const u of Object.keys(data.books)){
-          try{
-            await fbSet('aa-v4/books/'+u, db.books[u]||[]);
-            // K7: damgayı da bas. Basmazsak diğer cihazlardaki eski sekmeler
-            // "ben daha yeniyim" sanıp aktarılan kitapların üzerine yazar —
-            // 2026-08-22'de 102 kitabın kaybolduğu senaryo tam olarak buydu.
-            await fbSet('aa-books-ts/'+u, icAktarimTs);
-            _booksTsSeen[u]=icAktarimTs;
-          }catch(e){}
-        }
-        try{_lastBooksSnapshot=JSON.stringify(db.books[me]||[]);}catch(e){}
-      }
-      // K7: raf da kişi başına yazılıyor (bkz. saveDb) — içe aktarılan diğer
-      // üyelerin rafları yoksa hiç sunucuya gitmezdi.
-      if(data.shelf){
-        const rafTs=Date.now();
-        for(const u of Object.keys(data.shelf)){
-          try{
-            await fbSet('aa-shelf/'+u, db.shelf[u]||null);
-            await fbSet('aa-shelf-ts/'+u, rafTs);
-            _shelfTsSeen[u]=rafTs;
-          }catch(e){}
-        }
-        try{_lastShelfSnapshot=JSON.stringify((db.shelf&&db.shelf[me])||null);}catch(e){}
-      }
-      if(data.readingSessions){
-        try{ await fbSet('aa-v4/readingSessions', db.readingSessions); }catch(e){}
-      }
-      // Kayıt gerçekten başarılı mıydı? (K5 çakışması ya da ağ hatası olabilir)
-      const saveFailed=!!document.getElementById('_saveError');
-      render();
-      if(saveFailed){
-        document.getElementById('importStatus').textContent='⚠️ Dosya okundu ama sunucuya KAYDEDİLEMEDİ — yukarıdaki kırmızı uyarıya bak.';
-      }else{
-        document.getElementById('importStatus').textContent=`✅ İçe aktarıldı! ${Object.keys(data.users).length} üye, ${Object.values(data.books).flat().length} kitap yüklendi.`;
-        notify('📤 İçe Aktarıldı','Veriler başarıyla yüklendi.');
-      }
-    }catch(err){
-      document.getElementById('importStatus').textContent='⚠️ Dosya okunamadı: '+err.message;
+  const durum=document.getElementById('importStatus');
+  const yaz=t=>{if(durum)durum.textContent=t;};
+
+  let data;
+  try{ data=JSON.parse(await dosyayiOku(file)); }
+  catch(e){ yaz('⚠️ Dosya okunamadı: '+e.message); return; }
+
+  if(!data||typeof data!=='object'||!data.users){ yaz('⚠️ Geçersiz dosya formatı.'); return; }
+
+  // Yeni biçimli dosyalarda kimin olduğu yazılı — başkasının yedeğini kendi
+  // hesabına yüklemeyi engelle. (Eski dosyalarda bu alan yok; onlarda herkesin
+  // verisi bir arada durur ve aşağıda yalnızca giriş yapanın bölümü alınır.)
+  if(data.kisi&&data.kisi!==me){
+    yaz(`⚠️ Bu dosya "${data.kisi}" adlı üyeye ait, sana değil. Kendi yedek dosyanı seç.`);
+    return;
+  }
+  if(!data.users[me]){
+    yaz('⚠️ Bu dosyada sana ait veri yok. Başka birinin yedeği olabilir.');
+    return;
+  }
+
+  // GERİ ALMA DOSYASI — üzerine yazmadan ÖNCE bugünkü hal iniyor.
+  // Başarısız olursa yükleme hiç başlamıyor: emniyet ağı kurulamadıysa
+  // ipe çıkılmaz.
+  yaz('⏳ Önce mevcut verinin kopyası indiriliyor…');
+  try{
+    dosyaIndir(await kisiselYedegiOlustur(me),`armchair-geri-al-${todayLocal()}.json`);
+  }catch(e){
+    yaz('⚠️ Geri alma dosyası indirilemedi, bu yüzden yükleme yapılmadı.');
+    return;
+  }
+
+  await kisiselYedegiUygula(data,yaz);
+}
+
+// Dosyadan YALNIZCA giriş yapan üyenin bölümünü alır ve yalnızca onun
+// yollarına yazar. Başka bir üyenin yoluna yazan tek bir satır yok — eski
+// koddaki "for(const u of Object.keys(data.books))" döngüleri bu yüzden kalktı.
+async function kisiselYedegiUygula(data,yaz){
+  try{
+    const simdi=Date.now();
+
+    // ŞİFRE KORUNUYOR. Yedek dosyası üye kaydını, o da şifre özetini içeriyor.
+    // Eski bir dosya yüklendiğinde eski şifre geri gelseydi üye, bildiği
+    // şifreyle kendi hesabına giremez hale gelirdi.
+    const mevcutSifre=db.users[me]&&db.users[me].password;
+    const yeniKayit={...data.users[me]};
+    if(mevcutSifre!==undefined) yeniKayit.password=mevcutSifre;
+    db.users[me]=yeniKayit;
+
+    for(const d of KISISEL_DUGUMLER){
+      if(d==='users') continue;
+      if(!data[d]||data[d][me]===undefined) continue;
+      if(!db[d]) db[d]={};
+      db[d][me]=data[d][me];
     }
-  };
-  reader.readAsText(file);
-  input.value=''; // aynı dosyayı tekrar seçebilmek için
+    if(data.shelf&&data.shelf[me]!==undefined){
+      if(!db.shelf) db.shelf={};
+      db.shelf[me]=data.shelf[me];
+    }
+
+    yaz('⏳ Sunucuya yazılıyor…');
+    let hata=0;
+
+    // users: PUT değil PATCH — yalnızca kendi kaydımızı değiştiriyor, aynı
+    // düğümdeki diğer üyelerin kayıtlarına dokunmuyor.
+    if(!await fbPatch('aa-v4/users',{[me]:db.users[me]})) hata++;
+
+    for(const d of KISISEL_DUGUMLER){
+      if(d==='users'||d==='books') continue;
+      if(!data[d]||data[d][me]===undefined) continue;
+      if(!await fbSet('aa-v4/'+d+'/'+me, db[d][me])) hata++;
+    }
+
+    if(data.books&&data.books[me]!==undefined){
+      if(!await fbSet('aa-v4/books/'+me, db.books[me]||[])) hata++;
+      // K7: damgayı da bas. Basmazsak başka bir cihazda açık kalmış bayat sekme
+      // "ben daha yeniyim" sanıp geri yüklenen listenin üzerine yazar —
+      // 2026-08-22'de 102 kitabın kaybolduğu senaryo tam olarak buydu.
+      await fbSet('aa-books-ts/'+me, simdi); _booksTsSeen[me]=simdi;
+      try{_lastBooksSnapshot=JSON.stringify(db.books[me]||[]);}catch(e){}
+    }
+    if(data.shelf&&data.shelf[me]!==undefined){
+      if(!await fbSet('aa-shelf/'+me, db.shelf[me]||null)) hata++;
+      await fbSet('aa-shelf-ts/'+me, simdi); _shelfTsSeen[me]=simdi;
+      try{_lastShelfSnapshot=JSON.stringify((db.shelf&&db.shelf[me])||null);}catch(e){}
+    }
+    if(data.avatars&&data.avatars[me]!==undefined){
+      if(!await fbSet('aa-avatars/'+me, data.avatars[me])) hata++;
+    }
+
+    // saveDb() BİLEREK çağrılmıyor: o, paylaşılan tüm-veritabanı kaydını yazıyor
+    // ve çakışma kontrolüne takılabiliyor. Buradaki her şey zaten kendi granüler
+    // yoluna tek tek yazıldı. Eski kodun readingSessions'ı komple yeniden yazması
+    // (G4) da böylece ortadan kalktı.
+    render();
+
+    const n=((data.books||{})[me]||[]).length;
+    if(hata){
+      yaz(`⚠️ ${hata} bölüm sunucuya yazılamadı. İnternetini kontrol edip tekrar dene — indirdiğin "geri-al" dosyası duruyor.`);
+    }else{
+      yaz(`✅ Verilerin geri yüklendi — ${n} kitap. Şifren değişmedi, diğer üyelerin verisine dokunulmadı.`);
+      notify('📤 Geri Yüklendi','Kendi verilerin yüklendi.');
+    }
+  }catch(err){
+    yaz('⚠️ Geri yükleme sırasında hata: '+err.message);
+  }
 }
 
 function toggleShelfPublic(val){
