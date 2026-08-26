@@ -2410,6 +2410,27 @@ function hideBayatUyari(){
   const el=document.getElementById('_bayatUyari');
   if(el) el.remove();
 }
+// Uygulama içi kısa mesaj şeridi — tarayıcının alert() kutusunun yerini alıyor.
+// Aynı bilgiyi veriyor ama sayfayı kilitlemiyor ve uygulamanın kendi dilinde konuşuyor.
+// Renk ayrımı yukarıdaki iki şeritle aynı mantıkta: kırmızı bir şey BOZULDU,
+// kehribar bir şey KORUNDU, yeşil bir şey BAŞARILDI, lacivert bir şey EKSİK.
+// Bilerek ekranın ALTINDA duruyor: üst taraf o iki kalıcı uyarıya ait, üst üste
+// binmesinler diye (z-index de onların bir altında).
+let _mesajTimer=null;
+function mesajGoster(metin,tur){
+  const renk=(tur==='uyari')?'#2f3f6a':'#1f5f3a';
+  let el=document.getElementById('_mesajSerit');
+  if(!el){
+    el=document.createElement('div');
+    el.id='_mesajSerit';
+    el.onclick=()=>el.remove();
+    document.body.appendChild(el);
+  }
+  el.style.cssText="position:fixed;bottom:0;left:0;right:0;z-index:99998;color:#fff;font-family:'Space Mono',monospace;font-size:.72rem;line-height:1.5;padding:.65rem 1rem;text-align:center;box-shadow:0 -2px 10px rgba(0,0,0,.4);cursor:pointer;background:"+renk;
+  el.textContent=metin;
+  if(_mesajTimer) clearTimeout(_mesajTimer);
+  _mesajTimer=setTimeout(()=>{const x=document.getElementById('_mesajSerit');if(x)x.remove();},(tur==='uyari')?5000:3500);
+}
 // ── Kaydetme kuyruğu — art arda gelen saveDb() çağrılarını tek yazmada birleştirir ──
 let _saveDbTimer=null;
 let _saveDbPending=null;
@@ -2558,8 +2579,8 @@ let _resetCode=null, _resetUser=null, _resetExpiry=null;
 
 function sendResetCode(){
   const u=document.getElementById('loginUsername').value.trim();
-  if(!u){alert('Önce kullanıcı adını gir.');return;}
-  if(!db.users[u]){alert('Böyle bir kullanıcı bulunamadı.');return;}
+  if(!u){mesajGoster('Önce kullanıcı adını gir.','uyari');return;}
+  if(!db.users[u]){mesajGoster('Böyle bir kullanıcı bulunamadı.','uyari');return;}
   const email=db.users[u].email;
   if(!email){
     const msg=document.getElementById('forgotSentMsg');
@@ -2643,11 +2664,11 @@ function updateProfile(field, value){
 
 async function changePassword(){
   const pw=document.getElementById('settingPw').value;
-  if(!pw||pw.length<3){alert('Şifre en az 3 karakter olmalı.');return;}
+  if(!pw||pw.length<3){mesajGoster('Şifre en az 3 karakter olmalı.','uyari');return;}
   db.users[me].password=await hashPassword(pw);
   document.getElementById('settingPw').value='';
   saveDb();
-  alert('Şifre güncellendi! ✅');
+  mesajGoster('Şifre güncellendi ✅');
 }
 
 function deleteAllBooks(){
@@ -2655,7 +2676,7 @@ function deleteAllBooks(){
   db.books[me]=[];
   saveDb();renderSafe();
   showPanel('myBooks',document.querySelector('.nav-tab'));
-  alert('Tüm kitaplar silindi.');
+  mesajGoster('Tüm kitaplar silindi.');
 }
 
 // Bir kullanıcının TÜM verilerini siler — profil silme akışının iki giriş noktası da bunu kullanır (Ö34)
@@ -3156,7 +3177,7 @@ function saveProfile(){
   const avatarEl=document.getElementById('settingAvatar');
   const avatar=avatarEl.value.trim();
   const email=document.getElementById('settingEmail')?.value.trim()||'';
-  if(!name){alert('Görünen isim boş olamaz.');return;}
+  if(!name){mesajGoster('Görünen isim boş olamaz.','uyari');return;}
   if(name) updateProfile('displayName',name);
   // Avatar YALNIZCA kullanıcı kutuyu gerçekten değiştirdiyse yazılır. Eskiden koşul
   // sadece `if(avatar)` idi: fotoğrafı olan biri adını değiştirmek için kaydettiğinde
@@ -3179,7 +3200,7 @@ function saveProfile(){
   if(email) updateProfile('email',email);
   else if(db.users[me].email){ db.users[me].email=null; saveDb(); }
   document.getElementById('settingsDisplayName').textContent=name||db.users[me].displayName;
-  alert('Profil güncellendi! ✅');
+  mesajGoster('Profil güncellendi ✅');
 }
 
 function logout(){me=null;viewing=null;try{localStorage.removeItem('aa-session');}catch(e){}document.getElementById('appScreen').style.display='none';document.getElementById('authScreen').style.display='flex';renderPills();}
@@ -4307,7 +4328,7 @@ async function addBook(){
   const startDate=document.getElementById('bookStartDate').value||todayLocal();
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
-  if(!rawInput){ alert('Kitap adı veya ISBN giriniz.'); return; }
+  if(!rawInput){ mesajGoster('Kitap adı veya ISBN giriniz.','uyari'); return; }
   
 // Birlikte okuma oturumu başlat
   if(getReadingTime()==='coreading'){
@@ -7244,7 +7265,7 @@ function confirmDeleteBooks(){
     saveDb();renderSafe();
     btn.textContent='🗑️ Tüm Kitapları Sil';
     btn.dataset.confirming='';
-    alert('Tüm kitaplar silindi.');
+    mesajGoster('Tüm kitaplar silindi.');
     return;
   }
   btn.dataset.confirming='1';

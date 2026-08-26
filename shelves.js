@@ -316,12 +316,12 @@ function filterSpBooks(type){
 function addSpecialBook(type){
   const checked=[...document.querySelectorAll('#spBookList input[type=checkbox]:checked')].map(c=>c.value);
   const why=(document.getElementById('spWhy')?.value||'').trim();
-  if(!checked.length){alert('En az bir kitap seç');return;}
+  if(!checked.length){mesajGoster('En az bir kitap seç.','uyari');return;}
   const shelf=getSpecialShelf(type);
   if(!shelf.books) shelf.books=[];
   const max=SP_MAX[type];
   const remaining=max-shelf.books.length;
-  if(checked.length>remaining){alert(`Sadece ${remaining} kitap daha eklenebilir.`);return;}
+  if(checked.length>remaining){mesajGoster(`Sadece ${remaining} kitap daha eklenebilir.`,'uyari');return;}
   const readBooks=spReadBooks();
   const existing=new Set((shelf.books||[]).map(b=>b.libId).filter(Boolean));
   let added=0;

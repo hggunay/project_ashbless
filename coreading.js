@@ -1,6 +1,6 @@
 // ── BİRLİKTE OKUMA ───────────────────────────────────────────
 async function startCoreadingSession(titleRaw, author){
-  if(!me){ alert('Giriş yapman gerekiyor.'); return; }
+  if(!me){ mesajGoster('Giriş yapman gerekiyor.','uyari'); return; }
   const sessions=Object.values(db.readingSessions||{});
   const duplicate=sessions.find(s=>
     s.initiator===me &&
@@ -37,7 +37,7 @@ async function startCoreadingSession(titleRaw, author){
     updateAddFormFields();
     renderSafe();
   }catch(e){
-    alert('Oturum başlatılamadı, tekrar dene.');
+    mesajGoster('Oturum başlatılamadı, tekrar dene.','uyari');
   }
 }
 async function respondCoreading(sessionId, response){
