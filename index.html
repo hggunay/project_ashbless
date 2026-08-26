@@ -1674,8 +1674,10 @@ try{
             </div>
           </div>
 
-          <!-- Üye Yönetimi — akordeon -->
-          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
+          <!-- Üye Yönetimi — akordeon. Görünürlüğü renderSettings'te ayarlanıyor:
+               yalnızca SAHIP ve YEDEK_YETKILI görür. Şifre sıfırlama istekleri
+               kutusu da bilerek bunun İÇİNDE, o da gizlensin diye. -->
+          <div class="detail-section" id="uyeYonetimiBolumu" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-members')">
               <div class="detail-section-title" style="margin:0">👥 Üye Yönetimi</div>
               <span class="acc-arrow" id="arr-set-members">▶</span>
@@ -2854,9 +2856,15 @@ function renderSettings(){
   const tamKutu=document.getElementById('tamYedekKutusu');
   if(tamKutu) tamKutu.style.display=(me===SAHIP)?'block':'none';
 
+  // Üye Yönetimi bölümü herkese görünüyordu; artık yalnızca yetkili olanlara.
+  const uyeBolum=document.getElementById('uyeYonetimiBolumu');
+  if(uyeBolum) uyeBolum.style.display=uyeYonetimiGorunur()?'':'none';
+
   const adminList=document.getElementById('adminMemberList');
   if(adminList){
-    const others=Object.keys(db.users).filter(u=>u!==me);
+    // Listede yalnızca şifresini sıfırlamaya yetkili olduğun üyeler çıkar —
+    // yedek yetkili için bu tek kişi demek (sahip).
+    const others=Object.keys(db.users).filter(u=>sifreSifirlayabilirMi(u));
     if(!others.length){adminList.innerHTML='<div style="font-size:.85rem;opacity:.5;font-style:italic">Başka üye yok.</div>';return;}
     adminList.innerHTML=others.map(u=>{
       const av=db.users[u].avatar||'📚';
@@ -2898,6 +2906,12 @@ function updateAdminBadge(){
 }
 
 async function adminResetFromForgot(u){
+  // Şifre sıfırlamanın İKİNCİ yolu (unuttum isteğinden). adminResetPassword'ü
+  // korumak tek başına yetmez, bu da aynı kapıya çıkıyor.
+  if(!sifreSifirlayabilirMi(u)){
+    mesajGoster('Bu üyenin şifresini sıfırlama yetkin yok.','uyari');
+    return;
+  }
   const input=document.getElementById('forgotpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
@@ -2909,6 +2923,12 @@ async function adminResetFromForgot(u){
 }
 
 async function adminResetPassword(u){
+  // Yetki kontrolü arayüzde DEĞİL burada da yapılıyor: düğmeyi gizlemek yetmez,
+  // işlevi konsoldan çağırmak mümkün.
+  if(!sifreSifirlayabilirMi(u)){
+    mesajGoster('Bu üyenin şifresini sıfırlama yetkin yok.','uyari');
+    return;
+  }
   const input=document.getElementById('newpw_'+u);
   const pw=input.value.trim();
   if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
@@ -2944,6 +2964,25 @@ const KISISEL_DUGUMLER=['users','books','badgeEvents','countryEvents','notificat
 // Firebase kurallarıyla gelecek (G9). Buradaki tek amaç, sıradan bir üyenin
 // "herkesin verisi" butonuna denk gelmemesi.
 const SAHIP='hggunay';
+
+// ── ŞİFRE SIFIRLAMA YETKİSİ (Gökşin'in kurgusu, 2026-08-26) ──────────
+// Eskiden Üye Yönetimi bölümü GİRİŞ YAPAN HERKESE görünüyordu ve herkes herkesin
+// şifresini sıfırlayabiliyordu — sahibinki dahil. Yani bir üye başkasının hesabına
+// girebilirdi. Bölümü tümden sahibe kapatmak da doğru değildi: Gökşin burayı
+// bilerek açık bırakmıştı, kendi şifresini unutursa diye.
+//   sahip          → herkesin şifresini sıfırlayabilir
+//   YEDEK_YETKILI  → YALNIZCA sahibin şifresini sıfırlayabilir (kurtarma yolu)
+//   diğer herkes   → bölümü hiç göremez
+// DİKKAT: SAHIP'te olduğu gibi bu da bir PERDE, kilit değil. Veritabanı açık
+// olduğu sürece (G9) kararlı biri uygulamayı hiç kullanmadan doğrudan yazabilir.
+const YEDEK_YETKILI='kitaptamircisi7';
+function uyeYonetimiGorunur(){ return me===SAHIP||me===YEDEK_YETKILI; }
+function sifreSifirlayabilirMi(hedef){
+  if(hedef===me) return false;              // kendi şifren için "Şifre Değiştir" var
+  if(me===SAHIP) return true;
+  if(me===YEDEK_YETKILI) return hedef===SAHIP;
+  return false;
+}
 
 function dosyaIndir(nesne,dosyaAdi){
   const blob=new Blob([JSON.stringify(nesne,null,2)],{type:'application/json'});
