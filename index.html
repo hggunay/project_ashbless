@@ -2759,7 +2759,14 @@ function renderSettings(){
   const nameEl=document.getElementById('settingName');
   const avatarEl=document.getElementById('settingAvatar');
   if(nameEl) nameEl.value=user.displayName||'';
-  if(avatarEl) avatarEl.value=(user.avatar||'').startsWith('data:')?'📚':user.avatar||'📚';
+  if(avatarEl){
+    // Fotoğrafı olan birinde bu kutuda gerçek avatar DEĞİL, bir yer tutucu durur:
+    // fotoğraf 5000+ karakterlik bir data URL, kutu ise 4 karakterlik. Kaydederken
+    // yer tutucuyu gerçek bir seçim sanıp fotoğrafın üstüne yazmayalım diye ne
+    // gösterdiğimizi işaretliyoruz; saveProfile buna bakıp "dokunulmuş mu" diyor.
+    avatarEl.value=(user.avatar||'').startsWith('data:')?'📚':user.avatar||'📚';
+    avatarEl.dataset.rendered=avatarEl.value;
+  }
   const emailEl=document.getElementById('settingEmail');
   if(emailEl) emailEl.value=user.email||'';
   const removeBtn=document.getElementById('removeAvatarBtn');
@@ -3146,13 +3153,31 @@ function togglePublicProfile(val){
 
 function saveProfile(){
   const name=document.getElementById('settingName').value.trim();
-  const avatar=document.getElementById('settingAvatar').value.trim();
+  const avatarEl=document.getElementById('settingAvatar');
+  const avatar=avatarEl.value.trim();
   const email=document.getElementById('settingEmail')?.value.trim()||'';
   if(!name){alert('Görünen isim boş olamaz.');return;}
   if(name) updateProfile('displayName',name);
-  if(avatar) updateProfile('avatar',avatar);
-  if(email!==undefined) updateProfile('email',email||null);
-  document.getElementById('settingsAvatar').textContent=avatar||db.users[me].avatar;
+  // Avatar YALNIZCA kullanıcı kutuyu gerçekten değiştirdiyse yazılır. Eskiden koşul
+  // sadece `if(avatar)` idi: fotoğrafı olan biri adını değiştirmek için kaydettiğinde
+  // kutudaki yer tutucu (📚) fotoğrafın üstüne yazılıyordu. 2026-08-26'da canlıda
+  // yaşandı — fotoğraf aa-avatars'ta sağlam kaldığı için veri kaybı olmadı.
+  if(avatar&&avatar!==(avatarEl.dataset.rendered||'')){
+    updateProfile('avatar',avatar);
+    // Asıl kopya aa-avatars'ta. Orayı da güncellemezsek uygulama bir sonraki
+    // açılışta fotoğrafı oradan geri yükleyip bu seçimi eziyor (bkz. loadDb).
+    fbSet('aa-avatars/'+me, avatar).catch(e=>{});
+    setAvatarEl(document.getElementById('settingsAvatar'),avatar);
+    const removeBtn=document.getElementById('removeAvatarBtn');
+    if(removeBtn) removeBtn.style.display='none';
+    avatarEl.dataset.rendered=avatar;
+  }
+  // updateProfile boş değeri yok sayıyor, null gelirse de value.trim() ile ÇÖKÜYOR.
+  // Eskiden burada `updateProfile('email',email||null)` vardı: e-posta kutusu boş olan
+  // herkeste (2026-08-26'da 6 üyenin 4'ü) profil kaydı bu satırda hata veriyor, ad ve
+  // avatar yazılmış olsa bile onay mesajı hiç çıkmıyordu. Temizlemeyi burada yapıyoruz.
+  if(email) updateProfile('email',email);
+  else if(db.users[me].email){ db.users[me].email=null; saveDb(); }
   document.getElementById('settingsDisplayName').textContent=name||db.users[me].displayName;
   alert('Profil güncellendi! ✅');
 }

@@ -65,6 +65,10 @@ function removeAvatarPhoto(){
   const emoji=document.getElementById('settingAvatar')?.value.trim()||'📚';
   db.users[me].avatar=emoji;
   saveDb();
+  // Fotoğrafın ASIL kopyası aa-avatars'ta. Orayı da değiştirmezsek uygulama bir
+  // sonraki açılışta fotoğrafı oradan geri yükler ve "kaldır" hiç olmamış gibi
+  // görünürdü — 2026-08-26'da bulundu.
+  fbSet('aa-avatars/'+me, emoji).catch(e=>{});
   setAvatarEl(document.getElementById('settingsAvatar'),emoji);
   setAvatarEl(document.getElementById('headerAvatar'),emoji);
   const removeBtn=document.getElementById('removeAvatarBtn');
@@ -106,6 +110,8 @@ function clearMapAvatar(){
   const emoji=document.getElementById('settingAvatar')?.value.trim()||'📚';
   db.users[me].avatar=emoji;
   saveDb();
+  // removeAvatarPhoto ile aynı sebep: asıl kopya aa-avatars'ta, orayı da temizle.
+  fbSet('aa-avatars/'+me, emoji).catch(e=>{});
   setAvatarEl(document.getElementById('settingsAvatar'),emoji);
   setAvatarEl(document.getElementById('headerAvatar'),emoji);
   renderMapAvatarGrid();
