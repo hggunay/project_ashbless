@@ -274,9 +274,30 @@ async function acceptCoreadingBook(sessionId, mode){
   await saveDb();
   renderSafe();
 }
+// Kitap seçiciyi kapatan TEK yol. Fon perdesini ve Escape dinleyicisini de
+// temizliyor — biri kalırsa ekranda görünmez bir katman asılı kalır.
+function birlikteOkumaSeciciKapat(){
+  document.getElementById('coreadingPicker')?.remove();
+  document.getElementById('coreadingPickerFon')?.remove();
+  document.removeEventListener('keydown',_seciciEscDinle);
+}
+function _seciciEscDinle(e){ if(e.key==='Escape') birlikteOkumaSeciciKapat(); }
+
 function showCoreadingBookPicker(sessionId){
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session) return;
+  // Panel kapatılamıyordu (2026-08-27, Gökşin buldu): "İptal" düğmesi kaydırılan
+  // alanın en dibinde, ~130 kitabın ALTINDA kalıyordu; dışarı tıklama ve Escape
+  // ise hiç yoktu. Oturum sonlandırılsa bile panel ekranda kalıyordu.
+  // Artık: fon perdesine tıklama, Escape, başlıktaki ✕ ve alttaki İptal —
+  // dördü de kapatıyor. Ayrıca yalnızca LİSTE kayıyor, düğmeler hep görünür.
+  birlikteOkumaSeciciKapat();   // açık kalmış bir kopya varsa temizle
+  const fon=document.createElement('div');
+  fon.id='coreadingPickerFon';
+  fon.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9998';
+  fon.onclick=birlikteOkumaSeciciKapat;
+  document.body.appendChild(fon);
+  document.addEventListener('keydown',_seciciEscDinle);
   const myBooks=(db.books[me]||[]).filter(b=>b.title&&b.readingStatus!=='wishlist');
   const options=myBooks.map(b=>`
     <div style="padding:.5rem .75rem;border:1px solid rgba(201,162,39,.2);border-radius:2px;margin-bottom:.4rem;cursor:pointer;font-family:'Crimson Pro',serif;font-size:.95rem;color:var(--ink)"
@@ -285,17 +306,22 @@ function showCoreadingBookPicker(sessionId){
     </div>`).join('');
   const panel=document.createElement('div');
   panel.id='coreadingPicker';
-  panel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--cream);border:1px solid var(--gold);border-radius:4px;padding:1.25rem;z-index:9999;max-height:70vh;overflow-y:auto;min-width:300px;max-width:90vw';
+  // overflow BİLEREK panelde değil, aşağıdaki liste kutusunda: eskiden panelin
+  // tamamı kayıyordu ve İptal düğmesi bütün kitapların altında kalıyordu.
+  panel.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--cream);border:1px solid var(--gold);border-radius:4px;padding:1.25rem;z-index:9999;max-height:80vh;display:flex;flex-direction:column;min-width:300px;max-width:90vw';
   panel.dataset.sessionId=sessionId;
   panel.innerHTML=`
-    <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold);margin-bottom:.75rem">Hangi kitabı bağlamak istersin?</div>
+    <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.75rem">
+      <div style="flex:1;font-family:'Playfair Display',serif;font-size:1rem;color:var(--gold)">Hangi kitabı bağlamak istersin?</div>
+      <button onclick="birlikteOkumaSeciciKapat()" title="Kapat" style="background:none;border:none;font-size:1.1rem;line-height:1;color:var(--rust);cursor:pointer;padding:.1rem .3rem">✕</button>
+    </div>
     <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-      <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="acceptCoreadingBook('${sessionId}','new');document.getElementById('coreadingPicker').remove()">📖 Yeni kitap olarak ekle</button>
+      <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="acceptCoreadingBook('${sessionId}','new');birlikteOkumaSeciciKapat()">📖 Yeni kitap olarak ekle</button>
     </div>
     <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-bottom:.5rem">— ya da listedeki bir kitabı bağla —</div>
     <input type="text" placeholder="Kitap ara..." oninput="filterCoreadingPicker(this.value)" style="width:100%;padding:.5rem .75rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--ink);font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem;box-sizing:border-box"/>
-    <div id="coreadingPickerList">${options||'<div style="color:#888;font-size:.85rem">Listende başka kitap yok.</div>'}</div>
-    <button class="btn btn-sm" style="margin-top:.75rem" onclick="document.getElementById('coreadingPicker').remove()">İptal</button>
+    <div id="coreadingPickerList" style="overflow-y:auto;flex:1;min-height:0">${options||'<div style="color:#888;font-size:.85rem">Listende başka kitap yok.</div>'}</div>
+    <button class="btn btn-sm" style="margin-top:.75rem;flex:0 0 auto" onclick="birlikteOkumaSeciciKapat()">İptal</button>
   `;
   document.body.appendChild(panel);
 }
@@ -309,7 +335,7 @@ async function linkCoreadingBook(sessionId, bookId){
     const n=db.notifications[me].find(n=>n.sessionId===sessionId&&n.type==='coreading_start');
     if(n){ n.responded=true; fbSet('aa-v4/notifications/'+me, db.notifications[me]); }
   }
-  document.getElementById('coreadingPicker')?.remove();
+  birlikteOkumaSeciciKapat();   // fon perdesi de kalksın
   await saveDb();
   notify('📖 Kitap bağlandı!', book.title+' birlikte okuma oturumuna bağlandı.');
   renderSafe();
