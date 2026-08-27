@@ -7376,12 +7376,22 @@ function renderStats(){
 }
 
 function renderBookList(){
-  // Kayıtlı sıralama tercihini geri yükle
+  // Kayıtlı sıralama tercihini geri yükle — HER çizimde, tek seferlik değil.
+  // Eskiden `_prefLoaded` bayrağıyla yalnızca sayfa açılışında okunuyordu:
+  // günlerdir açık duran bir sekme, başka bir cihazda/sekmede yapılan seçimi
+  // asla öğrenmiyor ve "En yeni"de takılı kalıyordu (Gökşin'in "ara sıra
+  // sıralama değişmiş buluyorum" gözlemi buydu).
+  // Kendi seçimini ezmesi mümkün DEĞİL: seçim kutusunun onchange'i önce
+  // hafızaya yazıyor, renderBookList ondan sonra çalışıyor.
   const sortEl=document.getElementById('bookSortSelect');
-  if(sortEl && !sortEl._prefLoaded){
-    const saved=localStorage.getItem('bookSortPref');
-    if(saved) sortEl.value=saved;
-    sortEl._prefLoaded=true;
+  if(sortEl){
+    try{
+      const saved=localStorage.getItem('bookSortPref');
+      // Tanınmayan bir değer atanırsa select boşalır ve liste sessizce
+      // "En yeni"ye düşer — o yüzden seçenek listesinde olduğunu doğruluyoruz.
+      if(saved && saved!==sortEl.value && [...sortEl.options].some(o=>o.value===saved))
+        sortEl.value=saved;
+    }catch(e){}
   }
   const allBooks=targetBooks();
   const isMe=!viewing;

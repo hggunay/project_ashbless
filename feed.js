@@ -185,7 +185,9 @@ function getFeedCards(){
 	  status: s.status||'pending',
       startedAt: s.startedAt||0,
 	  progress: JSON.parse(JSON.stringify(s.progress||{})),
-      history: JSON.parse(JSON.stringify(s.history||[])),
+      // G15: geçmiş artık dizi de nesne de olabilir — gecmisDizi() ikisini de
+      // zamana göre sıralı düz bir diziye çeviriyor (coreading.js).
+      history: gecmisDizi(s),
     });
   });
   return cards;
@@ -414,7 +416,7 @@ ${(()=>{
   const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
   if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte okuma tamamlandı!</div>';
   if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
-  if(isActive){const myBooks_=(db.books&&db.books[me])||[];const myBound=myBooks_.find(b=>b.coreadingSession===sid);const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';const finishedUsers=((db.readingSessions&&db.readingSessions[sid]&&db.readingSessions[sid].history)||[]).filter(h=>h.type==='user_finished').map(h=>h.userName||h.user);const finishedLine=finishedUsers.length?'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.3rem">📖 '+finishedUsers.join(', ')+' kitabı bitirdi</div>':'';return '<div style="margin-top:.5rem">'+finishedLine+'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.4rem">📖 Okuma devam ediyor</div><div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div></div>';}
+  if(isActive){const myBooks_=(db.books&&db.books[me])||[];const myBound=myBooks_.find(b=>b.coreadingSession===sid);const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';const finishedUsers=gecmisDizi(db.readingSessions&&db.readingSessions[sid]).filter(h=>h.type==='user_finished').map(h=>h.userName||h.user);const finishedLine=finishedUsers.length?'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.3rem">📖 '+finishedUsers.join(', ')+' kitabı bitirdi</div>':'';return '<div style="margin-top:.5rem">'+finishedLine+'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.4rem">📖 Okuma devam ediyor</div><div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div></div>';}
   return '';
 })()}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}

@@ -1,4 +1,50 @@
 // ── BİRLİKTE OKUMA ───────────────────────────────────────────
+
+// ── G15: OTURUM GEÇMİŞİ ARTIK KOMPLE YAZILMIYOR (2026-08-27) ─────────────────
+// Eskiden her geçmiş kaydı şöyle ekleniyordu:
+//     session.history.push(kayit);
+//     fbSet('aa-v4/readingSessions/<id>/history', session.history);
+// Yani DİZİNİN TAMAMI bellekteki kopyadan geri yazılıyordu. İki kişi aynı sıralarda
+// bir şey yaparsa (biri katılır, öteki milestone geçer) ikinci yazma, birincinin
+// satırını hiç görmediği için siliyordu. 2026-08-22'de 102 kitabı yok eden
+// "bayat kopya üste yazıyor" hatasının oturum sürümü — K7'nin kapanmamış kardeşi.
+//
+// Çözüm: her satır KENDİ ANAHTARINA yazılıyor. Bir yazma yalnızca kendi satırına
+// dokunabiliyor; başkasının satırını silmesi artık mümkün değil.
+// "Sunucudan çek → değiştir → geri yaz" bilerek SEÇİLMEDİ: çekmeyle yazma
+// arasındaki boşlukta eklenen satır yine silinirdi (bkz. birlikteOkumaBaginiTemizle).
+function gecmisAnahtari(kayit){
+  // Zamana göre sıralanabilir olmalı ve Firebase'in yasakladığı karakterleri
+  // (. # $ / [ ]) içermemeli.
+  const kisi=String(kayit.user||'-').replace(/[.#$/\[\]]/g,'_');
+  return 'h'+String(kayit.ts||Date.now())+'_'+kisi;
+}
+// Geçmiş iki biçimde gelebilir: eski oturumlarda DİZİ, yeni eklemelerde NESNE —
+// eski bir oturuma yeni satır eklendiğinde ikisi bir arada da olabilir. Geçmişi
+// OKUYAN her yer bu fonksiyondan geçmeli; her zaman zamana göre sıralı düz bir
+// dizi döndürür. (Karışık biçimde anahtarları sıralamak yetmez: "10" metin olarak
+// "2"den önce gelir — o yüzden sıralama ts'ye göre.)
+function gecmisDizi(oturum){
+  const h=oturum&&oturum.history;
+  if(!h) return [];
+  const arr=Array.isArray(h)?h.slice():Object.keys(h).map(k=>h[k]);
+  return arr.filter(Boolean).sort((a,b)=>(a.ts||0)-(b.ts||0));
+}
+// Geçmişe TEK SATIR ekler — hem sunucuya hem yerel kopyaya.
+async function gecmiseEkle(sessionId, kayit){
+  if(!kayit.ts) kayit.ts=Date.now();
+  const anahtar=gecmisAnahtari(kayit);
+  const ok=await fbSet('aa-v4/readingSessions/'+sessionId+'/history/'+anahtar, kayit);
+  // Yerel kopya da güncellensin ki ekran hemen doğru görünsün.
+  const s=db.readingSessions&&db.readingSessions[sessionId];
+  if(s){
+    if(!s.history) s.history={};
+    if(Array.isArray(s.history)) s.history.push(kayit);
+    else s.history[anahtar]=kayit;
+  }
+  return ok;
+}
+
 async function startCoreadingSession(titleRaw, author){
   if(!me){ mesajGoster('Giriş yapman gerekiyor.','uyari'); return; }
   const sessions=Object.values(db.readingSessions||{});
@@ -22,7 +68,8 @@ async function startCoreadingSession(titleRaw, author){
     participants: {},
   };
   session.participants[me]={status:'accepted', joinedAt: Date.now()};
-  session.history=[{type:'started',user:me,ts:Date.now()}];
+  const baslangic={type:'started',user:me,ts:session.createdAt};
+  session.history={[gecmisAnahtari(baslangic)]:baslangic};
   try{
     if(!db.readingSessions) db.readingSessions={};
     db.readingSessions[sessionId]=session;
@@ -56,10 +103,8 @@ async function respondCoreading(sessionId, response){
   if(!db.readingSessions[sessionId]) db.readingSessions[sessionId]=session;
   if(!db.readingSessions[sessionId].participants) db.readingSessions[sessionId].participants={};
   db.readingSessions[sessionId].participants[me]={status:response, joinedAt:Date.now()};
-  // history ekle
-  if(!db.readingSessions[sessionId].history) db.readingSessions[sessionId].history=[];
-  db.readingSessions[sessionId].history.push({type:response==='accepted'?'joined':'rejected',user:me,ts:Date.now()});
-  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', db.readingSessions[sessionId].history);
+  // history ekle (G15: tek satır — dizinin tamamı değil)
+  await gecmiseEkle(sessionId,{type:response==='accepted'?'joined':'rejected',user:me,ts:Date.now()});
   if(response==='accepted'){
     notify('👥 Katıldın!', session.bookTitle+' için birlikte okuma oturumuna katıldın.');
     if(session.status==='active') showCoreadingBookPicker(sessionId);
@@ -109,7 +154,10 @@ async function cancelCoreading(sessionId){
   if(!db.readingSessions||!db.readingSessions[sessionId]) return;
   if(db.readingSessions[sessionId].initiator!==me) return;
   db.readingSessions[sessionId].status='cancelled';
-  await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
+  // G15: eskiden burada oturumun TAMAMI bellekten yazılıyordu. Oturum nesnesinin
+  // içinde herkesin ilerlemesi ve geçmişi var — bayat bir sekme iptale bastığında
+  // diğerlerinin kaydını geri alıyordu. Artık yalnızca değişen alan yazılıyor.
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/status','cancelled');
   // NOT: kaydı yerelden SİLMİYORUZ artık — 'cancelled' durumuyla kalsın. Eskiden burada
   // `delete db.readingSessions[sessionId]` yapılıyordu; sonraki herhangi bir saveDb() tüm
   // veritabanını bellekten yazdığı için (K3) oturum Firebase'den de tümüyle siliniyordu,
@@ -156,11 +204,14 @@ async function startCoreadingRead(sessionId){
   const accepted=Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
   if(!accepted.length){ notify('⚠️ Uyarı','Henüz kimse katılmadı.'); return; }
   // Oturumu active yap
+  // G15: eskiden oturumun TAMAMI bellekten yazılıyordu — Algernon oturumunun
+  // açıklanamayan durumunda baş şüpheli buydu. Artık yalnızca değişen alanlar.
+  const simdi=Date.now();
   db.readingSessions[sessionId].status='active';
-  db.readingSessions[sessionId].startedAt=Date.now();
-  if(!db.readingSessions[sessionId].history) db.readingSessions[sessionId].history=[];
-  db.readingSessions[sessionId].history.push({type:'reading_started',user:me,ts:Date.now()});
-  await fbSet('aa-v4/readingSessions/'+sessionId, db.readingSessions[sessionId]);
+  db.readingSessions[sessionId].startedAt=simdi;
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/status','active');
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/startedAt',simdi);
+  await gecmiseEkle(sessionId,{type:'reading_started',user:me,ts:simdi});
   // Her katılımcıya bildirim gönder
   const others=accepted.filter(u=>u!==me);
   for(const u of others){
@@ -328,11 +379,9 @@ async function doEndCoreading(sessionId){
   if(!session) return;
   session.status='ended';
   session.endedAt=Date.now();
-  if(!session.history) session.history=[];
-  session.history.push({type:'ended',user:me,ts:Date.now()});
   await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
   await fbSet('aa-v4/readingSessions/'+sessionId+'/endedAt',session.endedAt);
-  await fbSet('aa-v4/readingSessions/'+sessionId+'/history',session.history);
+  await gecmiseEkle(sessionId,{type:'ended',user:me,ts:session.endedAt});
   notify('⏹ Oturum sonlandırıldı', session.bookTitle+' birlikte okuma oturumu kapatıldı.');
   renderSafe();
 }
@@ -377,11 +426,9 @@ async function leaveCoreading(sessionId){
     if(allDone){
       updatedSession.status='completed';
       updatedSession.completedAt=Date.now();
-      if(!updatedSession.history) updatedSession.history=[];
-      updatedSession.history.push({type:'completed',ts:Date.now()});
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
       await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',updatedSession.completedAt);
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/history',updatedSession.history);
+      await gecmiseEkle(sessionId,{type:'completed',ts:updatedSession.completedAt});
       const allAccepted=Object.keys(updatedSession.participants||{}).filter(u=>updatedSession.participants[u].status==='accepted');
       for(const u of allAccepted){
         await pushNotification(u, {id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:updatedSession.bookTitle,fromName:(db.users[me]||{}).displayName||me,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:updatedSession.bookTitle});
@@ -462,11 +509,9 @@ async function checkCoreadingMilestone(book){
   session.progress[me].lastMilestone=lastMilestone;
   session.progress[me].pct=pct;
   session.progress[me].updatedAt=Date.now();
-  if(!session.history) session.history=[];
-  session.history.push({type:'milestone',user:me,ts:Date.now(),pct:pct,msg:milestoneMsg});
   session.lastActivityAt=Date.now();
   await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
-  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', session.history);
+  await gecmiseEkle(sessionId,{type:'milestone',user:me,ts:session.lastActivityAt,pct:pct,msg:milestoneMsg});
   await fbSet('aa-v4/readingSessions/'+sessionId+'/lastActivityAt', session.lastActivityAt);
   // Tüm katılımcılara bildirim gönder — %100'de ayrıca özel bir "bitirdi" bildirimi
   // gönderileceği için (aşağıda), burada tekrar göndermeyip çift bildirimi önlüyoruz.
@@ -510,14 +555,11 @@ async function checkCoreadingMilestone(book){
     }catch(e){}
     // Zaten completed ise tekrar tetiklenme
     if(freshSession.status==='completed'){ renderSafe(); return; }
-	// Kişi kitabı bitirdi — history'e yaz
+	// Kişi kitabı bitirdi — geçmişe TEK SATIR ekle (G15)
 const finishEntry = {type:'user_finished', user:me, userName:myName, ts:Date.now()};
-if(!freshSession.history) freshSession.history=[];
-const alreadyFinished = freshSession.history.some(h=>h.type==='user_finished'&&h.user===me);
+const alreadyFinished = gecmisDizi(freshSession).some(h=>h.type==='user_finished'&&h.user===me);
 if(!alreadyFinished){
-  freshSession.history.push(finishEntry);
-  await fbSet('aa-v4/readingSessions/'+sessionId+'/history', freshSession.history);
-  if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].history=freshSession.history;
+  await gecmiseEkle(sessionId, finishEntry);
 }
 // Diğer katılımcılara bildirim gönder
 if(!alreadyFinished){
@@ -544,11 +586,9 @@ if(!alreadyFinished){
     if(allDone){
       freshSession.status='completed';
       freshSession.completedAt=Date.now();
-      if(!freshSession.history) freshSession.history=[];
-      freshSession.history.push({type:'completed',ts:Date.now()});
       await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
       await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',freshSession.completedAt);
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/history',freshSession.history);
+      await gecmiseEkle(sessionId,{type:'completed',ts:freshSession.completedAt});
       // Local kopyayı güncelle — renderSafe doğru göstersin
       if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].status='completed';
       const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
