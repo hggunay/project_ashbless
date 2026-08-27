@@ -7594,13 +7594,42 @@ function renderBookList(){
       :'<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
   } else {
     const useGrouping=sortMode==='series';
-    // Gruplama aktifken sayfalama yapmıyoruz — aksi halde bir seri sayfa sınırında
-    // ikiye bölünüp yanlış "X kitap" sayısı gösterebiliyordu. Tüm eşleşen kitaplar
-    // birlikte gruplanıp gösteriliyor.
-    const totalVisible=useGrouping?filteredBooks.length:booksPage*PAGE_SIZE;
-    const visible=useGrouping?filteredBooks:filteredBooks.slice(0,totalVisible);
-    const hasMore=useGrouping?false:filteredBooks.length>totalVisible;
     const showRetroSplit=sortMode==='date_desc'||sortMode==='date_asc';
+
+    // Gruplama açıkken sayfalama KİTAP sayısına değil SERİ SINIRINA göre yapılıyor.
+    // Eskiden iki uç arasında gidip gelmiştik: önce kitap sayısına göre kesiliyordu
+    // (bir seri ortadan ikiye bölünüp iki ayrı parça hâlinde çiziliyor, "X kitap"
+    // sayısı yanlış görünüyordu), sonra sayfalama tümden kapatıldı (126 kitap
+    // birden, liste çok uzun). Doğrusu ikisinin ortası: sayfa dolana kadar seriler
+    // BÜTÜN hâlde ekleniyor, bir seri asla bölünmüyor. Seriye ait olmayan tekil
+    // kitaplar bölünebilir — bölünecek bir bütünlükleri yok.
+    const GRUP_SAYFA=25;
+    let visible, hasMore, kalanSayi;
+    if(useGrouping){
+      const sinir=booksPage*GRUP_SAYFA;
+      const seriler=new Map(), tekiller=[];
+      filteredBooks.forEach(b=>{
+        if(b.series){
+          const k=normalizeSeries(b.series);
+          if(!seriler.has(k)) seriler.set(k,[]);
+          seriler.get(k).push(b);
+        } else tekiller.push(b);
+      });
+      visible=[];
+      for(const grup of seriler.values()){
+        // Sınırı aşmışsak dur — ama ilk seri her hâlükârda girsin, yoksa 25'ten
+        // uzun tek bir seride liste bomboş kalırdı.
+        if(visible.length>=sinir&&visible.length>0) break;
+        visible.push(...grup);
+      }
+      visible=visible.concat(tekiller.slice(0,Math.max(0,sinir-visible.length)));
+      kalanSayi=filteredBooks.length-visible.length;
+      hasMore=kalanSayi>0;
+    } else {
+      visible=filteredBooks.slice(0,booksPage*PAGE_SIZE);
+      kalanSayi=filteredBooks.length-visible.length;
+      hasMore=kalanSayi>0;
+    }
 
     let html='';
 
@@ -7662,7 +7691,7 @@ function renderBookList(){
       html+=visible.map((b,i)=>bookItemHtml(b,i)).join('');
     }
 
-    if(hasMore) html+=`<button class="load-more-btn" onclick="booksPage++;renderBookList()">↓ Daha fazla yükle (${filteredBooks.length-totalVisible} kaldı)</button>`;
+    if(hasMore) html+=`<button class="load-more-btn" onclick="booksPage++;renderBookList()">↓ Daha fazla yükle (${kalanSayi} kaldı)</button>`;
     list.innerHTML=html;
   }
 
