@@ -6370,12 +6370,22 @@ async function pushReactionNotif(toUser,fromUser,reaction,context){
   });
 }
 
+// Aynı bildirimi aynı sayfa oturumunda iki kez duyurmamak için tutulan liste.
+// BİLEREK db'nin DIŞINDA: Firebase'e yazılmamalı ve "görüldü" ile
+// karıştırılmamalı. "Duyuruldu" = baloncuk çıktı; "görüldü" = kullanıcı zile baktı.
+const _duyurulanBildirimler=new Set();
+function _bildirimKimligi(n){ return String(n.id||((n.type||'')+'_'+n.ts)); }
+
 function checkNotifications(){
   if(!db.notifications||!db.notifications[me]) return;
   const unseen=db.notifications[me].filter(n=>!n.seen);
   updateNotifDot();
   if(!unseen.length) return;
-  const n=unseen[unseen.length-1];
+  // Kırmızı nokta TÜM okunmamışları sayar; baloncuk yalnızca henüz
+  // duyurulmamışlar için çıkar — yoksa sekmeye her dönüşte aynı şey çalardı.
+  const duyurulacak=unseen.filter(x=>!_duyurulanBildirimler.has(_bildirimKimligi(x)));
+  if(!duyurulacak.length) return;
+  const n=duyurulacak[duyurulacak.length-1];
   const extra=unseen.length>1?` (+${unseen.length-1} daha)`:'';
   // Bildirim tipine göre farklı metin
   let notifTitle, notifBody;
@@ -6396,9 +6406,14 @@ function checkNotifications(){
     notifTitle=`${n.reaction} Reaksiyon`;
     notifBody=`${n.fromName} — "${n.context}"${extra}`;
   }
-  n.seen=true;
-  saveDb();
+  // "Görüldü" işareti BURADA BASILMIYOR (2026-08-27). Eskiden duyuru anında
+  // seen=true yazılıyordu: baloncuk 4,5 saniyede kayboluyor, kırmızı nokta da
+  // hiç çıkmadığı için geriye bildirimin geldiğine dair HİÇBİR iz kalmıyordu.
+  // Artık "görüldü" yalnızca zil paneli açılınca yazılıyor (renderNotifPanel);
+  // nokta, kullanıcı bakana kadar duruyor.
+  duyurulacak.forEach(x=>_duyurulanBildirimler.add(_bildirimKimligi(x)));
   notify(notifTitle, notifBody);
+  updateNotifDot();
   // Sağ üst zil sesi
   try{
     const ctx=_getNmAudioCtx();
@@ -8130,6 +8145,12 @@ async function init(){
         await loadDb(true);
         if(JSON.stringify(db.books||{})!==oldBooks) render();
         else renderBanners();
+        // Taze veriyle birlikte YENİ BİLDİRİM de gelmiş olabilir. Eskiden bu
+        // çağrı yoktu: checkNotifications yalnızca girişten 1,2 sn sonra bir kez
+        // çalışıyordu, dolayısıyla uygulama açıkken gelen bildirim sessizce
+        // duruyordu — ne zil sesi, ne kırmızı nokta. Panel açılınca görünüyordu,
+        // ama kullanıcının bakmak için bir sebebi olmuyordu.
+        checkNotifications();
       }catch(e){}
     }
   });
