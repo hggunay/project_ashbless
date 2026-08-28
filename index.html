@@ -1713,6 +1713,14 @@ try{
                 </div>
                 <div id="importStatus" style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.85rem;color:var(--moss);margin-top:.5rem;min-height:1.2rem"></div>
 
+                <!-- G13: uygulanamayan değişikliklerin kopyaları. Yalnızca böyle
+                     bir kopya varsa görünür; renderReddedilenler() ayarlıyor. -->
+                <div id="reddedilenKutusu" style="display:none;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
+                  <div style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.5rem">⏳ Uygulanamayan Değişiklikler</div>
+                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Başka bir cihazın araya girmesi yüzünden kaydedilemeyen değişikliklerin kopyaları burada durur. <b>Hiçbiri kendiliğinden geri yüklenmez</b> — ne isteyeceğine sen karar verirsin. İşin bittiğinde silebilirsin.</div>
+                  <div id="reddedilenListe"></div>
+                </div>
+
                 <!-- Tam veritabanı yedeği — yalnızca uygulama sahibine görünür.
                      Görünürlüğü renderSettings() içinde SAHIP sabitine göre ayarlanıyor. -->
                 <div id="tamYedekKutusu" style="display:none;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
@@ -2216,6 +2224,83 @@ async function loadDb(fbOnly){
 // ilerlemesi gibi bu alanlara hiç dokunmayan bir kayıt bile ortak zaman damgasını
 // güncelleyip iki kullanıcıyı birbirine karşı sahte "çakışma"ya düşürüyordu.
 let _lastOtherFieldsSnapshot=null;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// G13/G10: REDDEDİLEN DEĞİŞİKLİK YEDEKLERİ
+// Bir kayıt çakışma (kırmızı şerit) veya bayatlık (sarı şerit) yüzünden
+// uygulanmadığında, kaybolan yerel değişikliğin bir kopyasını localStorage'a
+// bırakıyoruz. Bu üç ayrı yerde yapılıyordu ama:
+//   • hiçbir yerde OKUNMUYORDU — yedeğe ulaşmanın uygulama içinde bir yolu yoktu,
+//     buna rağmen kırmızı şerit "kaybolmaması için yedeklendi" diye söz veriyordu,
+//   • hiçbir zaman SİLİNMİYORDU — her reddedilen kayıt yeni bir anahtar açıyordu.
+// 2026-08-28'de canlıda ölçüldü: 3 anahtar, ~1 MB, kotanın %26'sı. Kota dolunca
+// try/catch sessizce yutuyor; o noktadan sonra yalnızca bu yedekler değil,
+// her kayıtta yazılan aa-v4 yerel yedeği de yazılamaz hale geliyor.
+// Çözüm: tek yazma noktası + tür başına son SAKLANAN_YEDEK tanesi + Ayarlar'da
+// görüntüleyici. Geri yükleme BİLEREK otomatik değil ve BİLEREK tek tek:
+// reddedilen bir listeyi toptan geri yazmak, 2026-08-22'de 102 kitabı silen
+// hareketin ta kendisi.
+const SAKLANAN_YEDEK=3;
+const RED_ONEK='aa-red-';
+function reddedileniYedekle(tur, veri){
+  try{
+    const bas=RED_ONEK+tur+'-';
+    // Anahtar damgadan üretiliyor; aynı milisaniyede iki reddediliş olursa
+    // ikincisi birincinin ÜSTÜNE yazardı — sessizce kopya kaybı, yani bu işin
+    // düzeltmeye çalıştığı hatanın küçük bir kopyası. Boş bir damga bulunuyor.
+    let ts=Date.now();
+    while(localStorage.getItem(bas+ts)!==null) ts++;
+    localStorage.setItem(bas+ts, JSON.stringify({v:1, tur, ts, kisi:me, veri}));
+    // Bu türden fazlalıkları at — en eskiden başlayarak. Anahtar sonundaki
+    // damgaya SAYI olarak bakılıyor: metin sıralamasında "1000" < "999" olurdu.
+    const ayni=Object.keys(localStorage).filter(k=>k.startsWith(bas))
+      .sort((a,b)=>(Number(a.slice(bas.length))||0)-(Number(b.slice(bas.length))||0));
+    while(ayni.length>SAKLANAN_YEDEK) localStorage.removeItem(ayni.shift());
+  }catch(e){ /* kota dolu olabilir — yedek alamamak kaydın kendisini engellemez */ }
+}
+// Hem yeni (aa-red-*) hem de eski biçimdeki anahtarları okur. Eskiler bilerek
+// budanmıyor: içlerinde ne olduğunu görmeden silmek doğru değil, silme kararı
+// kullanıcının — Ayarlar'daki listede tek tek silinebiliyorlar.
+const RED_ESKI_ONEKLER={'aa-v4-kitap-reddedilen-':'kitap','aa-raf-reddedilen-':'raf','aa-v4-reddedilen-':'diger'};
+function reddedilenleriOku(){
+  const liste=[];
+  let anahtarlar=[];
+  try{ anahtarlar=Object.keys(localStorage); }catch(e){ return liste; }
+  anahtarlar.forEach(k=>{
+    let ham; try{ ham=localStorage.getItem(k); }catch(e){ return; }
+    if(!ham) return;
+    if(k.startsWith(RED_ONEK)){
+      try{
+        const kayit=JSON.parse(ham);
+        liste.push({anahtar:k, tur:kayit.tur, ts:kayit.ts||0, kisi:kayit.kisi||null, veri:kayit.veri, boyut:ham.length, eski:false});
+      }catch(e){}
+      return;
+    }
+    for(const onek in RED_ESKI_ONEKLER){
+      if(k.startsWith(onek)){
+        // Eski biçimde değer düz JSON, tür anahtarın önekinden anlaşılıyor.
+        // 'aa-v4-reddedilen-' ile 'aa-v4-kitap-reddedilen-' birbirinin öneki
+        // değil, o yüzden bu eşleşmede belirsizlik yok.
+        let veri=null; try{ veri=JSON.parse(ham); }catch(e){}
+        liste.push({anahtar:k, tur:RED_ESKI_ONEKLER[onek], ts:Number(k.slice(onek.length))||0, kisi:null, veri, boyut:ham.length, eski:true});
+        return;
+      }
+    }
+  });
+  return liste.sort((a,b)=>b.ts-a.ts);
+}
+// Yedekteki kitaplardan şu anki listende OLMAYANLAR. Eşleştirme önce id ile,
+// sonra başlık+yazar ile: aynı kitap yeni bir id'yle tekrar eklenmiş olabilir,
+// o zaman "eksik" saymak yanlış olurdu.
+function reddedilenKitapFarki(yedekListesi){
+  const simdiki=(db.books[me]||[]).filter(Boolean);
+  const idler=new Set(simdiki.map(b=>String(b.id)).filter(x=>x&&x!=='undefined'&&x!=='null'));
+  const ad=b=>((b.title||'')+'|'+(b.author||'')).toLowerCase().trim();
+  const adlar=new Set(simdiki.map(ad));
+  const kaynak=Array.isArray(yedekListesi)?yedekListesi:Object.values(yedekListesi||{});
+  return kaynak.filter(b=>b&&b.title&&!(b.id!=null&&idler.has(String(b.id)))&&!adlar.has(ad(b)));
+}
+
 async function _saveDbNow(){
   let ok=false, nerede='', bayat='';
   // K3: kitaplar, aşağıdaki "diğer alanlar" (users/badges/streaks/settings vb.) çakışma
@@ -2236,7 +2321,7 @@ async function _saveDbNow(){
       if(remoteBooksTs>(_booksTsSeen[me]||0)){
         // Bu hesabın kitaplarını başka bir cihaz bizden sonra yazmış. Bizim
         // belleğimizdeki liste bayat — üzerine yazarsak orada kaydedilenler silinir.
-        try{localStorage.setItem('aa-v4-kitap-reddedilen-'+Date.now(),booksSnapshot);}catch(e){}
+        reddedileniYedekle('kitap', myList);
         const taze=await fbGet('aa-v4/books/'+me);
         db.books[me]=Array.isArray(taze)?taze:[];
         _booksTsSeen[me]=remoteBooksTs;
@@ -2288,10 +2373,12 @@ async function _saveDbNow(){
           console.warn('🔎 Çakışma teşhisi:',{remoteTs,localTs,changedSincePrevSave,diffVsRemote});
         }catch(e){}
         console.warn('⚠️ Uzak veri daha yeni, yerel kayıt iptal edildi.');
-        // Reddedilen yerel değişikliği kaybetmemek için yedekle
-        try{
-          localStorage.setItem('aa-v4-reddedilen-'+Date.now(), JSON.stringify(db));
-        }catch(e){}
+        // Reddedilen yerel değişikliği kaybetmemek için yedekle.
+        // G13: eskiden BÜTÜN db yedekleniyordu (~1 MB) — halbuki reddedilen şey
+        // yalnızca "diğer alanlar". Kitaplar ve raf zaten kendi granüler yollarına
+        // yazıldığı için buradaki reddedilişten etkilenmiyorlar, onları da
+        // kopyalamak hem yanıltıcıydı hem kotayı tek başına dolduruyordu.
+        reddedileniYedekle('diger', restFields);
         // K3: books ve readingSessions kendi ayrı/granüler yoluna zaten yazıldığı için
         // uzak veriden ALINMIYOR
         const keepBooks=db.books, keepSessions=db.readingSessions;
@@ -2306,7 +2393,9 @@ async function _saveDbNow(){
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
-        if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Kaybolmaması için tarayıcı hafızasına yedeklendi.');
+        // G13: eskiden "tarayıcı hafızasına yedeklendi" diyordu — doğruydu ama
+        // o yedeğe bakmanın hiçbir yolu yoktu. Artık var, adresi söyleniyor.
+        if(ok) showSaveError('çakışma — profil/rozet gibi diğer verilerin başka bir cihazdaki daha yeni veriyle çakıştı, geri alındı (kitapların ayrı kaydedildiği için etkilenmedi). Bir kopyası saklandı: <b>Ayarlar → Veri Yedekleme → Uygulanamayan Değişiklikler</b>.');
         else showSaveError(nerede);
         // K7: bu erken çıkış, yukarıda kitap tarafında bayatlık yakalanmışsa onun
         // uyarısını yutuyordu — iki uyarı birden görünsün.
@@ -2329,7 +2418,7 @@ async function _saveDbNow(){
       if(shelfSnapshot!==_lastShelfSnapshot){
         const remoteShelfTs=(await fbGet('aa-shelf-ts/'+me))||0;
         if(remoteShelfTs>(_shelfTsSeen[me]||0)){
-          try{localStorage.setItem('aa-raf-reddedilen-'+Date.now(),shelfSnapshot);}catch(e){}
+          reddedileniYedekle('raf', myShelfData);
           const tazeRaf=await fbGet('aa-shelf/'+me);
           if(!db.shelf) db.shelf={};
           db.shelf[me]=tazeRaf||{shelves:{},books:[]};
@@ -2406,7 +2495,7 @@ function showBayatUyari(ne){
     el.onclick=()=>el.remove();
     document.body.appendChild(el);
   }
-  el.innerHTML='⏳ BU SEKME BAYATLAMIŞ ('+ne+') — başka bir cihazında daha yeni kayıt var. Buradaki değişiklik <b>uygulanmadı</b>, ekran sunucudaki güncel haliyle yenilendi. Değişikliği hâlâ istiyorsan şimdi tekrar yap.<br><span style="opacity:.65">(kapatmak için tıkla)</span>';
+  el.innerHTML='⏳ BU SEKME BAYATLAMIŞ ('+ne+') — başka bir cihazında daha yeni kayıt var. Buradaki değişiklik <b>uygulanmadı</b>, ekran sunucudaki güncel haliyle yenilendi. Değişikliği hâlâ istiyorsan şimdi tekrar yap.<br>Uygulanmayan hâlin bir kopyası saklandı: <b>Ayarlar → Veri Yedekleme → Uygulanamayan Değişiklikler</b>.<br><span style="opacity:.65">(kapatmak için tıkla)</span>';
 }
 function hideBayatUyari(){
   const el=document.getElementById('_bayatUyari');
@@ -2852,6 +2941,9 @@ function renderSettings(){
       reqBox.style.display='none';
     }
   }
+  // G13: uygulanamayan değişikliklerin kopyaları (varsa)
+  renderReddedilenler();
+
   // Tam veritabanı yedeği yalnızca sahibe görünür (perde, kilit değil — bkz. SAHIP)
   const tamKutu=document.getElementById('tamYedekKutusu');
   if(tamKutu) tamKutu.style.display=(me===SAHIP)?'block':'none';
@@ -2982,6 +3074,76 @@ function sifreSifirlayabilirMi(hedef){
   if(me===SAHIP) return true;
   if(me===YEDEK_YETKILI) return hedef===SAHIP;
   return false;
+}
+
+// ── G13: uygulanamayan değişikliklerin görüntüleyicisi ──────────────────────
+// Bu bölüm bilerek "göster + tek tek geri ekle" olarak tasarlandı, "hepsini
+// geri yükle" düğmesi YOK: reddedilen bir listeyi toptan geri yazmak,
+// 2026-08-22'de 102 kitabı silen hareketin ta kendisi.
+const RED_TUR_ADI={kitap:'Kitap listesi', raf:'Raf', diger:'Profil / rozet / seri bilgileri'};
+function renderReddedilenler(){
+  const kutu=document.getElementById('reddedilenKutusu');
+  const liste=document.getElementById('reddedilenListe');
+  if(!kutu||!liste) return;
+  const kayitlar=reddedilenleriOku();
+  if(!kayitlar.length){ kutu.style.display='none'; liste.innerHTML=''; return; }
+  kutu.style.display='block';
+  liste.innerHTML=kayitlar.map(k=>{
+    const tarih=k.ts?new Date(k.ts).toLocaleString('tr-TR'):'tarihi bilinmiyor';
+    const kb=Math.max(1,Math.round(k.boyut/1024));
+    let ayrinti='';
+    if(k.tur==='kitap'){
+      const eksik=reddedilenKitapFarki(k.veri);
+      if(!eksik.length){
+        ayrinti='<div style="font-size:.8rem;color:var(--moss);font-style:italic">✓ Bu kopyadaki kitapların hepsi listende zaten var — kaybolan bir şey yok, silebilirsin.</div>';
+      }else{
+        ayrinti='<div style="font-size:.8rem;color:var(--rust);margin-bottom:.4rem">Bu kopyada olup listende <b>olmayan '+eksik.length+' kitap</b>:</div>'+
+          eksik.map((b,i)=>'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">'+
+            '<span style="font-family:\'Crimson Pro\',serif;font-size:.9rem;flex:1;min-width:140px">'+escapeHtml(b.title)+
+              (b.author?' <span style="opacity:.55">— '+escapeHtml(b.author)+'</span>':'')+'</span>'+
+            '<button class="btn btn-sm btn-primary" onclick="reddedilenKitabiGeriEkle(\''+k.anahtar+'\','+i+')">↩ Geri ekle</button>'+
+          '</div>').join('');
+      }
+    }else{
+      ayrinti='<div style="font-size:.8rem;opacity:.6;font-style:italic">Bu tür bir kopya tek tek geri eklenemiyor. İçinde ne olduğunu görmek istersen indir.</div>';
+    }
+    return '<div style="border:1px solid rgba(201,162,39,.2);border-radius:4px;padding:.6rem .75rem;margin-bottom:.6rem">'+
+      '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.45rem">'+
+        '<span style="font-family:\'Space Mono\',monospace;font-size:.65rem;letter-spacing:.05em;text-transform:uppercase;color:var(--rust)">'+(RED_TUR_ADI[k.tur]||k.tur)+'</span>'+
+        '<span style="font-size:.75rem;opacity:.55;flex:1;min-width:120px">'+tarih+' · '+kb+' KB'+(k.eski?' · eski biçim':'')+'</span>'+
+        '<button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--ink);border:1px solid rgba(201,162,39,.3)" onclick="reddedileniIndir(\''+k.anahtar+'\')">📥 İndir</button>'+
+        '<button class="btn btn-sm" style="background:rgba(160,82,45,.12);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="reddedileniSil(\''+k.anahtar+'\',this)">🗑️ Sil</button>'+
+      '</div>'+ayrinti+'</div>';
+  }).join('');
+}
+async function reddedilenKitabiGeriEkle(anahtar, sira){
+  const kayit=reddedilenleriOku().find(k=>k.anahtar===anahtar);
+  if(!kayit){ mesajGoster('Bu kopya artık yok.','uyari'); renderReddedilenler(); return; }
+  // Fark her tıklamada YENİDEN hesaplanıyor: bir kitabı geri ekledikten sonra
+  // listedeki sıralar kayıyor, ekrandaki eski sıra numarasına güvenilemez.
+  const kitap=reddedilenKitapFarki(kayit.veri)[sira];
+  if(!kitap){ mesajGoster('Bu kitap listende zaten var.','uyari'); renderReddedilenler(); return; }
+  // Yeni bir id veriliyor: yedekteki id, aradan geçen zamanda başka bir kayda
+  // verilmiş olabilir.
+  if(!Array.isArray(db.books[me])) db.books[me]=[];
+  db.books[me].push({...kitap, id:Date.now()});
+  await saveDb();
+  renderSafe();
+  renderReddedilenler();
+  mesajGoster('“'+(kitap.title||'Kitap')+'” listene geri eklendi.');
+}
+function reddedileniIndir(anahtar){
+  let ham=null; try{ ham=localStorage.getItem(anahtar); }catch(e){}
+  if(!ham){ mesajGoster('Bu kopya artık yok.','uyari'); renderReddedilenler(); return; }
+  let icerik; try{ icerik=JSON.parse(ham); }catch(e){ icerik={anahtar, ham}; }
+  dosyaIndir(icerik, 'armchair-uygulanamayan-'+anahtar+'.json');
+}
+function reddedileniSil(anahtar, btn){
+  showInlineConfirm(btn, 'Bu kopya silinsin mi?', ()=>{
+    try{ localStorage.removeItem(anahtar); }catch(e){}
+    renderReddedilenler();
+    mesajGoster('Kopya silindi.');
+  });
 }
 
 function dosyaIndir(nesne,dosyaAdi){
