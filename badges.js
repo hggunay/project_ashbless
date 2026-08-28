@@ -292,7 +292,7 @@ const BADGE_CATS = [
   // ── 7. KADİM METİNLER ─────────────────────────────────────────
   {label:'📿 Kadim Metinler', chains:[
     {id:'semavi_kitaplar', label:'✨ Semavi Kitaplar', badges:[
-      {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',     desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerimi oku ("kutsal" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
+      {id:'semavi',tier:'gold',  icon:'✨', name:'Dört Kitap Bilgesi',     desc:'Tevrat, Zebur, İncil ve Kuran-ı Kerimi oku ("kutsal" türünde etiketle). Geçmişte okuduklarım da sayılır.', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal')).length,4)},
     ]},
     {id:'dunya_dinleri', label:'🌿 Dünya Dinleri Metinleri', badges:[
       {id:'kadim1',tier:'bronze',icon:'🌿', name:'Kadim Yolcu',           desc:'Dünya dinlerine ait 2 kutsal metin oku ("kutsal meta" türünde etiketle).', check:b=>cap(b.filter(x=>(x.genres||[]).includes('kutsal meta')).length,2)},
@@ -502,11 +502,22 @@ const REGIONS={
 // refactorunda bu ikisini karıştırmayın.
 const SERIES_BADGE_IDS = new Set(['ser1','ser2','ser3','ser4','univ1','univ2','univ3','badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish','secret_anubis','secret_ashbless','secret_creator']);
 
+// ZAMANDAN BAĞIMSIZ ROZETLER — retroaktif ("geçmişte okudum") kitapları SAYAR.
+// SERIES_BADGE_IDS'ten bilerek ayrı bir set: oradaki liste yukarıdaki seri
+// sözleşmesine bağlı ve o sözleşmeyle birlikte okunmalı; buradaki gerekçe ise
+// bambaşka. Ölçüt "seri mi" değil, "kitabın NE ZAMAN okunduğu rozetin anlamına
+// giriyor mu". Kutsal metinler için girmiyor: onları yıllar önce okumuş olmak
+// okumamış saymaz, rozet için tekrar okutmak anlamsız olurdu (Gökşin, 2026-08-28).
+// Hem semavi kitaplar hem dünya dinleri metinleri (kadim1-3) aynı gerekçeyle burada.
+const ZAMANDAN_BAGIMSIZ_ROZETLER = new Set(['semavi','kadim1','kadim2','kadim3']);
+function retroaktifSayilirMi(badgeId){
+  return SERIES_BADGE_IDS.has(badgeId)||ZAMANDAN_BAGIMSIZ_ROZETLER.has(badgeId);
+}
 function isRetroactive(b){
   return b.retroactive===true;
 }
 function bstat(badge,books,ctx){
-  const filteredBooks = SERIES_BADGE_IDS.has(badge.id)
+  const filteredBooks = retroaktifSayilirMi(badge.id)
     ? books
     : books.filter(b=>!isRetroactive(b));
   const{cur,max}=badge.check(filteredBooks,ctx||badgeCtxFor(viewing||me));
@@ -526,7 +537,7 @@ function badgeCtxFor(user){
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
 function booksForBadge(badge,books){
-  const filtered=SERIES_BADGE_IDS.has(badge.id)?books:books.filter(b=>!isRetroactive(b));
+  const filtered=retroaktifSayilirMi(badge.id)?books:books.filter(b=>!isRetroactive(b));
   const id=badge.id;
   // Okuma Miktarı
   if(['b5','b10','b25','b50','b100','b250'].includes(id)) return filtered;

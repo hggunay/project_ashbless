@@ -919,6 +919,9 @@ try{
         <span id="viewingText"></span>
         <button class="btn btn-danger btn-sm" onclick="stopViewing()">← Kendi profilime dön</button>
       </div>
+      <!-- Ortak okunan kitaplar — yalnızca başkasının profiline bakarken.
+           İçeriğini renderOrtakKitaplar() dolduruyor. -->
+      <div id="ortakKitaplarKutusu" style="display:none"></div>
       <div class="stats-row" id="statsRow"></div>
       <div class="add-section" id="addBookSection">
         <button class="btn btn-primary" id="addBookToggleBtn" onclick="toggleAddBookSection()">+ Kitap Ekle</button>
@@ -7571,6 +7574,90 @@ async function confirmDeleteProfile(){
   setTimeout(()=>{btn.textContent='❌ Profilimi Kalıcı Olarak Sil';btn.dataset.confirming='';btn.style.background='';if(desc)desc.textContent=originalDesc;},8000);
 }
 
+// ── ORTAK OKUNAN KİTAPLAR ───────────────────────────────────────────────────
+// Başkasının profiline bakarken "ikimizin de okuduğu kitaplar" listesi.
+// EŞLEŞTİRME SIRASI bilerek iki katmanlı:
+//   1. Eser numarası (workId) — varsa kesin sonuç ve farklı adla basılmış aynı
+//      kitabı bile yakalar (Çıplak Güneş / Güneşin Tanrıları). Şu an HİÇBİR
+//      kayıtta yok; "Kitap Normalizasyonu" planının 1. adımı bu alanı doldurunca
+//      (gelecek-planlar.md) bu liste kendiliğinden isabetli hale gelir. Kod bugün
+//      yazıldı ki o gün geldiğinde buraya dönmek gerekmesin.
+//   2. Başlık + yazar metni — bugünkü tek çare. Aynı eserin farklı adlı baskısını
+//      KAÇIRIR; bu bilinen ve kabul edilmiş sınır, hata değil.
+function ortakKitapAnahtari(b){
+  if(b.workId) return 'w:'+b.workId;
+  const n=s=>(s||'').toLowerCase()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+    .replace(/[^a-z0-9]/g,'');
+  const t=n(b.title);
+  if(!t) return null;
+  return 't:'+t+'|'+n(b.author);
+}
+// Okunmuş sayılan kitaplar — istek listesi (tsundoku) hariç, "geçmişte okudum"
+// DAHİL: "ortak okuduk" sorusu kitabın ne zaman okunduğuna bakmaz.
+function ortakIcinOkunanlar(kisi){
+  return (db.books[kisi]||[]).filter(b=>
+    b && b.title && !b.title.startsWith('ISBN:') && b.readingStatus!=='wishlist' &&
+    (b.readingStatus==='new'||b.readingStatus==='past'||b.retroactive||b.endDate||b.yearOnly));
+}
+function ortakKitaplariBul(kisi){
+  const benimki=new Map();
+  ortakIcinOkunanlar(me).forEach(b=>{ const k=ortakKitapAnahtari(b); if(k&&!benimki.has(k)) benimki.set(k,b); });
+  const sonuc=[];
+  const gorulen=new Set();
+  ortakIcinOkunanlar(kisi).forEach(b=>{
+    const k=ortakKitapAnahtari(b);
+    if(!k||gorulen.has(k)||!benimki.has(k)) return;
+    gorulen.add(k);
+    sonuc.push({benim:benimki.get(k), onun:b});
+  });
+  return sonuc.sort((a,b)=>(a.benim.title||'').localeCompare(b.benim.title||'','tr'));
+}
+function _ortakYildiz(p){
+  if(!p) return '<span style="opacity:.4">—</span>';
+  return '<span style="color:var(--gold)">'+'★'.repeat(Math.floor(p))+(p%1?'½':'')+'</span>';
+}
+function renderOrtakKitaplar(){
+  const kutu=document.getElementById('ortakKitaplarKutusu');
+  if(!kutu) return;
+  if(!viewing){ kutu.style.display='none'; kutu.innerHTML=''; return; }
+  const ortak=ortakKitaplariBul(viewing);
+  if(!ortak.length){ kutu.style.display='none'; kutu.innerHTML=''; return; }
+  kutu.style.display='';
+  const onunAdi=db.users[viewing]?.displayName||viewing;
+  const benimAdim=db.users[me]?.displayName||me;
+  const acik=sessionStorage.getItem('ortakKitapAcik')==='1';
+  kutu.innerHTML=
+    '<div style="border:1px solid rgba(201,162,39,.25);border-radius:4px;margin:0 0 .9rem;overflow:hidden">'+
+      '<div onclick="ortakKitaplariAcKapa()" style="display:flex;align-items:center;gap:.5rem;padding:.55rem .8rem;cursor:pointer;background:rgba(201,162,39,.07)">'+
+        '<span style="font-family:\'Space Mono\',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--rust);flex:1">📚 Ortak okuduklarınız ('+ortak.length+')</span>'+
+        '<span id="ortakKitapOk" style="font-size:.7rem;color:var(--rust)">'+(acik?'▼':'▶')+'</span>'+
+      '</div>'+
+      '<div id="ortakKitapGovde" style="display:'+(acik?'block':'none')+';padding:.6rem .8rem">'+
+        ortak.map(o=>
+          '<div style="display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.28rem 0;border-bottom:1px solid rgba(201,162,39,.1)">'+
+            '<span style="font-family:\'Crimson Pro\',serif;font-size:.92rem;flex:1;min-width:150px">'+escapeHtml(o.benim.title)+
+              (o.benim.author?' <span style="opacity:.55">— '+escapeHtml(o.benim.author)+'</span>':'')+'</span>'+
+            '<span style="font-size:.72rem;font-family:\'Space Mono\',monospace;opacity:.8;white-space:nowrap">'+
+              escapeHtml(benimAdim)+' '+_ortakYildiz(o.benim.rating)+
+              ' <span style="opacity:.35">·</span> '+
+              escapeHtml(onunAdi)+' '+_ortakYildiz(o.onun.rating)+
+            '</span>'+
+          '</div>').join('')+
+      '</div>'+
+    '</div>';
+}
+function ortakKitaplariAcKapa(){
+  const govde=document.getElementById('ortakKitapGovde');
+  const ok=document.getElementById('ortakKitapOk');
+  if(!govde) return;
+  const acilsin=govde.style.display==='none';
+  govde.style.display=acilsin?'block':'none';
+  if(ok) ok.textContent=acilsin?'▼':'▶';
+  try{ sessionStorage.setItem('ortakKitapAcik',acilsin?'1':'0'); }catch(e){}
+}
+
 function renderBanners(){
   const isV=!!viewing,name=viewing?(db.users[viewing]?.displayName||viewing):'',av=viewing?(db.users[viewing]?.avatar||'📚'):'';
   const avDisplay=av.startsWith('avatar_')||av.startsWith('data:')?'👤':av;
@@ -7580,6 +7667,7 @@ function renderBanners(){
     if(isV){ const t=document.getElementById(textId); if(t) t.textContent=`${avDisplay} ${name} adlı üyenin profilini görüntülüyorsunuz`; }
   });
   document.getElementById('addBookSection').style.display=isV?'none':'';
+  renderOrtakKitaplar();
   // Header'da kimin profiline bakıldığını göster
   const headerAvatar=document.getElementById('headerAvatar');
   const headerUsername=document.getElementById('headerUsername');
