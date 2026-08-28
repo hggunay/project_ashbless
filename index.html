@@ -7614,9 +7614,12 @@ function ortakKitaplariBul(kisi){
   });
   return sonuc.sort((a,b)=>(a.benim.title||'').localeCompare(b.benim.title||'','tr'));
 }
+// Renkler .viewing-banner ile aynı aileden: sayfa zemini KOYU, o yüzden yazılar
+// açık (parchment/gold) olmak zorunda. İlk sürümde var(--rust) ve renksiz span
+// kullanmıştım — ikisi de koyu, koyu zeminde okunmuyordu.
 function _ortakYildiz(p){
-  if(!p) return '<span style="opacity:.4">—</span>';
-  return '<span style="color:var(--gold)">'+'★'.repeat(Math.floor(p))+(p%1?'½':'')+'</span>';
+  if(!p) return '<span style="color:var(--parchment-dark);opacity:.35">—</span>';
+  return '<span style="color:var(--gold-light)">'+'★'.repeat(Math.floor(p))+(p%1?'½':'')+'</span>';
 }
 function renderOrtakKitaplar(){
   const kutu=document.getElementById('ortakKitaplarKutusu');
@@ -7629,19 +7632,19 @@ function renderOrtakKitaplar(){
   const benimAdim=db.users[me]?.displayName||me;
   const acik=sessionStorage.getItem('ortakKitapAcik')==='1';
   kutu.innerHTML=
-    '<div style="border:1px solid rgba(201,162,39,.25);border-radius:4px;margin:0 0 .9rem;overflow:hidden">'+
-      '<div onclick="ortakKitaplariAcKapa()" style="display:flex;align-items:center;gap:.5rem;padding:.55rem .8rem;cursor:pointer;background:rgba(201,162,39,.07)">'+
-        '<span style="font-family:\'Space Mono\',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--rust);flex:1">📚 Ortak okuduklarınız ('+ortak.length+')</span>'+
-        '<span id="ortakKitapOk" style="font-size:.7rem;color:var(--rust)">'+(acik?'▼':'▶')+'</span>'+
+    '<div style="background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.3);border-radius:2px;margin:0 0 1rem;overflow:hidden">'+
+      '<div onclick="ortakKitaplariAcKapa()" style="display:flex;align-items:center;gap:.5rem;padding:.55rem 1rem;cursor:pointer;background:rgba(201,162,39,.1)">'+
+        '<span style="font-family:\'Space Mono\',monospace;font-size:.68rem;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);flex:1">📚 Ortak okuduklarınız ('+ortak.length+')</span>'+
+        '<span id="ortakKitapOk" style="font-size:.7rem;color:var(--gold)">'+(acik?'▼':'▶')+'</span>'+
       '</div>'+
-      '<div id="ortakKitapGovde" style="display:'+(acik?'block':'none')+';padding:.6rem .8rem">'+
+      '<div id="ortakKitapGovde" style="display:'+(acik?'block':'none')+';padding:.5rem 1rem .7rem">'+
         ortak.map(o=>
-          '<div style="display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.28rem 0;border-bottom:1px solid rgba(201,162,39,.1)">'+
-            '<span style="font-family:\'Crimson Pro\',serif;font-size:.92rem;flex:1;min-width:150px">'+escapeHtml(o.benim.title)+
-              (o.benim.author?' <span style="opacity:.55">— '+escapeHtml(o.benim.author)+'</span>':'')+'</span>'+
-            '<span style="font-size:.72rem;font-family:\'Space Mono\',monospace;opacity:.8;white-space:nowrap">'+
+          '<div style="display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.32rem 0;border-bottom:1px solid rgba(201,162,39,.12)">'+
+            '<span style="font-family:\'Crimson Pro\',serif;font-size:.92rem;color:var(--parchment);flex:1;min-width:150px">'+escapeHtml(o.benim.title)+
+              (o.benim.author?' <span style="color:var(--parchment-dark);opacity:.6">— '+escapeHtml(o.benim.author)+'</span>':'')+'</span>'+
+            '<span style="font-size:.72rem;font-family:\'Space Mono\',monospace;color:var(--parchment-dark);opacity:.85;white-space:nowrap">'+
               escapeHtml(benimAdim)+' '+_ortakYildiz(o.benim.rating)+
-              ' <span style="opacity:.35">·</span> '+
+              ' <span style="opacity:.4">·</span> '+
               escapeHtml(onunAdi)+' '+_ortakYildiz(o.onun.rating)+
             '</span>'+
           '</div>').join('')+
