@@ -1717,7 +1717,8 @@ try{
                      bir kopya varsa görünür; renderReddedilenler() ayarlıyor. -->
                 <div id="reddedilenKutusu" style="display:none;margin-top:1rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
                   <div style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.5rem">⏳ Uygulanamayan Değişiklikler</div>
-                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Başka bir cihazın araya girmesi yüzünden kaydedilemeyen değişikliklerin kopyaları burada durur. <b>Hiçbiri kendiliğinden geri yüklenmez</b> — ne isteyeceğine sen karar verirsin. İşin bittiğinde silebilirsin.</div>
+                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.5rem">Başka bir cihazın araya girmesi yüzünden kaydedilemeyen değişikliklerin kopyaları burada durur. <b>Hiçbiri kendiliğinden geri yüklenmez</b> — her kopyanın içinde ne olduğu ve sende olmayan bir şey içerip içermediği aşağıda yazıyor.</div>
+                  <div style="font-size:.75rem;opacity:.55;font-style:italic;margin-bottom:.75rem">💡 “Kaybolan bir şey yok” yazan kopyaları silmek güvenlidir. <b>İndir</b> düğmesi geri yükleme için değil: dosya ham veridir, içe aktarılmaz — yalnızca bir sorunu incelemek gerekirse işe yarar.</div>
                   <div id="reddedilenListe"></div>
                 </div>
 
@@ -3081,6 +3082,43 @@ function sifreSifirlayabilirMi(hedef){
 // geri yükle" düğmesi YOK: reddedilen bir listeyi toptan geri yazmak,
 // 2026-08-22'de 102 kitabı silen hareketin ta kendisi.
 const RED_TUR_ADI={kitap:'Kitap listesi', raf:'Raf', diger:'Profil / rozet / seri bilgileri'};
+// Bir kopyanın içinde NE OLDUĞUNU düz Türkçe anlatır ve asıl sorusunu cevaplar:
+// "bunda kaybolmuş bir şey var mı?". Bu olmadan kullanıcının tek seçeneği dosyayı
+// indirip ham JSON okumaktı — yani pratikte hiçbir seçeneği yoktu.
+// Eski biçimdeki 'diger' kopyaları TÜM veritabanını içeriyor (kitaplar ve raf
+// dahil), o yüzden onlarda da kitap/raf farkı hesaplanabiliyor.
+function reddedilenOzet(kayit){
+  const v=kayit.veri;
+  const s={icerik:[], eksikKitaplar:[], eksikRaflar:[], okunamadi:false};
+  if(!v||typeof v!=='object'){ s.okunamadi=true; return s; }
+  const kitapKaynak=(kayit.tur==='kitap')?v:(v.books?v.books[me]:null);
+  if(kitapKaynak){
+    const dizi=(Array.isArray(kitapKaynak)?kitapKaynak:Object.values(kitapKaynak||{})).filter(Boolean);
+    s.icerik.push(dizi.length+' kitaplık bir liste');
+    s.eksikKitaplar=reddedilenKitapFarki(kitapKaynak);
+  }
+  const rafKaynak=(kayit.tur==='raf')?v:(v.shelf?v.shelf[me]:null);
+  if(rafKaynak&&typeof rafKaynak==='object'){
+    const adlar=Object.values(rafKaynak.shelves||{}).map(r=>r&&r.name).filter(Boolean);
+    if(adlar.length) s.icerik.push(adlar.length+' raf');
+    const simdiki=new Set(Object.values(((db.shelf||{})[me]||{}).shelves||{}).map(r=>r&&r.name).filter(Boolean));
+    s.eksikRaflar=adlar.filter(a=>!simdiki.has(a));
+  }
+  if(v.users&&typeof v.users==='object'){
+    const n=Object.keys(v.users).length;
+    s.icerik.push(n>1?(n+' üyenin profil bilgisi'):'profil bilgin');
+  }
+  if(v.stories) s.icerik.push('okuma listesi');
+  if(v.countryEvents) s.icerik.push('harita kayıtları');
+  if(v.seriesEvents||v.seriesData) s.icerik.push('seri kayıtları');
+  if(v.archivedNotes) s.icerik.push('arşivlenmiş notlar');
+  if(!s.icerik.length) s.icerik.push('tanınmayan içerik');
+  return s;
+}
+function reddedilenTemizMi(kayit){
+  const s=reddedilenOzet(kayit);
+  return !s.okunamadi && !s.eksikKitaplar.length && !s.eksikRaflar.length;
+}
 function renderReddedilenler(){
   const kutu=document.getElementById('reddedilenKutusu');
   const liste=document.getElementById('reddedilenListe');
@@ -3088,24 +3126,34 @@ function renderReddedilenler(){
   const kayitlar=reddedilenleriOku();
   if(!kayitlar.length){ kutu.style.display='none'; liste.innerHTML=''; return; }
   kutu.style.display='block';
-  liste.innerHTML=kayitlar.map(k=>{
+  const temizler=kayitlar.filter(reddedilenTemizMi);
+  const toplu=temizler.length>1
+    ? '<div style="margin-bottom:.75rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.35)" onclick="reddedilenTemizleriSil(this)">✓ İçinde kayıp olmayan '+temizler.length+' kopyayı sil</button></div>'
+    : '';
+  liste.innerHTML=toplu+kayitlar.map(k=>{
     const tarih=k.ts?new Date(k.ts).toLocaleString('tr-TR'):'tarihi bilinmiyor';
     const kb=Math.max(1,Math.round(k.boyut/1024));
-    let ayrinti='';
-    if(k.tur==='kitap'){
-      const eksik=reddedilenKitapFarki(k.veri);
-      if(!eksik.length){
-        ayrinti='<div style="font-size:.8rem;color:var(--moss);font-style:italic">✓ Bu kopyadaki kitapların hepsi listende zaten var — kaybolan bir şey yok, silebilirsin.</div>';
-      }else{
-        ayrinti='<div style="font-size:.8rem;color:var(--rust);margin-bottom:.4rem">Bu kopyada olup listende <b>olmayan '+eksik.length+' kitap</b>:</div>'+
-          eksik.map((b,i)=>'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">'+
+    const o=reddedilenOzet(k);
+    let ayrinti='<div style="font-size:.8rem;opacity:.7;margin-bottom:.35rem">İçinde: '+escapeHtml(o.icerik.join(', '))+'.</div>';
+    if(o.okunamadi){
+      ayrinti+='<div style="font-size:.8rem;color:var(--rust);font-style:italic">Bu kopya okunamadı — bozulmuş olabilir, silebilirsin.</div>';
+    }else if(!o.eksikKitaplar.length&&!o.eksikRaflar.length){
+      ayrinti+='<div style="font-size:.8rem;color:var(--moss);font-style:italic">✓ Bu kopyada olup şu an sende olmayan bir şey yok — kaybolan bir şey yok, rahatça silebilirsin.</div>';
+    }else{
+      if(o.eksikKitaplar.length){
+        ayrinti+='<div style="font-size:.8rem;color:var(--rust);margin:.4rem 0 .3rem">Bu kopyada olup kitap listende <b>olmayan '+o.eksikKitaplar.length+' kitap</b>:</div>'+
+          o.eksikKitaplar.map((b,i)=>'<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem;flex-wrap:wrap">'+
             '<span style="font-family:\'Crimson Pro\',serif;font-size:.9rem;flex:1;min-width:140px">'+escapeHtml(b.title)+
               (b.author?' <span style="opacity:.55">— '+escapeHtml(b.author)+'</span>':'')+'</span>'+
             '<button class="btn btn-sm btn-primary" onclick="reddedilenKitabiGeriEkle(\''+k.anahtar+'\','+i+')">↩ Geri ekle</button>'+
           '</div>').join('');
       }
-    }else{
-      ayrinti='<div style="font-size:.8rem;opacity:.6;font-style:italic">Bu tür bir kopya tek tek geri eklenemiyor. İçinde ne olduğunu görmek istersen indir.</div>';
+      if(o.eksikRaflar.length){
+        // Raflar tek tıkla geri eklenmiyor: bir rafı geri getirmek içindeki kitap
+        // bağlarını da gerektiriyor, onu elle yapmak daha güvenli.
+        ayrinti+='<div style="font-size:.8rem;color:var(--rust);margin:.4rem 0 .2rem">Bu kopyada olup şu an sende <b>olmayan raflar</b>: '+
+          escapeHtml(o.eksikRaflar.join(', '))+' <span style="opacity:.6">— rafı Raflar sekmesinden yeniden oluşturman gerekir.</span></div>';
+      }
     }
     return '<div style="border:1px solid rgba(201,162,39,.2);border-radius:4px;padding:.6rem .75rem;margin-bottom:.6rem">'+
       '<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.45rem">'+
@@ -3115,6 +3163,15 @@ function renderReddedilenler(){
         '<button class="btn btn-sm" style="background:rgba(160,82,45,.12);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="reddedileniSil(\''+k.anahtar+'\',this)">🗑️ Sil</button>'+
       '</div>'+ayrinti+'</div>';
   }).join('');
+}
+function reddedilenTemizleriSil(btn){
+  const temizler=reddedilenleriOku().filter(reddedilenTemizMi);
+  if(!temizler.length){ renderReddedilenler(); return; }
+  showInlineConfirm(btn, temizler.length+' kopya silinsin mi?', ()=>{
+    temizler.forEach(k=>{ try{ localStorage.removeItem(k.anahtar); }catch(e){} });
+    renderReddedilenler();
+    mesajGoster(temizler.length+' kopya silindi — hiçbirinde kaybolan bir şey yoktu.');
+  });
 }
 async function reddedilenKitabiGeriEkle(anahtar, sira){
   const kayit=reddedilenleriOku().find(k=>k.anahtar===anahtar);
