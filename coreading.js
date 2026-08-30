@@ -103,6 +103,49 @@ async function okuyanOlarakIsaretle(sessionId, okuyor){
   if(s&&s.participants&&s.participants[me]) s.participants[me].reading=!!okuyor;
 }
 
+// ── 90 GÜN SAATİ (2026-08-30, Gökşin'in tasarımı) ────────────────────────────
+// Başlamış bir oturum da sonsuza kadar açık kalmamalı. Saat iki şekilde başlar:
+//   • oturumda BİRİ kitabı bitirdiği an (asıl kural — "artık seni bekliyoruz"),
+//   • kimse bitirmezse okumanın başladığı andan itibaren (Gökşin'in 1. seçeneği:
+//     "hiç kimse bitirmezse de aynı akış çalışsın").
+// Her iki durumda da 90 gün, aynı uyarı basamaklarıyla.
+//
+//   30. gün → "kitap hâlâ bitmedi" + [Devam ediyorum] [Ayrılmak istiyorum]
+//   60. gün → aynısı
+//   75. gün → "son 2 hafta" (hatırlatma, düğmesiz)
+//   90. gün → "kitabınız hâlâ bitmedi, oturumdan ayrıldınız" + ÇIKARILIR
+//
+// Çıkarılan kişinin OKUMASINA karışılmıyor (Gökşin: "ona biz karışmayız"):
+// kitabındaki 👥 bağı kalkar, sayfa ilerlemesi ve durumu aynı kalır — ister
+// devam eder, ister yarım bırakır, ister siler.
+const SAAT_BASAMAKLARI=[
+  {gun:30, tur:'coreading_slow',     dugmeli:true },
+  {gun:60, tur:'coreading_slow',     dugmeli:true },
+  {gun:75, tur:'coreading_lastcall', dugmeli:false},
+  {gun:90, tur:'coreading_removed',  dugmeli:false},
+];
+const OTURUM_SURESI_MS=90*24*60*60*1000;
+
+// Saatin başladığı an. Öncelik ilk bitirende; yoksa okumanın başlangıcı.
+function oturumSaatBaslangici(oturum){
+  if(!oturum) return 0;
+  const bitisler=gecmisDizi(oturum).filter(h=>h.type==='user_finished').map(h=>h.ts||0).filter(Boolean);
+  if(bitisler.length) return Math.min(...bitisler);
+  return oturum.startedAt||oturum.createdAt||0;
+}
+function oturumGecenGun(oturum, simdi){
+  const bas=oturumSaatBaslangici(oturum);
+  if(!bas) return 0;
+  return Math.floor(((simdi||Date.now())-bas)/86400000);
+}
+function oturumKalanGun(oturum, simdi){
+  return Math.max(0, 90-oturumGecenGun(oturum, simdi));
+}
+// Hâlâ beklenenler: okuyan ama bitirmemiş olanlar.
+function oturumBeklenenler(oturum){
+  return oturumOkuyanlari(oturum).filter(u=>!oturumdaBitirdiMi(oturum,u));
+}
+
 // ── SÜRESİ DOLAN DAVETLER (2026-08-29) ───────────────────────────────────────
 // Gökşin'in kararı: 7 gün içinde BAŞLAMAMIŞ bir davet tamamen SİLİNİR.
 // "Görünmez ama arkada duruyor" seçeneği bilerek reddedildi — kendi ifadesiyle:
@@ -193,6 +236,160 @@ async function davetKapandiBildir(oturum){
       ts, seen:false, reaction:'⌛', context:kitap,
     });
   }
+}
+
+// ── 90 GÜN SAATİNİ İŞLET ─────────────────────────────────────────────────────
+// Davet süresiyle aynı sorun burada da var: sunucu yok, işi uygulamayı açan
+// istemci yapıyor ve iki kişi aynı anda açarsa aynı hatırlatma iki kez gider.
+// Çözüm yine ETag'li koşullu yazma, ama bu sefer silme değil bir DAMGA üzerinde:
+// `saatDamgasi` alanına "kaçıncı basamağa kadar işlendi" yazılıyor. Damgayı
+// yazabilen tek istemci o basamağın bildirimlerini gönderir; ötekinin isteği
+// 412 ile döner ve çekilir.
+// Damga oturumun İÇİNDE, tek alanda (`saatAsamasi`) — G9b kurallarının tanıdığı
+// bir yol, yeni üst düğüm icat edilmiyor.
+async function saatAsamasiniKap(sid, yeniAsama){
+  let etag=null, mevcut=null;
+  try{
+    const g=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'/saatAsamasi.json',{headers:{'X-Firebase-ETag':'true'}});
+    if(!g.ok) return false;
+    etag=g.headers.get('ETag');
+    mevcut=await g.json();
+  }catch(e){ return false; }
+  if(!etag) return false;                       // koşullu yazamıyorsak hiç yazma
+  if((mevcut||0)>=yeniAsama) return false;      // başkası çoktan işlemiş
+  try{
+    const p=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'/saatAsamasi.json',{
+      method:'PUT', headers:{'Content-Type':'application/json','if-match':etag},
+      body:JSON.stringify(yeniAsama)
+    });
+    if(!p.ok) return false;                     // 412 → başkası önce davrandı
+  }catch(e){ return false; }
+  const s=db.readingSessions&&db.readingSessions[sid];
+  if(s) s.saatAsamasi=yeniAsama;
+  return true;
+}
+
+// Bir kişiyi oturumdan çıkarır. Kitabındaki bağ kalkar; OKUMASINA dokunulmaz.
+async function oturumdanCikar(sid, kisi){
+  await fbSet('aa-v4/readingSessions/'+sid+'/participants/'+kisi,{status:'removed', removedAt:Date.now()});
+  const s=db.readingSessions&&db.readingSessions[sid];
+  if(s){ if(!s.participants) s.participants={}; s.participants[kisi]={status:'removed', removedAt:Date.now()}; }
+  if(kisi===me){
+    (db.books[me]||[]).forEach(b=>{ if(b.coreadingSession===sid) delete b.coreadingSession; });
+    await saveDb();
+  }else{
+    await birlikteOkumaBaginiTemizle(kisi, sid);
+  }
+  await gecmiseEkle(sid,{type:'removed',user:kisi,userName:(db.users[kisi]||{}).displayName||kisi,ts:Date.now()});
+}
+
+async function oturumSaatiniIslet(){
+  if(!me||!db.readingSessions) return 0;
+  const simdi=Date.now();
+  const idler=Object.keys(db.readingSessions)
+    .filter(sid=>(db.readingSessions[sid]||{}).status==='active');
+  let islenen=0;
+  for(const sid of idler){
+    let oturum;
+    try{ oturum=await fbGet('aa-v4/readingSessions/'+sid); }catch(e){ continue; }
+    if(!oturum||oturum.status!=='active') continue;
+    const gun=oturumGecenGun(oturum, simdi);
+    // Hangi basamakları geçtik? En yükseğini işliyoruz — uygulama uzun süre
+    // açılmadıysa aradaki basamaklar toplu geçilmiş olabilir, üst üste dört
+    // bildirim göndermenin anlamı yok.
+    const gecilen=SAAT_BASAMAKLARI.filter(b=>gun>=b.gun);
+    if(!gecilen.length) continue;
+    const basamak=gecilen[gecilen.length-1];
+    const asamaNo=SAAT_BASAMAKLARI.indexOf(basamak)+1;
+    if((oturum.saatAsamasi||0)>=asamaNo) continue;
+    const beklenenler=oturumBeklenenler(oturum);
+    if(!beklenenler.length){
+      // Kimse beklenmiyorsa bu oturum zaten tamamlanmalıydı; saati boşuna
+      // ilerletmiyoruz, tamamlanma kontrolüne bırakıyoruz.
+      await oturumTamamlanmaKontrolu(sid, oturum);
+      continue;
+    }
+    if(!await saatAsamasiniKap(sid, asamaNo)) continue;   // yarışı başkası kazandı
+    islenen++;
+    if(basamak.tur!=='coreading_removed'){
+      for(const u of beklenenler){
+        await pushNotification(u,{
+          id:'crs_'+sid+'_'+u+'_'+basamak.gun,
+          type:basamak.tur,
+          sessionId:sid, bookTitle:oturum.bookTitle,
+          kalanGun:Math.max(0,90-basamak.gun),
+          ts:new Date().toISOString(), seen:false, reaction:'⏳', context:oturum.bookTitle,
+        });
+      }
+    }else{
+      // 90. gün — hâlâ bitirmemiş olanlar çıkarılıyor.
+      for(const u of beklenenler){
+        await oturumdanCikar(sid,u);
+        await pushNotification(u,{
+          id:'crr_out_'+sid+'_'+u,
+          type:'coreading_removed',
+          sessionId:sid, bookTitle:oturum.bookTitle,
+          ts:new Date().toISOString(), seen:false, reaction:'⌛', context:oturum.bookTitle,
+        });
+      }
+      // Çıkarma sonrası oturumu yeniden oku ve kapanışa karar ver.
+      let sonrasi;
+      try{ sonrasi=await fbGet('aa-v4/readingSessions/'+sid); }catch(e){ sonrasi=null; }
+      if(sonrasi) await oturumKapanisKarari(sid, sonrasi);
+    }
+  }
+  if(islenen){ updateNotifDot(); renderSafe(); }
+  return islenen;
+}
+
+// Çıkarmalardan sonra oturum ne olacak?
+//   • kalan okuyanların hepsi bitirmişse → tamamlandı (2+ ise kutlama)
+//   • geriye tek kişi kaldıysa → "yalnızca siz kaldınız", oturum sonlanır
+async function oturumKapanisKarari(sid, oturum){
+  const okuyanlar=oturumOkuyanlari(oturum);
+  if(okuyanlar.length&&okuyanlar.every(u=>oturumdaBitirdiMi(oturum,u))){
+    await oturumTamamlanmaKontrolu(sid, oturum);
+    return;
+  }
+  const kalanlar=Object.keys(oturum.participants||{})
+    .filter(u=>oturum.participants[u].status==='accepted');
+  if(kalanlar.length<=1){
+    const simdi=Date.now();
+    await fbSet('aa-v4/readingSessions/'+sid+'/status','ended');
+    await fbSet('aa-v4/readingSessions/'+sid+'/endedAt',simdi);
+    await gecmiseEkle(sid,{type:'ended_alone',ts:simdi});
+    if(db.readingSessions&&db.readingSessions[sid]) db.readingSessions[sid].status='ended';
+    for(const u of kalanlar){
+      await pushNotification(u,{
+        id:'cra_'+sid+'_'+u,
+        type:'coreading_alone',
+        sessionId:sid, bookTitle:oturum.bookTitle,
+        ts:new Date().toISOString(), seen:false, reaction:'⏹', context:oturum.bookTitle,
+      });
+    }
+    // Kitap durumlarına DOKUNULMUYOR (Gökşin: "ona da biz karışmayalım"),
+    // yalnızca ölü bağ temizleniyor.
+    for(const u of kalanlar){
+      if(u===me){
+        (db.books[me]||[]).forEach(b=>{ if(b.coreadingSession===sid) delete b.coreadingSession; });
+        await saveDb();
+      }else{
+        await birlikteOkumaBaginiTemizle(u, sid);
+      }
+    }
+  }
+}
+
+// "Devam ediyorum" — süreyi UZATMIYOR (90 gün toplam hak), yalnızca kişinin
+// haberi olduğunu kaydediyor. Kart bunu "(devam ediyor)" diye gösteriyor.
+async function oturumaDevamEdiyorum(sid, bildirimId){
+  if(!me) return;
+  await fbSet('aa-v4/readingSessions/'+sid+'/participants/'+me+'/devamEdiyor',Date.now());
+  const s=db.readingSessions&&db.readingSessions[sid];
+  if(s&&s.participants&&s.participants[me]) s.participants[me].devamEdiyor=Date.now();
+  if(bildirimId) await davetBildirimiKaldir(bildirimId);
+  mesajGoster('Devam ettiğini bildirdin.');
+  renderSafe();
 }
 
 async function suresiDolanDavetleriKapat(){
@@ -722,6 +919,42 @@ function launchCoreadingConfetti(big=false){
   draw();
 
 }
+// ── "GERİ AL" ARTIK OTURUMU DA GERİ ALIYOR (2026-08-30, Gökşin sordu) ────────
+// Gökşin'in sorusu: "nimet o gün yanlışlıkla bitti yaptığı kitabı Geri Al tuşuyla
+// geri alsaydı, birlikte kartındaki yanlış geri alınacak mıydı?"
+// ÖLÇÜLDÜ: hayır. `markAsUnread` yalnızca kitabı 'okunuyor'a döndürüyordu;
+// oturumdaki %100 kaydına HİÇ dokunmuyordu. Nimet'in kitabı silip yeniden
+// kurmak zorunda kalmasının sebebi buydu — geri alma düğmesi vardı ama
+// oturumu kapsamıyordu.
+//
+// Artık kapsıyor. Duyurulmuş kilometre taşı (enYuksekDuyurulan) geri ALINMIYOR —
+// o bildirimler gerçekten gitti, insanlar gördü. Geri alınan şey "şu anda
+// neredesin" (suAnkiIlerleme): sıfırlanıyor ve kişiden kaldığı sayfayı girmesi
+// isteniyor. Geçmişe de bir satır düşüyor ki kart doğruyu anlatsın.
+//
+// Yalnızca `active` oturumlarda çalışıyor: tamamlanmış bir oturumu geri almak,
+// gönderilmiş kutlama bildirimlerini ve konfetiyi geri almaya çalışmak olurdu.
+async function birlikteOkumaBitirmeyiGeriAl(sessionId){
+  if(!me||!sessionId) return false;
+  let taze;
+  try{ taze=await fbGet('aa-v4/readingSessions/'+sessionId); }catch(e){ return false; }
+  if(!taze||taze.status!=='active') return false;
+  const kayit=(taze.progress&&taze.progress[me])||null;
+  if(!kayit||ilerlemeOku(kayit).suAnki<100) return false;
+  const yeni={...kayit, suAnkiIlerleme:0, pct:0, updatedAt:Date.now()};
+  // lastMilestone BİLEREK ellenmiyor: deploy öncesi açılmış bayat bir sekme onu
+  // mandal olarak okuyor; sıfırlarsak o sekme geçilmiş eşikleri yeniden duyurur.
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, yeni);
+  if(db.readingSessions&&db.readingSessions[sessionId]){
+    if(!db.readingSessions[sessionId].progress) db.readingSessions[sessionId].progress={};
+    db.readingSessions[sessionId].progress[me]=yeni;
+  }
+  await gecmiseEkle(sessionId,{type:'user_unfinished',user:me,userName:(db.users[me]||{}).displayName||me,ts:Date.now()});
+  mesajGoster('Birlikte okuma oturumundaki “bitirdi” kaydın da geri alındı. Kaldığın sayfayı girebilirsin.');
+  renderSafe();
+  return true;
+}
+
 // ── TAMAMLANMA KONTROLÜ — TEK YER (2026-08-30) ───────────────────────────────
 // Eskiden aynı kontrol İKİ yerde ayrı ayrı yazılıydı (checkCoreadingMilestone ve
 // leaveCoreading) ve ikisi de "kabul eden herkes %100" diyordu. Tek yere toplandı;

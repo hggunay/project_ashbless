@@ -2136,7 +2136,11 @@ const BIRLIKTE_DURUM_ETIKETI={
 const BIRLIKTE_MODAL_ROZETI={
   active:    n=>'👥 '+n+' ile birlikte okunuyor',
   completed: n=>'🎉 '+n+' ile birlikte tamamlandı',
-  ended:     n=>'⏹ '+n+' ile başlanmıştı — oturum sonlandırıldı',
+  // `ended`'de isim YAZILMIYOR (2026-08-30, Gökşin: "eve tuhafmış"). Katılan
+  // listesini yazmak yanıltıcıydı — o kişiler evet demiş ama kitabı hiç
+  // bağlamamış olabiliyor; üstelik tek okuyan sen isen metin "gökşin ile
+  // başlanmıştı" olup kendi kendinle başlamış gibi duruyordu.
+  ended:     ()=>'⏹ Birlikte okuma oturumu sonlandırıldı',
 };
 // Kitap listesindeki 👥 ikonu: bağ VAR ama oturum yoksa (silinmiş/öksüz bağ)
 // ikon gösterilmemeli — tıklanacak bir yer yok.
@@ -3698,6 +3702,9 @@ function enterApp(){
   // ki kapanış bildirimi aynı açılışta duyurulabilsin; kendi içinde ağa çıktığı
   // için beklemeden devam ediyoruz.
   setTimeout(()=>{ try{ suresiDolanDavetleriKapat(); }catch(e){ console.warn('davet süresi kontrolü:',e); } },600);
+  // 90 gün saati (2026-08-30). Davet süresinden SONRA çalışıyor: silinen bir
+  // davetin saatini işletmeye kalkmasın.
+  setTimeout(()=>{ try{ oturumSaatiniIslet(); }catch(e){ console.warn('oturum saati:',e); } },1800);
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
@@ -5858,6 +5865,12 @@ function confirmMarkAsUnread(bookId, status){
     }
   }
   saveDb();
+  // Birlikte okuma oturumundaki "bitirdi" kaydı da geri alınsın (2026-08-30).
+  // Eskiden bu düğme yalnızca kitabı geri alıyor, oturumdaki %100'ü olduğu gibi
+  // bırakıyordu — nimet'in kitabı silmek zorunda kalmasının sebebi buydu.
+  if(book.coreadingSession){
+    try{ birlikteOkumaBitirmeyiGeriAl(book.coreadingSession); }catch(e){ console.warn('birlikte geri alma:',e); }
+  }
   closeModal();
   render();
   const statusLabels={wishlist:'Tsundoku listesine eklendi',new:'Okundu listesine geri döndü',paused:'Yarım bırakılanlar listesine geri döndü'};
@@ -6579,6 +6592,38 @@ function renderNotifPanel(){
       const _kutlama = n.birlikte!==false;
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
         <div style="font-size:.88rem;color:var(--ink)">${_kutlama?'🎉':'📖'} <em>${escapeHtml(n.bookTitle)}</em> — ${_kutlama?(n.kisiSayisi?n.kisiSayisi+' kişi birlikte tamamladınız!':'Birlikte tamamladınız!'):'oturum tamamlandı.'}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	// 90 gün saatinin basamakları (2026-08-30).
+	if(n.type==='coreading_slow'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⏳ Birlikte okuduğunuz <em>${escapeHtml(n.bookTitle)}</em> hâlâ bitmedi.</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);margin-top:.2rem">${n.kalanGun} gün kaldı</div>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="oturumaDevamEdiyorum('${n.sessionId}','${n.id}')">📖 Devam ediyorum</button>
+          <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="leaveCoreading('${n.sessionId}');davetBildirimiKaldir('${n.id}')">✗ Ayrılmak istiyorum</button>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	if(n.type==='coreading_lastcall'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⏳ <em>${escapeHtml(n.bookTitle)}</em> — birlikte okumak için <b>son 2 hafta</b>.</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	if(n.type==='coreading_removed'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⌛ <em>${escapeHtml(n.bookTitle)}</em> hâlâ bitmedi — oturumdan ayrıldınız.</div>
+        <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-top:.2rem">Kitabın ve okuduğun sayfa listende olduğu gibi duruyor.</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	if(n.type==='coreading_alone'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⏹ <em>${escapeHtml(n.bookTitle)}</em> — birlikte okuma oturumunda yalnızca siz kaldınız, oturum sonlandırıldı.</div>
+        <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-top:.2rem">Kitabın listende olduğu gibi duruyor.</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }

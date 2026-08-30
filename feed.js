@@ -401,7 +401,7 @@ function renderFeed(append=false){
 		${(()=>{const leftNames=Object.keys(card.participants).filter(u=>card.participants[u].status==='left').map(u=>(db.users[u]||{}).displayName||u);return leftNames.length?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.5rem">👤 ${leftNames.length} kişi ayrıldı</div>`:''})()}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMayHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';if(ev.type==='user_finished')return ds+' — 📖 '+name+' kitabı bitirdi';return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMayHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';if(ev.type==='user_finished')return ds+' — 📖 '+name+' kitabı bitirdi';if(ev.type==='user_unfinished')return ds+' — ↩️ '+name+' bitirdi kaydını geri aldı';if(ev.type==='removed')return ds+' — ⌛ '+name+' süre dolduğu için çıkarıldı';return ds+' — '+name;};
   if(!hist.length) return '';
   // Sıralama (2026-08-30, Gökşin buldu). `hist` eskiden yeniye sıralı geliyor.
   // Eskiden görünen kısım da gizli kısım da bu yönde basılıyordu; sonuç, kart
@@ -423,15 +423,62 @@ function renderFeed(append=false){
 
         ${isInitiator&&!isActive&&!isCompleted&&!isEnded?`<div style="display:flex;align-items:center;gap:.75rem;margin-top:.5rem">
   <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startCoreadingRead('${card.sessionId}')">📖 Okumayı Başlat</button>
-  <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün görünür</span>
+  <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4)">Senin davetin · 7 gün içinde başlamazsa kapanır</span>
   <button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmCancelCoreading(this,'${card.sessionId}')">✗ İptal et</button>
 </div>`:''}
 ${(()=>{
   const sid=card.sessionId;
   const endBtn=isInitiator?'<button class="btn btn-sm" style="background:rgba(160,82,45,.25);color:var(--rust);border:1px solid rgba(160,82,45,.5)" onclick="confirmEndCoreading(\''+sid+'\')">⏹ Sonlandır</button>':'';
-  if(isCompleted) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 Birlikte okuma tamamlandı!</div>';
+  if(isCompleted){
+    const oturum=db.readingSessions&&db.readingSessions[sid];
+    const bitirenler=oturum?oturumBitirenleri(oturum):[];
+    // Kutlama en az 2 kişi bitirdiyse (Gökşin'in kuralı) — tek kişi bitirdiyse
+    // oturum yine kapanır ama "birlikte okudunuz" demek doğru olmaz.
+    return bitirenler.length>=2
+      ? '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-top:.5rem">🎉 '+bitirenler.length+' kişi birlikte tamamladı!</div>'
+      : '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:rgba(26,18,8,.55);margin-top:.5rem">📖 Oturum tamamlandı</div>';
+  }
+  if(isEnded) return '<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:rgba(26,18,8,.55);margin-top:.5rem">⏹ Oturum sonlandırıldı</div>';
   if(isActive&&myStatus==='left') return '<div style="margin-top:.5rem"><button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="respondCoreading(\''+sid+'\',\'accepted\')">↩ Tekrar Katıl</button></div>';
-  if(isActive){const myBooks_=(db.books&&db.books[me])||[];const myBound=myBooks_.find(b=>b.coreadingSession===sid);const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';const finishedUsers=gecmisDizi(db.readingSessions&&db.readingSessions[sid]).filter(h=>h.type==='user_finished').map(h=>h.userName||h.user);const finishedLine=finishedUsers.length?'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.3rem">📖 '+finishedUsers.join(', ')+' kitabı bitirdi</div>':'';return '<div style="margin-top:.5rem">'+finishedLine+'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.4rem">📖 Okuma devam ediyor</div><div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div></div>';}
+  if(isActive){
+    const oturum=db.readingSessions&&db.readingSessions[sid];
+    const myBooks_=(db.books&&db.books[me])||[];
+    const myBound=myBooks_.find(b=>b.coreadingSession===sid);
+    const changeBookBtn=myBound?'<button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.3)" onclick="showCoreadingBookPicker(\''+sid+'\')">🔄 Kitap değiştir</button>':'';
+    // ── SÜREÇ BİLGİSİ (2026-08-30, Gökşin istedi) ──────────────────────────
+    // Kart hangi aşamada olduğunu kendisi anlatsın: kimse bitirmediyse ne
+    // olacağını, biri bitirdiyse kimin beklendiğini, son 15 günde uyarıyı.
+    const ad=u=>escapeHtml((db.users[u]||{}).displayName||u);
+    const bitirenler=oturum?oturumBitirenleri(oturum):[];
+    const beklenenler=oturum?oturumBeklenenler(oturum):[];
+    const kalan=oturum?oturumKalanGun(oturum):90;
+    const kat=(oturum&&oturum.participants)||{};
+    let surecHtml='';
+    if(!bitirenler.length){
+      surecHtml='<div style="font-family:\'Space Mono\',monospace;font-size:.62rem;color:rgba(26,18,8,.5);margin-bottom:.35rem">İlerlemeni girdikçe kart güncellenir · 90 gün içinde kimse bitirmezse oturum kapanır</div>';
+    }else{
+      surecHtml='<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.3rem">🎉 '+bitirenler.map(ad).join(', ')+' bitirdi</div>';
+      if(beklenenler.length){
+        // Yüzde, `suAnkiIlerleme`nin ekrandaki karşılığı: geri çekilen bir sayı
+        // burada da geri gider (Gökşin istedi).
+        const liste=beklenenler.map(u=>{
+          const p=oturum.progress&&oturum.progress[u];
+          const yuzde=p?ilerlemeOku(p).suAnki:0;
+          const devam=kat[u]&&kat[u].devamEdiyor?' <span style="opacity:.6">(devam ediyor)</span>':'';
+          return ad(u)+' <span style="opacity:.7">%'+yuzde+'</span>'+devam;
+        }).join(', ');
+        surecHtml+='<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:rgba(26,18,8,.6);margin-bottom:.35rem">⏳ '+liste+' bekleniyor</div>';
+      }
+    }
+    // Geri sayım yalnızca son 30 günde; baştan sona sayaç göstermek okurken
+    // gereksiz baskı olurdu. Son 15 günde renk ve ton sertleşiyor.
+    if(kalan<=15){
+      surecHtml+='<div style="font-family:\'Space Mono\',monospace;font-size:.66rem;color:var(--rust);margin-bottom:.35rem">⚠️ '+kalan+' gün sonra oturum sonlanacak</div>';
+    }else if(kalan<=30){
+      surecHtml+='<div style="font-family:\'Space Mono\',monospace;font-size:.62rem;color:rgba(26,18,8,.5);margin-bottom:.35rem">⏳ '+kalan+' gün kaldı</div>';
+    }
+    return '<div style="margin-top:.5rem">'+surecHtml+'<div style="font-family:\'Space Mono\',monospace;font-size:.65rem;color:var(--moss);margin-bottom:.4rem">📖 Okuma devam ediyor</div><div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">'+changeBookBtn+'<button class="btn btn-sm" style="background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3)" onclick="confirmLeaveCoreading(this,\''+sid+'\')">✗ Ayrıl</button>'+endBtn+'</div></div>';
+  }
   return '';
 })()}
         ${alreadyResponded&&!isInitiator?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.4);margin-top:.5rem">${myStatus==='accepted'?'✓ Katıldın':'✗ Reddedildi'}</div>`:''}
