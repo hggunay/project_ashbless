@@ -467,6 +467,14 @@ async function startCoreadingSession(titleRaw, author){
   );
   if(duplicate){ notify('⚠️ Uyarı','Bu kitap için zaten aktif bir oturumun var.'); return; }
   const pages=parseInt(document.getElementById('coreadingPages').value)||0;
+  // Sayfa sayısı olmadan oturum açılamaz (2026-08-30). Oturumun sayfa sayısı
+  // katılanların kitabına kopyalanıyor; 0 olursa HİÇ KİMSENİN ilerlemesi
+  // hesaplanamaz ve oturum 90 gün boyunca kilitli kalır. Bağlama kuralındaki
+  // sayfa şartının kaynaktaki karşılığı.
+  if(!pages){
+    mesajGoster('Birlikte okuma başlatmak için sayfa sayısı gerekiyor — ilerleme onunla hesaplanıyor.','uyari');
+    return;
+  }
   const sessionId='cs_'+Date.now();
   const session={
     id: sessionId,
@@ -738,10 +746,50 @@ function showCoreadingBookPicker(sessionId){
   `;
   document.body.appendChild(panel);
 }
-async function linkCoreadingBook(sessionId, bookId){
+// ── KİTAP BAĞLAMA KURALI (2026-08-30, 3. tur) ────────────────────────────────
+// Gökşin'in kararı, tartışma kapandı: farklı kitap adını ENGELLEME. Gerekçesi
+// sağlam — aynı kitap farklı yayınevinde farklı adla çıkabiliyor (Çıplak Güneş /
+// Güneşin Tanrıları). Onun yerine iki kural:
+//   (1) ad tutmuyorsa ENGELLEME, SOR,
+//   (2) sayfa sayısı boşsa BAĞLAMA — sayfa sayısı olmayan kitapta ilerleme
+//       hesaplanamıyor (checkCoreadingMilestone sessizce çıkıyor), o yüzden kişi
+//       oturumda hiç görünmüyor. Özgür'ün "Ince Memed"i tam olarak buydu:
+//       oturuma bağlıydı ama ilerlemesi asla oluşamazdı.
+function _adNormal(s){
+  return String(s||'').toLowerCase()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+    .replace(/[^a-z0-9]/g,'');
+}
+async function linkCoreadingBook(sessionId, bookId, onaylandi){
   if(!me) return;
   const book=(db.books[me]||[]).find(b=>b.id==bookId);
   if(!book) return;
+  const session=db.readingSessions&&db.readingSessions[sessionId];
+  // (2) Sayfa sayısı şartı — bu KESİN, sorulmuyor. Sayfa sayısı olmadan kişi
+  // oturumda görünmez; sessizce kaybolmasındansa baştan engellemek daha iyi.
+  if(!book.pages){
+    mesajGoster('“'+book.title+'” için sayfa sayısı girilmemiş. Sayfa sayısı olmadan ilerlemen oturumda görünmez — önce kitap bilgisinden sayfa sayısını ekle.','uyari');
+    return;
+  }
+  // (1) Ad tutmuyorsa SOR — engelleme.
+  if(!onaylandi && session && _adNormal(book.title)!==_adNormal(session.bookTitle)){
+    const liste=document.getElementById('coreadingPickerList');
+    if(liste){
+      liste.insertAdjacentHTML('afterbegin',
+        '<div id="coreadingAdSoru" style="background:rgba(122,90,31,.12);border:1px solid rgba(122,90,31,.4);border-radius:3px;padding:.55rem .7rem;margin-bottom:.5rem;color:var(--ink)">'+
+          '<div style="font-family:\'Crimson Pro\',serif;font-size:.9rem;margin-bottom:.45rem">'+
+            'Oturumun kitabı <b>'+escapeHtml(session.bookTitle)+'</b>, seçtiğin ise <b>'+escapeHtml(book.title)+'</b>. '+
+            'Aynı kitabın başka bir baskısı mı?</div>'+
+          '<div style="display:flex;gap:.4rem;flex-wrap:wrap">'+
+            '<button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="linkCoreadingBook(\''+sessionId+'\','+bookId+',true)">Evet, aynı kitap</button>'+
+            '<button class="btn btn-sm" onclick="document.getElementById(\'coreadingAdSoru\')?.remove()">Vazgeç</button>'+
+          '</div>'+
+        '</div>');
+      liste.scrollTop=0;
+    }
+    return;
+  }
   book.coreadingSession=sessionId;
   book.readingStatus='reading';
   if(db.notifications&&db.notifications[me]){
@@ -852,6 +900,22 @@ async function leaveCoreading(sessionId){
   if(!me) return;
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session) return;
+  // KABUK KAYIT ÖNLEME (2026-08-30). Aşağıdaki yazma `participants/<ben>` yoluna
+  // DOĞRUDAN gidiyor; oturum bu arada silinmişse Firebase o düğümü YENİDEN
+  // YARATIYOR ve geriye yalnızca bir katılımcı dalı kalıyor. 2026-08-22'de
+  // akışta "👥 Birlikte Okuyalım / 20687 gün önce / undefined" diye görünen üç
+  // kabuk kayıt tam olarak böyle oluşmuştu. Artık yazmadan önce oturumun
+  // sunucuda hâlâ durduğu doğrulanıyor.
+  let taze=null;
+  try{ taze=await fbGet('aa-v4/readingSessions/'+sessionId+'/status'); }catch(e){ taze=null; }
+  if(taze===null||taze===undefined){
+    delete db.readingSessions[sessionId];
+    (db.books[me]||[]).forEach(b=>{ if(b.coreadingSession===sessionId) delete b.coreadingSession; });
+    await saveDb();
+    mesajGoster('Bu oturum artık yok — kitabındaki bağ kaldırıldı.','uyari');
+    renderSafe();
+    return;
+  }
   const path='aa-v4/readingSessions/'+sessionId+'/participants/'+me;
   await fbSet(path,{status:'left', leftAt:Date.now()});
   if(!db.readingSessions[sessionId].participants) db.readingSessions[sessionId].participants={};

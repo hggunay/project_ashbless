@@ -6743,9 +6743,12 @@ function checkNotifications(){
     notifTitle='👥 '+n.bookTitle;
     notifBody=(n.fromName||'')+(n.milestoneMsg?' — '+n.milestoneMsg:'');
   } else if(n.type==='coreading_completed'){
-    notifTitle='🎉 Birlikte okuma tamamlandı!';
+    // Kutlama en az 2 kişi bitirdiyse (2026-08-30). Eski bildirimlerde `birlikte`
+    // alanı yok — onlar eski davranışta kalsın diye undefined da kutlama sayılıyor.
+    const _kutlama=n.birlikte!==false;
+    notifTitle=_kutlama?'🎉 Birlikte okuma tamamlandı!':'📖 Oturum tamamlandı';
     notifBody=n.bookTitle||'';
-    launchCoreadingConfetti(true);
+    if(_kutlama) launchCoreadingConfetti(true);
   } else if(n.type==='coreading_response'){
     notifTitle=n.response==='accepted'?'✓ Daveti kabul etti':'✗ Daveti reddetti';
     notifBody=(n.fromName||'')+' — '+(n.bookTitle||'');

@@ -389,7 +389,15 @@ function renderFeed(append=false){
           <span style="font-size:1.3rem">${avatarHtml(card.userAvatar,"1.5rem")}</span>
           <div class="journal-entry-meta">
             <span class="journal-entry-user">${card.userName}</span>
-            <span class="journal-entry-book" onclick="${isCompleted?'launchCoreadingConfetti(true)':''}" style="${isCompleted?'cursor:pointer':''}" title="${isCompleted?'🎉 Tıkla!':''}" >👥 Birlikte Okuyalım</span>
+            ${(()=>{
+              // Başlığa tıklayınca konfeti — ama yalnızca GERÇEKTEN birlikte
+              // okunmuşsa (en az 2 kişi bitirmiş). Eskiden yalnızca `completed`
+              // olmasına bakıyordu; tek kişinin bitirdiği bir oturumda da
+              // "🎉 Tıkla!" çıkıyordu ve kutlama kuralıyla çelişiyordu.
+              const _o=db.readingSessions&&db.readingSessions[card.sessionId];
+              const _kutlama=isCompleted&&_o&&oturumBitirenleri(_o).length>=2;
+              return `<span class="journal-entry-book" onclick="${_kutlama?'launchCoreadingConfetti(true)':''}" style="${_kutlama?'cursor:pointer':''}" title="${_kutlama?'🎉 Tıkla!':''}">👥 Birlikte Okuyalım</span>`;
+            })()}
           </div>
           <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(245,237,214,.5)">${formatTimeAgo(new Date(card.ts).toISOString())}</span>
         </div>
