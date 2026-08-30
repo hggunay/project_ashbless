@@ -4951,10 +4951,21 @@ if(coreadingEl){
   const session=sid&&db.readingSessions&&db.readingSessions[sid];
   const isParticipant=session&&session.participants&&session.participants[me]&&session.participants[me].status==='accepted';
   if(session&&BIRLIKTE_MODAL_ROZETI[session.status]&&isParticipant){
-    const names=Object.keys(session.participants).filter(u=>session.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
+    // Hangi isimler yazılacak, duruma göre değişiyor (2026-08-30, Gökşin fark etti:
+    // "hâlâ Özgür'ü sayıyor"). Tamamlanmış bir oturumda "X ile birlikte tamamladın"
+    // demek yalnızca BİTİRENLER için doğru; kitabı hiç bağlamamış birini oraya
+    // yazmak olmayan bir şeyi anlatıyor. Okunurken de ölçüt katılmak değil,
+    // kitabı bağlamış OLMAK.
+    const kimler = session.status==='completed' ? oturumBitirenleri(session)
+                 : session.status==='active'    ? oturumOkuyanlari(session)
+                 : Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
+    const names=kimler.map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
+    if(!names){ coreadingEl.style.display='none'; }
+    else{
     const label=BIRLIKTE_MODAL_ROZETI[session.status](names);
     coreadingEl.style.display='';
     coreadingEl.innerHTML=`<span style="cursor:pointer" onclick="closeModal();scrollToCoreadingCard('${sid}')">${label}</span>`;
+    }
   } else {
     coreadingEl.style.display='none';
   }
@@ -6561,8 +6572,13 @@ function renderNotifPanel(){
       </div>`;
     }
 	if(n.type==='coreading_completed'){
+      // "Birlikte tamamladınız" yalnızca en az 2 kişi bitirdiyse doğru (Gökşin'in
+      // kuralı). Tek kişi bitirdiyse oturum yine kapanır ama kutlama olmaz —
+      // tek başına okumak birlikte okumak değil. Eski bildirimlerde `birlikte`
+      // alanı yok; onlar eski metinle kalsın diye undefined da kutlama sayılıyor.
+      const _kutlama = n.birlikte!==false;
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
-        <div style="font-size:.88rem;color:var(--ink)">🎉 <em>${escapeHtml(n.bookTitle)}</em> — Birlikte tamamladınız!</div>
+        <div style="font-size:.88rem;color:var(--ink)">${_kutlama?'🎉':'📖'} <em>${escapeHtml(n.bookTitle)}</em> — ${_kutlama?(n.kisiSayisi?n.kisiSayisi+' kişi birlikte tamamladınız!':'Birlikte tamamladınız!'):'oturum tamamlandı.'}</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }

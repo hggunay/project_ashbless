@@ -45,6 +45,64 @@ async function gecmiseEkle(sessionId, kayit){
   return ok;
 }
 
+// ── KATILAN / OKUYAN / BİTİREN — ÜÇ AYRI ŞEY (2026-08-30) ────────────────────
+// Oturumun en eski kırık noktası, bu üçünün tek şey sanılmasıydı.
+//
+//   KATILAN  — davete "evet" demiş. Tek başına hiçbir şey ifade etmiyor.
+//   OKUYAN   — kitabı oturuma BAĞLAMIŞ. "Ben de bunu sizinle okuyorum" demek.
+//   BİTİREN  — okuyup %100'e ulaşmış.
+//
+// Eski kural "kabul eden HERKES %100" diyordu; katılıp kitabı hiç bağlamayan
+// bir kişi oturumu sonsuza kilitliyordu — Algernon'da canlıda yaşandı.
+// Yeni kural: tamamlanma OKUYANLARA bakar. Katılıp kitap bağlamamış kişi
+// oturuma hiç girmemiş sayılır (Gökşin: "yok gibi kabul edilsin"), sonradan
+// bağlarsa o andan itibaren normal kurallara tabi olur.
+//
+// Ölçüt bilerek "ilerleme girdi mi" DEĞİL, "kitabı bağladı mı": ilerlemeyi şart
+// koşarsak kitabı bağlayıp 0. sayfada takılan kişi sonsuza görünmez kalır ve
+// 90 gün kuralı — tam da onun için var olan kural — ona hiç işlemez.
+function ilerlemeOku(kayit){
+  if(!kayit) return {duyurulan:0, suAnki:0};
+  // enYuksekDuyurulan/suAnkiIlerleme yeni alanlar; eski oturumlarda yalnızca
+  // lastMilestone/pct var. İkisini de anlıyoruz.
+  const duyurulan=(kayit.enYuksekDuyurulan!=null)?kayit.enYuksekDuyurulan:(kayit.lastMilestone||0);
+  const suAnki=(kayit.suAnkiIlerleme!=null)?kayit.suAnkiIlerleme:((kayit.pct!=null)?kayit.pct:duyurulan);
+  return {duyurulan, suAnki};
+}
+function oturumOkuyanlari(oturum){
+  if(!oturum) return [];
+  const kat=oturum.participants||{};
+  const prog=oturum.progress||{};
+  return Object.keys(kat).filter(u=>{
+    if(kat[u].status!=='accepted') return false;
+    if(kat[u].reading===true) return true;    // kitabını bağlamış
+    if(kat[u].reading===false) return false;  // bağlayıp sonra kaldırmış
+    return !!prog[u];                         // eski oturum: işaret yok, ilerlemesine bak
+  });
+}
+function oturumdaBitirdiMi(oturum,u){
+  const p=oturum&&oturum.progress&&oturum.progress[u];
+  return !!p && ilerlemeOku(p).suAnki>=100;
+}
+function oturumBitirenleri(oturum){
+  return oturumOkuyanlari(oturum).filter(u=>oturumdaBitirdiMi(oturum,u));
+}
+// Oturum tamamlandı mı? En az bir OKUYAN olmalı ve okuyanların hepsi bitirmiş
+// olmalı. Kutlama ayrı bir soru: Gökşin'in kuralı "en az 2 kişi tamamladıysa".
+function oturumTamamlandiMi(oturum){
+  const okuyanlar=oturumOkuyanlari(oturum);
+  if(!okuyanlar.length) return false;
+  return okuyanlar.every(u=>oturumdaBitirdiMi(oturum,u));
+}
+// Kişinin oturumda "okuyan" olduğunu işaretler. Tek alana yazıyor.
+async function okuyanOlarakIsaretle(sessionId, okuyor){
+  if(!me) return;
+  const yol='aa-v4/readingSessions/'+sessionId+'/participants/'+me+'/reading';
+  await fbSet(yol, !!okuyor);
+  const s=db.readingSessions&&db.readingSessions[sessionId];
+  if(s&&s.participants&&s.participants[me]) s.participants[me].reading=!!okuyor;
+}
+
 // ── SÜRESİ DOLAN DAVETLER (2026-08-29) ───────────────────────────────────────
 // Gökşin'in kararı: 7 gün içinde BAŞLAMAMIŞ bir davet tamamen SİLİNİR.
 // "Görünmez ama arkada duruyor" seçeneği bilerek reddedildi — kendi ifadesiyle:
@@ -414,6 +472,7 @@ async function acceptCoreadingBook(sessionId, mode){
     };
     db.books[me].push(newBook);
     await saveDb();
+    await okuyanOlarakIsaretle(sessionId, true);
     notify('📖 Kitap eklendi!', session.bookTitle+' okuyorum listene eklendi.');
     // Bildirim panelini kapat
     const np=document.getElementById('notifPanel');
@@ -494,6 +553,9 @@ async function linkCoreadingBook(sessionId, bookId){
   }
   birlikteOkumaSeciciKapat();   // fon perdesi de kalksın
   await saveDb();
+  // Kitabı bağlamak = oturumda "okuyan" olmak. Tamamlanma ölçütü ve 90 gün
+  // kuralı bu işarete bakıyor.
+  await okuyanOlarakIsaretle(sessionId, true);
   notify('📖 Kitap bağlandı!', book.title+' birlikte okuma oturumuna bağlandı.');
   renderSafe();
 }
@@ -620,28 +682,12 @@ async function leaveCoreading(sessionId){
     }
   }
   notify('👋 Ayrıldın', session.bookTitle+' birlikte okuma oturumundan ayrıldın.');
-  // Ayrılma sonrası allDone kontrolü — kalan herkes bitirdiyse oturumu kapat
-  if(session.status==='active'){
-    const updatedSession=db.readingSessions[sessionId];
-    const accepted=Object.keys(updatedSession.participants||{}).filter(u=>updatedSession.participants[u].status==='accepted');
-    const allDone=accepted.length>0&&accepted.every(u=>
-      (updatedSession.progress&&updatedSession.progress[u]&&updatedSession.progress[u].lastMilestone===100)
-    );
-    if(allDone){
-      updatedSession.status='completed';
-      updatedSession.completedAt=Date.now();
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',updatedSession.completedAt);
-      await gecmiseEkle(sessionId,{type:'completed',ts:updatedSession.completedAt});
-      const allAccepted=Object.keys(updatedSession.participants||{}).filter(u=>updatedSession.participants[u].status==='accepted');
-      for(const u of allAccepted){
-        await pushNotification(u, {id:'crc_'+sessionId+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:updatedSession.bookTitle,fromName:(db.users[me]||{}).displayName||me,ts:new Date().toISOString(),seen:false,reaction:'🎉',context:updatedSession.bookTitle});
-      }
-      launchCoreadingConfetti(true);
-      updateNotifDot();
-    }
-  }
-  renderSafe();
+  // Ayrılma sonrası tamamlanma kontrolü — kalan okuyanların hepsi bitirdiyse
+  // oturum kapanır. Eskiden buradaki kontrol checkCoreadingMilestone'daki
+  // kopyasıydı ve ikisi de eski "kabul eden herkes" ölçütünü kullanıyordu;
+  // artık tek yerden geçiyor (2026-08-30).
+  if(session.status==='active') await oturumTamamlanmaKontrolu(sessionId);
+  else renderSafe();
 }
 
 function launchCoreadingConfetti(big=false){
@@ -676,6 +722,57 @@ function launchCoreadingConfetti(big=false){
   draw();
 
 }
+// ── TAMAMLANMA KONTROLÜ — TEK YER (2026-08-30) ───────────────────────────────
+// Eskiden aynı kontrol İKİ yerde ayrı ayrı yazılıydı (checkCoreadingMilestone ve
+// leaveCoreading) ve ikisi de "kabul eden herkes %100" diyordu. Tek yere toplandı;
+// ölçüt de değişti: artık OKUYANLARA bakıyor (bkz. oturumOkuyanlari).
+//
+// Kutlama ayrı bir soru — Gökşin'in kuralı: "oturumu en az 2 kişi tamamladıysa
+// birlikte okudunuz 🎉". Tek kişi bitirdiyse oturum kapanır ama kutlama olmaz;
+// tek başına okumak birlikte okumak değil.
+async function oturumTamamlanmaKontrolu(sessionId, hazirTaze){
+  let taze=hazirTaze;
+  if(!taze){
+    try{ taze=await fbGet('aa-v4/readingSessions/'+sessionId); }catch(e){ taze=null; }
+  }
+  if(!taze) return false;
+  if(taze.status!=='active'){ renderSafe(); return false; }
+  if(!oturumTamamlandiMi(taze)){ renderSafe(); return false; }
+  const bitirenler=oturumBitirenleri(taze);
+  const simdi=Date.now();
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
+  await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',simdi);
+  await gecmiseEkle(sessionId,{type:'completed',ts:simdi,count:bitirenler.length});
+  if(db.readingSessions&&db.readingSessions[sessionId]){
+    db.readingSessions[sessionId].status='completed';
+    db.readingSessions[sessionId].completedAt=simdi;
+  }
+  const benimAdim=(db.users[me]||{}).displayName||me;
+  const kutlama=bitirenler.length>=2;
+  // Bildirim herkese değil, KATILANLARA gidiyor — okumayanlar da oturumun
+  // kapandığını bilsin, ama metin bitirenlere göre kuruluyor.
+  const katilanlar=Object.keys(taze.participants||{}).filter(u=>taze.participants[u].status==='accepted');
+  for(const u of katilanlar){
+    await pushNotification(u,{
+      id:'crc_'+sessionId+'_'+u,
+      type:'coreading_completed',
+      sessionId, bookTitle:taze.bookTitle, fromName:benimAdim,
+      birlikte:kutlama, kisiSayisi:bitirenler.length,
+      ts:new Date().toISOString(), seen:u===me, reaction:kutlama?'🎉':'📖',
+      context:taze.bookTitle,
+    });
+  }
+  if(kutlama){
+    notify('🎉 Birlikte okudunuz!', taze.bookTitle+' — '+bitirenler.length+' kişi tamamladı!');
+    launchCoreadingConfetti(true);
+  }else{
+    notify('📖 Oturum tamamlandı', taze.bookTitle+' okundu.');
+  }
+  updateNotifDot();
+  renderSafe();
+  return true;
+}
+
 // ── İLERLEME MİLESTONE ──
 async function checkCoreadingMilestone(book){
   if(!book.coreadingSession){ return;}
@@ -683,23 +780,56 @@ async function checkCoreadingMilestone(book){
   const session=db.readingSessions&&db.readingSessions[sessionId];
   if(!session||session.status!=='active'){ console.warn('checkCoreadingMilestone: sessiz çıkış — session yok veya aktif değil',{sessionId,status:session&&session.status}); return;}
   if(!book.currentPage||!book.pages){ console.warn('checkCoreadingMilestone: sessiz çıkış — currentPage veya pages eksik',{bookId:book.id,currentPage:book.currentPage,pages:book.pages}); return;}
-  const pct=Math.min(100,Math.round(book.currentPage/book.pages*100));
+  // ── SAYFA SAYISI KORUMASI (2026-08-30) ───────────────────────────────────
+  // Eskiden kitabın `pages` değerinden BÜYÜK bir sayfa girilince yüzde 100'e
+  // yuvarlanıyor ve sistem kitabı sormadan bitmiş sayıyordu. Nimet'in Algernon'da
+  // yaşadığı zincirin ilk halkası buydu: epub olduğu için sayfayı iki katı girmiş,
+  // 208 sayfalık kitapta 200'ü aşınca oturum onu "bitirdi" saymış, geri alamayınca
+  // kitabı silip yeniden kurmuş. Artık sayfa sayısını AŞAN bir giriş bitmiş
+  // saymıyor: en fazla %99'a kadar sayılıyor ve kullanıcıya sayfa sayısını
+  // kontrol etmesi söyleniyor. "Bitirdim" düğmesinden gelen kayıt (_fromFinish)
+  // bilinçli bir hareket olduğu için bu korumanın dışında.
+  const sayfaAsimi = !book._fromFinish && book.currentPage>book.pages;
+  if(sayfaAsimi){
+    try{
+      mesajGoster(book.pages+' sayfalık kitapta '+book.currentPage+'. sayfa girdin — sayfa sayısı yanlış olabilir. Kitabı bitirdiysen “Bitirdim” düğmesini kullan.','uyari');
+    }catch(e){}
+  }
+  const hamPct=Math.round(book.currentPage/book.pages*100);
+  const pct=sayfaAsimi?Math.min(99,hamPct):Math.min(100,hamPct);
   const milestones=[25,50,75,100];
   const reached=milestones.filter(m=>pct>=m);
-  if(!reached.length){ console.warn('checkCoreadingMilestone: sessiz çıkış — %25 eşiğine ulaşılmadı',{pct}); return;}
-  const lastMilestone=reached[reached.length-1];
   if(!session.progress) session.progress={};
   if(!session.progress[me]) session.progress[me]={};
-  const prevMilestone=session.progress[me].lastMilestone||0;
-  if(pct<prevMilestone){
-    // Milestone'u güncelle, önceki milestone'ları temizle
-    console.warn('checkCoreadingMilestone: sessiz çıkış — pct önceki milestone altına düştü, bildirim yok',{pct,prevMilestone});
-    session.progress[me].lastMilestone=lastMilestone||0;
-    session.progress[me].pct=pct;
+  // ── KİLOMETRE TAŞI İKİYE AYRILDI (2026-08-30) ────────────────────────────
+  // Tek alan (`lastMilestone`) iki ayrı soruyu birden cevaplıyordu:
+  //   "bunu daha önce DUYURDUK mu?"  → geri gitmemeli (bildirim geri alınamaz)
+  //   "bu kişi ŞU ANDA nerede?"      → gerçeği yansıtmalı, inebilmeli
+  // İkincisi birincinin kuralına mahkûm olduğu için yanlış girilen bir sayı
+  // kalıcı gerçeğe dönüşüyordu. Artık iki alan var:
+  //   enYuksekDuyurulan — mandal, asla geri gitmez, yalnızca bildirimleri yönetir
+  //   suAnkiIlerleme    — gerçeği takip eder, inebilir; tamamlanma kontrolü bunu kullanır
+  // Eski alanlar (lastMilestone/pct) yazılmaya DEVAM ediyor: deploy'dan önce
+  // açılmış bayat bir sekme hâlâ onları okuyor olabilir (K7 dersi).
+  const {duyurulan:oncekiDuyurulan}=ilerlemeOku(session.progress[me]);
+  const yeniDuyurulan=Math.max(oncekiDuyurulan, reached.length?reached[reached.length-1]:0);
+  session.progress[me].suAnkiIlerleme=pct;
+  session.progress[me].enYuksekDuyurulan=yeniDuyurulan;
+  session.progress[me].pct=pct;                       // eski istemciler için
+  session.progress[me].lastMilestone=yeniDuyurulan;   // eski istemciler için
+  const lastMilestone=yeniDuyurulan;
+  const yeniEsikMi = reached.length>0 && reached[reached.length-1]>oncekiDuyurulan;
+  if(!yeniEsikMi){
+    // Duyurulacak yeni bir eşik yok — ama şu anki ilerleme değişmiş olabilir
+    // (geri de gitmiş olabilir), o yüzden kaydı yine de yazıyoruz.
+    session.progress[me].updatedAt=Date.now();
     await fbSet('aa-v4/readingSessions/'+sessionId+'/progress/'+me, session.progress[me]);
+    // %100'e daha önce ulaşılmış olsa bile tamamlanma kontrolü çalışmalı:
+    // son kişi bitirdiğinde oturumun kapanması buna bağlı.
+    if(pct>=100) await oturumTamamlanmaKontrolu(sessionId);
+    else renderSafe();
     return;
   }
-  if(lastMilestone<=prevMilestone){ console.warn('checkCoreadingMilestone: sessiz çıkış — bu milestone zaten bildirilmiş',{lastMilestone,prevMilestone}); return;}
   // Yeni milestone — kaydet ve bildirim gönder
   const msgPool={
     25:['hikâyeye adım attı','ilk çeyreği tamamladı','hikâyenin içine çekilmeye başladı'],
@@ -783,28 +913,7 @@ if(!alreadyFinished){
   }
   updateNotifDot();
 }
-    const accepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
-    const allDone=accepted.length>0&&accepted.every(u=>
-      (freshSession.progress&&freshSession.progress[u]&&freshSession.progress[u].lastMilestone===100)
-    );
-    if(allDone){
-      freshSession.status='completed';
-      freshSession.completedAt=Date.now();
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/status','completed');
-      await fbSet('aa-v4/readingSessions/'+sessionId+'/completedAt',freshSession.completedAt);
-      await gecmiseEkle(sessionId,{type:'completed',ts:freshSession.completedAt});
-      // Local kopyayı güncelle — renderSafe doğru göstersin
-      if(db.readingSessions&&db.readingSessions[sessionId]) db.readingSessions[sessionId].status='completed';
-      const allAccepted=Object.keys(freshSession.participants||{}).filter(u=>freshSession.participants[u].status==='accepted');
-      for(const u of allAccepted){
-        const notif={id:'crc_'+sessionId+'_'+u+'_'+Date.now(),type:'coreading_completed',sessionId,bookTitle:freshSession.bookTitle,fromName:myName,ts:new Date().toISOString(),seen:u===me,reaction:'🎉',context:freshSession.bookTitle};
-        await pushNotification(u, notif);
-      }
-      notify('🎉 Herkesle birlikte!', freshSession.bookTitle+' birlikte tamamlandı!');
-      launchCoreadingConfetti(true);
-      updateNotifDot();
-    }
-    renderSafe();
+    await oturumTamamlanmaKontrolu(sessionId, freshSession);
   } else {
     // Katılımcılara milestone bildirimi zaten yukarıda (lastMilestone<100 bloğunda) gönderildi —
     // burada tekrar göndermiyoruz (eskiden aynı işi ikinci kez yapmaya çalışan, kapsam dışı
