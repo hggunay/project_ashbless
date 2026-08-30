@@ -45,6 +45,163 @@ async function gecmiseEkle(sessionId, kayit){
   return ok;
 }
 
+// ── SÜRESİ DOLAN DAVETLER (2026-08-29) ───────────────────────────────────────
+// Gökşin'in kararı: 7 gün içinde BAŞLAMAMIŞ bir davet tamamen SİLİNİR.
+// "Görünmez ama arkada duruyor" seçeneği bilerek reddedildi — kendi ifadesiyle:
+// "görünmezken kimse zaten kullanamıyor, ama silinmiyor da; yine çöp olarak
+// birikiyor." Silmeden önce başlatana ve kabul edenlere haber gidiyor, başlatan
+// tek tıkla yeniden davet edebiliyor.
+//
+// ⚠️ YALNIZCA `pending`. Başlamış oturumlara (active / ended / completed) ASLA
+// dokunulmaz: "okuyan okumuş, okumayan kalmış", o kayıt tarihtir.
+//
+// YARIŞ SORUNU VE ÇÖZÜMÜ: süreyi kontrol edecek bir sunucu yok, işi uygulamayı
+// açan istemci yapıyor. İki kişi aynı anda açarsa ikisi de silmeye kalkar ve
+// bildirim İKİ KEZ gider. "Önce bir kilit alanı yaz, sonra oku" yöntemi bunu
+// çözmüyor (ikisi de yazıp ikisi de kendi yazdığını okuyabilir). Onun yerine
+// SİLMENİN KENDİSİ yarış oluyor: Firebase REST'in ETag desteğiyle koşullu
+// DELETE atılıyor — "bu düğüm ben okuduğumdan beri değişmediyse sil". Yalnızca
+// bir istemcinin isteği geçer, ötekine 412 döner ve o çekilir. Bildirimleri
+// sadece kazanan gönderir.
+// Ayrı bir "kilit" alanı BİLEREK açılmadı: Firebase kuralları tanımadığı yollara
+// yazmayı reddediyor (G9b), yeni bir yol icat etmek gereksiz risk olurdu.
+const DAVET_SURESI_MS = 7*24*60*60*1000;
+
+function davetSuresiDoldu(oturum, simdi){
+  if(!oturum||oturum.status!=='pending') return false;
+  const biter=oturum.expiresAt||((oturum.createdAt||0)+DAVET_SURESI_MS);
+  return !!biter && biter<=(simdi||Date.now());
+}
+
+// Oturumu koşullu siler. Dönen değer:
+//   • oturum nesnesi → silme BİZİM üzerimizden geçti, devamı (bağ temizliği +
+//     bildirimler) bize ait
+//   • null → başkası önce davrandı, oturum başlamış ya da süresi dolmamış;
+//     hiçbir şey yapma
+async function davetiKapKaldir(sid){
+  let etag=null, oturum=null;
+  try{
+    const g=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'.json',{headers:{'X-Firebase-ETag':'true'}});
+    if(!g.ok) return null;
+    etag=g.headers.get('ETag');
+    oturum=await g.json();
+  }catch(e){ return null; }
+  // ETag alamadıysak koşullu silme kuramayız. O zaman HİÇ silmiyoruz: çift
+  // bildirim göndermektense hiç göndermemek yeğ.
+  if(!oturum||!etag) return null;
+  if(!davetSuresiDoldu(oturum, Date.now())) return null;
+  try{
+    const d=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'.json',{
+      method:'DELETE', headers:{'if-match':etag}
+    });
+    if(!d.ok) return null;   // 412 → başkası araya girdi
+  }catch(e){ return null; }
+  if(!oturum.id) oturum.id=sid;
+  return oturum;
+}
+
+async function davetKapandiBildir(oturum){
+  const sid=oturum.id;
+  const kitap=oturum.bookTitle||'Kitap';
+  const baslatan=oturum.initiator;
+  const kat=oturum.participants||{};
+  const ts=new Date().toISOString();
+  if(baslatan){
+    // Eylemli bildirim: "Yeniden davet et" / "İptal" düğmeleriyle geliyor.
+    // Kitabın bilgisi bildirimin İÇİNDE taşınıyor — oturum silindiği için
+    // sonradan bakılabilecek bir yer kalmıyor.
+    await pushNotification(baslatan,{
+      id:'crx_'+sid,
+      type:'coreading_expired',
+      sessionId:sid,
+      bookTitle:kitap,
+      author:oturum.author||'',
+      pages:oturum.pages||0,
+      ts, seen:false, reaction:'⌛', context:kitap,
+    });
+  }
+  // Kabul edip bir hafta bekleyenler: kart sessizce yok olursa "ben katılmıştım,
+  // ne oldu?" diye düşünürler. Reddedenlere ve hiç cevap vermeyenlere gitmiyor.
+  const baslatanAdi=(db.users[baslatan]||{}).displayName||baslatan;
+  for(const u of Object.keys(kat)){
+    if(u===baslatan||kat[u].status!=='accepted') continue;
+    await pushNotification(u,{
+      id:'crxp_'+sid+'_'+u,
+      type:'coreading_expired_participant',
+      sessionId:sid,
+      bookTitle:kitap,
+      fromUser:baslatan,
+      fromName:baslatanAdi,
+      ts, seen:false, reaction:'⌛', context:kitap,
+    });
+  }
+}
+
+async function suresiDolanDavetleriKapat(){
+  if(!me||!db.readingSessions) return 0;
+  const simdi=Date.now();
+  const adaylar=Object.keys(db.readingSessions)
+    .filter(sid=>davetSuresiDoldu(db.readingSessions[sid], simdi));
+  if(!adaylar.length) return 0;
+  let kapanan=0;
+  for(const sid of adaylar){
+    const oturum=await davetiKapKaldir(sid);
+    if(!oturum) continue;               // kazanan başkası — yerel kopyaya dokunma
+    delete db.readingSessions[sid];
+    kapanan++;
+    // Bağ temizliği. `pending` bir oturuma normalde kitap bağlanamıyor (seçici
+    // yalnızca `active`'te açılıyor), ama veri her zaman beklendiği gibi olmuyor
+    // ve öksüz bağ bırakmaktansa boşuna bakmak yeğ.
+    for(const u of Object.keys(oturum.participants||{})){
+      if(u===me){
+        (db.books[me]||[]).forEach(b=>{ if(b.coreadingSession===sid) delete b.coreadingSession; });
+      } else {
+        await birlikteOkumaBaginiTemizle(u, sid);
+      }
+    }
+    await davetKapandiBildir(oturum);
+  }
+  if(kapanan){ saveDb(); updateNotifDot(); renderSafe(); }
+  return kapanan;
+}
+
+// Süresi dolduğu için kapanmış bir daveti yeniden açar. Eski oturum silinmiş
+// durumda; bildirimde taşınan kitap bilgisiyle SIFIRDAN yeni bir oturum kuruluyor.
+async function davetiYenidenBaslat(bildirimId){
+  const n=((db.notifications&&db.notifications[me])||[]).find(x=>String(x.id)===String(bildirimId));
+  if(!n){ mesajGoster('Bu bildirim artık yok.','uyari'); return; }
+  const sessions=Object.values(db.readingSessions||{});
+  const ayni=sessions.find(s=>s.initiator===me&&(s.status==='pending'||s.status==='active')&&
+    String(s.bookTitle||'').toLowerCase()===String(n.bookTitle||'').toLowerCase());
+  if(ayni){ mesajGoster('Bu kitap için zaten açık bir oturumun var.','uyari'); return; }
+  const sessionId='cs_'+Date.now();
+  const simdi=Date.now();
+  const session={
+    id: sessionId, initiator: me,
+    bookTitle: n.bookTitle||'', author: n.author||'', pages: n.pages||0,
+    status:'pending', createdAt: simdi, expiresAt: simdi+DAVET_SURESI_MS,
+    participants: { [me]:{status:'accepted', joinedAt:simdi} },
+  };
+  const baslangic={type:'started',user:me,ts:simdi};
+  session.history={[gecmisAnahtari(baslangic)]:baslangic};
+  if(!db.readingSessions) db.readingSessions={};
+  db.readingSessions[sessionId]=session;
+  const ok=await fbSet('aa-v4/readingSessions/'+sessionId, session);
+  if(!ok){ delete db.readingSessions[sessionId]; mesajGoster('Davet gönderilemedi, tekrar dene.','uyari'); return; }
+  await davetBildirimiKaldir(bildirimId);
+  mesajGoster('“'+session.bookTitle+'” için yeni davet akışa düştü.');
+  renderSafe();
+}
+// Bildirimi listeden çıkarır — "İptal" ve "Yeniden davet et" ikisi de bunu
+// kullanıyor: iş bitti, bildirim orada asılı kalmasın.
+async function davetBildirimiKaldir(bildirimId){
+  if(!db.notifications||!db.notifications[me]) return;
+  db.notifications[me]=db.notifications[me].filter(x=>String(x.id)!==String(bildirimId));
+  await fbSet('aa-v4/notifications/'+me, db.notifications[me]);
+  updateNotifDot();
+  renderNotifPanel();
+}
+
 async function startCoreadingSession(titleRaw, author){
   if(!me){ mesajGoster('Giriş yapman gerekiyor.','uyari'); return; }
   const sessions=Object.values(db.readingSessions||{});
@@ -408,6 +565,27 @@ async function doEndCoreading(sessionId){
   await fbSet('aa-v4/readingSessions/'+sessionId+'/status','ended');
   await fbSet('aa-v4/readingSessions/'+sessionId+'/endedAt',session.endedAt);
   await gecmiseEkle(sessionId,{type:'ended',user:me,ts:session.endedAt});
+  // Kitaplardaki `coreadingSession` bağı temizleniyor (2026-08-29).
+  // İptal (cancelCoreading) bağları özenle siliyordu, ayrılma (leaveCoreading)
+  // kendi kitabını siliyordu — SADECE bitirme bırakıyordu. Bağ ölü olduğu hâlde
+  // kitapta asılı kalınca ekranın üç yeri onu üç farklı şekilde yorumluyordu:
+  // liste "👥" gösteriyor, modal göstermiyor, sekme etiketi "⏸ Bekliyor" diyordu.
+  // "Ben o değilim" kitabındaki tutarsızlığın kaynağı buydu.
+  //
+  // Oturumun KENDİSİ silinmiyor — okundu, bitti, kaydı kalsın. Silinen yalnızca
+  // kitaptaki ölü işaret.
+  const bagliKisiler=new Set(Object.keys(session.participants||{}));
+  for(const u of Object.keys(db.books||{})){
+    if((db.books[u]||[]).some(b=>b&&b.coreadingSession===sessionId)) bagliKisiler.add(u);
+  }
+  for(const u of bagliKisiler){
+    if(u===me){
+      (db.books[me]||[]).forEach(b=>{ if(b.coreadingSession===sessionId) delete b.coreadingSession; });
+    } else {
+      await birlikteOkumaBaginiTemizle(u, sessionId);
+    }
+  }
+  await saveDb();
   notify('⏹ Oturum sonlandırıldı', session.bookTitle+' birlikte okuma oturumu kapatıldı.');
   renderSafe();
 }

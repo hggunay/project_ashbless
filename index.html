@@ -2117,6 +2117,36 @@ function ensureBkEid(bk){
   return bk._eid;
 }
 
+// ── BİRLİKTE OKUMA: DURUMUN TEK KAYNAĞI (2026-08-29) ─────────────────────────
+// Aynı oturum için ekranın üç ayrı yeri üç farklı şey söylüyordu: kitap listesi
+// koşulsuz "👥" basıyor, "Birlikte" sekmesi active/completed dışındaki her şeye
+// "⏸ Bekliyor" diyor, modal ise yalnızca active/completed'de rozet gösteriyordu.
+// Sonuç: bitirilmiş bir oturum listede "birlikte okunuyor", sekmede "bekliyor",
+// modalda "yok" görünüyordu. Üçü de artık buradan besleniyor — bir durumun
+// karşılığı değişecekse tek yerde değişiyor.
+const BIRLIKTE_DURUM_ETIKETI={
+  pending:   '⏳ Henüz başlamadı',
+  active:    '📖 Devam ediyor',
+  completed: '🎉 Tamamlandı',
+  ended:     '⏹ Sonlandırıldı',
+  cancelled: '✕ İptal edildi',
+};
+// Modalda rozet gösterilecek durumlar. `pending` bilerek YOK: daha başlamamış
+// bir oturumu kitabın başlığında "birlikte okunuyor" diye duyurmak yanlış olur.
+const BIRLIKTE_MODAL_ROZETI={
+  active:    n=>'👥 '+n+' ile birlikte okunuyor',
+  completed: n=>'🎉 '+n+' ile birlikte tamamlandı',
+  ended:     n=>'⏹ '+n+' ile başlanmıştı — oturum sonlandırıldı',
+};
+// Kitap listesindeki 👥 ikonu: bağ VAR ama oturum yoksa (silinmiş/öksüz bağ)
+// ikon gösterilmemeli — tıklanacak bir yer yok.
+function birlikteIkonuGorunsun(kitap){
+  const sid=kitap&&kitap.coreadingSession;
+  if(!sid) return false;
+  const s=db.readingSessions&&db.readingSessions[sid];
+  return !!(s&&BIRLIKTE_DURUM_ETIKETI[s.status]);
+}
+
 // ── FİREBASE ──────────────────────────────────────────────────
 const FB_URL='https://armchair-adventurers-default-rtdb.europe-west1.firebasedatabase.app';
 
@@ -3663,6 +3693,11 @@ function enterApp(){
     checkStreakMilestone(_fullBooks, _csCurStreak);
   }catch(e){}
   showSpecialDayBanner();
+  // Süresi dolmuş birlikte okuma davetlerini kapat (2026-08-29). Sunucu yok —
+  // işi uygulamayı açan istemci yapıyor. checkNotifications'tan ÖNCE tetikleniyor
+  // ki kapanış bildirimi aynı açılışta duyurulabilsin; kendi içinde ağa çıktığı
+  // için beklemeden devam ediyoruz.
+  setTimeout(()=>{ try{ suresiDolanDavetleriKapat(); }catch(e){ console.warn('davet süresi kontrolü:',e); } },600);
   setTimeout(()=>checkNotifications(),1200);
   // AudioContext önceden ısıt
   try{_getNmAudioCtx();}catch(e){};
@@ -4897,6 +4932,10 @@ async function openBook(bookId,fromShelf=false){
   document.getElementById('modalSubtitle').textContent=book.author?`— ${book.author}`:'';
   const coreadingEl=document.getElementById('modalCoreadingBadge');
 if(coreadingEl){
+  // 2026-08-29: modal artık `ended` oturumu da gösteriyor. Eskiden yalnızca
+  // active/completed'e bakıyordu; sonlandırılmış bir oturumda liste "👥",
+  // sekme "⏸ Bekliyor", modal ise hiçbir şey diyordu — aynı kitap için üç
+  // farklı gerçek. Üçü de artık BIRLIKTE_DURUM_ETIKETI'nden besleniyor.
   const sid=book.coreadingSession;
   if(sid){
     // Yerel db.readingSessions bayat olabilir (paylaşılan tüm-veritabanı kaydındaki
@@ -4911,9 +4950,9 @@ if(coreadingEl){
   }
   const session=sid&&db.readingSessions&&db.readingSessions[sid];
   const isParticipant=session&&session.participants&&session.participants[me]&&session.participants[me].status==='accepted';
-  if(session&&(session.status==='active'||session.status==='completed')&&isParticipant){
-    const names=Object.keys(session.participants).filter(u=>session.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).join(', ');
-    const label=session.status==='completed'?'🎉 '+names+' ile birlikte tamamlandı':'👥 '+names+' ile birlikte okunuyor';
+  if(session&&BIRLIKTE_MODAL_ROZETI[session.status]&&isParticipant){
+    const names=Object.keys(session.participants).filter(u=>session.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
+    const label=BIRLIKTE_MODAL_ROZETI[session.status](names);
     coreadingEl.style.display='';
     coreadingEl.innerHTML=`<span style="cursor:pointer" onclick="closeModal();scrollToCoreadingCard('${sid}')">${label}</span>`;
   } else {
@@ -6527,6 +6566,25 @@ function renderNotifPanel(){
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
       </div>`;
     }
+	// Süresi dolan davet — başlatana giden EYLEMLİ bildirim (2026-08-29).
+	// Oturum silindiği için kitabın bilgisi bildirimin içinde taşınıyor.
+	if(n.type==='coreading_expired'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⌛ <em>${escapeHtml(n.bookTitle)}</em> daveti 7 gün içinde başlamadı, kapatıldı.</div>
+        <div style="display:flex;gap:.5rem;margin-top:.4rem">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="davetiYenidenBaslat('${n.id}')">🔄 Yeniden davet et</button>
+          <button class="btn btn-sm" onclick="davetBildirimiKaldir('${n.id}')">İptal</button>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
+	// Aynı davete katılmış olanlara giden BİLGİ bildirimi — düğmesi yok.
+	if(n.type==='coreading_expired_participant'){
+      return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
+        <div style="font-size:.88rem;color:var(--ink)">⌛ <strong>${escapeHtml(n.fromName)}</strong> — <em>${escapeHtml(n.bookTitle)}</em> daveti başlamadan kapandı.</div>
+        <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:#888;margin-top:.15rem">${timeAgo}</div>
+      </div>`;
+    }
 	if(n.type==='coreading_milestone'){
       return`<div style="padding:.5rem .9rem;border-bottom:1px solid rgba(201,162,39,.08);background:${n.seen?'transparent':'rgba(201,162,39,.05)'}">
         <div style="font-size:.88rem;color:var(--ink)">👥 <strong>${escapeHtml(n.fromName)}</strong> — <em>${escapeHtml(n.bookTitle)}</em></div>
@@ -7746,7 +7804,9 @@ function renderBookList(){
     crBookList.innerHTML=coreadingBooks.map(b=>{
       const s=db.readingSessions&&db.readingSessions[b.coreadingSession];
       const status=s?s.status:'?';
-      const label=status==='completed'?'🎉 Tamamlandı':status==='active'?'📖 Devam ediyor':'⏸ Bekliyor';
+      // Etiketler (2026-08-29). Eskiden active ve completed dışındaki HER durum
+      // "⏸ Bekliyor" yazıyordu — bitirilmiş bir oturum bile "bekliyor" görünüyordu.
+      const label=BIRLIKTE_DURUM_ETIKETI[status]||'⏸ Bekliyor';
       const names=s?Object.keys(s.participants||{}).filter(u=>s.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', '):'';
       return`<div class="book-list-item" onclick="openBook(${b.id})" style="cursor:pointer;padding:.5rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
         <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600">${escapeHtml(b.title)} 👥</div>
@@ -7889,7 +7949,7 @@ function renderBookList(){
     const zebraClass=idx%2===1?'zebra-dark':'';
     return`<div class="book-item${noTitle?' book-item-warn':''} ${zebraClass}" onclick="openBook(${b.id})">
       <div class="book-info">
-        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':escapeHtml(b.title)}${b.coreadingSession?' 👥':''}</span>
+        <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt — tıkla ve düzenle':escapeHtml(b.title)}${birlikteIkonuGorunsun(b)?' 👥':''}</span>
         ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}${b.country?' · '+escapeHtml(b.country):''}</span>`:''}
         ${dateDisplay?`<span class="book-meta">${dateDisplay}</span>`:''}
         ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}${b.seriesTotal?`/${b.seriesTotal}`:''}</span>`:''}

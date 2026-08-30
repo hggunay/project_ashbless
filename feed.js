@@ -167,7 +167,15 @@ function getFeedCards(){
   const now=Date.now();
   Object.values(sessions).forEach(s=>{
     if(s.status==='cancelled') return;
-    if(s.expiresAt&&s.expiresAt<now&&s.status!=='active'&&s.status!=='ended'&&s.status!=='completed') return;
+    // Süresi dolmuş ama henüz silinmemiş davet (2026-08-29).
+    // Artık böyle davetler suresiDolanDavetleriKapat() ile TAMAMEN siliniyor
+    // (coreading.js) — bu satır yalnızca silme henüz çalışmamışken (ör. az önce
+    // dolan süre, çevrimdışı açılış) kartın görünmesini engelliyor.
+    // Eski koşul tarihi her çizimde yeniden hesaplıyordu ve `ended`'i dışarıda
+    // bırakıyordu; bu yüzden süresi geçmiş bir oturumu `ended` yapmak kartı
+    // akışa GERİ GETİRİYORDU. Artık kural yalnızca `pending`e bakıyor:
+    // başlamış bir oturumun kartı tarihten etkilenmiyor.
+    if(s.status==='pending'&&davetSuresiDoldu(s,now)) return;
     const initiatorUser=db.users[s.initiator]||{};
     cards.push({
       type:'coreading_invite',
