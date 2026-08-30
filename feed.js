@@ -401,10 +401,17 @@ function renderFeed(append=false){
 		${(()=>{const leftNames=Object.keys(card.participants).filter(u=>card.participants[u].status==='left').map(u=>(db.users[u]||{}).displayName||u);return leftNames.length?`<div style="font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);margin-bottom:.5rem">👤 ${leftNames.length} kişi ayrıldı</div>`:''})()}
 		${(()=>{
   const hist=card.history||[];
-  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMarHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';if(ev.type==='user_finished')return ds+' — 📖 '+name+' kitabı bitirdi';return ds+' — '+name;};
+  const fmt=ev=>{const name=(db.users[ev.user]||{}).displayName||ev.user;const d=new Date(ev.ts);const ds=d.getDate()+' '+'OcaŞubMarNisMayHazTemAğuEylEkiKasAra'.match(/.{3}/g)[d.getMonth()];if(ev.type==='started')return ds+' — '+name+' oturumu başlattı';if(ev.type==='joined')return ds+' — '+name+' katıldı';if(ev.type==='left')return ds+' — '+name+' ayrıldı';if(ev.type==='reading_started')return ds+' — Okuma başladı';if(ev.type==='milestone')return ds+' — '+name+' %'+ev.pct+(ev.msg?' · '+ev.msg:'');if(ev.type==='completed')return ds+' — 🎉 Birlikte okuma tamamlandı!';if(ev.type==='ended')return ds+' — ⏹ '+name+' oturumu sonlandırdı';if(ev.type==='user_finished')return ds+' — 📖 '+name+' kitabı bitirdi';return ds+' — '+name;};
   if(!hist.length) return '';
-  const recent=hist.slice(-2);
-  const older=hist.slice(0,-2);
+  // Sıralama (2026-08-30, Gökşin buldu). `hist` eskiden yeniye sıralı geliyor.
+  // Eskiden görünen kısım da gizli kısım da bu yönde basılıyordu; sonuç, kart
+  // yukarıdan aşağı okununca zamanda geriye ATLIYORDU: önce en yeni iki olay
+  // (eskiden yeniye), sonra "Geçmişi gör"ün altında en eski olaylar.
+  // Artık ikisi de EN YENİDEN EN ESKİYE — kart baştan sona tek yönlü okunuyor,
+  // yolculuk kartlarındaki düzenin aynısı. slice() yeni dizi döndürdüğü için
+  // reverse() asıl geçmişi bozmuyor.
+  const recent=hist.slice(-2).reverse();
+  const older=hist.slice(0,-2).reverse();
   const sid=card.sessionId;
   return `<div style="font-family:'Space Mono',monospace;font-size:.72rem;color:rgba(26,18,8,.75);margin-bottom:.4rem;line-height:1.7">${recent.map(fmt).join('<br>')}</div>${older.length?`<details style="margin-bottom:.4rem"><summary style="font-family:'Space Mono',monospace;font-size:.65rem;color:rgba(26,18,8,.55);cursor:pointer;list-style:none">▾ Geçmişi gör (${older.length})</summary><div style="font-family:'Space Mono',monospace;font-size:.67rem;color:rgba(26,18,8,.6);margin-top:.3rem;line-height:1.7">${older.map(fmt).join('<br>')}</div></details>`:''}`;
 })()}
