@@ -2142,6 +2142,18 @@ const BIRLIKTE_MODAL_ROZETI={
   // başlanmıştı" olup kendi kendinle başlamış gibi duruyordu.
   ended:     ()=>'⏹ Birlikte okuma oturumu sonlandırıldı',
 };
+// Bir oturumda EKRANDA hangi isimler yazılmalı? Tek yerden cevaplanıyor, yoksa
+// modal ile liste farklı konuşuyor (2026-08-30, Gökşin fark etti: modal Özgür'ü
+// düşürmüştü ama "Birlikte" sekmesi hâlâ yazıyordu).
+//   tamamlandı → BİTİRENLER   ("X ile birlikte tamamladın" yalnızca onlar için doğru)
+//   okunuyor / sonlandırıldı → OKUYANLAR (kitabını bağlamış olanlar)
+//   davet → katılanlar (henüz okuyan yok, kimlerin evet dediği anlamlı)
+function birlikteGosterilecekKisiler(session){
+  if(!session) return [];
+  if(session.status==='completed') return oturumBitirenleri(session);
+  if(session.status==='active'||session.status==='ended') return oturumOkuyanlari(session);
+  return Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
+}
 // Kitap listesindeki 👥 ikonu: bağ VAR ama oturum yoksa (silinmiş/öksüz bağ)
 // ikon gösterilmemeli — tıklanacak bir yer yok.
 function birlikteIkonuGorunsun(kitap){
@@ -4963,10 +4975,7 @@ if(coreadingEl){
     // demek yalnızca BİTİRENLER için doğru; kitabı hiç bağlamamış birini oraya
     // yazmak olmayan bir şeyi anlatıyor. Okunurken de ölçüt katılmak değil,
     // kitabı bağlamış OLMAK.
-    const kimler = session.status==='completed' ? oturumBitirenleri(session)
-                 : session.status==='active'    ? oturumOkuyanlari(session)
-                 : Object.keys(session.participants||{}).filter(u=>session.participants[u].status==='accepted');
-    const names=kimler.map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
+    const names=birlikteGosterilecekKisiler(session).map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
     if(!names){ coreadingEl.style.display='none'; }
     else{
     const label=BIRLIKTE_MODAL_ROZETI[session.status](names);
@@ -7868,7 +7877,7 @@ function renderBookList(){
       // Etiketler (2026-08-29). Eskiden active ve completed dışındaki HER durum
       // "⏸ Bekliyor" yazıyordu — bitirilmiş bir oturum bile "bekliyor" görünüyordu.
       const label=BIRLIKTE_DURUM_ETIKETI[status]||'⏸ Bekliyor';
-      const names=s?Object.keys(s.participants||{}).filter(u=>s.participants[u].status==='accepted').map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', '):'';
+      const names=birlikteGosterilecekKisiler(s).map(u=>(db.users[u]||{}).displayName||u).map(escapeHtml).join(', ');
       return`<div class="book-list-item" onclick="openBook(${b.id})" style="cursor:pointer;padding:.5rem 0;border-bottom:1px solid rgba(201,162,39,.1)">
         <div style="font-family:'Crimson Pro',serif;font-size:.95rem;font-weight:600">${escapeHtml(b.title)} 👥</div>
         <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:rgba(26,18,8,.5);margin-top:.2rem">${escapeHtml(b.author)||''} · ${label}${names?' · '+names:''}</div>
