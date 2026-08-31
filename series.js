@@ -76,6 +76,15 @@ function mySeriesData(){
   if(!db.seriesData[me]) db.seriesData[me]={series:{},paths:{}};
   return db.seriesData[me];
 }
+// Serinin "toplam kitap" değeri (2026-08-31).
+// `ser.total` kullanıcının girdiği HEDEF: "Katilbot Günlükleri" 7 kitaplık bir
+// seri ama elinde 4 var — o yüzden hedefi düşürmüyoruz. Ama tersi de oluyordu:
+// kayıtlı kitap sayısı hedefi geçince ilerleme %100'ü aşıyordu (canlı veride
+// Robot %125, Efsaneler Üçlemesi %300). İkisini birden karşılayan tek kural:
+// hangisi büyükse o. Veriye dokunmadan ekranı düzeltir.
+function seriToplam(ser, kitapSayisi){
+  return Math.max((ser&&ser.total)||0, kitapSayisi||0);
+}
 function viewSeriesData(){
   const u = viewing||me;
   if(!db.seriesData) db.seriesData={};
@@ -449,12 +458,33 @@ function addBookToSeries(seriesId){
   }
 
   ser.books = ser.books||[];
+
+  // ── ARAYA EKLEME: sonraki numaralar kendiliğinden kaysın (2026-08-31) ──
+  // Eskiden verilen numara zaten kullanılıyorsa iki kitap aynı numarayı alıyordu;
+  // canlı veride üç seride bu olmuştu (Dune'da iki #6, Hanedanlar'da iki #2,
+  // Efsaneler'de iki #1) ve Gökşin elle düzeltiyordu.
+  // Kaydırma YALNIZCA o numara doluysa yapılıyor: 1,2,4 olan seriye #3 eklenirse
+  // boş yer dolduruluyor, 4 gereksiz yere 5'e itilmiyor.
+  if(num!=null && (ser.books||[]).some(b=>b.num===num)){
+    ser.books.forEach(b=>{ if(b.num!=null && b.num>=num) b.num = b.num+1; });
+  }
+
   if(linked){
     ser.books.push({ bookId: linked.id, num, pages: pages||linked.pages||null, publisher: publisher||linked.publisher||null });
   } else {
     ser.books.push({ manualTitle: title, manualAuthor: author, num, pages, publisher: publisher||null, planned: true });
   }
   ser.books.sort((a,b)=>(a.num||999)-(b.num||999));
+
+  // ── TOPLAM: yalnızca YÜKSELT, asla düşürme (2026-08-31) ──
+  // `total` çoğu zaman kullanıcının bilinçli girdiği hedef: "Katilbot Günlükleri"
+  // 7 kitaplık bir seri ama elinde 4 var, "Before the Coffee Gets Cold" 5'lik ama
+  // 2 var. Kitap sayısına EŞİTLEMEK bu hedefleri bozardı. Sadece kayıtlı kitap
+  // sayısı hedefi geçtiğinde yükseltiyoruz (Robot'ta 5 kitap vardı, toplam 4'te
+  // kalmıştı). Hiç girilmemişse (null) dokunmuyoruz — ekran zaten kitap sayısını
+  // gösteriyor, oraya sayı yazmak "hedef belirlenmiş" gibi görünürdü.
+  if(ser.total!=null && ser.books.length>ser.total) ser.total = ser.books.length;
+
   saveDb();
   titleEl.value='';
   if(authorEl) authorEl.value='';
@@ -592,9 +622,9 @@ function _refreshSeriesBookList(seriesId){
     const readCount = books.filter(bk=>{
       const b=bk.book; if(!b||b.readingStatus==='planned'||b.readingStatus==='reading'||b.readingStatus==='paused'||b.readingStatus==='wishlist') return false; return true;
     }).length;
-    const total = ser.total || books.length || 1;
+    const total = seriToplam(ser, books.length) || 1;
     const ongoing = ser.ongoing||false;
-    const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
+    const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriToplam(ser, books.length)||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
     statsEl.textContent = readCount+' / '+totalDisplay+' kitap · %'+pct+(isDone?' · ✅ Tamamlandı':'');
@@ -793,7 +823,16 @@ function checkSeriesComplete(seriesId){
   const ser = data.series[seriesId];
   if(!ser) return;
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
-  const total = ser.total || (ser.books||[]).length;
+  // Burada da hedef DÜŞÜK kalmışsa seri erkenden "tamamlandı" işaretleniyordu
+  // (Efsaneler Üçlemesi'nde hedef 1, kayıtlı 4). seriToplam ikisinin büyüğünü alır.
+  // ⚠️ Sayarken kitabı SİLİNMİŞ satırlar atlanıyor: seri kaydında duran ama
+  // kütüphanede karşılığı olmayan satırlar var (canlı veride Dune ve Efsaneler'de
+  // birer tane). Ekranda zaten gösterilmiyorlar; burada sayılsalardı Dune 6 gerçek
+  // kitapla hiçbir zaman "tamamlandı" olamazdı.
+  const gecerliSayi = (ser.books||[]).filter(bk=>
+    bk.manualTitle || myBooksList.some(b=>b.id===bk.bookId)
+  ).length;
+  const total = seriToplam(ser, gecerliSayi);
   const readCount = myBooksList.filter(b=>
     b.series && normalizeSeries(b.series)===normalizeSeries(ser.name) &&
     (b.readingStatus==='new'||b.readingStatus==='past'||b.retroactive)
@@ -887,7 +926,24 @@ function saveEditSeriesBook(seriesId, eid, containerId, isPlanned){
   if(rawIdx<0) return;
   const numEl = document.getElementById('edit_num_'+containerId);
   const pagesEl = document.getElementById('edit_pages_'+containerId);
-  ser.books[rawIdx].num = parseInt(numEl?.value)||null;
+  // ── NUMARA TAŞIMA (2026-08-31) ──
+  // Eskiden girilen numara başka bir kitapta duruyorsa iki kitap aynı numarayı
+  // alıyordu. Artık aradakiler kayıyor: 5. kitabı 2 yaparsan eski 2,3,4 birer
+  // artıyor; 2. kitabı 5 yaparsan eski 3,4,5 birer azalıyor. Hedef numara boşsa
+  // hiçbir şey kaymıyor. Numarasız kitaplara hiç dokunulmuyor.
+  const eskiNum = ser.books[rawIdx].num;
+  const yeniNum = parseInt(numEl?.value)||null;
+  ser.books[rawIdx].num = yeniNum;
+  if(yeniNum!=null && ser.books.some((b,i)=>i!==rawIdx && b.num===yeniNum)){
+    ser.books.forEach((b,i)=>{
+      if(i===rawIdx || b.num==null) return;
+      if(eskiNum==null || yeniNum<eskiNum){
+        if(b.num>=yeniNum && (eskiNum==null || b.num<eskiNum)) b.num = b.num+1;
+      } else if(yeniNum>eskiNum){
+        if(b.num>eskiNum && b.num<=yeniNum) b.num = b.num-1;
+      }
+    });
+  }
   ser.books[rawIdx].pages = parseInt(pagesEl?.value)||null;
   if(isPlanned){
     const titleEl = document.getElementById('edit_title_'+containerId);
@@ -1034,9 +1090,9 @@ function renderSeriesList(){
     const readCount = books.filter(bk=>{
       const b=bk.book; if(!b||b.readingStatus==="planned"||b.readingStatus==="reading"||b.readingStatus==="paused"||b.readingStatus==="wishlist") return false; return true;
     }).length;
-    const total = ser.total || books.length || 1;
+    const total = seriToplam(ser, books.length) || 1;
 	const ongoing = ser.ongoing||false;
-const totalDisplay = ongoing ? (ser.total||books.length||'?')+'+' : (ser.total||books.length||'?');
+const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriToplam(ser, books.length)||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
 
@@ -1283,7 +1339,7 @@ function renderGroupCards(seriesContainer){
         return book?{...bk,book}:null;
       }).filter(Boolean);
       const readCount=serBooks.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist';}).length;
-      const total=ser.total||serBooks.length||1;
+      const total=seriToplam(ser, serBooks.length)||1;
       const pct=Math.round((readCount/total)*100);
       return {...s,ser,serBooks,readCount,total,pct};
     }).filter(Boolean);
