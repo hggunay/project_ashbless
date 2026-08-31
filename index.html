@@ -7667,13 +7667,25 @@ function _ortakYildiz(p){
   if(!p) return '<span style="color:var(--parchment-dark);opacity:.35">—</span>';
   return '<span style="color:var(--gold-light)">'+'★'.repeat(Math.floor(p))+(p%1?'½':'')+'</span>';
 }
+// Liste 15'erli açılıyor (2026-08-31). Kutu kapalı geldiği için sorun görünmüyordu
+// ama açıldığında BÜTÜN ortak kitaplar birden basılıyordu; çok okuyan iki üyede
+// bu, sayfayı boydan boya dolduran bir panel demekti.
+const ORTAK_SAYFA_BOYU=15;
+let _ortakSayfa=1, _ortakSonKisi=null;
+function ortakKitapDahaFazla(){ _ortakSayfa++; renderOrtakKitaplar(); }
 function renderOrtakKitaplar(){
   const kutu=document.getElementById('ortakKitaplarKutusu');
   if(!kutu) return;
-  if(!viewing){ kutu.style.display='none'; kutu.innerHTML=''; return; }
+  if(!viewing){ kutu.style.display='none'; kutu.innerHTML=''; _ortakSonKisi=null; return; }
+  // Başka birinin profiline geçilince sayfalama başa dönsün. Sıfırlamayı burada
+  // yapmak zorundayız: renderOrtakKitaplar her ekran tazelemesinde çağrılıyor,
+  // koşulsuz sıfırlasaydık "daha fazla göster" bir sonraki tazelemede kapanırdı.
+  if(_ortakSonKisi!==viewing){ _ortakSonKisi=viewing; _ortakSayfa=1; }
   const ortak=ortakKitaplariBul(viewing);
   if(!ortak.length){ kutu.style.display='none'; kutu.innerHTML=''; return; }
   kutu.style.display='';
+  const gosterilecek=ortak.slice(0, _ortakSayfa*ORTAK_SAYFA_BOYU);
+  const kalan=ortak.length-gosterilecek.length;
   const onunAdi=db.users[viewing]?.displayName||viewing;
   const benimAdim=db.users[me]?.displayName||me;
   const acik=sessionStorage.getItem('ortakKitapAcik')==='1';
@@ -7684,7 +7696,7 @@ function renderOrtakKitaplar(){
         '<span id="ortakKitapOk" style="font-size:.7rem;color:var(--gold)">'+(acik?'▼':'▶')+'</span>'+
       '</div>'+
       '<div id="ortakKitapGovde" style="display:'+(acik?'block':'none')+';padding:.5rem 1rem .7rem">'+
-        ortak.map(o=>
+        gosterilecek.map(o=>
           '<div style="display:flex;align-items:baseline;gap:.5rem;flex-wrap:wrap;padding:.32rem 0;border-bottom:1px solid rgba(201,162,39,.12)">'+
             '<span style="font-family:\'Crimson Pro\',serif;font-size:.92rem;color:var(--parchment);flex:1;min-width:150px">'+escapeHtml(o.benim.title)+
               (o.benim.author?' <span style="color:var(--parchment-dark);opacity:.6">— '+escapeHtml(o.benim.author)+'</span>':'')+'</span>'+
@@ -7694,6 +7706,11 @@ function renderOrtakKitaplar(){
               escapeHtml(onunAdi)+' '+_ortakYildiz(o.onun.rating)+
             '</span>'+
           '</div>').join('')+
+        (kalan>0
+          ? '<div style="text-align:center;padding-top:.5rem">'+
+              '<button class="feed-expand-btn" onclick="ortakKitapDahaFazla()">daha fazla göster ('+kalan+')</button>'+
+            '</div>'
+          : '')+
       '</div>'+
     '</div>';
 }
