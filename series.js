@@ -1315,7 +1315,7 @@ function renderGroupCards(seriesContainer){
           :`<span id="pathNameDisp_${path.id}" style="font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--moss);font-weight:700;flex:1">${escapeHtml(path.name)}</span>`}
         <span style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--moss);opacity:.7;background:rgba(74,103,65,.15);padding:.1rem .4rem;border-radius:20px">${steps.length} seri · ${totalRead}/${totalBooks} kitap · %${overallPct}</span>
         <div style="display:flex;gap:.3rem" onclick="event.stopPropagation()">
-          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:none;border:none" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}')">🗑</button>`}
+          ${viewing?`<button class="btn btn-sm btn-primary" style="font-size:.6rem;padding:.1rem .35rem" onclick="copyGroupToMyList('${path.id}')">🗂 Ekle</button>`:`<button class="btn btn-sm" style="font-size:.6rem;padding:.1rem .35rem;background:none;border:none" onclick="startPathNameEdit('${path.id}')" title="Adı düzenle">✏️</button><button class="btn btn-sm btn-danger" style="font-size:.6rem;padding:.1rem .35rem" onclick="deletePath('${path.id}',this)">🗑</button>`}
         </div>
         <span style="color:var(--moss);font-size:.8rem">${isOpen?'▲':'▼'}</span>
       </div>
@@ -1493,12 +1493,22 @@ function createPath(){
   renderSeriesList();
 }
 
-function deletePath(id){
-  if(!confirm('Bu okuma yolunu silmek istediğine emin misin?')) return;
-  const data = mySeriesData();
-  delete data.paths[id];
-  saveDb();
-  renderSeriesList();
+// 2026-08-31: tarayıcının `confirm()` kutusu yerine uygulama içi onay şeridi
+// (`showInlineConfirm`, feed.js). Düğme öğesi `this` ile geliyor; gelmezse
+// SİLMİYORUZ — onaysız silmektense hiç silmemek.
+function deletePath(id, btn){
+  const sil=()=>{
+    const data = mySeriesData();
+    delete data.paths[id];
+    saveDb();
+    renderSeriesList();
+    mesajGoster('Okuma yolu silindi.');
+  };
+  if(!btn || typeof showInlineConfirm!=='function'){
+    mesajGoster('Silme onayı açılamadı, işlem yapılmadı.','uyari');
+    return;
+  }
+  showInlineConfirm(btn, 'Okuma yolu silinsin mi?', sil);
 }
 
 function addSeriesToPath(pathId){

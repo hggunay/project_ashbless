@@ -2772,13 +2772,10 @@ async function changePassword(){
   mesajGoster('Şifre güncellendi ✅');
 }
 
-function deleteAllBooks(){
-  if(!confirm('Tüm kitap kayıtların silinecek. Emin misin?')) return;
-  db.books[me]=[];
-  saveDb();renderSafe();
-  showPanel('myBooks',document.querySelector('.nav-tab'));
-  mesajGoster('Tüm kitaplar silindi.');
-}
+// 2026-08-31: `deleteAllBooks()` SİLİNDİ. Arayüzde düğmesi yoktu, kodda da hiçbir
+// yerden çağrılmıyordu — yani yalnızca konsoldan tetiklenebilen, tek çağrıda
+// bütün kitap listesini silen bir fonksiyondu. Tarayıcının `confirm()` kutusunu
+// kullanan üç yerden biriydi (bkz. [feedback] tarayıcı kutuları yok).
 
 // Bir kullanıcının TÜM verilerini siler — profil silme akışının iki giriş noktası da bunu kullanır (Ö34)
 //
@@ -2799,8 +2796,8 @@ function deleteAllBooks(){
 // "Silinmiş hesap" olarak gösteriliyor.
 // ⚠️ async: her granüler silme BEKLENİYOR. Eskiden `fbSet` çağrıları beklenmeden
 // bırakılıyordu; kullanıcı "sil" dedikten hemen sonra sekmeyi kapatırsa bir kısmı
-// hiç gitmeyebilirdi — yarım silinmiş hesap, en kötü sonuç. Çağıran iki yer de
-// (deleteProfile, confirmDeleteProfile) artık await ediyor.
+// hiç gitmeyebilirdi — yarım silinmiş hesap, en kötü sonuç. Tek çağıran
+// (confirmDeleteProfile) await ediyor.
 async function deleteAllUserData(u){
   // Boş/tanımsız bir değerle çağrılırsa 'aa-v4/books/undefined' gibi yollara
   // yazardık. Silme geri alınamaz — önce kimliği doğrula.
@@ -2864,13 +2861,9 @@ function uyeGorunenAd(u){
   return 'Silinmiş hesap';
 }
 
-async function deleteProfile(){
-  if(!confirm('Profilin ve tüm verilerin kalıcı olarak silinecek. Emin misin?')) return;
-  if(!confirm('Bu işlem geri alınamaz! Devam etmek istiyor musun?')) return;
-  await deleteAllUserData(me);   // silmeler bitmeden çıkış yapma
-  saveDb();
-  logout();
-}
+// 2026-08-31: `deleteProfile()` SİLİNDİ. Çağıranı yoktu — Ayarlar'daki düğme
+// `confirmDeleteProfile()` çağırıyor, o da tarayıcı kutusu yerine düğmeyi iki kez
+// değiştirerek soruyor. Bu ölü kopya `confirm()` kullanan diğer iki kutuydu.
 
 function renderSettings(){
   const user=db.users[me];
