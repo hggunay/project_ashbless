@@ -797,19 +797,14 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
       <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
+      <!-- G11 (2026-08-31): buradaki "e-postana kod gönderelim" akışı kaldırıldı.
+           Kodu tarayıcı üretip yine tarayıcı doğruluyordu (koruma değil, koruma
+           görüntüsü) ve altı hesabın dördünde kayıtlı e-posta olmadığı için
+           zaten çalışmıyordu. Metin showForgotFlow() içinde dolduruluyor. -->
       <div id="forgotBox" style="display:none;background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.3);border-radius:2px;padding:.75rem;margin-bottom:.5rem">
-        <div id="forgotStep1">
-          <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">Kullanıcı adını gir, e-postana sıfırlama kodu gönderelim.</div>
-          <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="sendResetCode()">📨 Sıfırlama Kodu Gönder</button>
-          <div id="forgotSentMsg" style="display:none;font-family:'Crimson Pro',serif;font-size:.85rem;color:var(--moss);font-style:italic;margin-top:.5rem"></div>
-        </div>
-        <div id="forgotStep2" style="display:none">
-          <div style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--rust);margin-bottom:.5rem">E-postana gönderilen 6 haneli kodu gir.</div>
-          <input class="auth-input" id="resetCodeInput" type="text" placeholder="123456" maxlength="6" style="margin-bottom:.5rem;letter-spacing:.2em;text-align:center;font-size:1.2rem"/>
-          <input class="auth-input" id="resetNewPw" type="password" placeholder="Yeni şifre" style="margin-bottom:.5rem"/>
-          <button class="auth-btn" style="background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="confirmResetCode()">✅ Şifreyi Sıfırla</button>
-          <div id="resetError" style="display:none;font-family:'Space Mono',monospace;font-size:.7rem;color:var(--rust);margin-top:.4rem"></div>
-        </div>
+        <!-- ⚠️ Giriş kartının zemini KREM (koyu değil) — burada --ink/--rust kullanılır,
+             --parchment/--gold görünmez olur. Tarayıcıda ölçüldü. -->
+        <div id="forgotInfo" style="font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--ink);line-height:1.5"></div>
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin:.3rem 0;flex-wrap:wrap;gap:.3rem">
         <div style="display:flex;align-items:center;gap:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--parchment);opacity:.7">
@@ -837,9 +832,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 </div>
 
 <script>
-// Kayıtlı oturum varsa giriş ekranını EN ERKEN fırsatta gizle, yerine "Yükleniyor…" göster —
-// aşağıdaki emailjs kütüphanesi senkron/engelleyici yüklendiği için asıl uygulama script'i
-// çok geç çalışıyor, bu yüzden bu küçük kontrol ayrı ve erken konumlandırıldı.
+// Kayıtlı oturum varsa giriş ekranını EN ERKEN fırsatta gizle, yerine "Yükleniyor…" göster.
+// (Eskiden buradaki gerekçe emailjs'in engelleyici yüklenmesiydi; o kütüphane 2026-08-31'de
+// kaldırıldı, ama aşağıdaki yerel modüller de sırayla yüklendiği için bu erken kontrol
+// hâlâ gerekli.)
 try{
   if(localStorage.getItem('aa-session')){
     var _earlyAuthEl=document.getElementById('authScreen');
@@ -889,7 +885,7 @@ try{
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
-      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar <span id="adminBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
+      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
     </div>
 
     <!-- FEED PANEL -->
@@ -1687,11 +1683,10 @@ try{
             </div>
             <div class="detail-acc-body" id="body-set-members">
               <div style="padding-top:.75rem">
-                <div id="forgotRequestsBox" style="display:none;background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.3);border-radius:4px;padding:.75rem;margin-bottom:.75rem">
-                  <div style="font-family:'Space Mono',monospace;font-size:.65rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);margin-bottom:.5rem">📨 Şifre Sıfırlama İstekleri</div>
-                  <div id="forgotRequestsList"></div>
-                </div>
-                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Şifresini unutan bir üyenin şifresini sıfırlayabilirsin.</div>
+                <!-- G11 (2026-08-31): "📨 Şifre Sıfırlama İstekleri" kutusu kaldırıldı.
+                     Ölü koddu: listeyi OKUYAN üç yer vardı ama isteği YAZAN tek bir yer
+                     yoktu, yani kutu hiçbir zaman dolamazdı. -->
+                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Şifresini unutan bir üyenin şifresini sıfırlayabilirsin. Üye giriş ekranındaki "Şifremi unuttum" bağlantısında sana haber vermesi söyleniyor.</div>
                 <div id="adminMemberList"></div>
               </div>
             </div>
@@ -1810,7 +1805,11 @@ try{
   <div class="notif-body" id="notifBody"></div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<!-- G11 (2026-08-31): EmailJS kütüphanesi kaldırıldı. Tek kullanıcısı şifre
+     sıfırlama kodu akışıydı, o da kaldırıldı. Yan fayda: bu betik senkron
+     (engelleyici) yükleniyordu, artık sayfa onu beklemiyor; ayrıca kaynaktaki
+     servis/şablon kimlikleriyle üçüncü birinin bu hesap üzerinden e-posta
+     gönderme ihtimali de ortadan kalktı. -->
 
 <!-- ═══ YEREL MODÜLLER ═══ index.html ile aynı klasörde olmalı.
      Ana script bloğundan ÖNCE yüklenirler (Ö40, 2026-08-02). -->
@@ -1830,7 +1829,6 @@ try{
 <script src="diyar-harita.js"></script>
 
 <script>
-(function(){emailjs.init({publicKey:'nUPA309NC_qlxeVQn'});})();
 // ══════════════════════════════════════════════════════════════
 // BADGE DEFINITIONS
 // ══════════════════════════════════════════════════════════════
@@ -2495,7 +2493,6 @@ async function _saveDbNow(){
   }
   // localStorage'a da kaydet (yedek)
   try{localStorage.setItem('aa-v4',JSON.stringify(db));}catch(e){}
-  updateAdminBadge();
   if(!ok){ showSaveError(nerede); return; }
   hideSaveError();
   // K7: bayatlık nedeniyle yazmadıysak "✓ kaydedildi" GÖSTERİLMEMELİ — kaydedilmedi.
@@ -2711,68 +2708,25 @@ function showForgotFlow(){
     box.style.display='block';
     box.textContent='💡 İpucu: '+db.users[u].hint;
   }
+  // G11: kod gönderme akışının yerine doğru yol anlatılıyor. Sahibin adı
+  // veritabanından okunuyor — kod içine isim gömmek, sahip değişirse yalan söyler.
+  const bilgi=document.getElementById('forgotInfo');
+  if(bilgi){
+    const sahipAdi=(db.users&&db.users[SAHIP]&&db.users[SAHIP].displayName)||SAHIP;
+    bilgi.innerHTML='Şifreni buradan sıfırlayamazsın. <b style="color:var(--rust)">'+escapeHtml(sahipAdi)+'</b> sana yeni bir şifre verebilir — ona haber vermen yeterli.<br><br>Girdikten sonra <b style="color:var(--rust)">Ayarlar → 🔑 Şifre &amp; İpucu</b> bölümünden kendi şifreni belirleyebilirsin.';
+  }
   forgotBox.style.display='block';
-  document.getElementById('forgotSentMsg').style.display='none';
 }
 
 // ── ŞİFRE SIFIRLAMA ──────────────────────────────────────────
-let _resetCode=null, _resetUser=null, _resetExpiry=null;
-
-function sendResetCode(){
-  const u=document.getElementById('loginUsername').value.trim();
-  if(!u){mesajGoster('Önce kullanıcı adını gir.','uyari');return;}
-  if(!db.users[u]){mesajGoster('Böyle bir kullanıcı bulunamadı.','uyari');return;}
-  const email=db.users[u].email;
-  if(!email){
-    const msg=document.getElementById('forgotSentMsg');
-    msg.style.display='block';
-    msg.style.color='var(--rust)';
-    msg.textContent='Bu hesaba kayıtlı e-posta adresi yok. Ayarlar bölümünden e-posta ekle.';
-    return;
-  }
-  // 6 haneli kod üret
-  _resetCode=Math.floor(100000+Math.random()*900000).toString();
-  _resetUser=u;
-  _resetExpiry=Date.now()+10*60*1000; // 10 dakika
-
-  const msg=document.getElementById('forgotSentMsg');
-  msg.style.display='block';
-  msg.style.color='var(--moss)';
-  msg.textContent='📨 Gönderiliyor...';
-
-  emailjs.send('service_ev5ah4m','template_gwmlgzu',{
-    to_name: db.users[u].displayName||u,
-    to_email: email,
-    reset_code: _resetCode,
-  }).then(()=>{
-    msg.textContent='✅ Kod gönderildi! E-postanı kontrol et.';
-    document.getElementById('forgotStep1').style.display='none';
-    document.getElementById('forgotStep2').style.display='';
-  }).catch(err=>{
-    msg.style.color='var(--rust)';
-    msg.textContent='❌ Gönderilemedi: '+err.text;
-  });
-}
-
-async function confirmResetCode(){
-  const code=document.getElementById('resetCodeInput').value.trim();
-  const pw=document.getElementById('resetNewPw').value;
-  const errEl=document.getElementById('resetError');
-  if(!code||!pw){errEl.style.display='block';errEl.textContent='Kod ve yeni şifre boş olamaz.';return;}
-  if(!_resetCode||!_resetUser){errEl.style.display='block';errEl.textContent='Önce kod gönder.';return;}
-  if(Date.now()>_resetExpiry){errEl.style.display='block';errEl.textContent='Kodun süresi doldu. Tekrar gönder.';_resetCode=null;return;}
-  if(code!==_resetCode){errEl.style.display='block';errEl.textContent='Kod hatalı.';return;}
-  // Şifreyi güncelle
-  db.users[_resetUser].password=await hashPassword(pw);
-  saveDb();
-  _resetCode=null;_resetUser=null;_resetExpiry=null;
-  document.getElementById('forgotBox').style.display='none';
-  document.getElementById('forgotStep1').style.display='';
-  document.getElementById('forgotStep2').style.display='none';
-  document.getElementById('resetCodeInput').value='';
-  document.getElementById('resetNewPw').value='';
-  notify('✅ Şifre Sıfırlandı','Yeni şifrenle giriş yapabilirsin.');
-}
+// G11 (2026-08-31'de KALDIRILDI). Burada `sendResetCode` + `confirmResetCode`
+// vardı: 6 haneli kod bir JS değişkeninde (`_resetCode`) üretiliyor, EmailJS ile
+// gönderiliyor, sonra AYNI değişkenle karşılaştırılıyordu. Konsolu açan herkes
+// kodu okuyabildiği için hiçbir şey korumuyordu. Üstelik ölçüldü: altı hesabın
+// dördünde kayıtlı e-posta yok, yani düzenli kullanan kişide zaten çalışmıyordu
+// ve hiç kullanılmamıştı. Yerine giriş ekranında doğru yol anlatılıyor
+// (showForgotFlow), sıfırlamayı sahip Ayarlar → Üyeler'den yapıyor
+// (adminResetPassword). EmailJS kütüphanesi de bu yüzden kaldırıldı.
 // ─────────────────────────────────────────────────────────────
 
 function checkHintAvailable(){
@@ -2968,29 +2922,6 @@ function renderSettings(){
     if(wtrack) wtrack.style.background=!weatherDisabled?'var(--moss)':'rgba(138,69,19,.3)';
     if(wthumb) wthumb.style.transform=!weatherDisabled?'translateX(20px)':'translateX(0)';
   }
-  // Şifre sıfırlama istekleri
-  const reqBox=document.getElementById('forgotRequestsBox');
-  const reqList=document.getElementById('forgotRequestsList');
-  if(reqBox&&reqList){
-    const reqs=(db.forgotRequests||[]).filter(r=>db.users[r.u]);
-    if(reqs.length){
-      reqBox.style.display='block';
-      reqList.innerHTML=reqs.map(r=>{
-        const av=db.users[r.u]?.avatar||'📚';
-        const avD=av.startsWith('data:')||av.startsWith('avatar_')?'👤':av;
-        return`
-        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.5rem;flex-wrap:wrap">
-          <span style="font-size:1.1rem">${avD}</span>
-          <span style="font-family:'Playfair Display',serif;font-size:.9rem;flex:1">${db.users[r.u]?.displayName} <span style="opacity:.5;font-size:.75rem">@${r.u}</span></span>
-          <div style="display:flex;gap:.4rem;align-items:center">
-            <input class="detail-input" type="text" id="forgotpw_${r.u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
-            <button class="btn btn-sm btn-primary" onclick="adminResetFromForgot('${r.u}')">🔑 Sıfırla</button>
-          </div>
-        </div>`;}).join('');
-    } else {
-      reqBox.style.display='none';
-    }
-  }
   // G13: uygulanamayan değişikliklerin kopyaları (varsa)
   renderReddedilenler();
 
@@ -3041,28 +2972,10 @@ function saveHint(){
   notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
 }
 
-function updateAdminBadge(){
-  const reqs=(db.forgotRequests||[]).filter(r=>db.users[r.u]);
-  const badge=document.getElementById('adminBadge');
-  if(badge){badge.style.display=reqs.length>0?'':'none';badge.textContent=reqs.length>0?String(reqs.length):'';}
-}
-
-async function adminResetFromForgot(u){
-  // Şifre sıfırlamanın İKİNCİ yolu (unuttum isteğinden). adminResetPassword'ü
-  // korumak tek başına yetmez, bu da aynı kapıya çıkıyor.
-  if(!sifreSifirlayabilirMi(u)){
-    mesajGoster('Bu üyenin şifresini sıfırlama yetkin yok.','uyari');
-    return;
-  }
-  const input=document.getElementById('forgotpw_'+u);
-  const pw=input.value.trim();
-  if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=await hashPassword(pw);
-  db.forgotRequests=(db.forgotRequests||[]).filter(r=>r.u!==u);
-  saveDb();
-  renderSettings();
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
-}
+// G11 (2026-08-31): `updateAdminBadge` ve `adminResetFromForgot` kaldırıldı.
+// İkisi de `db.forgotRequests` üzerine kuruluydu; o listeye hiçbir kod satırı
+// istek yazmıyordu, dolayısıyla rozet hiç görünmüyor, ikinci sıfırlama yolu hiç
+// çalışmıyordu. Sıfırlamanın tek yolu artık aşağıdaki adminResetPassword.
 
 async function adminResetPassword(u){
   // Yetki kontrolü arayüzde DEĞİL burada da yapılıyor: düğmeyi gizlemek yetmez,
@@ -3698,8 +3611,7 @@ function enterApp(){
   const _loadEl=document.getElementById('earlyLoadingScreen');if(_loadEl)_loadEl.style.display='none';
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
-  updateAdminBadge();
-  
+
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
   try{
