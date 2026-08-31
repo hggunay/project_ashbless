@@ -91,7 +91,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
 .club-name{font-family:'Playfair Display',serif;font-size:clamp(1.8rem,4vw,3rem);font-weight:900;color:var(--gold);letter-spacing:.05em;text-shadow:0 2px 20px rgba(201,162,39,.3);line-height:1.1;}
 .club-subtitle{font-family:'Crimson Pro',serif;font-style:italic;color:var(--parchment-dark);font-size:1rem;margin-top:.4rem;opacity:.7;}
 .header-user{position:absolute;top:1.5rem;right:1.5rem;display:flex;align-items:center;gap:.5rem;}
-.header-avatar{width:36px;height:36px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1rem;overflow:hidden;}
+/* 2026-08-31: 36px→48px. Başlıkla arasındaki boşluk 36px'te zaten 1 PİKSELDİ;
+   48px doğrudan uygulanırsa dar ekranda başlığın üstüne 11px biniyor (ölçüldü).
+   Bu yüzden aşağıdaki 600px altı kuralında .header'ın üst boşluğu 4rem'e çıkarıldı. */
+.header-avatar{width:48px;height:48px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.35rem;overflow:hidden;}
 .header-username{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
 .logout-btn{background:none;border:1px solid rgba(201,162,39,.3);color:var(--parchment-dark);font-size:.65rem;font-family:'Space Mono',monospace;padding:.3rem .6rem;border-radius:20px;cursor:pointer;transition:all .15s;}
 .logout-btn:hover{border-color:var(--gold);color:var(--gold);}
@@ -654,6 +657,9 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
   .badge-grid{grid-template-columns:repeat(2,1fr);}
   .leaderboard-grid{grid-template-columns:repeat(2,1fr);}
   .header-username{display:none;}
+  /* Büyüyen profil resmi (48px) başlığa binmesin — dar ekranda başlık tüm
+     genişliği kapladığı için sağ ucu avatarın altına giriyordu. 13px boşluk. */
+  .header{padding-top:4rem;}
 }
 .series-card{background:rgba(201,162,39,.06);border:1px solid rgba(201,162,39,.15);border-radius:10px;padding:1rem;margin-bottom:.75rem;}
 .series-card-header{display:flex;align-items:center;justify-content:space-between;gap:.5rem;margin-bottom:.5rem;flex-wrap:wrap;}
