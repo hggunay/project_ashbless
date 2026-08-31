@@ -98,6 +98,10 @@ body{background:var(--ink);font-family:'Crimson Pro',serif;color:var(--ink);min-
    ölçülerek seçildi; .header'ın üst boşluğu da bu yüzden 4rem'e çıkarıldı. */
 .header-avatar{width:48px;height:48px;background:linear-gradient(135deg,var(--leather),var(--rust));border:2px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.35rem;overflow:hidden;}
 @media(min-width:601px){.header-avatar{width:56px;height:56px;font-size:1.6rem;}}
+/* Geniş ekranda ~3cm (110px). Eşik tarayıcıda ölçüldü: başlık yazısının sağ ucu
+   ile avatarın sol kenarı arasındaki boşluk 1250px'te 15px, 1300px'te 40px,
+   1366px'te 73px. 1300'ün altında çakışıyor, o yüzden eşik 1300px. */
+@media(min-width:1300px){.header-avatar{width:110px;height:110px;font-size:3rem;}}
 .header-username{font-family:'Space Mono',monospace;font-size:.7rem;color:var(--gold);}
 .logout-btn{background:none;border:1px solid rgba(201,162,39,.3);color:var(--parchment-dark);font-size:.65rem;font-family:'Space Mono',monospace;padding:.3rem .6rem;border-radius:20px;cursor:pointer;transition:all .15s;}
 .logout-btn:hover{border-color:var(--gold);color:var(--gold);}
