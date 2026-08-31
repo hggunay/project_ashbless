@@ -15,11 +15,18 @@
 <link rel="apple-touch-icon" href="images/ikon.jpg">
 <!-- Bu satır olmadan tarayıcı /favicon.ico arıyor, depoda yok, konsola 404 düşüyordu. -->
 <link rel="icon" href="images/ikon.jpg" type="image/jpeg">
-<!-- 2026-08-31: BURADA İKİ manifest vardı ve tarayıcı SONUNCUYU kullanır —
-     yani geçerli olan, ikonu 📚 emojisinden yapılmış SVG olan ikinci satırdı.
-     Gerçek ikonu (images/ikon.jpg) taşıyan satır ölüydü. Yani "ana ekrana ekle"
-     denince telefonda emoji çıkıyordu. Emojili olan silindi.
-     `sizes` de yanlıştı: 512x512 yazıyordu, dosya gerçekte 192x192 — düzeltildi.
+<!-- 2026-08-31: BURADA İKİ manifest vardı; tarayıcı sonuncuyu kullanır, o da
+     ikonu 📚 emojisinden yapılmış SVG olandı. Emojili olan silindi, gerçek
+     ikonu (images/ikon.jpg) gösteren kaldı. `sizes` de yanlıştı: 512x512
+     yazıyordu, dosya gerçekte 192x192 — düzeltildi.
+
+     ⚠️ AMA BU GÖRÜNÜR BİR HATA DEĞİLDİ — Gökşin'in cihazlarında ikon zaten
+     doğruydu. Sebebi: yukarıdaki `apple-touch-icon` (iOS'ta manifest'in önüne
+     geçer) ve `rel="icon"` (masaüstü/sekme) ikisi de ikon.jpg'yi gösteriyor;
+     ayrıca Chrome ana ekran ikonu için SVG data-URI'yi genelde atlıyor.
+     Yani emoji hiç görünmedi. Bu satırlar KALDIRILMAMALI: manifest'i tek başına
+     doğru sanıp onlara dokunmak gerçek bir hataya yol açar.
+
      ⚠️ ikon.jpg yalnızca DEPODA var, `claude code` klasöründe yok (klasör
      deponun eksik bir kopyası). Silinmiş sanıp eklemeye kalkma. -->
 <link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22images/ikon.jpg%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D">
