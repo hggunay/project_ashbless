@@ -4536,6 +4536,68 @@ function bookMonth(b){
   const d=normalizeDate(b.endDate)||normalizeDate(b.month);
   return d?d.substring(0,7):null;
 }
+
+/* ── OKUYUCU FALI: ZAMAN PENCERESİ (2026-08-31) ────────────────────────────
+   Fal eskiden TÜM zamanların kitaplarından besleniyordu. Gökşin'in teşhisi
+   (2026-08-23) aynen şuydu: "Geçmişte 100 kitap var, ben okudukça 1-2 tane
+   ekleyeceğim ve ortalamayı hiç değiştirmeyecek." Doğruydu — 137 kitabın içinde
+   yeni bir kitap istatistiksel olarak görünmüyor, fal fiilen donmuştu. Günlük
+   tohum yalnızca CÜMLEYİ değiştiriyordu, SONUCU değil: her gün başka türlü
+   söylüyor ama hep aynı şeyi söylüyordu.
+
+   ⚠️ Dar pencerenin TERS sorunu var: 3 ayda 2 kitap okunan bir dönemde fal her
+   hafta zıplar — o da donmak kadar anlamsız. Bu yüzden pencere sabit değil:
+   12 ayda FAL_ASGARI kitap yoksa 24 aya, orada da yoksa tüm zamanlara açılıyor.
+
+   yearOnly kitaplar (yılı bilinip ayı bilinmeyen — ör. 2018 aktarımı) bookMonth()
+   null döndürdüğü için pencereye GİRMEZ. Bu doğru: "son 12 ay" penceresine ayı
+   bilinmeyen bir kitap giremez. Tüm zamanlara düşülürse yine sayılırlar.
+--------------------------------------------------------------------------- */
+const FAL_PENCERE_AYLAR = [12, 24];
+const FAL_ASGARI = 8;
+function falPenceresi(liste, simdi){
+  const bugun = simdi || new Date();
+  for(const ay of FAL_PENCERE_AYLAR){
+    const d = new Date(bugun.getFullYear(), bugun.getMonth()-(ay-1), 1);
+    const sinir = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const secilen = (liste||[]).filter(b=>{ const m=bookMonth(b); return m && m>=sinir; });
+    if(secilen.length >= FAL_ASGARI) return { liste:secilen, ay };
+  }
+  return { liste:(liste||[]), ay:null };   // yeterli veri yok — tüm zamanlar
+}
+
+/* Falın kullandığı özetler. Panelin genel dağılımı `books` üzerinden ayrıca
+   hesaplanıyor; fal artık PENCERELENMİŞ listeye baktığı için kendi sayımını
+   yapmak zorunda.
+
+   ⚠️ Tür ANA TÜRE TOPLANMIYOR — bilerek. Ana türe toplansaydı "Fantastik" de
+   "Polisiye" de "Kurgu" olurdu ve tür eğilimi neredeyse herkeste "Kurgu sever"
+   çıkardı; pencere değişse bile değişmezdi. Üstelik falın etiket tablosunda
+   Fantastik okuyucu / Polisiye kurdu / Bilim kurgu meraklısı gibi 12 ÖZEL etiket
+   var — ana türe toplanınca bunların 11'i hiç kullanılamıyordu. Eski kod parent
+   satırlarından seçtiği için bu etiketler fiilen ölüydü. */
+function falOzeti(liste){
+  const turSayim={};
+  liste.forEach(b=>(b.genres||[]).forEach(g=>{
+    const id=normalizeGenre(g);
+    turSayim[id]=(turSayim[id]||0)+1;
+  }));
+  const enTur=Object.entries(turSayim).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'))[0];
+
+  const yazarSayim={};
+  liste.forEach(b=>{ if(b.author) yazarSayim[b.author]=(yazarSayim[b.author]||0)+1; });
+  const enYazar=Object.entries(yazarSayim).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'))[0];
+
+  const fmtSayim={'kitap':0,'ekitap':0,'sesli':0,'cizgi':0};
+  liste.forEach(b=>(b.formats||['kitap']).forEach(f=>{ if(fmtSayim[f]!==undefined) fmtSayim[f]++; }));
+  const enFmt=Object.entries(fmtSayim).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1])[0];
+
+  const seriYuzde=liste.length?Math.round(liste.filter(b=>b.series).length/liste.length*100):0;
+  const puanli=liste.filter(b=>b.rating);
+  const ortPuan=puanli.length?Math.round(puanli.reduce((s,b)=>s+b.rating,0)/puanli.length*10)/10:null;
+
+  return { enTur:enTur?enTur[0]:null, enYazar:enYazar||null, enFmt:enFmt?enFmt[0]:null, seriYuzde, ortPuan };
+}
 // Kitabın YILI — ayı bilinmese bile. yearOnly modundaki kitapların (ör. "2018'de
 // okudum ama ayını bilmiyorum") ayı yoktur, dolayısıyla bookMonth() null döner ve
 // aya dayalı her sayım onları haklı olarak dışarıda bırakır. Ama YIL biliniyor:
@@ -7274,9 +7336,16 @@ parentRows.forEach(r=>{
           // ── OKUMA PROFİLİ ──
           if(!books.length) return '';
 
-          // Tür eğilimi
-          const topGenreItem = topGenres.find(g=>g.isParent!==false);
-const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
+          // ── PENCERE (2026-08-31) ──
+          // Fal artık TÜM geçmişe değil, son 12 aya bakıyor; yetmezse 24 aya,
+          // o da yetmezse tüm zamanlara açılıyor. Gerekçe: falPenceresi().
+          const _falP = falPenceresi(books);
+          const falBooks = _falP.liste;
+          const falAy = _falP.ay;
+          const _oz = falOzeti(falBooks);
+
+          // Tür eğilimi — pencerelenmiş listeden
+          const topGenre = _oz.enTur;
           const genreLabelMap = topGenre ? {
             'fantastik':'Fantastik okuyucu','bilimkurgu':'Bilim kurgu meraklısı',
             'polisiye':'Polisiye kurdu','korku':'Karanlığın okuyucusu',
@@ -7302,7 +7371,7 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
             gercek:   ['tarih','gezi','siir'],
           };
           const eksenPuan = {evren:0, gerilim:0, dusunce:0, insan:0, gercek:0};
-          books.forEach(b=>(b.genres||[]).forEach(g=>{
+          falBooks.forEach(b=>(b.genres||[]).forEach(g=>{
             const gn = g.toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ç/g,'c');
             Object.entries(eksenler).forEach(([eksen,liste])=>{
               if(liste.some(l=>gn.includes(l))) eksenPuan[eksen]++;
@@ -7321,9 +7390,8 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
             gercek:  ['gerçek yaşam ve deneyim odaklı kitaplara yönelen','tarih ve yaşanmışlık içeren eserleri tercih eden','kurgu dışı anlatımlara yakın duran'],
           };
 
-          // Davranış
-          const seriesBooks = books.filter(b=>b.series).length;
-          const seriesPct = books.length?Math.round(seriesBooks/books.length*100):0;
+          // Davranış — pencerelenmiş listeden
+          const seriesPct = _oz.seriYuzde;
           const davranisList = seriesPct>=60
             ?['serilerde ilerlemeyi seven','uzun evrenleri tercih eden','bir karakterle birlikte hikâyeyi taşımayı seven','bir evrenin içinde uzun süre kaybolmayı seven','bir hikâyenin tamamını kesintisiz takip eden']
             :seriesPct>=30
@@ -7331,9 +7399,8 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
             :['kitaplar arasında gezinen','keşifçi bir yaklaşımla ilerleyen','tekil kitaplarda derinleşmeyi seven'];
           const davranis = _pick(davranisList, 1);
 
-          // Zihinsel stil
-          const ratedBooks = books.filter(b=>b.rating);
-          const avgRating = ratedBooks.length?Math.round(ratedBooks.reduce((s,b)=>s+b.rating,0)/ratedBooks.length*10)/10:null;
+          // Zihinsel stil — pencerelenmiş listeden
+          const avgRating = _oz.ortPuan;
           const stilHavuz = avgRating>=4.5
             ?['kolay beğenmeyen','seçici','standartları yüksek']
             :avgRating>=3.5
@@ -7357,13 +7424,17 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
           const ikinciKisim = ikinciEksen?', '+_pick(eksenVaryasyon[ikinciEksen]||[], 1):'';
           const anaCumle = `Sen ${anaKisim}${ikinciKisim}, ${davranis} ve ${stil} bir okuyucusun. ${ritim}`;
 
-          // Format
-          const fmtEntries = Object.entries(fmtCount).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
-          const topFmt = fmtEntries[0]?fmtEntries[0][0]:null;
-          const fmtEtiket = {'kitap':'Fiziksel kitap','ekitap':'E-kitap','sesli':'Sesli kitap','cizgi':'Çizgi roman'}[topFmt]||null;
+          // Format — pencerelenmiş listeden
+          const fmtEtiket = {'kitap':'Fiziksel kitap','ekitap':'E-kitap','sesli':'Sesli kitap','cizgi':'Çizgi roman'}[_oz.enFmt]||null;
 
-          // En sadık yazar
-          const topAuthor = topAuthors[0]?topAuthors[0]:null;
+          // En sadık yazar — pencerelenmiş listeden
+          const topAuthor = _oz.enYazar;
+
+          // Falın neye baktığı AÇIKÇA yazılıyor. Yoksa sonucun neden değiştiği
+          // anlaşılmaz; "donmuş fal"ı çözerken "sebepsiz değişen fal" üretmeyelim.
+          const falKapsam = falAy
+            ? `Son ${falAy} ayda okuduğun ${falBooks.length} kitaba bakarak.`
+            : `Tüm okuma geçmişine bakarak — son ${FAL_PENCERE_AYLAR[0]} ayda yeterli kitap yok.`;
 
           const madde = (text) => `<div style="display:flex;align-items:flex-start;gap:.5rem;padding:.3rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
             <span style="color:var(--gold);font-size:.8rem;margin-top:.1rem">▸</span>
@@ -7374,8 +7445,10 @@ const topGenre = topGenreItem?(topGenreItem.id||topGenreItem[0]):null;
           return statsSection('stats-profile','🔮 Okuyucu Falın',`
             <div style="max-width:500px">
 
+              <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--rust);opacity:.75;margin-bottom:.5rem;letter-spacing:.03em">${falKapsam}</div>
+
               <div style="display:flex;flex-direction:column;gap:.1rem;margin-bottom:1rem">
-                ${topGenres[0]?madde(`Tür eğilimi: <strong>${genreLabelMap||topGenres[0].id||topGenres[0][0]}</strong> ağırlıklı`):''}
+                ${topGenre?madde(`Tür eğilimi: <strong>${genreLabelMap||topGenre}</strong> ağırlıklı`):''}
                 ${madde(`Okuma tarzı: <strong>${seriesPct>=60?'seri odaklı':seriesPct>=30?'karma':'tekil kitap'}</strong>`)}
                 ${fmtEtiket?madde(`Format: <strong>${fmtEtiket}</strong>`):''}
                 ${topAuthor?madde(`En sadık yazar: <strong>${topAuthor[0]}</strong> (${topAuthor[1]} kitap)`):''}
