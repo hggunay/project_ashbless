@@ -1645,15 +1645,20 @@ try{
             <div class="detail-acc-body" id="body-set-password">
               <div style="padding-top:.75rem">
                 <div id="sifreTasimaUyarisi" style="display:none;font-size:.85rem;color:var(--rust);background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.25);border-radius:4px;padding:.5rem .7rem;margin-bottom:.75rem;line-height:1.45"></div>
-                <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
+                <!-- Taşınmamışken bu alan KAPALI (renderGuvenliGiris ayarlıyor).
+                     Gökşin'in tasarımı: gizlemek yerine kapalı göstermek, çünkü
+                     gizlersek "şifremi nereden değiştireceğim?" sorusu doğuyor;
+                     kapalı hâli ise ilişkiyi öğretiyor — yukarıdaki uyarı doğru
+                     yeri işaret ediyor, taşıma bitince burası kendiliğinden açılıyor. -->
+                <div id="sifreDegistirAlani" style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
                   <div class="detail-field" style="flex:1;min-width:180px">
                     <label class="detail-field-label">Yeni Şifre</label>
                     <div class="pw-wrap">
                       <input class="detail-input" id="settingPw" type="password" placeholder="En az 3 karakter..." onkeydown="if(event.key==='Enter')changePassword()"/>
-                      <button class="pw-toggle" type="button" onclick="togglePw('settingPw',this)">👁</button>
+                      <button class="pw-toggle" type="button" id="settingPwGoz" onclick="togglePw('settingPw',this)">👁</button>
                     </div>
                   </div>
-                  <button class="btn btn-primary btn-sm" style="margin-bottom:.1rem" onclick="changePassword()">🔒 Şifreyi Güncelle</button>
+                  <button class="btn btn-primary btn-sm" id="settingPwBtn" style="margin-bottom:.1rem" onclick="changePassword()">🔒 Şifreyi Güncelle</button>
                 </div>
                 <div class="detail-field">
                   <label class="detail-field-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(giriş ekranında gösterilir)</span></label>
@@ -3206,16 +3211,25 @@ function renderGuvenliGiris(){
   if(!kutu) return;
   const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
 
-  // Şifre bölümündeki uyarı: taşınmadan oradan şifre değiştirmek, taşımada
-  // belirlenecek şifreyle karışıyor. Taşındıktan sonra uyarıya gerek yok —
-  // changePassword() artık iki tarafı birden değiştiriyor.
+  /* Şifre değiştirme alanı taşınana kadar KAPALI, uyarı doğru yeri gösteriyor.
+     Gerekçe: taşınmadan buradan şifre değiştirmek, taşımada belirlenecek
+     şifreyle karışıyor — Gökşin tam bu tuzağa düştü. Taşındıktan sonra alan
+     açılıyor ve changePassword() iki tarafı birden değiştiriyor. */
   const uy=document.getElementById('sifreTasimaUyarisi');
   if(uy){
     uy.style.display = tasindi?'none':'block';
     uy.innerHTML = tasindi?'' :
       '⚠️ Girişini henüz güvenli hale getirmedin. <b>Önce yukarıdaki 🔐 bölümünü kullan</b> — '+
-      'orada belirlediğin şifre zaten buradaki şifren olacak. Önce buradan değiştirirsen '+
-      'iki ayrı şifreyle uğraşmak zorunda kalırsın.';
+      'orada belirlediğin şifre zaten buradaki şifren olacak. Bu alan o zaman açılacak.';
+  }
+  const alan=document.getElementById('sifreDegistirAlani');
+  if(alan){
+    alan.style.opacity = tasindi?'':'0.45';
+    alan.style.pointerEvents = tasindi?'':'none';
+    ['settingPw','settingPwGoz','settingPwBtn'].forEach(id=>{
+      const el=document.getElementById(id);
+      if(el) el.disabled=!tasindi;   // klavyeyle (sekme tuşu) da erişilemesin
+    });
   }
   if(tasindi){
     kutu.innerHTML=
