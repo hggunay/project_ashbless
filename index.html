@@ -2406,7 +2406,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2505,6 +2505,18 @@ function reddedilenKitapFarki(yedekListesi){
   return kaynak.filter(b=>b&&b.title&&!(b.id!=null&&idler.has(String(b.id)))&&!adlar.has(ad(b)));
 }
 
+/* aa-v4 altında KİŞİ ANAHTARLI düğümler — her biri `<düğüm>/<kişi>` biçiminde.
+   saveDb bunların yalnızca giriş yapan kişiye ait dalını yazar (G9/4a).
+   Buraya eklemeyi unutulan bir düğüm konsola uyarı basar, sessizce kaybolmaz.
+   books / shelf / notifications / readingSessions / reactions / realmEvents
+   BU LİSTEDE DEĞİL: onlar zaten kendi granüler yollarına ayrıca yazılıyor. */
+const KISISEL_AA_DUGUMLERI = ['users','stories','seriesData','seriesEvents','archivedNotes',
+  'countryEvents','badgeEvents','streakEvents','streakBreakEvents','readingEvents','mapReset'];
+/* Kişiye bölünmeyen alanlar. `settings` yalnızca yükleme sırasında boş nesne
+   olarak hazırlanıyor, içeriği hiçbir yerde yazılmıyor (Google anahtarı kodda
+   sabit) — o yüzden sunucudaki kopyasına dokunulmuyor. */
+const PAYLASILAN_AA_ALANLARI = ['settings'];
+
 async function _saveDbNow(){
   let ok=false, nerede='', bayat='';
   // K3: kitaplar, aşağıdaki "diğer alanlar" (users/badges/streaks/settings vb.) çakışma
@@ -2557,7 +2569,13 @@ async function _saveDbNow(){
     // ile yazıyor. books ve readingSessions de hariç (K3): ikisi kendi granüler yoluna yazılıyor.
     // savedAt da karşılaştırmadan hariç — o zaten her kayıtta değişen bir alan.
     // reactions da hariç (K6): her üye yalnızca kendi yaprağına granüler yazıyor.
-    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,...restFields}={...db};
+    /* ⚠️ uidMap HARİÇ (2026-09-01). G9 giriş eşleşmeleri burada duruyor ve bu
+       toplu yazmaya girerse bayat bir sekme BAŞKA BİRİNİN eşleşmesini silebilir
+       — kurallar sıkılaştıktan sonra o kişi uygulamaya hiç giremez. Eşleşme
+       zaten kendi granüler yoluna yazılıyor (aa-v4/uidMap/<uid>).
+       Aynı sebeple books/shelf/notifications/readingSessions/reactions/
+       realmEvents de burada hariç. */
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -2593,7 +2611,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
@@ -2607,9 +2625,39 @@ async function _saveDbNow(){
         return;
       }
       db.savedAt = Date.now();
-      const dbWithoutShelf={...restFields, savedAt:db.savedAt};
-      const patchOk = await fbPatch('aa-v4',dbWithoutShelf);
-      if(!patchOk){ ok=false; nerede='ana veri'; }
+      /* ═══ G9/4a: ARTIK KİŞİYE ÖZEL YAZILIYOR (2026-09-01) ═══════════════════
+         Buraya kadar bu satır `fbPatch('aa-v4', restFields)` idi: users,
+         seriesData, stories, countryEvents… düğümlerinin TAMAMINI hafızadan
+         yazıyordu — yani sen bir kitap puanladığında nimet'in seri verisi de
+         senin tarayıcındaki kopyadan geri yazılıyordu (~46 KB, dört kişinin
+         verisi). Tek koruma uygulama içindeki savedAt karşılaştırmasıydı.
+
+         Bu, 2026-08-22'de 102 kitabı yok eden kalıbın SON KALAN parçasıydı.
+         K7 kitapları, G1 birlikte okumayı, G15 oturumları bu kalıptan çıkardı;
+         burası geriye kalan yerdi. Artık herkes yalnızca kendi dalına yazıyor.
+
+         Güvenlik kuralları için de şart: "kişi yalnızca kendi verisine yazar"
+         kuralı altında düğümün tamamını yazan bir istek reddedilir ve uygulama
+         sessizce kaydetmeyi bırakırdı. */
+      let hepsiYazildi = true;
+      for(const dugum of KISISEL_AA_DUGUMLERI){
+        const deger = restFields[dugum] ? restFields[dugum][me] : undefined;
+        if(deger===undefined) continue;          // bu kişinin o düğümde kaydı yok
+        if(!await fbSet('aa-v4/'+dugum+'/'+me, deger)) hepsiYazildi=false;
+      }
+      /* Kişiye bölünmeyen alanlar (şu an yalnızca savedAt). Tanınmayan bir düğüm
+         çıkarsa SESSİZCE DÜŞÜRMÜYORUZ — eski yöntemle yazılıp konsola uyarı
+         basılıyor; yoksa yeni bir özellik eklendiğinde verisi hiç kaydedilmez
+         ve bunu kimse fark etmez. */
+      const paylasilan={savedAt:db.savedAt};
+      for(const k of Object.keys(restFields)){
+        if(KISISEL_AA_DUGUMLERI.includes(k)||PAYLASILAN_AA_ALANLARI.includes(k)) continue;
+        console.warn('saveDb: tanınmayan düğüm, eski yöntemle yazılıyor →',k,
+                     '(KISISEL_AA_DUGUMLERI listesine eklenmeli)');
+        paylasilan[k]=restFields[k];
+      }
+      if(!await fbPatch('aa-v4',paylasilan)) hepsiYazildi=false;
+      if(!hepsiYazildi){ ok=false; nerede='ana veri'; }
       else{ _lastOtherFieldsSnapshot=otherSnapshot; }
     }
     // K7: raf ARTIK KİŞİ BAŞINA yazılıyor. Önceden 'aa-shelf' düğümünün tamamı —
@@ -3222,6 +3270,11 @@ function renderGuvenliGiris(){
       '⚠️ Girişini henüz güvenli hale getirmedin. <b>Önce yukarıdaki 🔐 bölümünü kullan</b> — '+
       'orada belirlediğin şifre zaten buradaki şifren olacak. Bu alan o zaman açılacak.';
   }
+  // Alt sınır taşınmışta 6 (Firebase'in şartı), taşınmamışta 3. Metin de
+  // ona göre yazılıyor — Gökşin "3 karakter yazıyor ama 6 olmalı" diye bildirdi.
+  const pw=document.getElementById('settingPw');
+  if(pw) pw.placeholder = tasindi?'En az 6 karakter...':'En az 3 karakter...';
+
   const alan=document.getElementById('sifreDegistirAlani');
   if(alan){
     alan.style.opacity = tasindi?'':'0.45';
