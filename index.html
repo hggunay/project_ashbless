@@ -1723,7 +1723,7 @@ try{
           </div>
 
           <!-- Üye Yönetimi — akordeon. Görünürlüğü renderSettings'te ayarlanıyor:
-               yalnızca SAHIP ve YEDEK_YETKILI görür. Şifre sıfırlama istekleri
+               yalnızca SAHIP görür (YEDEK_YETKILI 2026-09-01'de kalktı). Şifre sıfırlama istekleri
                kutusu da bilerek bunun İÇİNDE, o da gizlensin diye. -->
           <div class="detail-section" id="uyeYonetimiBolumu" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-members')">
@@ -1735,7 +1735,7 @@ try{
                 <!-- G11 (2026-08-31): "📨 Şifre Sıfırlama İstekleri" kutusu kaldırıldı.
                      Ölü koddu: listeyi OKUYAN üç yer vardı ama isteği YAZAN tek bir yer
                      yoktu, yani kutu hiçbir zaman dolamazdı. -->
-                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Şifresini unutan bir üyenin şifresini sıfırlayabilirsin. Üye giriş ekranındaki "Şifremi unuttum" bağlantısında sana haber vermesi söyleniyor.</div>
+                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Burada yalnızca <b>girişini henüz güvenli hale getirmemiş</b> üyeler görünür. Taşınmış üyeler şifrelerini kendileri sıfırlıyor — giriş ekranındaki "Şifremi unuttum" bağlantısı onlara e-posta gönderiyor.</div>
                 <div id="adminMemberList"></div>
               </div>
             </div>
@@ -2284,6 +2284,17 @@ async function authGirisYap(eposta, sifre){
   return _authKur(c);
 }
 function authCikis(){ _auth={jeton:null,yenileme:null,biter:0,uid:null,eposta:null}; _authKaydet(); }
+
+/* Firebase'in kendi şifre sıfırlama e-postası (2026-09-01).
+   Dün kaldırılan sahte akıştan farkı: kod tarayıcıda ÜRETİLMİYOR ve
+   DOĞRULANMIYOR — bağlantı Firebase'den geliyor, e-posta kutusuna erişimi
+   olmayan kimse şifreyi değiştiremiyor. Yani bu gerçek bir kilit.
+   Yalnızca hesabını taşımış (Firebase hesabı olan) üyeler için çalışır. */
+async function authSifreSifirlamaGonder(eposta){
+  await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key='+AUTH_ANAHTAR,
+    {requestType:'PASSWORD_RESET', email:eposta});
+  return true;
+}
 
 /* Geçerli bilet döndürür; yoksa null (o zaman istek biletsiz gider — kurallar
    sıkılaşana kadar bu çalışmaya devam eder). Süresi dolmak üzereyse yeniler.
@@ -2893,6 +2904,17 @@ async function login(){
       }
       err.style.display='none'; me=kullanici; viewing=null;
       _guvenliGirisKullanici=kullanici;
+      /* Uygulama şifresini bu şifreye eşitle. Gerekçe: e-postadan şifre
+         sıfırlayan biri Firebase şifresini değiştirir ama uygulamanınki eski
+         kalırdı — o kişi bir daha KULLANICI ADIYLA giremezdi ve sebebini
+         anlayamazdı. İlk e-posta girişinde ikisi kendiliğinden hizalanıyor. */
+      try{
+        const mevcut=(db.users[kullanici]||{}).password;
+        const ozet=await hashPassword(p);
+        if(mevcut!==ozet){
+          if(await fbPatch('aa-v4/users/'+kullanici,{password:ozet})) db.users[kullanici].password=ozet;
+        }
+      }catch(e){}
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
       enterApp();
       return;
@@ -2967,14 +2989,44 @@ function showForgotFlow(){
     box.style.display='block';
     box.textContent='💡 İpucu: '+db.users[u].hint;
   }
-  // G11: kod gönderme akışının yerine doğru yol anlatılıyor. Sahibin adı
-  // veritabanından okunuyor — kod içine isim gömmek, sahip değişirse yalan söyler.
+  /* G9 (2026-09-01): artık GERÇEK bir sıfırlama var — Firebase e-posta yolluyor.
+     G11'de kaldırılan akıştan farkı: kodu tarayıcı üretmiyor, bağlantı
+     e-postaya gidiyor. Hesabını taşımamış üye için (Firebase hesabı yok)
+     eski yol geçerli: sahibe haber vermek. */
   const bilgi=document.getElementById('forgotInfo');
   if(bilgi){
     const sahipAdi=(db.users&&db.users[SAHIP]&&db.users[SAHIP].displayName)||SAHIP;
-    bilgi.innerHTML='Şifreni buradan sıfırlayamazsın. <b style="color:var(--rust)">'+escapeHtml(sahipAdi)+'</b> sana yeni bir şifre verebilir — ona haber vermen yeterli.<br><br>Girdikten sonra <b style="color:var(--rust)">Ayarlar → 🔑 Şifre &amp; İpucu</b> bölümünden kendi şifreni belirleyebilirsin.';
+    bilgi.innerHTML=
+      'E-posta adresini yaz, sana şifre sıfırlama bağlantısı gönderelim.'+
+      '<div style="display:flex;gap:.5rem;margin:.6rem 0 .4rem;flex-wrap:wrap">'+
+        '<input class="auth-input" id="sifirlaEposta" type="email" placeholder="ornek@gmail.com" style="flex:1;min-width:170px;margin:0"/>'+
+        '<button class="auth-btn" style="width:auto;padding:.5rem 1rem;margin:0;background:linear-gradient(135deg,var(--rust),#8b3010)" onclick="sifreSifirlamaIste()">📨 Gönder</button>'+
+      '</div>'+
+      '<div id="sifirlaSonuc" style="font-size:.85rem;margin-bottom:.6rem"></div>'+
+      '<div style="font-size:.8rem;opacity:.75;border-top:1px solid rgba(160,82,45,.25);padding-top:.5rem">'+
+        'Girişini henüz güvenli hale getirmediysen bu yol çalışmaz — o durumda '+
+        '<b style="color:var(--rust)">'+escapeHtml(sahipAdi)+'</b>\'e haber ver.'+
+      '</div>';
   }
   forgotBox.style.display='block';
+}
+
+async function sifreSifirlamaIste(){
+  const kutu=document.getElementById('sifirlaSonuc');
+  const yaz=(m,renk)=>{ if(kutu){ kutu.style.color=renk; kutu.innerHTML=m; } };
+  const e=(document.getElementById('sifirlaEposta')||{}).value||'';
+  if(!e.includes('@')||e.trim().length<5){ yaz('Geçerli bir e-posta adresi gir.','var(--rust)'); return; }
+  yaz('Gönderiliyor…','var(--ink)');
+  try{
+    await authSifreSifirlamaGonder(e.trim());
+    yaz('✅ Gönderildi. E-postandaki bağlantıdan yeni şifreni belirle, sonra buraya '+
+        '<b>e-postan ve yeni şifrenle</b> gir.','var(--moss)');
+  }catch(err){
+    const m=String(err.message||err);
+    yaz(m.includes('EMAIL_NOT_FOUND')
+        ? 'Bu adres kayıtlı değil. Girişini güvenli hale getirmediysen bu yol çalışmaz.'
+        : 'Gönderilemedi: '+m, 'var(--rust)');
+  }
 }
 
 // ── ŞİFRE SIFIRLAMA ──────────────────────────────────────────
@@ -3285,7 +3337,8 @@ async function guvenliGirisDurumu(){
    uyarılarından öğrenmesi kötü bir deneyim olurdu. Şerit girer girmez ne yapması
    gerektiğini söylüyor. Taşınınca kendiliğinden kayboluyor.
    ⚠️ Şerit KOYU zeminde (sayfa gövdesi) — açık renk yazı şart. */
-let _hesapTasinmisMi=null;   // sunucuda bu kullanıcı adına ait eşleşme var mı
+let _hesapTasinmisMi=null;      // sunucuda bu kullanıcı adına ait eşleşme var mı
+let _tasinanKullanicilar=null;  // taşınmış tüm kullanıcı adları (uidMap değerleri)
 
 /* İKİ AYRI DURUM, iki ayrı mesaj — karıştırmak kullanıcıyı yanlış yere yollar:
    (a) hesap hiç taşınmamış        → Ayarlar'dan taşıması gerekiyor
@@ -3488,23 +3541,35 @@ const KISISEL_DUGUMLER=['users','books','badgeEvents','countryEvents','notificat
 // "herkesin verisi" butonuna denk gelmemesi.
 const SAHIP='hggunay';
 
-// ── ŞİFRE SIFIRLAMA YETKİSİ (Gökşin'in kurgusu, 2026-08-26) ──────────
-// Eskiden Üye Yönetimi bölümü GİRİŞ YAPAN HERKESE görünüyordu ve herkes herkesin
-// şifresini sıfırlayabiliyordu — sahibinki dahil. Yani bir üye başkasının hesabına
-// girebilirdi. Bölümü tümden sahibe kapatmak da doğru değildi: Gökşin burayı
-// bilerek açık bırakmıştı, kendi şifresini unutursa diye.
-//   sahip          → herkesin şifresini sıfırlayabilir
-//   YEDEK_YETKILI  → YALNIZCA sahibin şifresini sıfırlayabilir (kurtarma yolu)
+// ── ŞİFRE SIFIRLAMA YETKİSİ ──────────────────────────────────────────
+// BUGÜNKÜ KURGU (2026-09-01):
+//   sahip          → yalnızca TAŞINMAMIŞ üyelerin şifresini sıfırlayabilir
+//   taşınmış üye   → şifresini kendisi sıfırlar (giriş ekranı → Şifremi unuttum,
+//                    Firebase e-posta gönderiyor)
 //   diğer herkes   → bölümü hiç göremez
-// DİKKAT: SAHIP'te olduğu gibi bu da bir PERDE, kilit değil. Veritabanı açık
-// olduğu sürece (G9) kararlı biri uygulamayı hiç kullanmadan doğrudan yazabilir.
-const YEDEK_YETKILI='kitaptamircisi7';
-function uyeYonetimiGorunur(){ return me===SAHIP||me===YEDEK_YETKILI; }
+//
+// (tarihsel) 2026-08-26'da bölüm giriş yapan HERKESE görünüyordu ve herkes
+// herkesin şifresini sıfırlayabiliyordu — sahibinki dahil. Önce SAHIP +
+// YEDEK_YETKILI ikilisine daraltıldı; YEDEK_YETKILI 2026-09-01'de kalktı.
+// Artık bu bir PERDE değil GERÇEK kilit: veritabanı kuralları da
+// `users/<kişi>` yazmasını sahibe ve kişinin kendisine sınırlıyor (G9).
+/* ⚠️ YEDEK_YETKILI KALDIRILDI (2026-09-01). kitaptamircisi7'nin sahibin şifresini
+   sıfırlama yetkisi vardı; gerekçesi "Gökşin şifresini unutursa kurtarma yolu"ydu.
+   Artık Gökşin kendi e-postasından gerçek sıfırlama yapabiliyor, o yola gerek yok.
+
+   ⚠️ VE ASIL SEBEP: bu panel yalnızca UYGULAMANIN şifresini değiştiriyor,
+   Firebase'inkini değil. Taşınmış bir üyenin şifresi buradan sıfırlanırsa o kişi
+   yeni şifreyle GİRER ama bilet alamaz ve hiçbir şey kaydedemez — üstelik şerit
+   ona "bu cihazda tekrar gir" der, o da işe yaramaz. Yani panel taşınmış üyeler
+   için yardımcı değil, ZARARLI. Gökşin fark etti.
+   Bu yüzden panel artık yalnızca TAŞINMAMIŞ üyeleri listeliyor
+   (renderSettings). Herkes taşınınca kendiliğinden boşalıyor. */
+function uyeYonetimiGorunur(){ return me===SAHIP; }
 function sifreSifirlayabilirMi(hedef){
   if(hedef===me) return false;              // kendi şifren için "Şifre Değiştir" var
-  if(me===SAHIP) return true;
-  if(me===YEDEK_YETKILI) return hedef===SAHIP;
-  return false;
+  if(me!==SAHIP) return false;
+  // Taşınmış üyenin şifresi buradan sıfırlanamaz — yukarıdaki gerekçe.
+  return !(_tasinanKullanicilar && _tasinanKullanicilar.indexOf(hedef)>-1);
 }
 
 // ── G13: uygulanamayan değişikliklerin görüntüleyicisi ──────────────────────
@@ -4088,7 +4153,8 @@ function enterApp(){
      `db.users[me].email` ile tahmin etmek yanlış olurdu: deneme hesabında
      taşınmadan ÖNCE de e-posta kayıtlıydı. */
   fbGet('aa-v4/uidMap').then(m=>{
-    _hesapTasinmisMi = !!m && Object.values(m).indexOf(me)>-1;
+    _tasinanKullanicilar = m ? Object.values(m) : [];
+    _hesapTasinmisMi = _tasinanKullanicilar.indexOf(me)>-1;
     renderTasimaSeridi();
   }).catch(()=>{});
 
