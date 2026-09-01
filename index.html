@@ -1621,6 +1621,21 @@ try{
 
           <!-- Harita Avatarı kaldırıldı — avatar sistemi birleştirildi -->
 
+          <!-- G9: Girişi güvenli hale getirme (taşıma). Görünürlüğü renderSettings'te:
+               hesap zaten taşınmışsa "✅ taşındı" kutusu, taşınmamışsa form.
+               ⚠️ ŞİFRE BÖLÜMÜNÜN ÜSTÜNDE duruyor, bilerek: Gökşin taşıma bölümünü
+               görmeden önce alttaki şifre alanından şifresini değiştirdi ve iki ayrı
+               şifreyle kaldı. Sıra değişirse aynı tuzak geri gelir. -->
+          <div class="detail-section" id="guvenliGirisBolumu" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
+            <div class="detail-acc-header" onclick="toggleSection('set-auth')">
+              <div class="detail-section-title" style="margin:0">🔐 Girişini Güvenli Hale Getir</div>
+              <span class="acc-arrow" id="arr-set-auth">▶</span>
+            </div>
+            <div class="detail-acc-body" id="body-set-auth">
+              <div style="padding-top:.75rem" id="guvenliGirisIcerik"></div>
+            </div>
+          </div>
+
           <!-- Şifre & İpucu — akordeon -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-password')">
@@ -1629,6 +1644,7 @@ try{
             </div>
             <div class="detail-acc-body" id="body-set-password">
               <div style="padding-top:.75rem">
+                <div id="sifreTasimaUyarisi" style="display:none;font-size:.85rem;color:var(--rust);background:rgba(160,82,45,.08);border:1px solid rgba(160,82,45,.25);border-radius:4px;padding:.5rem .7rem;margin-bottom:.75rem;line-height:1.45"></div>
                 <div style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
                   <div class="detail-field" style="flex:1;min-width:180px">
                     <label class="detail-field-label">Yeni Şifre</label>
@@ -1693,18 +1709,6 @@ try{
                 </label>
               </div>
               </div>
-            </div>
-          </div>
-
-          <!-- G9: Girişi güvenli hale getirme (taşıma). Görünürlüğü renderSettings'te:
-               hesap zaten taşınmışsa "✅ taşındı" kutusu, taşınmamışsa form. -->
-          <div class="detail-section" id="guvenliGirisBolumu" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
-            <div class="detail-acc-header" onclick="toggleSection('set-auth')">
-              <div class="detail-section-title" style="margin:0">🔐 Girişini Güvenli Hale Getir</div>
-              <span class="acc-arrow" id="arr-set-auth">▶</span>
-            </div>
-            <div class="detail-acc-body" id="body-set-auth">
-              <div style="padding-top:.75rem" id="guvenliGirisIcerik"></div>
             </div>
           </div>
 
@@ -2933,10 +2937,42 @@ function updateProfile(field, value){
   saveDb();
 }
 
+/* Firebase tarafındaki şifreyi değiştirir. Bilet gerekiyor; bilet yoksa
+   (hesap henüz taşınmamışsa) çağıran bunu hiç çağırmaz. */
+async function authSifreDegistir(yeniSifre){
+  const j=await authJeton();
+  if(!j) throw new Error('NO_TOKEN');
+  const c=await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:update?key='+AUTH_ANAHTAR,
+    {idToken:j, password:yeniSifre, returnSecureToken:true});
+  _authKur(c);   // yeni bilet döner, eskisi geçersizleşir
+  return true;
+}
+
+/* ⚠️ TAŞINMIŞ HESAPLARDA HER İKİ TARAFI BİRDEN DEĞİŞTİRİR (2026-09-01).
+   Eskiden yalnızca uygulamanın kendi şifresini değiştiriyordu. Hesap taşındıktan
+   sonra bu, sessizce İKİ AYRI ŞİFRE üretirdi: kullanıcı adıyla yeni şifre,
+   e-postayla eski şifre. Gökşin tam bu tuzağa düştü (taşıma bölümünü görmeden
+   önce buradan şifre değiştirdi) ve nimet/Özgür'ün de düşeceğini söyledi.
+   Firebase önce güncelleniyor: orası başarısız olursa uygulama şifresine HİÇ
+   dokunulmuyor, yoksa ikisi ayrışırdı. */
 async function changePassword(){
   const pw=document.getElementById('settingPw').value;
-  if(!pw||pw.length<3){mesajGoster('Şifre en az 3 karakter olmalı.','uyari');return;}
-  db.users[me].password=await hashPassword(pw);
+  const enAz = authGirisliMi()&&_guvenliGirisKullanici===me ? 6 : 3;
+  if(!pw||pw.length<enAz){mesajGoster('Şifre en az '+enAz+' karakter olmalı.','uyari');return;}
+
+  if(authGirisliMi()&&_guvenliGirisKullanici===me){
+    try{
+      await authSifreDegistir(pw);
+    }catch(e){
+      const m=String(e.message||e);
+      mesajGoster(m.includes('WEAK_PASSWORD')?'Şifre çok zayıf, en az 6 karakter olmalı.'
+                 :'Şifre değiştirilemedi, eski şifren geçerli kalmaya devam ediyor.','uyari');
+      return;
+    }
+  }
+
+  const ozet=await hashPassword(pw);
+  db.users[me].password=ozet;
   document.getElementById('settingPw').value='';
   saveDb();
   mesajGoster('Şifre güncellendi ✅');
@@ -3169,6 +3205,18 @@ function renderGuvenliGiris(){
   const kutu=document.getElementById('guvenliGirisIcerik');
   if(!kutu) return;
   const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
+
+  // Şifre bölümündeki uyarı: taşınmadan oradan şifre değiştirmek, taşımada
+  // belirlenecek şifreyle karışıyor. Taşındıktan sonra uyarıya gerek yok —
+  // changePassword() artık iki tarafı birden değiştiriyor.
+  const uy=document.getElementById('sifreTasimaUyarisi');
+  if(uy){
+    uy.style.display = tasindi?'none':'block';
+    uy.innerHTML = tasindi?'' :
+      '⚠️ Girişini henüz güvenli hale getirmedin. <b>Önce yukarıdaki 🔐 bölümünü kullan</b> — '+
+      'orada belirlediğin şifre zaten buradaki şifren olacak. Önce buradan değiştirirsen '+
+      'iki ayrı şifreyle uğraşmak zorunda kalırsın.';
+  }
   if(tasindi){
     kutu.innerHTML=
       '<div style="font-size:.9rem;color:var(--moss);font-weight:600;margin-bottom:.4rem">✅ Girişin güvenli</div>'+
