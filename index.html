@@ -3180,7 +3180,9 @@ function renderGuvenliGiris(){
     '<div style="font-size:.85rem;opacity:.8;margin-bottom:.75rem;line-height:1.5">'+
       'Şu an girişin yalnızca bu uygulamanın içinde kontrol ediliyor; veritabanı dışarıya açık. '+
       'Bir e-posta ve yeni bir şifre belirlersen giriş gerçek bir kilide bağlanır.<br><br>'+
-      '<b>Şifreni kimse görmez</b> — ne Gökşin ne de bir başkası. Sadece sen belirlersin.'+
+      '<b>Şifreni kimse görmez</b> — ne Gökşin ne de bir başkası. Sadece sen belirlersin.<br><br>'+
+      '⚠️ Burada belirlediğin şifre <b>uygulamanın giriş şifresi de olacak</b>. Yani bundan sonra '+
+      'ister kullanıcı adınla ister e-postanla gir, aynı şifreyi kullanacaksın.'+
     '</div>'+
     '<div class="detail-field" style="margin-bottom:.5rem">'+
       '<label class="detail-field-label">E-posta</label>'+
@@ -3224,6 +3226,18 @@ async function hesabimiTasi(){
     // hesabı ortada kalır ama uygulama eski yoldan çalışmaya devam eder.
     const yazildi=await fbSet('aa-v4/uidMap/'+authUid(), me);
     if(!yazildi) throw new Error('Eşleşme kaydedilemedi');
+
+    /* Uygulamanın kendi şifresi de AYNI şifreye çekiliyor (2026-09-01).
+       İlk denemede Gökşin taşındıktan sonra giriş yapamadı: ortada iki ayrı
+       şifre kalıyordu (kullanıcı adı → eski uygulama şifresi, e-posta → yeni
+       Firebase şifresi) ve hangisinin nerede geçtiği belli değildi. Artık
+       belirlenen tek şifre her iki yolda da çalışıyor. Eski giriş yolu
+       kaldırılınca (G9 5. aşama) bu satır da gereksizleşecek. */
+    try{
+      db.users[me].password=await hashPassword(s1);
+      saveDb();
+    }catch(e){ /* uygulama şifresi güncellenemese bile taşıma geçerli */ }
+
     _guvenliGirisKullanici=me;
     renderGuvenliGiris();
     mesajGoster('Girişin artık güvenli 🔐');
