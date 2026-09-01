@@ -182,7 +182,9 @@ function davetSuresiDoldu(oturum, simdi){
 async function davetiKapKaldir(sid){
   let etag=null, oturum=null;
   try{
-    const g=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'.json',{headers:{'X-Firebase-ETag':'true'}});
+    // fbAdres: G9 giriş bileti adres üzerinden ekleniyor; buradaki özel başlıklar
+    // (X-Firebase-ETag / if-match) olduğu gibi kalıyor.
+    const g=await fetch(await fbAdres('aa-v4/readingSessions/'+sid),{headers:{'X-Firebase-ETag':'true'}});
     if(!g.ok) return null;
     etag=g.headers.get('ETag');
     oturum=await g.json();
@@ -192,7 +194,7 @@ async function davetiKapKaldir(sid){
   if(!oturum||!etag) return null;
   if(!davetSuresiDoldu(oturum, Date.now())) return null;
   try{
-    const d=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'.json',{
+    const d=await fetch(await fbAdres('aa-v4/readingSessions/'+sid),{
       method:'DELETE', headers:{'if-match':etag}
     });
     if(!d.ok) return null;   // 412 → başkası araya girdi
@@ -250,7 +252,7 @@ async function davetKapandiBildir(oturum){
 async function saatAsamasiniKap(sid, yeniAsama){
   let etag=null, mevcut=null;
   try{
-    const g=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'/saatAsamasi.json',{headers:{'X-Firebase-ETag':'true'}});
+    const g=await fetch(await fbAdres('aa-v4/readingSessions/'+sid+'/saatAsamasi'),{headers:{'X-Firebase-ETag':'true'}});
     if(!g.ok) return false;
     etag=g.headers.get('ETag');
     mevcut=await g.json();
@@ -258,7 +260,7 @@ async function saatAsamasiniKap(sid, yeniAsama){
   if(!etag) return false;                       // koşullu yazamıyorsak hiç yazma
   if((mevcut||0)>=yeniAsama) return false;      // başkası çoktan işlemiş
   try{
-    const p=await fetch(FB_URL+'/aa-v4/readingSessions/'+sid+'/saatAsamasi.json',{
+    const p=await fetch(await fbAdres('aa-v4/readingSessions/'+sid+'/saatAsamasi'),{
       method:'PUT', headers:{'Content-Type':'application/json','if-match':etag},
       body:JSON.stringify(yeniAsama)
     });
@@ -1180,7 +1182,7 @@ async function checkCoreadingMilestone(book){
     // Firebase'den güncel session çek — allDone için doğru veri
     let freshSession=session;
     try{
-      const snap=await fetch(FB_URL+'/aa-v4/readingSessions/'+sessionId+'.json');
+      const snap=await fetch(await fbAdres('aa-v4/readingSessions/'+sessionId));
       const fetched=await snap.json();
       if(fetched) freshSession=fetched;
     }catch(e){}

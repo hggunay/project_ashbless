@@ -817,7 +817,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Kayıt Ol</button>
     </div>
     <div id="loginForm">
-      <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
+      <div class="auth-field"><label class="auth-label">Kullanıcı Adı <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">veya e-posta</span></label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
       <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
       <!-- G11 (2026-08-31): buradaki "e-postana kod gönderelim" akışı kaldırıldı.
@@ -1696,6 +1696,18 @@ try{
             </div>
           </div>
 
+          <!-- G9: Girişi güvenli hale getirme (taşıma). Görünürlüğü renderSettings'te:
+               hesap zaten taşınmışsa "✅ taşındı" kutusu, taşınmamışsa form. -->
+          <div class="detail-section" id="guvenliGirisBolumu" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
+            <div class="detail-acc-header" onclick="toggleSection('set-auth')">
+              <div class="detail-section-title" style="margin:0">🔐 Girişini Güvenli Hale Getir</div>
+              <span class="acc-arrow" id="arr-set-auth">▶</span>
+            </div>
+            <div class="detail-acc-body" id="body-set-auth">
+              <div style="padding-top:.75rem" id="guvenliGirisIcerik"></div>
+            </div>
+          </div>
+
           <!-- Üye Yönetimi — akordeon. Görünürlüğü renderSettings'te ayarlanıyor:
                yalnızca SAHIP ve YEDEK_YETKILI görür. Şifre sıfırlama istekleri
                kutusu da bilerek bunun İÇİNDE, o da gizlensin diye. -->
@@ -2187,16 +2199,128 @@ function birlikteIkonuGorunsun(kitap){
 // ── FİREBASE ──────────────────────────────────────────────────
 const FB_URL='https://armchair-adventurers-default-rtdb.europe-west1.firebasedatabase.app';
 
+/* ═══ G9: KİMLİK DOĞRULAMA (2026-09-01) ═══════════════════════════════════════
+   Uygulama bugüne kadar veritabanına KİMLİKSİZ yazıyordu; giriş ekranı yalnızca
+   tarayıcıda çalışan bir görüntüydü, veritabanı adresi bilen herkese açıktı.
+   Buradaki iş o kapıyı kapatmanın ilk yarısı: gerçek bir "giriş bileti" almak ve
+   her isteğe eklemek. Kuralların sıkılaştırılması AYRI bir adım (G9 4. aşama).
+
+   ⚠️ KÜTÜPHANE KULLANILMIYOR — bilerek. Firebase'in JS kütüphanesi bize yalnızca
+   bilet yenilemeyi kazandırırdı; isteklere bileti eklemeyi yine elle yapmamız
+   gerekiyordu. Karşılığı ~150 KB engelleyici dış betik olurdu — EmailJS'i tam da
+   bu yüzden temizledikten bir gün sonra. Uygulamanın tamamı zaten kütüphanesiz.
+
+   ⚠️ AUTH_ANAHTAR GİZLİ DEĞİL. İstemci anahtarı; tarayıcıya gitmesi tasarım
+   gereği. Erişimi bu anahtar değil, veritabanı kuralları belirler. Veritabanı
+   adresi de aynı şekilde kaynakta duruyor. "Sızdı" sanıp gizlemeye çalışma.
+─────────────────────────────────────────────────────────────────────────────── */
+const AUTH_ANAHTAR='AIzaSyBSkmk2cG1yg-Cd9W_TYJ5LHnl2EBnaNXs';
+const AUTH_DEPO='aa-auth';
+const AUTH_PAY_MS=120000;   // biletin bitimine bu kadar kala yenile
+
+let _auth={jeton:null, yenileme:null, biter:0, uid:null, eposta:null};
+let _authYenilemeSozu=null;   // aynı anda iki yenileme başlamasın
+
+function _authYukle(){
+  try{
+    const h=JSON.parse(localStorage.getItem(AUTH_DEPO)||'null');
+    if(h&&h.yenileme) _auth={jeton:h.jeton||null, yenileme:h.yenileme, biter:h.biter||0, uid:h.uid||null, eposta:h.eposta||null};
+  }catch(e){}
+}
+function _authKaydet(){
+  try{
+    if(_auth.yenileme) localStorage.setItem(AUTH_DEPO, JSON.stringify(_auth));
+    else localStorage.removeItem(AUTH_DEPO);
+  }catch(e){}
+}
+_authYukle();
+
+function authGirisliMi(){ return !!_auth.yenileme; }
+function authUid(){ return _auth.uid; }
+function authEposta(){ return _auth.eposta; }
+
+function _authKur(c){
+  // Hem giriş/kayıt (idToken, refreshToken, expiresIn, localId, email) hem de
+  // yenileme (id_token, refresh_token, expires_in, user_id) cevabını karşılar.
+  const jeton=c.idToken||c.id_token;
+  const yenileme=c.refreshToken||c.refresh_token;
+  const sn=Number(c.expiresIn||c.expires_in||3600);
+  if(!jeton||!yenileme) return false;
+  _auth={ jeton, yenileme, biter:Date.now()+sn*1000,
+          uid:c.localId||c.user_id||_auth.uid, eposta:c.email||_auth.eposta };
+  _authKaydet();
+  return true;
+}
+
+async function _authIstek(adres, govde){
+  const r=await fetch(adres,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(govde)});
+  const c=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error((c.error&&c.error.message)||('HTTP '+r.status));
+  return c;
+}
+
+async function authKayitOl(eposta, sifre){
+  const c=await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+AUTH_ANAHTAR,
+    {email:eposta, password:sifre, returnSecureToken:true});
+  return _authKur(c);
+}
+async function authGirisYap(eposta, sifre){
+  const c=await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key='+AUTH_ANAHTAR,
+    {email:eposta, password:sifre, returnSecureToken:true});
+  return _authKur(c);
+}
+function authCikis(){ _auth={jeton:null,yenileme:null,biter:0,uid:null,eposta:null}; _authKaydet(); }
+
+/* Geçerli bilet döndürür; yoksa null (o zaman istek biletsiz gider — kurallar
+   sıkılaşana kadar bu çalışmaya devam eder). Süresi dolmak üzereyse yeniler.
+   Aynı anda gelen çağrılar TEK yenilemeyi paylaşır: yoksa uygulama açılışında
+   onlarca istek aynı anda yenileme başlatır ve Firebase bir kısmını reddeder. */
+async function authJeton(){
+  if(!_auth.yenileme) return null;
+  if(_auth.jeton && Date.now() < _auth.biter-AUTH_PAY_MS) return _auth.jeton;
+  if(!_authYenilemeSozu){
+    _authYenilemeSozu=(async()=>{
+      try{
+        const r=await fetch('https://securetoken.googleapis.com/v1/token?key='+AUTH_ANAHTAR,{
+          method:'POST',
+          headers:{'Content-Type':'application/x-www-form-urlencoded'},
+          body:'grant_type=refresh_token&refresh_token='+encodeURIComponent(_auth.yenileme)
+        });
+        const c=await r.json().catch(()=>({}));
+        if(!r.ok||!_authKur(c)){
+          // Yenileme reddedildi (şifre değişti, hesap silindi vb.) — biletsiz devam.
+          authCikis();
+          return null;
+        }
+        return _auth.jeton;
+      }catch(e){ return _auth.jeton; }   // ağ hatası: eldeki bileti dene
+      finally{ _authYenilemeSozu=null; }
+    })();
+  }
+  return _authYenilemeSozu;
+}
+
+/* Bileti ADRESE ekliyoruz, başlığa değil: Firebase REST'i `?auth=` bekliyor ve
+   coreading.js'teki ham istekler kendi başlıklarını (X-Firebase-ETag, if-match)
+   zaten kuruyor — adres üzerinden gitmek o çağrıları bozmuyor. */
+async function fbAdres(path, ekSorgu){
+  const j=await authJeton();
+  const p=[];
+  if(j) p.push('auth='+encodeURIComponent(j));
+  if(ekSorgu) p.push(ekSorgu);
+  return FB_URL+'/'+path+'.json'+(p.length?('?'+p.join('&')):'');
+}
+
 async function fbGet(path){
   try{
-    const r=await fetch(`${FB_URL}/${path}.json`);
+    const r=await fetch(await fbAdres(path));
     if(!r.ok) return null;
     return await r.json();
   }catch(e){return null;}
 }
 async function fbSet(path,data){
   try{
-    const r=await fetch(`${FB_URL}/${path}.json`,{
+    const r=await fetch(await fbAdres(path),{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(data)
@@ -2209,7 +2333,7 @@ async function fbSet(path,data){
 // olmayan alanlara (ör. başka bir cihazın granüler olarak yazdığı bildirimler) dokunmaz.
 async function fbPatch(path,data){
   try{
-    const r=await fetch(`${FB_URL}/${path}.json`,{
+    const r=await fetch(await fbAdres(path),{
       method:'PATCH',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(data)
@@ -2689,7 +2813,36 @@ async function hashPassword(p){
 }
 async function login(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
-  if(!db.users[u]){err.style.display='block';return;}
+
+  /* G9: E-POSTAYLA GİRİŞ. Girişi taşımış bir üye başka bir cihazda kullanıcı adı
+     yerine e-postasını yazabilsin diye. Bilet tarayıcıya kaydediliyor; taşıma
+     yalnızca yapıldığı cihazda geçerli olsaydı, kurallar sıkılaşınca diğer
+     cihazlar dışarıda kalırdı.
+     Kullanıcı adında '@' olamadığı için ayrım güvenli. */
+  if(u.includes('@')){
+    try{
+      await authGirisYap(u,p);
+      const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
+      if(!kullanici||!db.users[kullanici]){
+        authCikis();
+        err.style.display='block';
+        err.textContent='Bu e-posta bir hesaba bağlı değil. Kullanıcı adınla giriş yapıp Ayarlar\'dan taşımayı tamamla.';
+        return;
+      }
+      err.style.display='none'; me=kullanici; viewing=null;
+      _guvenliGirisKullanici=kullanici;
+      if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
+      enterApp();
+      return;
+    }catch(e){
+      authCikis();
+      err.style.display='block';
+      err.textContent='E-posta veya şifre hatalı.';
+      return;
+    }
+  }
+
+  if(!db.users[u]){err.style.display='block';err.textContent='Kullanıcı adı veya şifre hatalı.';return;}
   const stored=db.users[u].password;
   // Hash'li şifre (64 karakter hex) ise girilen şifreyi hash'le, değilse düz karşılaştır
   let match=false;
@@ -2941,6 +3094,13 @@ function renderSettings(){
   // G13: uygulanamayan değişikliklerin kopyaları (varsa)
   renderReddedilenler();
 
+  // G9: girişin taşınıp taşınmadığı sunucudan okunuyor. Önce eldeki bilgiyle
+  // çiziliyor ki bölüm boş görünmesin, cevap gelince yeniden çiziliyor.
+  renderGuvenliGiris();
+  guvenliGirisDurumu().then(k=>{
+    if(k!==_guvenliGirisKullanici){ _guvenliGirisKullanici=k; renderGuvenliGiris(); }
+  }).catch(()=>{});
+
   // Tam veritabanı yedeği yalnızca sahibe görünür (perde, kilit değil — bkz. SAHIP)
   const tamKutu=document.getElementById('tamYedekKutusu');
   if(tamKutu) tamKutu.style.display=(me===SAHIP)?'block':'none';
@@ -2986,6 +3146,97 @@ function saveHint(){
   if(hintEl) hintEl.style.borderColor='var(--moss)';
   setTimeout(()=>{if(hintEl)hintEl.style.borderColor='';},2000);
   notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
+}
+
+/* ═══ G9: HESAP TAŞIMA ════════════════════════════════════════════════════════
+   Her üye kendi Firebase hesabını KENDİSİ oluşturur — şifresi ne Gökşin'den ne
+   Claude'dan geçer. Yetkilendirme doğal: bu formu ancak O HESABA GİRMİŞKEN
+   görebiliyorsun, dolayısıyla yalnızca kendi kullanıcı adını bağlayabilirsin.
+   Kaynak koda e-posta listesi gömmeye de gerek kalmıyor (o liste sayfa
+   kaynağında herkese görünürdü).
+
+   Eşleşme `aa-v4/uidMap/<uid> = <kullanıcıadı>` olarak tutuluyor. Böylece
+   247 kitabın hiçbiri yerinden oynamıyor: veri kullanıcı adıyla kalıyor,
+   kurallar "bu bilet bu kullanıcı adına mı ait" diye buradan bakacak.
+─────────────────────────────────────────────────────────────────────────────── */
+async function guvenliGirisDurumu(){
+  if(!authGirisliMi()) return null;
+  const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
+  return kullanici||null;
+}
+
+function renderGuvenliGiris(){
+  const kutu=document.getElementById('guvenliGirisIcerik');
+  if(!kutu) return;
+  const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
+  if(tasindi){
+    kutu.innerHTML=
+      '<div style="font-size:.9rem;color:var(--moss);font-weight:600;margin-bottom:.4rem">✅ Girişin güvenli</div>'+
+      '<div style="font-size:.85rem;opacity:.75">Bu hesap <b>'+escapeHtml(authEposta()||'')+'</b> adresine bağlı. '+
+      'Başka bir cihazda giriş yaparken kullanıcı adı yerine bu e-postayı ve belirlediğin yeni şifreyi kullanabilirsin.</div>';
+    return;
+  }
+  kutu.innerHTML=
+    '<div style="font-size:.85rem;opacity:.8;margin-bottom:.75rem;line-height:1.5">'+
+      'Şu an girişin yalnızca bu uygulamanın içinde kontrol ediliyor; veritabanı dışarıya açık. '+
+      'Bir e-posta ve yeni bir şifre belirlersen giriş gerçek bir kilide bağlanır.<br><br>'+
+      '<b>Şifreni kimse görmez</b> — ne Gökşin ne de bir başkası. Sadece sen belirlersin.'+
+    '</div>'+
+    '<div class="detail-field" style="margin-bottom:.5rem">'+
+      '<label class="detail-field-label">E-posta</label>'+
+      '<input class="detail-input" id="tasiEposta" type="email" placeholder="ornek@gmail.com" autocomplete="email"/>'+
+    '</div>'+
+    '<div class="detail-field" style="margin-bottom:.5rem">'+
+      '<label class="detail-field-label">Yeni şifre <span style="opacity:.6;font-weight:400">(en az 6 karakter)</span></label>'+
+      '<input class="detail-input" id="tasiSifre1" type="password" autocomplete="new-password"/>'+
+    '</div>'+
+    '<div class="detail-field" style="margin-bottom:.75rem">'+
+      '<label class="detail-field-label">Yeni şifre (tekrar)</label>'+
+      '<input class="detail-input" id="tasiSifre2" type="password" autocomplete="new-password"/>'+
+    '</div>'+
+    '<button class="btn btn-primary btn-sm" id="tasiBtn" onclick="hesabimiTasi()">🔐 Girişimi Güvenli Hale Getir</button>'+
+    '<div id="tasiSonuc" style="margin-top:.6rem;font-size:.85rem"></div>';
+}
+
+let _guvenliGirisKullanici=null;   // uidMap'ten okunan kullanıcı adı (önbellek)
+
+async function hesabimiTasi(){
+  const yaz=(m,renk)=>{ const e=document.getElementById('tasiSonuc'); if(e){ e.style.color=renk; e.textContent=m; } };
+  const eposta=(document.getElementById('tasiEposta')||{}).value||'';
+  const s1=(document.getElementById('tasiSifre1')||{}).value||'';
+  const s2=(document.getElementById('tasiSifre2')||{}).value||'';
+  if(!eposta.includes('@')||eposta.length<5){ yaz('Geçerli bir e-posta adresi gir.','var(--rust)'); return; }
+  if(s1.length<6){ yaz('Şifre en az 6 karakter olmalı.','var(--rust)'); return; }
+  if(s1!==s2){ yaz('İki şifre birbirini tutmuyor.','var(--rust)'); return; }
+
+  const btn=document.getElementById('tasiBtn');
+  if(btn){ btn.disabled=true; btn.textContent='Bağlanıyor…'; }
+  yaz('','');
+  try{
+    try{
+      await authKayitOl(eposta.trim(), s1);
+    }catch(e){
+      // Adres zaten kayıtlıysa (ör. yarım kalmış bir deneme) girişi dene.
+      if(String(e.message).includes('EMAIL_EXISTS')) await authGirisYap(eposta.trim(), s1);
+      else throw e;
+    }
+    // ⚠️ Eşleşme yazılmadan taşıma TAMAMLANMIŞ SAYILMAZ. Yazılamazsa Firebase
+    // hesabı ortada kalır ama uygulama eski yoldan çalışmaya devam eder.
+    const yazildi=await fbSet('aa-v4/uidMap/'+authUid(), me);
+    if(!yazildi) throw new Error('Eşleşme kaydedilemedi');
+    _guvenliGirisKullanici=me;
+    renderGuvenliGiris();
+    mesajGoster('Girişin artık güvenli 🔐');
+  }catch(e){
+    const m=String(e.message||e);
+    const tr = m.includes('EMAIL_EXISTS') ? 'Bu e-posta başka bir hesapta kullanılıyor.'
+             : m.includes('INVALID_EMAIL') ? 'E-posta adresi geçersiz görünüyor.'
+             : m.includes('WEAK_PASSWORD') ? 'Şifre çok zayıf, en az 6 karakter olmalı.'
+             : m.includes('INVALID_LOGIN_CREDENTIALS')||m.includes('INVALID_PASSWORD') ? 'Bu e-posta kayıtlı ama şifre tutmuyor.'
+             : 'Bağlanamadı: '+m;
+    yaz(tr,'var(--rust)');
+    if(btn){ btn.disabled=false; btn.textContent='🔐 Girişimi Güvenli Hale Getir'; }
+  }
 }
 
 // G11 (2026-08-31): `updateAdminBadge` ve `adminResetFromForgot` kaldırıldı.
@@ -3439,7 +3690,7 @@ function saveProfile(){
   mesajGoster('Profil güncellendi ✅');
 }
 
-function logout(){me=null;viewing=null;try{localStorage.removeItem('aa-session');}catch(e){}document.getElementById('appScreen').style.display='none';document.getElementById('authScreen').style.display='flex';renderPills();}
+function logout(){me=null;viewing=null;authCikis();_guvenliGirisKullanici=null;try{localStorage.removeItem('aa-session');}catch(e){}document.getElementById('appScreen').style.display='none';document.getElementById('authScreen').style.display='flex';renderPills();}
 function setTodayDate(){
   const d=new Date();
   const today=`${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}.${d.getFullYear()}`;
