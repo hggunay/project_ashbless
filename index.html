@@ -3232,15 +3232,22 @@ async function hesabimiTasi(){
        şifre kalıyordu (kullanıcı adı → eski uygulama şifresi, e-posta → yeni
        Firebase şifresi) ve hangisinin nerede geçtiği belli değildi. Artık
        belirlenen tek şifre her iki yolda da çalışıyor. Eski giriş yolu
-       kaldırılınca (G9 5. aşama) bu satır da gereksizleşecek. */
+       kaldırılınca (G9 5. aşama) bu satır da gereksizleşecek.
+
+       ⚠️ saveDb() ile YAZILMIYOR: o çakışma korumasına takılırsa sessizce
+       yazmayabilir ve form "şifren her iki yolda geçerli" derken yalan söylerdi.
+       fbPatch tek alana yazıyor, başarısını da döndürüyor. */
+    let sifreEslesti=false;
     try{
-      db.users[me].password=await hashPassword(s1);
-      saveDb();
-    }catch(e){ /* uygulama şifresi güncellenemese bile taşıma geçerli */ }
+      const ozet=await hashPassword(s1);
+      sifreEslesti=await fbPatch('aa-v4/users/'+me,{password:ozet});
+      if(sifreEslesti) db.users[me].password=ozet;
+    }catch(e){}
 
     _guvenliGirisKullanici=me;
     renderGuvenliGiris();
-    mesajGoster('Girişin artık güvenli 🔐');
+    if(sifreEslesti) mesajGoster('Girişin artık güvenli 🔐');
+    else mesajGoster('E-postayla giriş kuruldu, ama uygulama şifresi güncellenemedi — kullanıcı adıyla girerken ESKİ şifreni kullan.','uyari');
   }catch(e){
     const m=String(e.message||e);
     const tr = m.includes('EMAIL_EXISTS') ? 'Bu e-posta başka bir hesapta kullanılıyor.'
