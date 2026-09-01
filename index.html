@@ -2915,6 +2915,27 @@ async function login(){
     if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
   }
   if(!match){err.style.display='block';return;}
+
+  /* ═══ G9: KULLANICI ADIYLA GİRİŞTE DE BİLET AL (2026-09-01) ══════════════════
+     Eskiden bilet yalnızca e-postayla girişte alınıyordu. Kurallar sıkılaştıktan
+     sonra bu, sessiz bir tuzak olurdu: telefonunda kullanıcı adıyla giren biri
+     uygulamayı normal kullanır ama HİÇBİR ŞEY KAYDEDİLMEZ, hata da görmez.
+     Artık iki şifre aynı olduğu için (taşımada eşitleniyor) aynı şifreyle
+     Firebase'e de sessizce giriliyor. Başarısız olursa giriş yine de yapılıyor —
+     kullanıcıyı dışarıda bırakmıyoruz — ama uyarı gösteriliyor. */
+  const kayitliEposta = db.users[u] && db.users[u].email;
+  if(kayitliEposta){
+    try{
+      await authGirisYap(kayitliEposta, p);
+      const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
+      _guvenliGirisKullanici = (kullanici===u)?u:null;
+      if(kullanici!==u) authCikis();   // bu adres başka bir hesaba bağlı
+    }catch(e){
+      authCikis(); _guvenliGirisKullanici=null;
+      setTimeout(()=>mesajGoster('Güvenli girişin doğrulanamadı — kaydetmede sorun yaşarsan Ayarlar → 🔐 bölümünden şifreni yenile.','uyari'),1200);
+    }
+  }
+
   err.style.display='none';me=u;viewing=null;
   if(needsMigration){
     try{ db.users[u].password=await hashPassword(p); saveDb(); }catch(e){}
@@ -3352,11 +3373,16 @@ async function hesabimiTasi(){
        ⚠️ saveDb() ile YAZILMIYOR: o çakışma korumasına takılırsa sessizce
        yazmayabilir ve form "şifren her iki yolda geçerli" derken yalan söylerdi.
        fbPatch tek alana yazıyor, başarısını da döndürüyor. */
+    /* E-posta da kullanıcı kaydına yazılıyor — SÜS DEĞİL, gerekli:
+       kullanıcı adıyla giriş yapıldığında arka planda Firebase'e de girmek için
+       adres buradan okunuyor (bkz. login). Kaydedilmezse o kişi kullanıcı adıyla
+       girdiğinde bilet alamaz ve kurallar sıkılaştıktan sonra sessizce hiçbir şey
+       kaydedemez. deneme ve hggunay'da tesadüfen kayıtlıydı, nimet'te olmayacaktı. */
     let sifreEslesti=false;
     try{
       const ozet=await hashPassword(s1);
-      sifreEslesti=await fbPatch('aa-v4/users/'+me,{password:ozet});
-      if(sifreEslesti) db.users[me].password=ozet;
+      sifreEslesti=await fbPatch('aa-v4/users/'+me,{password:ozet, email:eposta.trim()});
+      if(sifreEslesti){ db.users[me].password=ozet; db.users[me].email=eposta.trim(); }
     }catch(e){}
 
     _guvenliGirisKullanici=me;
