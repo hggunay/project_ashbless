@@ -3285,16 +3285,31 @@ async function guvenliGirisDurumu(){
    uyarılarından öğrenmesi kötü bir deneyim olurdu. Şerit girer girmez ne yapması
    gerektiğini söylüyor. Taşınınca kendiliğinden kayboluyor.
    ⚠️ Şerit KOYU zeminde (sayfa gövdesi) — açık renk yazı şart. */
+let _hesapTasinmisMi=null;   // sunucuda bu kullanıcı adına ait eşleşme var mı
+
+/* İKİ AYRI DURUM, iki ayrı mesaj — karıştırmak kullanıcıyı yanlış yere yollar:
+   (a) hesap hiç taşınmamış        → Ayarlar'dan taşıması gerekiyor
+   (b) taşınmış ama BU CİHAZDA bilet yok → yalnızca çıkış-giriş yapması gerekiyor
+   (b) çok kolay gözden kaçıyor: "Oturumu açık tut" işaretliyse uygulama giriş
+   ekranını hiç göstermiyor, dolayısıyla bilet de alınmıyor. Kişi uygulamayı
+   açar, her şey normal görünür, ama hiçbir şey kaydedilmez. */
 function renderTasimaSeridi(){
   const s=document.getElementById('tasimaSeridi');
   if(!s) return;
   const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
   if(tasindi || !me){ s.style.display='none'; s.innerHTML=''; return; }
   s.style.display='';
-  s.innerHTML='<b style="color:var(--gold)">🔐 Girişini güvenli hale getirmen gerekiyor.</b><br>'+
-    'Bunu yapmadan <b>yaptığın değişiklikler kaydedilmeyebilir</b>. '+
-    'Bir kereye mahsus: <b style="color:var(--gold)">Ayarlar → 🔐 Girişini Güvenli Hale Getir</b> — '+
-    'e-postanı yaz, yeni bir şifre belirle. Şifreni kimse görmez.';
+  if(_hesapTasinmisMi){
+    s.innerHTML='<b style="color:var(--gold)">🔐 Bu cihazda yeniden giriş yapman gerekiyor.</b><br>'+
+      'Hesabın güvenli, ama bu cihaz henüz doğrulanmadı — bu haliyle '+
+      '<b>yaptığın değişiklikler kaydedilmez</b>. '+
+      'Sağ üstten <b style="color:var(--gold)">Çıkış</b> yap, sonra normal şekilde tekrar gir. Bir kereye mahsus.';
+  } else {
+    s.innerHTML='<b style="color:var(--gold)">🔐 Girişini güvenli hale getirmen gerekiyor.</b><br>'+
+      'Bunu yapmadan <b>yaptığın değişiklikler kaydedilmez</b>. '+
+      'Bir kereye mahsus: <b style="color:var(--gold)">Ayarlar → 🔐 Girişini Güvenli Hale Getir</b> — '+
+      'e-postanı yaz, yeni bir şifre belirle. Şifreni kimse görmez.';
+  }
 }
 
 function renderGuvenliGiris(){
@@ -4068,6 +4083,14 @@ function enterApp(){
      cevap gelince — o yüzden şerit bir an gecikmeli görünebilir. */
   renderTasimaSeridi();
   guvenliGirisDurumu().then(k=>{ _guvenliGirisKullanici=k; renderTasimaSeridi(); }).catch(()=>{});
+  /* Bu kullanıcı adına ait bir eşleşme SUNUCUDA var mı — şeridin hangi mesajı
+     göstereceğini bu belirliyor. Okuma açık olduğu için bilete gerek yok.
+     `db.users[me].email` ile tahmin etmek yanlış olurdu: deneme hesabında
+     taşınmadan ÖNCE de e-posta kayıtlıydı. */
+  fbGet('aa-v4/uidMap').then(m=>{
+    _hesapTasinmisMi = !!m && Object.values(m).indexOf(me)>-1;
+    renderTasimaSeridi();
+  }).catch(()=>{});
 
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
