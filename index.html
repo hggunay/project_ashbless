@@ -898,6 +898,11 @@ try{
   </div>
   <div class="app">
     <div id="specialDayBannerWrap"></div>
+    <!-- G9: hesabını taşımamış üyeye kalıcı yönlendirme. Kurallar yayınlandıktan
+         sonra taşınmamış biri kaydedemez; bunu hata şeritlerinden öğrenmesin diye
+         girer girmez ne yapması gerektiğini söylüyoruz. renderTasimaSeridi() -->
+    <div id="tasimaSeridi" style="display:none;margin:0 1.5rem .75rem;padding:.7rem 1rem;background:rgba(160,82,45,.12);border:1px solid rgba(201,162,39,.45);border-radius:6px;font-family:'Crimson Pro',serif;font-size:.92rem;color:var(--parchment);line-height:1.5"></div>
+
     <div class="nav-tabs">
       <button class="nav-tab" onclick="showPanel('feed',this)">🏠 Ana Sayfa <span id="feedBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
@@ -3275,6 +3280,23 @@ async function guvenliGirisDurumu(){
   return kullanici||null;
 }
 
+/* Taşınmamış üyeye kalıcı yönlendirme şeridi. Kurallar yayınlandıktan sonra
+   taşınmamış biri hiçbir şey kaydedemiyor; bunu ard arda gelen "kaydedilemedi"
+   uyarılarından öğrenmesi kötü bir deneyim olurdu. Şerit girer girmez ne yapması
+   gerektiğini söylüyor. Taşınınca kendiliğinden kayboluyor.
+   ⚠️ Şerit KOYU zeminde (sayfa gövdesi) — açık renk yazı şart. */
+function renderTasimaSeridi(){
+  const s=document.getElementById('tasimaSeridi');
+  if(!s) return;
+  const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
+  if(tasindi || !me){ s.style.display='none'; s.innerHTML=''; return; }
+  s.style.display='';
+  s.innerHTML='<b style="color:var(--gold)">🔐 Girişini güvenli hale getirmen gerekiyor.</b><br>'+
+    'Bunu yapmadan <b>yaptığın değişiklikler kaydedilmeyebilir</b>. '+
+    'Bir kereye mahsus: <b style="color:var(--gold)">Ayarlar → 🔐 Girişini Güvenli Hale Getir</b> — '+
+    'e-postanı yaz, yeni bir şifre belirle. Şifreni kimse görmez.';
+}
+
 function renderGuvenliGiris(){
   const kutu=document.getElementById('guvenliGirisIcerik');
   if(!kutu) return;
@@ -3295,6 +3317,8 @@ function renderGuvenliGiris(){
   // ona göre yazılıyor — Gökşin "3 karakter yazıyor ama 6 olmalı" diye bildirdi.
   const pw=document.getElementById('settingPw');
   if(pw) pw.placeholder = tasindi?'En az 6 karakter...':'En az 3 karakter...';
+
+  renderTasimaSeridi();
 
   const alan=document.getElementById('sifreDegistirAlani');
   if(alan){
@@ -4040,6 +4064,10 @@ function enterApp(){
   const _loadEl=document.getElementById('earlyLoadingScreen');if(_loadEl)_loadEl.style.display='none';
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
   updateFeedBadge();
+  /* G9: taşıma durumu sunucudan okunup şerit çiziliyor. Girişte hemen değil,
+     cevap gelince — o yüzden şerit bir an gecikmeli görünebilir. */
+  renderTasimaSeridi();
+  guvenliGirisDurumu().then(k=>{ _guvenliGirisKullanici=k; renderTasimaSeridi(); }).catch(()=>{});
 
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
