@@ -27,6 +27,14 @@
 //  3) kitaplar: [{ baslik:'O', yazar:'Stephen King', takmaAdlar:['It'] }]
 //     Tekil kitaplar için. Başlık + yazar eşleşmesi.
 //
+//  5) haric: [{ baslik:'Çiftçi Giles', takmaAdlar:['Farmer Giles of Ham'] }]
+//     TERSİ yönde çalışan tek alan: buradaki bir kitap o diyarı AÇMAZ, diğer
+//     tetikleyiciler tutsa bile. Geniş bir tetikleyicinin (yazarlar /
+//     baslikIcerir) yanlış yakaladığı kitapları elemek için. Kitap başka bir
+//     diyara düşebilir — yalnızca bu diyar atlanır.
+//     ⚠️ Yalnızca külliyatı KAPALI yazarlarda güvenli: yaşayan bir yazarda
+//     liste sürekli eskir. (02.09.2026'da eklendi.)
+//
 //  4) seriler: ['Harry Potter']
 //     Kitabın "seri" alanına bakar. SADECE EK AĞ — tek başına asla yeterli
 //     sayılmaz, çünkü seri alanı kitapların yalnızca ~%16'sında dolu ve
@@ -102,9 +110,22 @@ const DIYAR_KATALOG = [
       { dosya: 'lotr.webp' }
     ],
     tetikleyiciler: {
-      // Tolkien'in her kitabı Orta Dünya. "Yüzük kardeşliği", "iki kule",
-      // "Kralın dönüşü" gibi tekil çeviri adlarını da bu yakalar.
+      // Tolkien'in kitaplarının NEREDEYSE hepsi Orta Dünya. "Yüzük kardeşliği",
+      // "iki kule", "Kralın dönüşü" gibi tekil çeviri adlarını da bu yakalar.
+      // ⚠️ "hepsi" DEĞİL — 02.09.2026'da ölçüldü, Çiftçi Giles ve Roverandom
+      // Orta Dünya'yı açıyordu. Tolkien öldüğü için külliyat kapalı, yani
+      // Orta Dünya dışı kitapların listesi kısa ve bir daha büyümez.
       yazarlar: ['J.R.R. Tolkien'],
+      haric: [
+        { baslik: 'Çiftçi Giles', takmaAdlar: ['Farmer Giles of Ham', 'Ham\'lı Çiftçi Giles'] },
+        { baslik: 'Roverandom',   takmaAdlar: [] },
+        { baslik: 'Kullervo\'nun Hikâyesi', takmaAdlar: ['The Story of Kullervo', 'Kullervonun Hikayesi'] },
+        { baslik: 'Noel Baba\'dan Mektuplar', takmaAdlar: ['Letters from Father Christmas'] },
+        { baslik: 'Beowulf', takmaAdlar: [] },
+        { baslik: 'Arthur\'un Düşüşü', takmaAdlar: ['The Fall of Arthur'] },
+        { baslik: 'Niggle\'ın Yaprağı', takmaAdlar: ['Leaf by Niggle'] },
+        { baslik: 'Bay Bliss', takmaAdlar: ['Mr. Bliss'] }
+      ],
       seriler: ['Yüzüklerin Efendisi', 'The Lord of the Rings', 'Orta Dünya']
     }
   },
@@ -117,11 +138,29 @@ const DIYAR_KATALOG = [
       { dosya: 'dune.webp' }
     ],
     tetikleyiciler: {
+      // ⚠️ Yazar eşleşmesi SOYADA baktığı için 'Frank Herbert' koşulu
+      // BRIAN Herbert'i de yakalıyor. Bu çoğunlukla istenen şey: Atreides /
+      // Harkonnen / Corrino Hanedanı ve devam kitapları Arrakis'e uğruyor.
+      // İstenmeyen kısım aşağıda `haric` ile eleniyor.
       baslikIcerir: [
         { yazar: 'Frank Herbert', baslikIcerir: 'Dune' }
       ],
       kitaplar: [
         { baslik: 'Çöl Gezegeni', yazar: 'Frank Herbert', takmaAdlar: [] }
+      ],
+      // Arrakis'te GEÇMEYEN ön-seriler (Gökşin'in kararı, 02.09.2026):
+      // Legends of Dune insanlık-makine savaşını, Schools of Dune loncaların
+      // kuruluşunu anlatıyor; ikisi de Arrakis'te geçmiyor.
+      // ⚠️ Brian Herbert yaşıyor — yeni ön-kitap çıkarsa bu liste büyür.
+      // Frank Herbert'in son kitabı (Rahibeler Meclisi) Arrakis'te geçmiyor
+      // ama BİLEREK elenmedi: onu okuyan zaten öncekileri okumuştur.
+      haric: [
+        { baslik: 'Dune: Butlerian Cihadı', takmaAdlar: ['Butlerian Cihadı', 'Dune: The Butlerian Jihad', 'The Butlerian Jihad'] },
+        { baslik: 'Dune: Makine Savaşı',    takmaAdlar: ['Makine Savaşı', 'Dune: The Machine Crusade', 'The Machine Crusade'] },
+        { baslik: 'Dune: Corrin Savaşı',    takmaAdlar: ['Corrin Savaşı', 'Dune: The Battle of Corrin', 'The Battle of Corrin'] },
+        { baslik: 'Dune: Kızkardeşlik',     takmaAdlar: ['Sisterhood of Dune', 'Dune: Sisterhood'] },
+        { baslik: 'Dune: Mentatlar',        takmaAdlar: ['Mentats of Dune'] },
+        { baslik: 'Dune: Yol Göstericiler', takmaAdlar: ['Navigators of Dune'] }
       ],
       seriler: ['Dune', 'Çöl Gezegeni']
     }
@@ -212,8 +251,17 @@ const DIYAR_KATALOG = [
       { dosya: 'oz2.webp' }
     ],
     tetikleyiciler: {
-      // Baum'un kitapları Oz serisidir.
+      // Baum'un kitaplarının çoğu Oz serisidir. ⚠️ Hepsi değil — Deniz
+      // Perileri gibi Oz dışı kitapları Oz'u açıyordu (ölçüldü, 02.09.2026).
+      // Baum da öldüğü için külliyat kapalı, liste büyümez.
       yazarlar: ['L. Frank Baum'],
+      haric: [
+        { baslik: 'Deniz Perileri',   takmaAdlar: ['The Sea Fairies'] },
+        { baslik: 'Gökyüzü Adası',    takmaAdlar: ['Sky Island'] },
+        { baslik: 'Ix Kraliçesi Zixi', takmaAdlar: ['Queen Zixi of Ix'] },
+        { baslik: 'Ana Kaz Düzyazıda', takmaAdlar: ['Mother Goose in Prose'] },
+        { baslik: 'Ana Anahtar',      takmaAdlar: ['The Master Key'] }
+      ],
       kitaplar: [
         { baslik: 'Oz Büyücüsü', yazar: 'L. Frank Baum',
           takmaAdlar: ['The Wonderful Wizard of Oz', 'Muhteşem Oz Büyücüsü'] }
@@ -452,28 +500,41 @@ const DIYAR_KATALOG = [
       baslikIcerir: [
         { yazar: 'Neil Gaiman', baslikIcerir: 'Sandman' }
       ],
+      // Cilt adları GÖKŞİN'İN KENDİ NÜSHALARINDAN (02.09.2026). Benim ilk
+      // tahminlerimin dördü yanlıştı — 10. cilt "Uyanış" değil MATEM, 3. cilt
+      // "Düş Ülke", 5. "Sen Oyunu", 7. "Kısa Hayatlar". Yanlış tahminler
+      // takma ad olarak duruyor: başka bir çeviri/baskı öyle olabilir ve
+      // yazar koşulu zorunlu olduğu için fazladan ad zarar vermiyor.
       kitaplar: [
         { baslik: 'Prelüdler ve Noktürnler', yazar: 'Neil Gaiman',
           takmaAdlar: ['Preludes & Nocturnes', 'Preludes and Nocturnes'] },
         { baslik: 'Bebek Evi', yazar: 'Neil Gaiman',
           takmaAdlar: ['The Doll\'s House', 'Oyuncak Bebek Evi'] },
-        { baslik: 'Düşler Diyarı', yazar: 'Neil Gaiman',
-          takmaAdlar: ['Dream Country', 'Düş Ülkesi', 'Düşler Ülkesi'] },
-        { baslik: 'Sis Mevsimi', yazar: 'Neil Gaiman',
-          takmaAdlar: ['Season of Mists', 'Sisler Mevsimi'] },
-        { baslik: 'Senin Gibi Bir Oyun', yazar: 'Neil Gaiman',
-          takmaAdlar: ['A Game of You', 'Bir Oyun Sensin', 'Senden Bir Oyun'] },
-        { baslik: 'Fabller ve Yansımalar', yazar: 'Neil Gaiman',
-          takmaAdlar: ['Fables & Reflections', 'Fables and Reflections', 'Masallar ve Yansımalar'] },
-        { baslik: 'Kısa Yaşamlar', yazar: 'Neil Gaiman',
-          takmaAdlar: ['Brief Lives', 'Kısa Hayatlar'] },
+        { baslik: 'Düş Ülke', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Dream Country', 'Düş Ülkesi', 'Düşler Ülkesi', 'Düşler Diyarı'] },
+        { baslik: 'Sisler Mevsimi', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Season of Mists', 'Sis Mevsimi'] },
+        { baslik: 'Sen Oyunu', yazar: 'Neil Gaiman',
+          takmaAdlar: ['A Game of You', 'Senin Gibi Bir Oyun', 'Bir Oyun Sensin'] },
+        { baslik: 'Fabllar ve Yansımalar', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Fables & Reflections', 'Fables and Reflections',
+                       'Fabller ve Yansımalar', 'Masallar ve Yansımalar'] },
+        { baslik: 'Kısa Hayatlar', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Brief Lives', 'Kısa Yaşamlar'] },
         { baslik: 'Dünyanın Sonu', yazar: 'Neil Gaiman',
           takmaAdlar: ['Worlds\' End', 'Worlds End', 'Dünyaların Sonu'] },
-        { baslik: 'İyi Yürekliler', yazar: 'Neil Gaiman',
-          takmaAdlar: ['The Kindly Ones', 'Zarif Varlıklar', 'İyicil Olanlar'] },
-        { baslik: 'Uyanış', yazar: 'Neil Gaiman', takmaAdlar: ['The Wake'] },
-        { baslik: 'Düş Avcıları', yazar: 'Neil Gaiman', takmaAdlar: ['The Dream Hunters'] },
-        { baslik: 'Sonsuz Geceler', yazar: 'Neil Gaiman', takmaAdlar: ['Endless Nights'] }
+        // Gökşin'in nüshasında "Merhametliler" yazıyor; "İyi Kalpliler" de kullanılıyor.
+        { baslik: 'Merhametliler', yazar: 'Neil Gaiman',
+          takmaAdlar: ['The Kindly Ones', 'İyi Kalpliler', 'İyi Yürekliler', 'Zarif Varlıklar'] },
+        { baslik: 'Matem', yazar: 'Neil Gaiman', takmaAdlar: ['The Wake', 'Uyanış'] },
+        { baslik: 'Sonsuz Geceler', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Endless Nights', 'Özel Hikayeler'] },
+        // Bu ikisinin adında zaten "Sandman" geçiyor, baslikIcerir de yakalar —
+        // önekisiz kaydedilme ihtimaline karşı yazıldı.
+        { baslik: 'Uvertür', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Overture', 'Sandman: Uvertür'] },
+        { baslik: 'Rüya Avcıları', yazar: 'Neil Gaiman',
+          takmaAdlar: ['The Dream Hunters', 'Düş Avcıları'] }
       ],
       // Seri alanı Gökşin'in kayıtlarında dolu. Tek başına yeterli değil —
       // ölçüldü: 244 kitabın yalnızca 48'inde (%20) bu alan dolu.

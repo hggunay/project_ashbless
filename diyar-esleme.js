@@ -74,6 +74,15 @@ function diyarBul(kitap, katalog) {
   for (const diyar of katalog) {
     const t = diyar.tetikleyiciler || {};
 
+    // 0) haric — bu diyarı AÇMAYACAK kitaplar. Geniş bir tetikleyicinin
+    //    (yazarlar / baslikIcerir) yanlış yakaladığı kitapları tek tek eler.
+    //    Sırası önemli: diğer dördünden ÖNCE bakılır ve tutarsa bu diyar
+    //    tamamen atlanır — kitap başka bir diyara düşebilir.
+    //    Gerekçe: yazar eşleşmesi SOYADA bakıyor, yani "Frank Herbert"
+    //    kataloğu "Brian Herbert"i de yakalıyordu; ayrıca Tolkien ve Baum'un
+    //    kendi dünyaları dışında kitapları var. (02.09.2026)
+    if (t.haric && t.haric.some(k => baslikUyar(kitap.title, k))) continue;
+
     // 1) yazarlar — bu yazarın her kitabı
     if (t.yazarlar && t.yazarlar.some(y => yazarUyar(kitap.author, y))) {
       return { diyar, sebep: 'yazar' };
