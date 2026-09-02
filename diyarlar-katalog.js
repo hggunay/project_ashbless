@@ -784,38 +784,55 @@ const DIYAR_KATALOG = [
       // Lancre kitaplarını yanlışlıkla buraya bağlardı.
       //
       // Listede: Şehir Muhafızları ve Moist von Lipwig alt serilerinin tamamı
-      // (hepsi Ankh-Morpork'ta), artı şehirde geçen tekil kitaplar.
-      // ⚠️ TÜRKÇE ADLARIN ÇOĞUNDAN EMİN DEĞİLİM — İngilizce özgün adlar ana
-      // başlık, Türkçe tahminler takma ad olarak yazıldı. Gökşin'in
-      // nüshalarındaki adlar görülünce düzeltilmeli (Sandman'de aynısı oldu).
+      // (hepsi Ankh-Morpork'ta), artı şehirde geçen tekiller.
+      //
+      // ✅ TÜRKÇE ADLAR 02.09'da DÜZELTİLDİ. Gökşin kaynak verdi
+      // (frpnet.net/makaleler/diskdunya-hangi-sirayla-okunmali). Altı tahminim
+      // YANLIŞTI: Men at Arms "Silah Başında" değil **Asayiş Berkemal**,
+      // Night Watch "Gece Nöbeti" değil **Gece Bekçileri**, Reaper Man "Orakçı"
+      // değil **Tırpanlı Adam**, Raising Steam **Buhar Kaldırmak**, Hogfather
+      // tek kelime **Domuzbaba**; Jingo ve Snuff'ın Türkçesi hiç yoktu.
+      // Ana başlık artık TÜRKÇE; İngilizce özgün ad ve eski tahminlerim takma
+      // ad olarak duruyor (başka bir baskı/çeviri öyle olabilir; yazar koşulu
+      // zorunlu olduğu için fazladan ad yanlış eşleşme yaratmaz).
       kitaplar: [
-        // — Şehir Muhafızları —
-        { baslik: 'Guards! Guards!', yazar: 'Terry Pratchett',
-          takmaAdlar: ['Muhafızlar! Muhafızlar!', 'Muhafızlar Muhafızlar'] },
-        { baslik: 'Men at Arms',       yazar: 'Terry Pratchett', takmaAdlar: ['Silah Başında', 'Silahlı Adamlar'] },
-        { baslik: 'Feet of Clay',      yazar: 'Terry Pratchett', takmaAdlar: ['Kilden Ayaklar'] },
-        { baslik: 'Jingo',             yazar: 'Terry Pratchett', takmaAdlar: [] },
-        { baslik: 'The Fifth Elephant', yazar: 'Terry Pratchett', takmaAdlar: ['Beşinci Fil'] },
-        { baslik: 'Night Watch',       yazar: 'Terry Pratchett', takmaAdlar: ['Gece Nöbeti'] },
-        { baslik: 'Thud!',             yazar: 'Terry Pratchett', takmaAdlar: ['Güm!', 'Thud'] },
-        { baslik: 'Snuff',             yazar: 'Terry Pratchett', takmaAdlar: [] },
-        // — Moist von Lipwig —
-        { baslik: 'Going Postal',      yazar: 'Terry Pratchett', takmaAdlar: ['Postane', 'Posta Görevlisi'] },
-        { baslik: 'Making Money',      yazar: 'Terry Pratchett', takmaAdlar: ['Para Basmak'] },
-        { baslik: 'Raising Steam',     yazar: 'Terry Pratchett', takmaAdlar: ['Buhar Kalkıyor'] },
+        // — Şehir Muhafızları (sekizi de Ankh-Morpork) —
+        { baslik: 'Muhafızlar! Muhafızlar!', yazar: 'Terry Pratchett',
+          takmaAdlar: ['Guards! Guards!', 'Muhafızlar Muhafızlar'] },
+        { baslik: 'Asayiş Berkemal',   yazar: 'Terry Pratchett', takmaAdlar: ['Men at Arms', 'Silah Başında', 'Silahlı Adamlar'] },
+        { baslik: 'Kilden Ayaklar',    yazar: 'Terry Pratchett', takmaAdlar: ['Feet of Clay'] },
+        { baslik: 'Savaş Naraları',    yazar: 'Terry Pratchett', takmaAdlar: ['Jingo'] },
+        { baslik: 'Beşinci Fil',       yazar: 'Terry Pratchett', takmaAdlar: ['The Fifth Elephant'] },
+        { baslik: 'Gece Bekçileri',    yazar: 'Terry Pratchett', takmaAdlar: ['Night Watch', 'Gece Nöbeti'] },
+        { baslik: 'Güm!',              yazar: 'Terry Pratchett', takmaAdlar: ['Thud!', 'Thud', 'Güm'] },
+        { baslik: 'Burunotu',          yazar: 'Terry Pratchett', takmaAdlar: ['Snuff'] },
+        // — Moist von Lipwig (üçü de Ankh-Morpork) —
+        { baslik: 'Postane',           yazar: 'Terry Pratchett', takmaAdlar: ['Going Postal', 'Posta Görevlisi'] },
+        { baslik: 'Para Basmak',       yazar: 'Terry Pratchett', takmaAdlar: ['Making Money'] },
+        { baslik: 'Buhar Kaldırmak',   yazar: 'Terry Pratchett', takmaAdlar: ['Raising Steam', 'Buhar Kalkıyor'] },
         // — Şehirde geçen tekiller —
-        { baslik: 'Moving Pictures',   yazar: 'Terry Pratchett', takmaAdlar: ['Hareketli Resimler'] },
-        { baslik: 'The Truth',         yazar: 'Terry Pratchett', takmaAdlar: ['Gerçek', 'Hakikat'] },
-        { baslik: 'Soul Music',        yazar: 'Terry Pratchett', takmaAdlar: ['Ruh Müziği'] },
-        { baslik: 'Reaper Man',        yazar: 'Terry Pratchett', takmaAdlar: ['Orakçı'] },
-        { baslik: 'Hogfather',         yazar: 'Terry Pratchett', takmaAdlar: ['Domuz Baba'] },
+        { baslik: 'Hareketli Resimler', yazar: 'Terry Pratchett', takmaAdlar: ['Moving Pictures'] },
+        { baslik: 'Gerçek',            yazar: 'Terry Pratchett', takmaAdlar: ['The Truth', 'Hakikat'] },
+        { baslik: 'Ruh Müziği',        yazar: 'Terry Pratchett', takmaAdlar: ['Soul Music'] },
+        { baslik: 'Tırpanlı Adam',     yazar: 'Terry Pratchett', takmaAdlar: ['Reaper Man', 'Orakçı'] },
+        { baslik: 'Domuzbaba',         yazar: 'Terry Pratchett', takmaAdlar: ['Hogfather', 'Domuz Baba'] },
         { baslik: 'Mort',              yazar: 'Terry Pratchett', takmaAdlar: [] },
         // — Rincewind'in ilk iki kitabı: şehirde başlıyor —
-        { baslik: 'The Colour of Magic', yazar: 'Terry Pratchett',
-          takmaAdlar: ['Büyünün Rengi', 'The Color of Magic'] },
-        { baslik: 'The Light Fantastic', yazar: 'Terry Pratchett',
-          takmaAdlar: ['Işıyan Fantastik', 'Fantastik Işık'] }
+        { baslik: 'Büyünün Rengi',     yazar: 'Terry Pratchett',
+          takmaAdlar: ['The Colour of Magic', 'The Color of Magic', 'Renk Büyüsü'] },
+        { baslik: 'Fantastik Işık',    yazar: 'Terry Pratchett',
+          takmaAdlar: ['The Light Fantastic', 'Işıyan Fantastik'] },
+        // — 02.09'da eklendi: tam liste görülünce çıkan üç Ankh-Morpork kitabı —
+        { baslik: 'Görünmez Akademisyenler', yazar: 'Terry Pratchett',
+          takmaAdlar: ['The Unseen Academicals', 'Unseen Academicals'] },   // baştan sona şehirde
+        { baslik: 'Maskeli Balo',      yazar: 'Terry Pratchett', takmaAdlar: ['Masquerade'] }, // Ankh-Morpork Operası
+        { baslik: 'Hasbüyü',           yazar: 'Terry Pratchett', takmaAdlar: ['Sourcery'] }    // Görünmez Üniversite
       ]
+      // ⛔ BİLEREK DIŞARIDA (Ankh-Morpork'ta geçmiyorlar): Cadı romanlarının
+      // Lancre'de geçenleri (Ucube Kocakarılar, Cadılar Dışarıda, Hanımlar ve
+      // Beyler), Tiffany Sızlayan serisinin tamamı, Küçük Tanrılar (Omnia),
+      // Canavar Alayı (Borogravia), Muhteşem Maurice (Überwald), İlginç Zamanlar
+      // ve Son Kıta (Rincewind'in uzak diyarları), Piramitler (Djelibeybi).
     }
   }
 

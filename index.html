@@ -2941,6 +2941,36 @@ async function login(){
     match=stored===p;
     if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
   }
+  /* ═══ G9: ÖZET TUTMAZSA HEMEN REDDETME — FIREBASE'E SOR (2026-09-03) ═════════
+     Gökşin'in itirazı: "kullanıcı şifre değiştirdikten sonra e-postayla girmek
+     zorunda olduğunu nereden bilsin? insanlar yazıları okumaz."
+     Haklıydı. E-postadan şifre sıfırlayan biri Firebase şifresini değiştirir,
+     uygulamanın özeti eski kalır; o kişi YENİ şifresini doğru yazsa bile
+     "kullanıcı adı veya şifre hatalı" görüyordu — üstelik doğru şifreyi bilerek.
+     Artık özet tutmazsa kapı kapanmıyor: hesabın kayıtlı e-postasıyla Firebase'e
+     soruluyor. Firebase kabul ederse şifre DOĞRUDUR; içeri alınır ve özet
+     hizalanır. Böylece kullanıcı hangi yolu denerse denesin girer.
+     ⚠️ uidMap kontrolü ŞART: e-posta o hesaba ait mi diye bakılmazsa, başka bir
+     hesabın kimliğiyle bu kullanıcı adına girilebilirdi.
+     Yan etki: yanlış şifrede bir ağ isteği daha gidiyor; çok sayıda hatalı
+     denemede Firebase geçici kilit uygulayabilir (bu bir koruma). */
+  let biletHazir=false;
+  if(!match){
+    const kurtarmaEpostasi = db.users[u] && db.users[u].email;
+    if(kurtarmaEpostasi){
+      try{
+        await authGirisYap(kurtarmaEpostasi,p);
+        const kimlik=await fbGet('aa-v4/uidMap/'+authUid());
+        if(kimlik===u){
+          match=true; biletHazir=true; _guvenliGirisKullanici=u;
+          try{
+            const ozet=await hashPassword(p);
+            if(await fbPatch('aa-v4/users/'+u,{password:ozet})) db.users[u].password=ozet;
+          }catch(e){}
+        } else { authCikis(); }
+      }catch(e){ authCikis(); }
+    }
+  }
   if(!match){err.style.display='block';return;}
 
   /* ═══ G9: KULLANICI ADIYLA GİRİŞTE DE BİLET AL (2026-09-01) ══════════════════
@@ -2951,7 +2981,7 @@ async function login(){
      Firebase'e de sessizce giriliyor. Başarısız olursa giriş yine de yapılıyor —
      kullanıcıyı dışarıda bırakmıyoruz — ama uyarı gösteriliyor. */
   const kayitliEposta = db.users[u] && db.users[u].email;
-  if(kayitliEposta){
+  if(kayitliEposta && !biletHazir){   // yukarıdaki kurtarma yolu bileti zaten aldıysa tekrar deneme
     try{
       await authGirisYap(kayitliEposta, p);
       const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
