@@ -47,6 +47,15 @@
 //     eder. Diyar SİLİNMEZ.
 //  6. Eşleşme ıskalanırsa çözüm buraya bir takma ad eklemektir; kullanıcının
 //     verisine dokunulmaz. Onarım fonksiyonu diyarı geçmişe dönük açar.
+//  7. AYNI MEKANDA GEÇEN HER KİTAP O DİYARI AÇAR. (Gökşin'in kuralı, 02.09.2026.)
+//     Yeni diyar eklerken "bu mekanda geçen başka eser var mı?" diye sor ve
+//     hepsini yaz — sonradan eklemek, baştan yazmaktan zahmetli. Macondo bu
+//     yüzden dört eserle açılıyor. ⚠️ Ama YAZARIN her kitabı demek DEĞİL:
+//     ölçüt mekan, yazar değil. Márquez'in Kırmızı Pazartesi'si Macondo'da
+//     geçmediği için listede yok.
+//  8. Bir kitap İKİ diyar açmasın. Aynı kitabın iki mekanı varsa (Lilliput ve
+//     Blefuscu gibi) tek diyar + iki SAHNE yap — yoksa tek kitap haritada iki
+//     altıgen birden açar ve keşif hissi ucuzlar.
 //
 // ⚠️ TASLAK (2026-08-12) — görsel adları .webp yazıldı; dönüştürme ayrı adım
 //    (şu an elde .png var).
@@ -435,10 +444,40 @@ const DIYAR_KATALOG = [
       { dosya: 'duslem4.webp', ad: 'Galeri' }
     ],
     tetikleyiciler: {
-      // Bütün ciltler, dil fark etmeksizin, adında "Sandman" taşıyor.
+      // ⚠️ 02.09.2026 — "Bütün ciltler adında Sandman taşıyor" YANLIŞTI.
+      // Türkçe baskılar cilt adıyla basılıyor: Gökşin'in kütüphanesindeki
+      // "Prelüdler ve Noktürnler" ile "Bebek Evi" hiç eşleşmiyordu, yani
+      // Düşlem diyarı ona hiç açılmamıştı. baslikIcerir duruyor (İngilizce
+      // baskıları ve "Sandman: ..." biçimini yakalıyor), altına ciltler eklendi.
       baslikIcerir: [
         { yazar: 'Neil Gaiman', baslikIcerir: 'Sandman' }
-      ]
+      ],
+      kitaplar: [
+        { baslik: 'Prelüdler ve Noktürnler', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Preludes & Nocturnes', 'Preludes and Nocturnes'] },
+        { baslik: 'Bebek Evi', yazar: 'Neil Gaiman',
+          takmaAdlar: ['The Doll\'s House', 'Oyuncak Bebek Evi'] },
+        { baslik: 'Düşler Diyarı', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Dream Country', 'Düş Ülkesi', 'Düşler Ülkesi'] },
+        { baslik: 'Sis Mevsimi', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Season of Mists', 'Sisler Mevsimi'] },
+        { baslik: 'Senin Gibi Bir Oyun', yazar: 'Neil Gaiman',
+          takmaAdlar: ['A Game of You', 'Bir Oyun Sensin', 'Senden Bir Oyun'] },
+        { baslik: 'Fabller ve Yansımalar', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Fables & Reflections', 'Fables and Reflections', 'Masallar ve Yansımalar'] },
+        { baslik: 'Kısa Yaşamlar', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Brief Lives', 'Kısa Hayatlar'] },
+        { baslik: 'Dünyanın Sonu', yazar: 'Neil Gaiman',
+          takmaAdlar: ['Worlds\' End', 'Worlds End', 'Dünyaların Sonu'] },
+        { baslik: 'İyi Yürekliler', yazar: 'Neil Gaiman',
+          takmaAdlar: ['The Kindly Ones', 'Zarif Varlıklar', 'İyicil Olanlar'] },
+        { baslik: 'Uyanış', yazar: 'Neil Gaiman', takmaAdlar: ['The Wake'] },
+        { baslik: 'Düş Avcıları', yazar: 'Neil Gaiman', takmaAdlar: ['The Dream Hunters'] },
+        { baslik: 'Sonsuz Geceler', yazar: 'Neil Gaiman', takmaAdlar: ['Endless Nights'] }
+      ],
+      // Seri alanı Gökşin'in kayıtlarında dolu. Tek başına yeterli değil —
+      // ölçüldü: 244 kitabın yalnızca 48'inde (%20) bu alan dolu.
+      seriler: ['Sandman', 'The Sandman']
     }
   },
 
@@ -514,10 +553,24 @@ const DIYAR_KATALOG = [
     tetikleyiciler: {
       // Martha Wells — H.G. Wells DEĞİL. Başlık koşulu olduğu için ikisi
       // birbirine karışmıyor.
+      // ⚠️ 02.09.2026 — baslikIcerir TEK BAŞINA YETMİYORDU. Ne Türkçe ne
+      // İngilizce cilt adlarında "Katilbot"/"Murderbot" geçiyor; seri adı
+      // kapakta, kitap adında değil. Gökşin'in üç Katilbot kitabı da
+      // ıskalanıyordu — Preservation ona hiç açılmamıştı.
       baslikIcerir: [
         { yazar: 'Martha Wells', baslikIcerir: 'Katilbot' },
         { yazar: 'Martha Wells', baslikIcerir: 'Murderbot' }
-      ]
+      ],
+      kitaplar: [
+        { baslik: 'Tüm Sistemler Kırmızı', yazar: 'Martha Wells', takmaAdlar: ['All Systems Red'] },
+        { baslik: 'Yapay Koşullanma',      yazar: 'Martha Wells', takmaAdlar: ['Artificial Condition'] },
+        { baslik: 'Kaçak Protokol',        yazar: 'Martha Wells', takmaAdlar: ['Rogue Protocol'] },
+        { baslik: 'Çıkış Stratejisi',      yazar: 'Martha Wells', takmaAdlar: ['Exit Strategy'] },
+        { baslik: 'Ağ Etkisi',             yazar: 'Martha Wells', takmaAdlar: ['Network Effect'] },
+        { baslik: 'Kaçak Telemetri',       yazar: 'Martha Wells', takmaAdlar: ['Fugitive Telemetry'] },
+        { baslik: 'Tüm Sistemler Çöktü',   yazar: 'Martha Wells', takmaAdlar: ['System Collapse'] }
+      ],
+      seriler: ['Katilbot Günlükleri', 'The Murderbot Diaries', 'Murderbot Günlükleri', 'Katilbot']
     }
   },
 
