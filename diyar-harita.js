@@ -1947,7 +1947,15 @@ const DH_BULUT_DIZILIM = {
     { s:0, x:0.7428, y:-0.2930, h:0.8750, d:-6, a:true  },
     { s:1, x:0.5866, y:0.1253, h:0.8325, d:-12, a:false },
     { s:2, x:0.7305, y:0.0577, h:0.6748, d:0,   a:false },
-    { s:1, x:0.6319, y:-0.0142, h:0.9469, d:0,  a:true  }
+    { s:1, x:0.6319, y:-0.0142, h:0.9469, d:0,  a:true  },
+    // 02.09'da eklendi. Alt şeridin ORTA-SAĞ ALT köşesi tek katmandı: oraya
+    // yalnızca büyük bulutun ince kuyruğu uzanıyordu, gövdesi değil. Başka
+    // yerlerde bulutlar 2-3 kat bindiği için opaklık birikiyor, orada birikmiyordu
+    // ve arkadaki harita okunuyordu. Ölçüldü: 24 hücrelik sızıntı taramasında
+    // en kötü hücre buydu. Bu bulut ikinci katı sağlıyor.
+    // ⚠️ Boyut BİLEREK 0.75 — daha büyüğü de denendi, Gökşin "sızdırmaz olmasın,
+    // biraz geçirgenlik hoş duruyor" dedi. Arkası hâlâ belli belirsiz seçiliyor.
+    { s:1, x:0.5200, y:0.7200, h:0.7500, d:6,   a:true  }
   ]
 };
 
