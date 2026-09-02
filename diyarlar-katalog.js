@@ -679,6 +679,144 @@ const DIYAR_KATALOG = [
           takmaAdlar: ['The Time Machine', 'Zaman Makinası'] }
       ]
     }
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // 2026-09-02'de eklenen beş diyar. Görselleri Gökşin üretti.
+  // ⚠️ Bu beşiyle katalog 31 diyara çıktı = yerleşim listesindeki slot
+  //    sayısının TAMAMI. 32. diyar için diyar-harita.js'teki
+  //    DH_KESIF_SIRASI 5. halkayla uzatılmalı ya da aralık küçültülmeli
+  //    (oradaki KAPASİTE notuna bak). Şu an sığıyor, taşmıyor.
+  // ══════════════════════════════════════════════════════════════════
+
+  {
+    id: 'macondo',
+    ad: 'Macondo',
+    not: 'Sarı kelebekler ve dinmeyen yağmur; her şey iki kez olur.',
+    sahneler: [
+      { dosya: 'macondo1.webp' },
+      { dosya: 'macondo2.webp' }
+    ],
+    tetikleyiciler: {
+      // Márquez'in HER kitabı Macondo değil (Kırmızı Pazartesi, Kolera
+      // Günlerinde Aşk başka yerlerde) — yazar tabanlı tetikleyici YOK.
+      // Kural 7 gereği Macondo'da geçen diğer eserler de yazıldı.
+      kitaplar: [
+        { baslik: 'Yüzyıllık Yalnızlık', yazar: 'Gabriel García Márquez',
+          takmaAdlar: ['Cien años de soledad', 'One Hundred Years of Solitude',
+                       'Yüz Yıllık Yalnızlık'] },
+        { baslik: 'Yaprak Fırtınası', yazar: 'Gabriel García Márquez',
+          takmaAdlar: ['La hojarasca', 'Leaf Storm'] },
+        { baslik: 'Mamá Grande\'nin Cenaze Töreni', yazar: 'Gabriel García Márquez',
+          takmaAdlar: ['Los funerales de la Mamá Grande', 'Big Mama\'s Funeral',
+                       'Mama Grande\'nin Cenaze Töreni'] },
+        { baslik: 'İsabel\'in Macondo\'da Yağmuru Seyredişi', yazar: 'Gabriel García Márquez',
+          takmaAdlar: ['Monólogo de Isabel viendo llover en Macondo'] }
+      ]
+    }
+  },
+
+  {
+    id: 'utopya',
+    ad: 'Ütopya',
+    not: 'Hilal biçimli bir ada; elli dört şehrin hepsi birbirinin aynı.',
+    sahneler: [
+      { dosya: 'utopya1.webp' },
+      { dosya: 'utopya2.webp' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Ütopya', yazar: 'Thomas More',
+          takmaAdlar: ['Utopia', 'Utopya'] }
+      ]
+    }
+  },
+
+  {
+    id: 'lilliput',
+    ad: 'Lilliput ve Blefuscu',
+    not: 'Yumurtanın hangi ucundan kırılacağı yüzünden savaşan iki komşu ada.',
+    // İki AYRI mekan ama TEK diyar: ikisini de aynı kitap açıyor. Ayrı diyar
+    // olsalardı tek kitap haritada iki altıgen açardı (bkz. KURALLAR 8).
+    sahneler: [
+      { dosya: 'lilliput1.webp', ad: 'Lilliput' },
+      { dosya: 'blefuscu1.webp', ad: 'Blefuscu' }
+    ],
+    tetikleyiciler: {
+      kitaplar: [
+        { baslik: 'Gulliver\'in Gezileri', yazar: 'Jonathan Swift',
+          takmaAdlar: ['Gulliver\'s Travels', 'Güliver\'in Gezileri',
+                       'Güliver\'in Seyahatleri', 'Travels into Several Remote Nations of the World'] }
+      ]
+    }
+  },
+
+  {
+    id: 'okyanusya',
+    ad: 'Okyanusya',
+    not: 'Savaş barıştır. Geçmiş her sabah yeniden yazılır.',
+    sahneler: [
+      { dosya: 'okyanusya1.webp' },
+      { dosya: 'okyanusya2.webp' },
+      { dosya: 'okyanusya3.webp' }
+    ],
+    tetikleyiciler: {
+      // Hayvan Çiftliği BİLEREK yok — Okyanusya'da geçmiyor.
+      kitaplar: [
+        { baslik: '1984', yazar: 'George Orwell',
+          takmaAdlar: ['Bin Dokuz Yüz Seksen Dört', 'Nineteen Eighty-Four',
+                       'Nineteen Eighty Four', 'Bindokuzyüzseksendört'] }
+      ]
+    }
+  },
+
+  {
+    id: 'ankh-morpork',
+    ad: 'Ankh-Morpork',
+    not: 'Nehri yürünebilir, şehri yanmaz — iki kez denendi.',
+    sahneler: [
+      { dosya: 'ankh-morpork1.webp' }
+    ],
+    tetikleyiciler: {
+      // ⚠️ Pratchett'in HER kitabı Ankh-Morpork DEĞİL: Cadılar serisi Lancre'de,
+      // Tiffany Sızlayan Tebeşir Tepeleri'nde geçiyor. Bu yüzden ne `yazarlar`
+      // ne de `seriler: ['Disk Dünya']` kullanıldı — seri tetikleyicisi de
+      // Lancre kitaplarını yanlışlıkla buraya bağlardı.
+      //
+      // Listede: Şehir Muhafızları ve Moist von Lipwig alt serilerinin tamamı
+      // (hepsi Ankh-Morpork'ta), artı şehirde geçen tekil kitaplar.
+      // ⚠️ TÜRKÇE ADLARIN ÇOĞUNDAN EMİN DEĞİLİM — İngilizce özgün adlar ana
+      // başlık, Türkçe tahminler takma ad olarak yazıldı. Gökşin'in
+      // nüshalarındaki adlar görülünce düzeltilmeli (Sandman'de aynısı oldu).
+      kitaplar: [
+        // — Şehir Muhafızları —
+        { baslik: 'Guards! Guards!', yazar: 'Terry Pratchett',
+          takmaAdlar: ['Muhafızlar! Muhafızlar!', 'Muhafızlar Muhafızlar'] },
+        { baslik: 'Men at Arms',       yazar: 'Terry Pratchett', takmaAdlar: ['Silah Başında', 'Silahlı Adamlar'] },
+        { baslik: 'Feet of Clay',      yazar: 'Terry Pratchett', takmaAdlar: ['Kilden Ayaklar'] },
+        { baslik: 'Jingo',             yazar: 'Terry Pratchett', takmaAdlar: [] },
+        { baslik: 'The Fifth Elephant', yazar: 'Terry Pratchett', takmaAdlar: ['Beşinci Fil'] },
+        { baslik: 'Night Watch',       yazar: 'Terry Pratchett', takmaAdlar: ['Gece Nöbeti'] },
+        { baslik: 'Thud!',             yazar: 'Terry Pratchett', takmaAdlar: ['Güm!', 'Thud'] },
+        { baslik: 'Snuff',             yazar: 'Terry Pratchett', takmaAdlar: [] },
+        // — Moist von Lipwig —
+        { baslik: 'Going Postal',      yazar: 'Terry Pratchett', takmaAdlar: ['Postane', 'Posta Görevlisi'] },
+        { baslik: 'Making Money',      yazar: 'Terry Pratchett', takmaAdlar: ['Para Basmak'] },
+        { baslik: 'Raising Steam',     yazar: 'Terry Pratchett', takmaAdlar: ['Buhar Kalkıyor'] },
+        // — Şehirde geçen tekiller —
+        { baslik: 'Moving Pictures',   yazar: 'Terry Pratchett', takmaAdlar: ['Hareketli Resimler'] },
+        { baslik: 'The Truth',         yazar: 'Terry Pratchett', takmaAdlar: ['Gerçek', 'Hakikat'] },
+        { baslik: 'Soul Music',        yazar: 'Terry Pratchett', takmaAdlar: ['Ruh Müziği'] },
+        { baslik: 'Reaper Man',        yazar: 'Terry Pratchett', takmaAdlar: ['Orakçı'] },
+        { baslik: 'Hogfather',         yazar: 'Terry Pratchett', takmaAdlar: ['Domuz Baba'] },
+        { baslik: 'Mort',              yazar: 'Terry Pratchett', takmaAdlar: [] },
+        // — Rincewind'in ilk iki kitabı: şehirde başlıyor —
+        { baslik: 'The Colour of Magic', yazar: 'Terry Pratchett',
+          takmaAdlar: ['Büyünün Rengi', 'The Color of Magic'] },
+        { baslik: 'The Light Fantastic', yazar: 'Terry Pratchett',
+          takmaAdlar: ['Işıyan Fantastik', 'Fantastik Işık'] }
+      ]
+    }
   }
 
 ];
