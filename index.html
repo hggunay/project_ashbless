@@ -4606,6 +4606,13 @@ function playStreakMilestone(hit){
 }
 
 function checkStreakBreak(books){
+  /* Olmayan seri kırılmaz (2026-09-03). Yeni açılan bir hesabın hiç kitabı
+     olmadığı için "geçen ay okumamış" sayılıyor ve daha ilk girişte seri kırıldı
+     ekranıyla karşılanıyordu. Gökşin yeni üye kaydını denerken gördü ve sebebini
+     kendisi bildi: "muhtemelen hep vardı ama hiç yeni kayıt açılmadığı için
+     görmemiştik." Doğruydu — özellik geldiğinden beri ilk yeni hesap buydu.
+     Ayrıca bu, boş yere bir kayıt yazmayı da engelliyor. */
+  if(!books.some(b=>bookMonth(b))) return;
   const now = new Date();
   const curMonth = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const prevDate = new Date(now.getFullYear(), now.getMonth()-1, 1);
