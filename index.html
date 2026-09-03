@@ -844,12 +844,12 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     <div id="registerForm" style="display:none">
       <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="regUsername" type="text" placeholder="ornek: kitapkurt42"/></div>
       <div class="auth-field"><label class="auth-label">Görünen İsim</label><input class="auth-input" id="regDisplayName" type="text" placeholder="ornek: Ahmet"/></div>
-      <div class="auth-field"><label class="auth-label">E-posta <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(şifre sıfırlama için)</span></label><input class="auth-input" id="regEmail" type="email" placeholder="ornek@gmail.com"/></div>
+      <div class="auth-field"><label class="auth-label">E-posta <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(giriş ve şifre sıfırlama için — zorunlu)</span></label><input class="auth-input" id="regEmail" type="email" placeholder="ornek@gmail.com"/></div>
       <div class="auth-field"><label class="auth-label">Avatar Emoji</label><input class="auth-input" id="regAvatar" type="text" placeholder="🧙‍♂️" maxlength="4"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="regPassword" type="password" placeholder="şifre belirle..." onkeydown="if(event.key==='Enter')register()"/><button class="pw-toggle" type="button" onclick="togglePw('regPassword',this)">👁</button></div></div>
       <div class="auth-field"><label class="auth-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı — şifreni unutursan hatırlatır)</span></label><input class="auth-input" id="regHint" type="text" placeholder="örn: evcil hayvanımın adı"/></div>
       <div class="auth-error" id="registerError"></div>
-      <button class="auth-btn" onclick="register()">KAYIT OL →</button>
+      <button class="auth-btn" id="registerBtn" onclick="register()">KAYIT OL →</button>
     </div>
   </div>
 </div>
@@ -3079,12 +3079,74 @@ async function _girisYap(){
   }
   enterApp();
 }
+/* ═══ YENİ ÜYE KAYDI — G9 2. AŞAMASINA GÖRE YENİDEN YAZILDI (2026-09-03) ═══════
+   Eski hâli yalnızca YEREL bir kayıt kuruyordu: `db.users[u]` doldurulup
+   saveDb() çağrılıyordu, Firebase hesabı hiç açılmıyordu. Okuma kilitlendikten
+   sonra o kişi hiçbir şey okuyamaz ve hiçbir şey kaydedemezdi — üstelik sebebini
+   de göremezdi, çünkü kurallar sessizce reddediyor.
+   Yeni sıra ve NEDEN bu sıra:
+     1) kullanıcı adı boşta mı  → herkese açık `girisAdresleri` satırından
+        sorulur; `db.users` artık giriş öncesi okunamıyor
+     2) Firebase hesabı açılır  → kimliğin tek kaynağı burası
+     3) uidMap yazılır          → kural, aşağıdaki her yazma için buraya bakıyor
+     4) girisAdresleri yazılır  → kullanıcı adıyla giriş bunu kullanacak
+     5) kişisel kayıt yazılır   → ancak 3. adımdan sonra izin veriliyor
+   3. adım başarısız olursa geri kalanı denemenin anlamı yok; kullanıcıya
+   söylenip duruluyor, yarım bir hesap bırakılmıyor. */
 async function register(){
-  const u=document.getElementById('regUsername').value.trim(),dn=document.getElementById('regDisplayName').value.trim(),av=document.getElementById('regAvatar').value.trim()||'📚',p=document.getElementById('regPassword').value,hint=document.getElementById('regHint').value.trim(),email=document.getElementById('regEmail').value.trim(),err=document.getElementById('registerError');
-  if(!u||!dn||!p){err.style.display='block';err.textContent='Lütfen tüm alanları doldur.';return;}
-  if(db.users[u]){err.style.display='block';err.textContent='Bu kullanıcı adı alınmış.';return;}
-  db.users[u]={displayName:dn,avatar:av,password:await hashPassword(p),hint:hint||null,email:email||null};db.books[u]=[];
-  saveDb();err.style.display='none';me=u;viewing=null;enterApp();
+  const u=document.getElementById('regUsername').value.trim(),
+        dn=document.getElementById('regDisplayName').value.trim(),
+        av=document.getElementById('regAvatar').value.trim()||'📚',
+        p=document.getElementById('regPassword').value,
+        hint=document.getElementById('regHint').value.trim(),
+        email=document.getElementById('regEmail').value.trim(),
+        err=document.getElementById('registerError');
+  const hata=m=>{ err.style.display='block'; err.textContent=m; };
+
+  if(!u||!dn||!p||!email) return hata('Lütfen tüm alanları doldur (e-posta dahil).');
+  if(u.includes('@'))     return hata('Kullanıcı adında @ olamaz — o e-postaya ayrılmış.');
+  if(!email.includes('@')||email.length<5) return hata('Geçerli bir e-posta adresi gir.');
+  if(p.length<6)          return hata('Şifre en az 6 karakter olmalı.');
+
+  const btn=document.getElementById('registerBtn');
+  const eskiYazi=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='🔑 ALOHOMORA…'; }
+  try{
+    if(db.users&&db.users[u]) return hata('Bu kullanıcı adı alınmış.');
+    let alinmis=null;
+    try{ alinmis=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){}
+    if(alinmis) return hata('Bu kullanıcı adı alınmış.');
+
+    try{
+      await authKayitOl(email,p);
+    }catch(e){
+      const m=String(e.message||e);
+      return hata(m.includes('EMAIL_EXISTS') ? 'Bu e-posta zaten kullanılıyor. Şifreni unuttuysan giriş ekranından sıfırlayabilirsin.'
+                : m.includes('INVALID_EMAIL') ? 'E-posta adresi geçersiz görünüyor.'
+                : m.includes('WEAK_PASSWORD') ? 'Şifre çok zayıf, en az 6 karakter olmalı.'
+                : 'Hesap açılamadı: '+m);
+    }
+
+    if(!(await fbSet('aa-v4/uidMap/'+authUid(), u))){
+      authCikis();
+      return hata('Kayıt tamamlanamadı, tekrar dener misin?');
+    }
+    await fbSet('aa-v4/girisAdresleri/'+u, email, true);
+
+    const kayit={displayName:dn,avatar:av,password:await hashPassword(p),hint:hint||null,email:email};
+    if(!(await fbPatch('aa-v4/users/'+u, kayit))){
+      return hata('Hesabın açıldı ama profilin kaydedilemedi. Giriş yapıp tekrar dene.');
+    }
+    if(!db.users) db.users={};
+    if(!db.books) db.books={};
+    db.users[u]=kayit; db.books[u]=[];
+    _guvenliGirisKullanici=u;
+    err.style.display='none'; me=u; viewing=null;
+    try{ localStorage.setItem('aa-session',u); }catch(e){}
+    enterApp();
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent=eskiYazi; }
+  }
 }
 
 function showForgotFlow(){
