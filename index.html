@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="tr">
 <head>
 <meta charset="UTF-8">
@@ -2343,16 +2343,22 @@ async function fbGet(path){
     return await r.json();
   }catch(e){return null;}
 }
-async function fbSet(path,data){
+/* `sessiz` (2026-09-03): başarısızlığı KULLANICIYA GÖSTERME. Yalnızca isteğe
+   bağlı arka plan onarımları için — kullanıcının kaydettiği bir şey değilse
+   kırmızı şerit yalan söylemiş olur. Gökşin bunu canlıda yakaladı: giriş
+   adresi listesi henüz kurallarda tanımlı olmadığı için yazma reddedildi ve
+   "sunucuya kaydedilemedi" şeridi çıktı — oysa kaybolan hiçbir şey yoktu.
+   ⚠️ Gerçek veri yazan hiçbir çağrıda kullanma; şerit o zaman susturulmuş olur. */
+async function fbSet(path,data,sessiz){
   try{
     const r=await fetch(await fbAdres(path),{
       method:'PUT',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(data)
     });
-    if(r.ok) hideSaveError(); else showSaveError('ağ isteği');
+    if(!sessiz){ if(r.ok) hideSaveError(); else showSaveError('ağ isteği'); }
     return r.ok;
-  }catch(e){showSaveError('bağlantı');return false;}
+  }catch(e){ if(!sessiz) showSaveError('bağlantı'); return false; }
 }
 // PATCH: PUT'un aksine, sadece payload'daki üst-seviye alanları değiştirir — payload'da
 // olmayan alanlara (ör. başka bir cihazın granüler olarak yazdığı bildirimler) dokunmaz.
@@ -2948,7 +2954,7 @@ async function _girisYap(){
          kurallar kilitlendikten sonra KULLANICI ADIYLA giremez hale gelirdi. */
       try{
         if(!(await fbGet('aa-v4/girisAdresleri/'+kullanici)))
-          await fbSet('aa-v4/girisAdresleri/'+kullanici, u.trim());
+          await fbSet('aa-v4/girisAdresleri/'+kullanici, u.trim(), true);
       }catch(e){}
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
       enterApp();
@@ -3060,7 +3066,7 @@ async function _girisYap(){
        giren kalmazsa o kişi kullanıcı adıyla giriş yolunu kaybeder (e-postayla
        yine girebilir, orada listeye ihtiyaç yok). */
     try{
-      if(eposta && !listedeVar) await fbSet('aa-v4/girisAdresleri/'+u, eposta);
+      if(eposta && !listedeVar) await fbSet('aa-v4/girisAdresleri/'+u, eposta, true);
     }catch(e){}
   }
 
@@ -3586,7 +3592,7 @@ async function hesabimiTasi(){
        uidMap'e bakıyor, tersi sırada yazma reddedilirdi.
        Başarısız olursa taşıma yine de geçerli — kişi e-postasıyla girebilir,
        yalnızca kullanıcı adıyla giriş kurallar kilitlendikten sonra çalışmaz. */
-    try{ await fbSet('aa-v4/girisAdresleri/'+me, eposta.trim()); }catch(e){}
+    try{ await fbSet('aa-v4/girisAdresleri/'+me, eposta.trim(), true); }catch(e){}  // sessiz: form kendi durumunu zaten yazıyor
 
     _guvenliGirisKullanici=me;
     renderGuvenliGiris();
