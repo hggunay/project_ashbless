@@ -2428,7 +2428,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2597,7 +2597,7 @@ async function _saveDbNow(){
        zaten kendi granüler yoluna yazılıyor (aa-v4/uidMap/<uid>).
        Aynı sebeple books/shelf/notifications/readingSessions/reactions/
        realmEvents de burada hariç. */
-    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,...restFields}={...db};
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,girisAdresleri,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -2633,7 +2633,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
