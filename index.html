@@ -837,7 +837,7 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
         <button id="hintBtn" type="button" onclick="showHint()" style="display:none;background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold);cursor:pointer;opacity:.7;text-decoration:underline">💡 İpucumu göster</button>
         <button type="button" onclick="showForgotFlow()" style="background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);cursor:pointer;opacity:.6;text-decoration:underline">🔑 Şifremi unuttum</button>
       </div>
-      <button class="auth-btn" onclick="login()">GİRİŞ YAP →</button>
+      <button class="auth-btn" id="loginBtn" onclick="login()">GİRİŞ YAP →</button>
       <div class="auth-error" id="loginError">Kullanıcı adı veya şifre hatalı.</div>
       <div class="members-list"><div class="members-label">Kayıtlı üyeler</div><div id="memberPills"></div></div>
     </div>
@@ -2884,7 +2884,30 @@ async function hashPassword(p){
     return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
   }catch(e){ return p; } // crypto.subtle desteklenmeyen çok eski bir ortamda düz metne düş
 }
+/* ═══ GİRİŞ DÜĞMESİ: DURUM GÖSTERİMİ + ÇİFT TIKLAMA KORUMASI (2026-09-03) ══════
+   Gökşin bildirdi: "butona bastığımda uzun süre hiç tepki vermiyor, 2-3 kez
+   tıkladıktan sonra açılıyor." İlk tıklama ZATEN algılanıyordu — görünmüyordu.
+   Sebep: G9 2. aşamasıyla giriş 2 ağ isteğinden ~12'ye çıktı (adres araması,
+   Firebase, uidMap, sonra veritabanının tamamı). Düğme hiçbir şey göstermediği
+   için ölü sanılıyor, her tıklama da YENİ bir giriş başlatıyordu.
+   Asıl işi `_girisYap` yapıyor; bu sarmalayıcı yalnızca düğmeyi yönetiyor —
+   böylece fonksiyonun içindeki onlarca `return` noktasına dokunmak gerekmedi. */
+let _girisSuruyor=false;
 async function login(){
+  if(_girisSuruyor) return;
+  _girisSuruyor=true;
+  const btn=document.getElementById('loginBtn');
+  const eskiYazi=btn?btn.textContent:'';
+  // "Alohomora" Gökşin'in fikri (2026-09-03) — kilit açma büyüsü, giriş
+  // düğmesi için birebir. Düz "giriş yapılıyor"dan çok daha uygun.
+  if(btn){ btn.disabled=true; btn.textContent='🔑 ALOHOMORA…'; }
+  try{ await _girisYap(); }
+  finally{
+    _girisSuruyor=false;
+    if(btn){ btn.disabled=false; btn.textContent=eskiYazi; }
+  }
+}
+async function _girisYap(){
   const u=document.getElementById('loginUsername').value.trim(),p=document.getElementById('loginPassword').value,err=document.getElementById('loginError');
 
   /* G9: E-POSTAYLA GİRİŞ. Girişi taşımış bir üye başka bir cihazda kullanıcı adı
@@ -2896,6 +2919,11 @@ async function login(){
     try{
       await authGirisYap(u,p);
       const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
+      /* G9 2. aşama: bilet elde, veriyi ŞİMDİ yükle. Okuma kilitlendikten sonra
+         açılıştaki loadDb() yetkisiz olduğu için `db` boş geliyor; aşağıdaki
+         kontrolü ondan önce yapmak herkese "bu e-posta bir hesaba bağlı değil"
+         dedirtirdi. Eski kurallarda da zararsız: sadece taze veri gelir. */
+      if(kullanici && !(db.users && db.users[kullanici])){ try{ await loadDb(); }catch(e){} }
       if(!kullanici||!db.users[kullanici]){
         authCikis();
         err.style.display='block';
@@ -2915,6 +2943,13 @@ async function login(){
           if(await fbPatch('aa-v4/users/'+kullanici,{password:ozet})) db.users[kullanici].password=ozet;
         }
       }catch(e){}
+      /* Giriş adresi listesi burada da kendini onarıyor — bkz. kullanıcı adı
+         dalındaki aynı blok. E-postayla giren biri listesini doldurmazsa,
+         kurallar kilitlendikten sonra KULLANICI ADIYLA giremez hale gelirdi. */
+      try{
+        if(!(await fbGet('aa-v4/girisAdresleri/'+kullanici)))
+          await fbSet('aa-v4/girisAdresleri/'+kullanici, u.trim());
+      }catch(e){}
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
       enterApp();
       return;
@@ -2926,71 +2961,107 @@ async function login(){
     }
   }
 
-  if(!db.users[u]){err.style.display='block';err.textContent='Kullanıcı adı veya şifre hatalı.';return;}
-  const stored=db.users[u].password;
-  // Hash'li şifre (64 karakter hex) ise girilen şifreyi hash'le, değilse düz karşılaştır
-  let match=false;
-  let needsMigration=false;
-  if(stored&&stored.length===64&&/^[0-9a-f]+$/.test(stored)){
-    try{
-      const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
-      const hash=[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
-      match=hash===stored;
-    }catch(e){match=stored===p;}
-  } else {
-    match=stored===p;
-    if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
-  }
-  /* ═══ G9: ÖZET TUTMAZSA HEMEN REDDETME — FIREBASE'E SOR (2026-09-03) ═════════
-     Gökşin'in itirazı: "kullanıcı şifre değiştirdikten sonra e-postayla girmek
-     zorunda olduğunu nereden bilsin? insanlar yazıları okumaz."
-     Haklıydı. E-postadan şifre sıfırlayan biri Firebase şifresini değiştirir,
-     uygulamanın özeti eski kalır; o kişi YENİ şifresini doğru yazsa bile
-     "kullanıcı adı veya şifre hatalı" görüyordu — üstelik doğru şifreyi bilerek.
-     Artık özet tutmazsa kapı kapanmıyor: hesabın kayıtlı e-postasıyla Firebase'e
-     soruluyor. Firebase kabul ederse şifre DOĞRUDUR; içeri alınır ve özet
-     hizalanır. Böylece kullanıcı hangi yolu denerse denesin girer.
-     ⚠️ uidMap kontrolü ŞART: e-posta o hesaba ait mi diye bakılmazsa, başka bir
-     hesabın kimliğiyle bu kullanıcı adına girilebilirdi.
-     Yan etki: yanlış şifrede bir ağ isteği daha gidiyor; çok sayıda hatalı
-     denemede Firebase geçici kilit uygulayabilir (bu bir koruma). */
+  /* ═══ G9 2. AŞAMA: E-POSTA ARTIK `db`'DEN BAĞIMSIZ BULUNUYOR (2026-09-03) ════
+     Okuma kilitlendiğinde giriş ekranında `db` BOŞ olacak — loadDb() yetkisiz
+     çağrıda sessizce başarısız olup localStorage'a düşüyor. O yüzden
+     kullanıcı adı → e-posta çevirisi artık herkese açık küçük listeden
+     yapılıyor: `aa-v4/girisAdresleri/<kullanıcıadı>`.
+     ⚠️ O düğüm TEK TEK okunabilir, TOPLU çekilemez — kuralda okuma izni
+     `girisAdresleri`'nin kendisinde değil yalnızca çocuğunda. Yani bir adresi
+     öğrenmek için o kullanıcı adını zaten biliyor olmak gerekiyor; bir bot
+     gelip hepsini toplayamıyor. (Bu inceliği Gökşin'in sorusu doğurdu.)
+     Liste yoksa eski yola düşüyor — böylece bu kod HEM eski HEM yeni kurallarla
+     çalışıyor ve kodu kurallardan ÖNCE deploy edebiliyoruz. Sıra bu; tersi
+     yapılırsa açık kalmış her sekme anında kilitlenir. */
+  let eposta=null, listedeVar=false;
+  try{ eposta=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){}
+  if(eposta) listedeVar=true;   // aşağıdaki onarım fazladan bir istek atmasın diye
+  if(!eposta && db.users[u]) eposta=db.users[u].email||null;
+
+  let match=false, needsMigration=false;
+
+  /* 1) ASIL YETKİLİ FIREBASE. Adres bulunduysa önce ona sorulur; kabul ederse
+        şifre doğrudur ve uygulamanın kendi özetine hiç bakılmaz.
+        ⚠️ uidMap kontrolü ŞART: adres gerçekten bu hesaba mı ait? Bakılmazsa
+        başkasının kimliğiyle bu kullanıcı adına girilebilirdi. */
   let biletHazir=false;
+  if(eposta){
+    try{
+      await authGirisYap(eposta,p);
+      const kimlik=await fbGet('aa-v4/uidMap/'+authUid());
+      if(kimlik===u){ match=true; biletHazir=true; _guvenliGirisKullanici=u; }
+      else { authCikis(); }
+    }catch(e){ authCikis(); }
+  }
+
+  /* 2) Firebase kullanılamadıysa (hesap taşınmamış, ya da kurallar hâlâ eski ve
+        liste boş) uygulamanın kendi özetine düşülür. Kurallar kilitlendikten
+        sonra bu yol yalnızca taşınmamış hesaplarda kalır — onlar zaten veriyi
+        okuyamayacağı için pratikte kapanmış olur. */
   if(!match){
-    const kurtarmaEpostasi = db.users[u] && db.users[u].email;
-    if(kurtarmaEpostasi){
+    if(!db.users[u]){err.style.display='block';err.textContent='Kullanıcı adı veya şifre hatalı.';return;}
+    const stored=db.users[u].password;
+    // Hash'li şifre (64 karakter hex) ise girilen şifreyi hash'le, değilse düz karşılaştır
+    if(stored&&stored.length===64&&/^[0-9a-f]+$/.test(stored)){
       try{
-        await authGirisYap(kurtarmaEpostasi,p);
-        const kimlik=await fbGet('aa-v4/uidMap/'+authUid());
-        if(kimlik===u){
-          match=true; biletHazir=true; _guvenliGirisKullanici=u;
-          try{
-            const ozet=await hashPassword(p);
-            if(await fbPatch('aa-v4/users/'+u,{password:ozet})) db.users[u].password=ozet;
-          }catch(e){}
-        } else { authCikis(); }
-      }catch(e){ authCikis(); }
+        const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
+        const hash=[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
+        match=hash===stored;
+      }catch(e){match=stored===p;}
+    } else {
+      match=stored===p;
+      if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
     }
   }
   if(!match){err.style.display='block';return;}
 
-  /* ═══ G9: KULLANICI ADIYLA GİRİŞTE DE BİLET AL (2026-09-01) ══════════════════
-     Eskiden bilet yalnızca e-postayla girişte alınıyordu. Kurallar sıkılaştıktan
-     sonra bu, sessiz bir tuzak olurdu: telefonunda kullanıcı adıyla giren biri
-     uygulamayı normal kullanır ama HİÇBİR ŞEY KAYDEDİLMEZ, hata da görmez.
-     Artık iki şifre aynı olduğu için (taşımada eşitleniyor) aynı şifreyle
-     Firebase'e de sessizce giriliyor. Başarısız olursa giriş yine de yapılıyor —
-     kullanıcıyı dışarıda bırakmıyoruz — ama uyarı gösteriliyor. */
-  const kayitliEposta = db.users[u] && db.users[u].email;
-  if(kayitliEposta && !biletHazir){   // yukarıdaki kurtarma yolu bileti zaten aldıysa tekrar deneme
+  /* ═══ G9: ÖZETLE GİRENE DE BİLET AL (2026-09-01) ══════════════════════════════
+     Yukarıdaki 1. adım Firebase'e soramadıysa buraya düşülür (liste boş, eski
+     kurallar). Bilet alınmazsa sessiz bir tuzak olurdu: kullanıcı uygulamayı
+     normal kullanır ama HİÇBİR ŞEY KAYDEDİLMEZ, hata da görmez.
+     Başarısız olursa giriş yine de yapılıyor — kullanıcıyı dışarıda
+     bırakmıyoruz — ama uyarı gösteriliyor. */
+  if(eposta && !biletHazir){
     try{
-      await authGirisYap(kayitliEposta, p);
+      await authGirisYap(eposta, p);
       const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
       _guvenliGirisKullanici = (kullanici===u)?u:null;
-      if(kullanici!==u) authCikis();   // bu adres başka bir hesaba bağlı
+      if(kullanici===u) biletHazir=true; else authCikis();   // adres başka hesaba bağlıysa bırak
     }catch(e){
       authCikis(); _guvenliGirisKullanici=null;
       setTimeout(()=>mesajGoster('Güvenli girişin doğrulanamadı — kaydetmede sorun yaşarsan Ayarlar → 🔐 bölümünden şifreni yenile.','uyari'),1200);
     }
+  }
+
+  /* ═══ G9 2. AŞAMA: VERİYİ BİLETLE ŞİMDİ YÜKLE ════════════════════════════════
+     Okuma kilitlendikten sonra açılıştaki loadDb() yetkisiz olduğu için boş
+     dönüyor; asıl yükleme burası. Eski kurallarda da zararsız — sadece taze
+     veri gelir. Ardından uygulamanın özeti Firebase şifresine eşitleniyor:
+     e-postadan sıfırlayan biri Firebase'i değiştirir, özet eski kalırdı. */
+  if(biletHazir){
+    /* Veri zaten yüklüyse TEKRAR ÇEKME. Kurallar hâlâ açıkken açılıştaki
+       loadDb() veriyi getirmiş oluyor; burada bir daha çekmek girişe ~8 istek
+       (biri veritabanının tamamı) ekliyordu ve düğme saniyelerce ölü kalıyordu.
+       Okuma kilitlendikten sonra db boş geleceği için koşul kendiliğinden
+       doğru olacak ve yükleme burada yapılacak. */
+    if(!(db.users && db.users[u])){ try{ await loadDb(); }catch(e){} }
+    try{
+      if(db.users[u]){
+        const ozet=await hashPassword(p);
+        if(db.users[u].password!==ozet && await fbPatch('aa-v4/users/'+u,{password:ozet}))
+          db.users[u].password=ozet;
+      }
+    }catch(e){}
+    /* KENDİ KENDİNİ ONARAN GİRİŞ ADRESİ. Zaten taşınmış üyeler taşıma formunu
+       bir daha çalıştırmayacağı için listeleri boş kalırdı — ve okuma
+       kilitlendiğinde kullanıcı adıyla giremezlerdi. Elle veri yazmak yerine
+       herkes bir kez girdiğinde kendi satırını dolduruyor.
+       ⚠️ Bu yüzden KURALLAR KİLİTLENMEDEN ÖNCE herkesin bir kez girmesi gerekiyor;
+       giren kalmazsa o kişi kullanıcı adıyla giriş yolunu kaybeder (e-postayla
+       yine girebilir, orada listeye ihtiyaç yok). */
+    try{
+      if(eposta && !listedeVar) await fbSet('aa-v4/girisAdresleri/'+u, eposta);
+    }catch(e){}
   }
 
   err.style.display='none';me=u;viewing=null;
@@ -3506,6 +3577,16 @@ async function hesabimiTasi(){
       sifreEslesti=await fbPatch('aa-v4/users/'+me,{password:ozet, email:eposta.trim()});
       if(sifreEslesti){ db.users[me].password=ozet; db.users[me].email=eposta.trim(); }
     }catch(e){}
+
+    /* ═══ G9 2. AŞAMA: HERKESE AÇIK GİRİŞ ADRESİ LİSTESİ (2026-09-03) ══════════
+       Okuma kilitlendikten sonra giriş ekranı `aa-v4/users`'ı okuyamayacak, ama
+       "kullanıcı adı → e-posta" çevirisini giriş yapmadan ÖNCE yapması gerekiyor.
+       O yüzden adres ayrıca burada, tek tek okunabilen küçük bir düğüme yazılıyor.
+       ⚠️ SIRA ÖNEMLİ: uidMap yukarıda yazıldı; kural bu düğüme yazma izni için
+       uidMap'e bakıyor, tersi sırada yazma reddedilirdi.
+       Başarısız olursa taşıma yine de geçerli — kişi e-postasıyla girebilir,
+       yalnızca kullanıcı adıyla giriş kurallar kilitlendikten sonra çalışmaz. */
+    try{ await fbSet('aa-v4/girisAdresleri/'+me, eposta.trim()); }catch(e){}
 
     _guvenliGirisKullanici=me;
     renderGuvenliGiris();
