@@ -2339,6 +2339,9 @@ async function fbAdres(path, ekSorgu){
   return FB_URL+'/'+path+'.json'+(p.length?('?'+p.join('&')):'');
 }
 
+/* Raf listesi sunucudan GERÇEKTEN okunabildi mi? "Uygulanamayan Değişiklikler"
+   paneli buna bakıyor: okunamadıysa "sende yok" hükmü verilmiyor. */
+let _rafListesiOkundu=false;
 async function fbGet(path){
   try{
     const r=await fetch(await fbAdres(path));
@@ -2412,8 +2415,22 @@ async function loadDb(fbOnly){
       // hariç tutulmalı — tutulmazsa ortak bloğa karışıp çakışma kontrolüne
       // girer (K6'da reaksiyonlarda yaşanan hatanın aynısı olur).
       try{const re=await fbGet('aa-v4/realmEvents');if(re)db.realmEvents=re;}catch(e){}
-      // Shelf ayrı node'dan yükle
-      try{const shelf=await fbGet('aa-shelf');if(shelf)db.shelf=shelf;}catch(e){}
+      /* Shelf ayrı node'dan yükle.
+         ⚠️ `fbGet` hem HATADA hem "veri yok"ta null döndürüyor — çağıran taraf
+         ikisini ayırt edemiyor. Burada ayırt etmek ŞART: "Uygulanamayan
+         Değişiklikler" paneli, raf listesi okunamadığında bunu "rafın yok"
+         sanıp *"rafı yeniden oluşturman gerekir"* diyordu. Dediğini yapan biri
+         zaten var olan raftan İKİNCİ bir kopya yaratırdı — panel veri kaybını
+         önlemek için var, veri çoğaltmaya sebep olmamalı.
+         Gökşin 04.09'da canlıda gördü: kural kilitlendiği anda okuma yetkisi
+         yerine oturmamıştı, panel de "Odamdaki kitaplik kayıp" dedi — oysa
+         sunucuda duruyordu. */
+      let rafOkundu=false;
+      try{
+        const rr=await fetch(await fbAdres('aa-shelf'));
+        if(rr.ok){ const shelf=await rr.json(); if(shelf)db.shelf=shelf; rafOkundu=true; }
+      }catch(e){}
+      _rafListesiOkundu=rafOkundu;
       // K7: bayatlık damgaları. Tüm kullanıcıların haritası olarak tutuluyor,
       // çünkü loadDb() giriş yapılmadan da çalışabiliyor (me henüz null olabilir)
       // ve hesap değiştirilince yeniden yüklenmeyebiliyor.
@@ -3811,7 +3828,7 @@ const RED_TUR_ADI={kitap:'Kitap listesi', raf:'Raf', diger:'Profil / rozet / ser
 // dahil), o yüzden onlarda da kitap/raf farkı hesaplanabiliyor.
 function reddedilenOzet(kayit){
   const v=kayit.veri;
-  const s={icerik:[], eksikKitaplar:[], eksikRaflar:[], okunamadi:false};
+  const s={icerik:[], eksikKitaplar:[], eksikRaflar:[], okunamadi:false, rafKarsilastirilamadi:false};
   if(!v||typeof v!=='object'){ s.okunamadi=true; return s; }
   const kitapKaynak=(kayit.tur==='kitap')?v:(v.books?v.books[me]:null);
   if(kitapKaynak){
@@ -3823,8 +3840,14 @@ function reddedilenOzet(kayit){
   if(rafKaynak&&typeof rafKaynak==='object'){
     const adlar=Object.values(rafKaynak.shelves||{}).map(r=>r&&r.name).filter(Boolean);
     if(adlar.length) s.icerik.push(adlar.length+' raf');
-    const simdiki=new Set(Object.values(((db.shelf||{})[me]||{}).shelves||{}).map(r=>r&&r.name).filter(Boolean));
-    s.eksikRaflar=adlar.filter(a=>!simdiki.has(a));
+    /* Raf listesi sunucudan okunamadıysa "sende yok" DEME. Bilmemekle yok olmak
+       aynı şey değil; karıştırılırsa panel var olan bir rafı yeniden yaptırıp
+       kopyasını üretiyor. */
+    if(!_rafListesiOkundu){ s.rafKarsilastirilamadi=true; }
+    else{
+      const simdiki=new Set(Object.values(((db.shelf||{})[me]||{}).shelves||{}).map(r=>r&&r.name).filter(Boolean));
+      s.eksikRaflar=adlar.filter(a=>!simdiki.has(a));
+    }
   }
   if(v.users&&typeof v.users==='object'){
     const n=Object.keys(v.users).length;
@@ -3859,6 +3882,10 @@ function renderReddedilenler(){
     let ayrinti='<div style="font-size:.8rem;opacity:.7;margin-bottom:.35rem">İçinde: '+escapeHtml(o.icerik.join(', '))+'.</div>';
     if(o.okunamadi){
       ayrinti+='<div style="font-size:.8rem;color:var(--rust);font-style:italic">Bu kopya okunamadı — bozulmuş olabilir, silebilirsin.</div>';
+    }else if(o.rafKarsilastirilamadi){
+      // Bilmiyorsak "yok" da demiyoruz "var" da — kullanıcıyı yanlış işleme itmemek için.
+      ayrinti+='<div style="font-size:.8rem;color:var(--gold);font-style:italic">⏳ Raf listen şu an sunucudan okunamadı, bu yüzden karşılaştırma yapılamadı. '+
+               'Sayfayı yenileyip tekrar bak — <b>bu kopyayı silmeden önce</b>.</div>';
     }else if(!o.eksikKitaplar.length&&!o.eksikRaflar.length){
       ayrinti+='<div style="font-size:.8rem;color:var(--moss);font-style:italic">✓ Bu kopyada olup şu an sende olmayan bir şey yok — kaybolan bir şey yok, rahatça silebilirsin.</div>';
     }else{
