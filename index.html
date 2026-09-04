@@ -839,7 +839,10 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
       </div>
       <button class="auth-btn" id="loginBtn" onclick="login()">GİRİŞ YAP →</button>
       <div class="auth-error" id="loginError">Kullanıcı adı veya şifre hatalı.</div>
-      <div class="members-list"><div class="members-label">Kayıtlı üyeler</div><div id="memberPills"></div></div>
+      <!-- "Kayıtlı üyeler" değil "Hızlı giriş": liste artık sunucudaki üye
+           listesinden değil, BU CİHAZDA giriş yapılmış hesaplardan geliyor
+           (bkz. renderPills). Eski etiket yanıltıcı olurdu. -->
+      <div class="members-list"><div class="members-label">Hızlı giriş</div><div id="memberPills"></div></div>
     </div>
     <div id="registerForm" style="display:none">
       <div class="auth-field"><label class="auth-label">Kullanıcı Adı</label><input class="auth-input" id="regUsername" type="text" placeholder="ornek: kitapkurt42"/></div>
@@ -2878,10 +2881,52 @@ function showAuthTab(tab){
   document.getElementById('tabLogin').classList.toggle('active',tab==='login');
   document.getElementById('tabRegister').classList.toggle('active',tab==='register');
 }
+/* ═══ HIZLI GİRİŞ ROZETLERİ — ARTIK CİHAZDAN OKUNUYOR (2026-09-03) ════════════
+   Rozetler `db.users`'tan geliyordu. G9 2. aşamasında okuma kilitlenince giriş
+   ekranı o düğümü göremeyecek ve liste boşalacaktı — oysa Gökşin her gün adına
+   tıklayarak giriyor.
+   Çözüm: bu CİHAZDA giriş yapılmış hesaplar tarayıcıda tutuluyor. Gerçeğe de
+   uyuyor — kendi cihazında kendi hesabın görünür, yeni bir cihazda görünmez.
+   ⚠️ Üye listesini herkese açık yapmak SEÇENEK DEĞİLDİ: kullanıcı adları
+   toplanabilir hale gelseydi, `girisAdresleri`'nin "tek tek sorulabilir ama
+   toplu çekilemez" korumasının anlamı kalmazdı (adresi öğrenmek için kullanıcı
+   adını bilmek gerekiyor). */
+const GIRIS_GECMISI='aa-giris-gecmisi';
+const GIRIS_GECMISI_ENCOK=6;
+function girisGecmisiOku(){
+  try{ const g=JSON.parse(localStorage.getItem(GIRIS_GECMISI)||'{}'); return (g&&typeof g==='object')?g:{}; }
+  catch(e){ return {}; }
+}
+function girisGecmisineYaz(u){
+  try{
+    const g=girisGecmisiOku(), k=(db.users&&db.users[u])||{};
+    g[u]={ad:k.displayName||u, avatar:k.avatar||'📚', ts:Date.now()};
+    const sirali=Object.entries(g)
+      .sort((a,b)=>(b[1].ts||0)-(a[1].ts||0))
+      .slice(0,GIRIS_GECMISI_ENCOK);
+    localStorage.setItem(GIRIS_GECMISI, JSON.stringify(Object.fromEntries(sirali)));
+  }catch(e){}
+}
+function pillSec(u){ const el=document.getElementById('loginUsername'); if(el){ el.value=u; el.focus(); } }
 function renderPills(){
-  const p=document.getElementById('memberPills'),names=Object.keys(db.users);
-  if(!names.length){p.innerHTML='<span style="opacity:.5;font-size:.8rem;font-style:italic">Henüz kayıtlı üye yok.</span>';return;}
-  p.innerHTML=names.map(u=>`<span class="member-pill" onclick="document.getElementById('loginUsername').value='${u}'">${avatarHtml(db.users[u].avatar||'📚','1.1rem')} ${db.users[u].displayName}</span>`).join('');
+  const p=document.getElementById('memberPills');
+  if(!p) return;
+  // Cihaz geçmişi + (okunabiliyorsa) sunucudaki liste birleştiriliyor; sunucu
+  // görünen ad/avatarı tazeliyor, sıralama son giriş zamanına göre.
+  const kaynak={};
+  for(const [u,v] of Object.entries(girisGecmisiOku()))
+    kaynak[u]={ad:v.ad||u, avatar:v.avatar||'📚', ts:v.ts||0};
+  if(db.users) for(const u of Object.keys(db.users))
+    kaynak[u]={ad:db.users[u].displayName||u, avatar:db.users[u].avatar||'📚',
+               ts:(kaynak[u]&&kaynak[u].ts)||0};
+  const adlar=Object.keys(kaynak).sort((a,b)=>kaynak[b].ts-kaynak[a].ts);
+  if(!adlar.length){
+    p.innerHTML='<span style="opacity:.5;font-size:.8rem;font-style:italic">Henüz giriş yapılmamış.</span>';
+    return;
+  }
+  p.innerHTML=adlar.map(u=>
+    `<span class="member-pill" data-u="${escapeHtml(u)}" onclick="pillSec(this.dataset.u)">`+
+    `${avatarHtml(kaynak[u].avatar,'1.1rem')} ${escapeHtml(kaynak[u].ad)}</span>`).join('');
 }
 // Şifreyi login()'in kullandığı algoritmayla aynı şekilde SHA-256 hash'ler
 async function hashPassword(p){
@@ -2956,6 +3001,7 @@ async function _girisYap(){
         if(!(await fbGet('aa-v4/girisAdresleri/'+kullanici)))
           await fbSet('aa-v4/girisAdresleri/'+kullanici, u.trim(), true);
       }catch(e){}
+      girisGecmisineYaz(kullanici);   // hızlı giriş rozeti bu cihazda dursun
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
       enterApp();
       return;
@@ -3074,6 +3120,7 @@ async function _girisYap(){
   if(needsMigration){
     try{ db.users[u].password=await hashPassword(p); saveDb(); }catch(e){}
   }
+  girisGecmisineYaz(u);   // hızlı giriş rozeti bu cihazda dursun
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
   }
@@ -3142,6 +3189,7 @@ async function register(){
     db.users[u]=kayit; db.books[u]=[];
     _guvenliGirisKullanici=u;
     err.style.display='none'; me=u; viewing=null;
+    girisGecmisineYaz(u);
     try{ localStorage.setItem('aa-session',u); }catch(e){}
     enterApp();
   } finally {
@@ -9335,6 +9383,17 @@ async function init(){
   }catch(e){}
 
   await loadDb();
+  /* Hızlı giriş rozeti için cihazı TOHUMLA (2026-09-03). Rozet geçmişi normalde
+     giriş anında yazılıyor; ama oturumu kayıtlı olan cihazlarda giriş ekranı hiç
+     görünmediği için yıllarca yazılmayabilir — ve okuma kilitlendiğinde o cihazda
+     rozet kalmazdı. Burada, veri HÂLÂ OKUNABİLİYORKEN, o cihazın kendi hesabı bir
+     kez kaydediliyor. Böylece kimsenin yeniden giriş yapması gerekmiyor:
+     uygulamayı bir kez açmak yetiyor.
+     Yalnızca O CİHAZIN sahibini yazıyor, tüm üye listesini değil. */
+  try{
+    const oturum=localStorage.getItem('aa-session');
+    if(oturum && db.users && db.users[oturum]) girisGecmisineYaz(oturum);
+  }catch(e){}
   renderPills();
   setTimeout(checkHintAvailable, 500);
   // Sekmeye dönünce sessiz senkronizasyon
