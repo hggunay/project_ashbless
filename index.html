@@ -602,6 +602,19 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .reading-progress-text{font-size:.6rem;font-family:'Space Mono',monospace;color:var(--moss);margin-top:.2rem;}
 .book-item-wishlist{opacity:.75;border-left:3px solid rgba(201,162,39,.35);}
 .stats-section{margin-bottom:.3rem;border-radius:6px;padding:.4rem .6rem;}
+
+/* ── "Eğlence" sekmesinde okunaklılık (2026-09-04) ──────────────────────────
+   Okuyucu Falı İstatistikler panelinden buraya taşındı. `.stats-section`'ın
+   kendi arka planı YOK; okunaklılığı orada üstündeki açık renkli karttan
+   geliyordu. Burada o kart olmadığı için koyu zemin üstünde koyu yazı kaldı.
+   Gökşin: "kahverengi arkaplanı sevdim, yazı rengini okunaklı yapalım."
+   ⚠️ `!important` gerekli: fal metinleri satır içi `style="color:var(--ink)"`
+   taşıyor (açık zemin varsayımıyla yazılmışlar) ve satır içi stil normal
+   kuralı yener. Zemini değiştirmek yerine yazıyı çevirmek Gökşin'in tercihi. */
+#sPanel-fun .stats-section{ color:var(--parchment); }
+#sPanel-fun .stats-section [style*="var(--ink)"]{ color:var(--parchment)!important; }
+#sPanel-fun .stats-section strong{ color:var(--gold-light); }
+#sPanel-fun .stats-section-title{ color:var(--gold); }
 .stats-section:nth-child(odd){background:rgba(26,18,8,.1);}
 .stats-section:nth-child(even){background:transparent;}
 .stats-section-title{font-family:'Playfair Display',serif;font-size:1.05rem;color:var(--gold);margin-bottom:.85rem;padding-bottom:.4rem;border-bottom:1px solid rgba(201,162,39,.2);}
@@ -1422,6 +1435,14 @@ try{
       <div style="display:flex;gap:.4rem;margin-bottom:1rem;border-bottom:1px solid rgba(201,162,39,.15);padding-bottom:.5rem">
         <button id="sTab-stats" class="filter-tab active" onclick="switchStatsTab('stats')">📊 İstatistikler</button>
         <button id="sTab-map" class="filter-tab" onclick="switchStatsTab('map')">🗺️ Harita</button>
+        <!-- "Eğlence" (2026-09-04, Gökşin): ölçüm ile eğlence ayrıldı. Okuyucu
+             Falı buraya taşındı; Hesap Vakti (Şeytan & Melek) ve ileride
+             kitap-oyun da buraya gelecek. Ad bilerek geniş tutuldu:
+             "diğerleri içeriği daraltıyor, ileride ne ekleriz bilemeyiz." -->
+        <button id="sTab-fun" class="filter-tab" onclick="switchStatsTab('fun')">🎲 Eğlence</button>
+      </div>
+      <div id="sPanel-fun" style="display:none">
+        <div id="funContainer"></div>
       </div>
       <div id="sPanel-stats">
         <div style="display:flex;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap">
@@ -4577,7 +4598,7 @@ function enterApp(){
 // (biri 'shelf'i, diğeri 'myBadges'i unutmuştu) — Ö37.
 function renderPanelContent(id){
   if(id==='settings') renderSettings();
-  else if(id==='stats') renderStatsPanel();
+  else if(id==='stats'){ renderStatsPanel(); eglenceyiTasi(); }
   else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
@@ -5473,9 +5494,34 @@ function falOzeti(liste){
   }));
   const enTur=Object.entries(turSayim).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'))[0];
 
-  const yazarSayim={};
-  liste.forEach(b=>{ if(b.author) yazarSayim[b.author]=(yazarSayim[b.author]||0)+1; });
-  const enYazar=Object.entries(yazarSayim).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'tr'))[0];
+  /* ── EN SADIK YAZAR (2026-09-04'te iki hata düzeltildi) ────────────────────
+     (1) AYNI YAZAR İKİ KEZ SAYILIYORDU. Gökşin'in listesinde "J.R.R. Tolkien"
+         ve "J. R. R. Tolkien" ayrı yazar kabul ediliyor, ikisi de 1'de kalıyor
+         ve gerçek kazanan görünmüyordu. Sayım artık sadeleştirilmiş ada göre
+         (küçük harf, nokta ve boşluk atılmış); EKRANDA en çok kullanılan
+         yazım gösteriliyor, sadeleştirilmiş hâli değil.
+     (2) 1 KİTAP SADAKAT DEĞİL. Herkes 1'deyken sıralama alfabetik çözülüyor ve
+         tamamen tesadüfi bir isim "en sadık yazar" ilan ediliyordu. Gökşin
+         haklı olarak sordu: "Stephen King çok az okudum, neden en sadık?"
+         Artık en yüksek sayı 1 ise satır hiç gösterilmiyor (null dönüyor). */
+  const yazarGrup={};
+  liste.forEach(b=>{
+    const ham=(b.author||'').trim();
+    if(!ham) return;
+    /* Nokta, boşluk, TİRE ve KESME işareti atılıyor → "jrrtolkien", "jkrowling".
+       Tire/kesme 2026-09-04'te Gökşin'in önerisiyle eklendi; gerçek veride
+       "Eric Emmanuel Schmitt" ile "Eric-Emmanuel Schmitt" böyle birleşiyor.
+       Yanlış birleştirme riski yok: iki AYRI yazarın adı yalnızca noktalama
+       farkıyla aynı olamaz. */
+    const anahtar=ham.toLocaleLowerCase('tr').replace(/[.\s'’‘\-_]/g,'');
+    if(!yazarGrup[anahtar]) yazarGrup[anahtar]={sayi:0, yazimlar:{}};
+    yazarGrup[anahtar].sayi++;
+    yazarGrup[anahtar].yazimlar[ham]=(yazarGrup[anahtar].yazimlar[ham]||0)+1;
+  });
+  const enGrup=Object.values(yazarGrup).sort((a,b)=>b.sayi-a.sayi)[0];
+  const enYazar=(enGrup && enGrup.sayi>1)
+    ? [Object.entries(enGrup.yazimlar).sort((a,b)=>b[1]-a[1])[0][0], enGrup.sayi]
+    : null;
 
   const fmtSayim={'kitap':0,'ekitap':0,'sesli':0,'cizgi':0};
   liste.forEach(b=>(b.formats||['kitap']).forEach(f=>{ if(fmtSayim[f]!==undefined) fmtSayim[f]++; }));
@@ -7655,11 +7701,33 @@ function checkNotifications(){
 }
 
 // ── İSTATİSTİKLER ────────────────────────────────────────────
+/* Okuyucu Falı'nı İstatistikler panelinden alıp "Eğlence" paneline taşır
+   (2026-09-04). Neden taşıma, neden şablondan çıkarma DEĞİL: fal bölümü
+   `renderStatsPanel` içindeki dev bir şablon dizesinin ortasında üretiliyor;
+   oradan kesip çıkarmak kırılgan olurdu. Bölüm üretildiği yerde kalıyor,
+   çizildikten sonra DOM'da yeni panele taşınıyor — görünen sonuç aynı, risk yok.
+   Kanca: `statsSection` her bölüme `body-<anahtar>` id'si veriyor; falınki
+   `body-stats-profile`. Onun `.stats-section` sarmalayıcısı taşınıyor.
+   ⚠️ `renderStatsPanel` her çağrıldığında yeniden üretiliyor, o yüzden bu da
+   HER ÇAĞRIDAN SONRA çalışmalı — iki çağrı yerine de eklendi. */
+function eglenceyiTasi(){
+  try{
+    const kap=document.getElementById('funContainer');
+    const govde=document.getElementById('body-stats-profile');
+    if(!kap||!govde) return;
+    const bolum=govde.closest('.stats-section');
+    if(bolum && bolum.parentElement!==kap){ kap.innerHTML=''; kap.appendChild(bolum); }
+  }catch(e){}
+}
 function switchStatsTab(tab){
   document.getElementById('sPanel-stats').style.display = tab==='stats'?'':'none';
   document.getElementById('sPanel-map').style.display = tab==='map'?'':'none';
+  const fp=document.getElementById('sPanel-fun');
+  if(fp) fp.style.display = tab==='fun'?'':'none';
   document.getElementById('sTab-stats').classList.toggle('active', tab==='stats');
   document.getElementById('sTab-map').classList.toggle('active', tab==='map');
+  const ft=document.getElementById('sTab-fun');
+  if(ft) ft.classList.toggle('active', tab==='fun');
   if(tab==='map'){
     const tog=document.getElementById('diyarToggleSatir');
     if(tog) tog.style.display = diyarTestModu() ? 'flex' : 'none';
@@ -7844,6 +7912,7 @@ function setStatsTimeFilter(filter){
     if(btn) btn.classList.toggle('active', f===filter);
   });
   renderStatsPanel();
+  eglenceyiTasi();
 }
 function showMonthBooks(monthStr, el){
   const books = readBooksOf(viewing||me, {dateRange:{month:monthStr}});

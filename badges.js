@@ -379,7 +379,17 @@ function _monthStreakStats(books,year){
   const now=new Date();
   const yr=year||now.getFullYear();
   const months=new Set(books.map(b=>bookMonth(b)).filter(Boolean));
-  const maxMonth=yr===now.getFullYear()?now.getMonth():11;
+  let maxMonth=yr===now.getFullYear()?now.getMonth():11;
+  /* ⏳ İÇİNDE BULUNULAN AY HENÜZ BİTMEDİ — BOŞSA SERİYİ KIRMAZ (2026-09-04).
+     Eskiden ayın 1'inde bile o ay boş sayılıp sayaç sıfırlanıyordu: Temmuz'da 3,
+     Ağustos'ta 1 kitap bitiren biri 4 Eylül'de "Ritim dağılmış. Yeniden
+     başlamak için uygun bir dönem." görüyordu. Gökşin fark etti — Hesap Vakti
+     için "geçen ayı baz alalım, ay bitmeden yargılamayalım" derken koyduğu
+     ilkenin aynısı burada da geçerliydi.
+     Artık cari ay boşsa sayım bir önceki ayda duruyor; ay içinde kitap
+     bitirilince zaten normal yoluyla sayılmaya devam ediyor.
+     ⚠️ `best` (en uzun seri) etkilenmez — rozetler ona bakıyor, onlar değişmedi. */
+  if(yr===now.getFullYear() && !months.has(`${yr}-${String(maxMonth+1).padStart(2,'0')}`)) maxMonth--;
   let best=0,cur=0;
   for(let m=0;m<=maxMonth;m++){
     const key=`${yr}-${String(m+1).padStart(2,'0')}`;
