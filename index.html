@@ -4476,6 +4476,8 @@ function alohomoraAnimasyonu(){
     // boyamadan son duruma atlıyor ve animasyon görünmüyor.
     requestAnimationFrame(()=>requestAnimationFrame(()=>{
       kat.querySelectorAll('[data-hedef]').forEach(y=>{ y.style.transform='translateX('+y.dataset.hedef+')'; });
+      // Yıldızlar perdeyle AYNI ANDA çıkmalı — kapının açıldığı çizgiyi vurguluyorlar.
+      try{ if(typeof launchConfetti==='function') launchConfetti('alohomora'); }catch(e){}
     }));
     setTimeout(()=>{ const k=document.getElementById('_alohomoraKat'); if(k) k.remove(); }, 950);
   }catch(e){}
@@ -9440,8 +9442,15 @@ function launchConfetti(type){
   const isAshbless=type==='ashbless';
   const isSecret=type==='secret';
   const isCreator=type==='creator';
-  const count=isCreator?200:isAshbless?120:isSecret?80:isBadge?40:isGroup?180:80;
-  const gravity=isCreator?0.18:isAshbless?0.22:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
+  /* 'alohomora' (2026-09-04): diğerlerinden farklı — yukarıdan düşen konfeti
+     değil, giriş ekranının YARILDIĞI DİKEY HATTAN iki yana fırlayan yıldızlar.
+     Gökşin'in isteği: "ikiye ayrıldığı yerden, ekranın ortasından etrafa
+     fırlayan yıldızlar". Bu yüzden yerçekimi düşük ve hız yatay. */
+  const isAlohomora=type==='alohomora';
+  const count=isAlohomora?115:isCreator?200:isAshbless?120:isSecret?80:isBadge?40:isGroup?180:80;
+  // Yerçekimi 0.10 → 0.07: ömür uzayınca aynı düşüş hızı yıldızları alt kenara
+  // sürüklüyordu; havada daha uzun kalsınlar diye hafifletildi.
+  const gravity=isAlohomora?0.07:isCreator?0.18:isAshbless?0.22:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
   const spread=isCreator?1.8:isAshbless?1.6:isSecret?1.4:isGroup?1.6:isBadge?0.8:1.2;
 
   const goldPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#b8860b'];
@@ -9462,7 +9471,30 @@ function launchConfetti(type){
     ctx.closePath();ctx.fill();
   }
 
-  const particles=Array.from({length:count},()=>({
+  /* Alohomora kendi üreticisini kullanıyor: parçacıklar TEK NOKTADAN değil,
+     dikey orta hat BOYUNCA rastgele yüksekliklerden çıkıyor — perdenin
+     yarıldığı çizginin tamamı ışıldasın diye. Yön yarı yarıya sağ/sol. */
+  const particles=isAlohomora
+    ? Array.from({length:count},()=>{
+        const yon=Math.random()<0.5?-1:1;
+        return {
+          x:canvas.width/2,
+          y:Math.random()*canvas.height,
+          /* Yatay hız 4-13 → 2,5-8. Gökşin: "hızlı görünüp bitmesin."
+             Yalnızca süreyi uzatmak yetmiyordu; hızlı yıldızlar ekrandan çıkıp
+             geriye boş kareler kalıyordu. Yavaşlatınca ömür boyunca görünür
+             kalıyorlar. */
+          vx:yon*(2.5+Math.random()*5.5),
+          vy:(Math.random()-0.5)*3.5,
+          size:Math.random()*6+3,
+          color:goldPalette[Math.floor(Math.random()*goldPalette.length)],
+          rot:Math.random()*360,
+          rotV:(Math.random()-0.5)*10,
+          shape:Math.random()<0.7?'star':'circle',
+          alpha:1
+        };
+      })
+    : Array.from({length:count},()=>({
     x:canvas.width*(isGroup?Math.random():isAshbless||isCreator?0.3+Math.random()*0.4:isSecret?0.3+Math.random()*0.4:0.3+Math.random()*0.4),
     y:isGroup||isAshbless||isCreator||isSecret?-10:canvas.height*0.35,
     vx:(Math.random()-0.5)*spread*(isGroup||isAshbless||isCreator?9:isSecret?7:6),
@@ -9476,7 +9508,10 @@ function launchConfetti(type){
   }));
 
   let frame=0;
-  const maxFrames=isCreator?340:isAshbless?280:isSecret?200:isGroup?220:isBadge?100:160;
+  /* Perde ~700 ms'de açılıyor; yıldızlar biraz daha yaşıyor ki kapanış boşlukta
+     kalmasın. 55 → 90 kare (~1,5 sn) — Gökşin "hızlı görünüp bitmesin" dedi.
+     Daha uzatılırsa uygulama açıldıktan sonra ekranda oyalanmış olurlar. */
+  const maxFrames=isAlohomora?90:isCreator?340:isAshbless?280:isSecret?200:isGroup?220:isBadge?100:160;
   function tick(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
     particles.forEach(p=>{
