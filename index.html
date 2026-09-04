@@ -2293,6 +2293,22 @@ function authCikis(){ _auth={jeton:null,yenileme:null,biter:0,uid:null,eposta:nu
    DOĞRULANMIYOR — bağlantı Firebase'den geliyor, e-posta kutusuna erişimi
    olmayan kimse şifreyi değiştiremiyor. Yani bu gerçek bir kilit.
    Yalnızca hesabını taşımış (Firebase hesabı olan) üyeler için çalışır. */
+/* Firebase hesabını KALICI olarak siler (2026-09-04). Yalnızca profil silme
+   akışından çağrılıyor — kişi kendi hesabını siliyor, üç kez onaylıyor.
+   Bu olmadan uygulama verisi gidiyor ama e-posta Firebase'de kayıtlı kalıyor ve
+   aynı adresle bir daha kayıt olunamıyordu ("EMAIL_EXISTS").
+   ⚠️ `aa-v4/uidMap/<uid>` BİLEREK bırakılıyor: kural onun silinmesine izin
+   vermiyor (`newData.exists()`), ve hesap gidince o eşleşme zaten yetim —
+   o uid bir daha asla giriş yapamaz. Kural değiştirmeye değmez. */
+async function authHesabiSil(){
+  const jeton=await authJeton();
+  if(!jeton) return false;
+  await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:delete?key='+AUTH_ANAHTAR,
+    {idToken:jeton});
+  authCikis();
+  return true;
+}
+
 async function authSifreSifirlamaGonder(eposta){
   await _authIstek('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key='+AUTH_ANAHTAR,
     {requestType:'PASSWORD_RESET', email:eposta});
@@ -2924,6 +2940,14 @@ function girisGecmisineYaz(u){
     localStorage.setItem(GIRIS_GECMISI, JSON.stringify(Object.fromEntries(sirali)));
   }catch(e){}
 }
+/* Silinen hesabın rozeti giriş ekranında kalmasın (2026-09-04). Gökşin bildirdi:
+   `test` hesabı silindikten sonra "testest" rozeti duruyordu ve tıklanınca artık
+   çalışmayan bir kullanıcı adını dolduruyordu. Geçmiş cihaza özel olduğu için
+   yalnızca silmenin yapıldığı cihazda temizleniyor — başka cihazda kalan rozet
+   tıklanırsa giriş reddedilir, zararsız. */
+function girisGecmisindenSil(u){
+  try{ const g=girisGecmisiOku(); delete g[u]; localStorage.setItem(GIRIS_GECMISI, JSON.stringify(g)); }catch(e){}
+}
 function pillSec(u){ const el=document.getElementById('loginUsername'); if(el){ el.value=u; el.focus(); } }
 function renderPills(){
   const p=document.getElementById('memberPills');
@@ -3020,6 +3044,7 @@ async function _girisYap(){
       }catch(e){}
       girisGecmisineYaz(kullanici);   // hızlı giriş rozeti bu cihazda dursun
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
+      _alohomoraOynat=true;
       enterApp();
       return;
     }catch(e){
@@ -3141,6 +3166,7 @@ async function _girisYap(){
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
   }
+  _alohomoraOynat=true;
   enterApp();
 }
 /* ═══ YENİ ÜYE KAYDI — G9 2. AŞAMASINA GÖRE YENİDEN YAZILDI (2026-09-03) ═══════
@@ -3208,6 +3234,7 @@ async function register(){
     err.style.display='none'; me=u; viewing=null;
     girisGecmisineYaz(u);
     try{ localStorage.setItem('aa-session',u); }catch(e){}
+    _alohomoraOynat=true;
     enterApp();
   } finally {
     if(btn){ btn.disabled=false; btn.textContent=eskiYazi; }
@@ -3391,15 +3418,24 @@ async function deleteAllUserData(u){
   if(db.shelf) delete db.shelf[u];
   await fbSet('aa-shelf/'+u, null);
   await fbSet('aa-shelf-ts/'+u, null);
-  if(db.stories) delete db.stories[u];
-  if(db.seriesData) delete db.seriesData[u];
-  if(db.seriesEvents) delete db.seriesEvents[u];
-  if(db.badgeEvents) delete db.badgeEvents[u];
-  if(db.countryEvents) delete db.countryEvents[u];
-  if(db.streakEvents) delete db.streakEvents[u];
-  if(db.readingEvents) delete db.readingEvents[u];
-  if(db.archivedNotes) delete db.archivedNotes[u];
-  if(db.mapReset) delete db.mapReset[u];
+  /* ═══ KİŞİSEL DÜĞÜMLER: SUNUCUDAN DA SİL (2026-09-04'te DÜZELTİLDİ) ══════════
+     Buradaki satırlar eskiden yalnızca `delete db.<düğüm>[u]` yapıyordu ve
+     sunucuya yansıması `saveDb()`'ye bırakılmıştı. G9/4a ile kayıt kişi başına
+     yazmaya geçince o varsayım ÇÖKTÜ: kayıt döngüsü `deger===undefined` olanı
+     `continue` ile ATLIYOR, yani `null` yazmıyor. Sonuç: silinen hesabın
+     `aa-v4/users/<u>` kaydı sunucuda kalıyordu — Gökşin `test` hesabını iki kez
+     silmeye çalıştı, her seferinde geri geldi.
+     Artık listeden dönülüp her düğüme AÇIKÇA null yazılıyor. Liste kullanıldığı
+     için ileride yeni bir kişisel düğüm eklenirse silme kendiliğinden kapsıyor. */
+  for(const dugum of KISISEL_AA_DUGUMLERI){
+    if(db[dugum]) delete db[dugum][u];
+    await fbSet('aa-v4/'+dugum+'/'+u, null);
+  }
+  /* Giriş adresi de gitmeli — yoksa silinen hesabın e-postası, herkese açık
+     okunabilen o düğümde kalır. (2026-09-03'te eklenen düğümü silme listesine
+     yazmayı unutmuştum; `aa-v4` altına yeni düğüm eklerken bakılacak ÜÇÜNCÜ yer
+     burası — diğer ikisi saveDb'nin destructure'ları.) */
+  await fbSet('aa-v4/girisAdresleri/'+u, null, true);
   // Katıldığı birlikte-okuma oturumlarından çık — oturumun kendisini silme, başka katılımcılar hâlâ içinde olabilir
   // readingSessions de (K3) genel kayıttan hariç tutulduğu için, silinen katılımcı
   // her etkilenen oturumun kendi granüler yoluna ayrıca yazılmalı
@@ -4393,7 +4429,60 @@ function closeSpecialDayBanner(e,idx){
   showSpecialDayBanner();
 }
 
+/* ═══ ALOHOMORA — GİRİŞ EKRANI ORTADAN AÇILIYOR (2026-09-04) ══════════════════
+   Fikir Gökşin'in: *"alohomora ile giriş ekranı 2ye yarılır, ortadan ana sayfa
+   ortaya çıkar."* Kalıp bulut geçişinden geliyor (diyar-harita.js): örtüyü çiz,
+   işi arkada yap, örtüyü yanlara çek.
+   **Ekran görüntüsü ALINMIYOR.** Giriş ekranının iki KOPYASI üretilip biri sol
+   yarıya biri sağ yarıya `clip-path` ile kırpılıyor; kopya birebir aynı
+   göründüğü için geçiş dikişsiz oluyor. Canlı bir formu ikiye bölmek mümkün
+   olmadığı için tek yol buydu.
+   ⚠️ Kopyadaki TÜM id'ler siliniyor: aksi hâlde 0,9 saniye boyunca sayfada iki
+   tane `loginUsername` bulunur ve `getElementById` yanlışını seçebilir.
+   ⚠️ Yalnızca GERÇEKTEN giriş yapılınca oynuyor. Kayıtlı oturumla açılışta da
+   enterApp çağrılıyor (init, ~9478) ama orada oynamamalı — yoksa her açılışa
+   gereksiz bekleme eklenir. Kapı: `_alohomoraOynat` bayrağı.
+   ⚠️ Hareket azaltma tercihi açık olan cihazlarda hiç oynamıyor. */
+let _alohomoraOynat=false;
+function alohomoraAnimasyonu(){
+  try{
+    if(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const ekran=document.getElementById('authScreen');
+    if(!ekran || ekran.style.display==='none') return;
+    const kat=document.createElement('div');
+    kat.id='_alohomoraKat';
+    kat.style.cssText='position:fixed;inset:0;z-index:9997;pointer-events:none;overflow:hidden';
+    const zemin=getComputedStyle(document.body).backgroundColor||'#1b211d';
+    [['inset(0 50% 0 0)','-100%'],['inset(0 0 0 50%)','100%']].forEach(([kirp,hedef])=>{
+      const yari=document.createElement('div');
+      yari.dataset.hedef=hedef;
+      yari.style.cssText='position:absolute;inset:0;background:'+zemin+
+        ';-webkit-clip-path:'+kirp+';clip-path:'+kirp+
+        ';transition:transform 700ms cubic-bezier(.55,0,.85,.25);will-change:transform';
+      const kopya=ekran.cloneNode(true);
+      kopya.removeAttribute('id');
+      kopya.querySelectorAll('[id]').forEach(el=>el.removeAttribute('id'));
+      /* ⚠️ id silinince `#authScreen` CSS kuralı da düşüyor (ortalama + tam
+         ekran yükseklik) ve kopya sol üste yapışıyordu. O kuralın yaptığı iş
+         burada satır içi tekrarlanıyor. Denetlendi: auth ekranındaki id'lerden
+         CSS'i olan TEK id bu; diğerleri sınıfla biçimleniyor, onlar korunuyor. */
+      kopya.style.cssText='min-height:100vh;display:flex;align-items:center;'+
+                          'justify-content:center;padding:2rem;';
+      yari.appendChild(kopya);
+      kat.appendChild(yari);
+    });
+    document.body.appendChild(kat);
+    // İki kare beklemek şart: tek karede tarayıcı başlangıç durumunu hiç
+    // boyamadan son duruma atlıyor ve animasyon görünmüyor.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      kat.querySelectorAll('[data-hedef]').forEach(y=>{ y.style.transform='translateX('+y.dataset.hedef+')'; });
+    }));
+    setTimeout(()=>{ const k=document.getElementById('_alohomoraKat'); if(k) k.remove(); }, 950);
+  }catch(e){}
+}
 function enterApp(){
+  // Kopya, gerçek ekran HÂLÂ GÖRÜNÜRKEN alınmalı — gizlemeden önce.
+  if(_alohomoraOynat){ _alohomoraOynat=false; alohomoraAnimasyonu(); }
   document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';
   const _loadEl=document.getElementById('earlyLoadingScreen');if(_loadEl)_loadEl.style.display='none';
   const user=db.users[me];setAvatarEl(document.getElementById('headerAvatar'),user.avatar||'📚');document.getElementById('headerUsername').textContent=user.displayName;
@@ -8481,7 +8570,23 @@ async function confirmDeleteProfile(){
     // Silme sürerken ikinci kez tıklanmasın; istekler bitmeden çıkış da yapılmasın.
     btn.disabled=true; btn.textContent='Siliniyor…';
     await deleteAllUserData(me);
-    saveDb();logout();
+    /* ⛔ BURADA saveDb ÇAĞIRMA. Eskiden `saveDb();logout();` vardı ve iki ayrı
+       hataya sebep oluyordu:
+       (1) beklenmediği için logout bileti siliyor, yarıda kalan yazma kimliksiz
+           gidip 401 alıyor → silme başarılıyken "sunucuya kaydedilemedi" şeridi;
+       (2) beklenirse de saveDb, K7 damgasını (`aa-books-ts/<kişi>`) YENİDEN
+           yazıyor — az önce silinen hesabın damgası geri geliyor.
+       İkisinin de cevabı aynı: çağırma. `deleteAllUserData` artık her düğüme
+       açıkça null yazıyor, geriye saveDb'nin yazacağı bir şey kalmıyor
+       (yalnızca `savedAt`, o da silinen hesap için anlamsız).
+       Gökşin ikisini de canlıda yakaladı (2026-09-04). */
+    girisGecmisindenSil(me);
+    /* Firebase hesabının kendisi de silinsin — yoksa e-posta kayıtlı kalır ve
+       aynı adresle yeniden kayıt olunamaz. En SONA bırakıldı: bilet silinince
+       yukarıdaki yazmaların hiçbiri yapılamazdı. Başarısız olursa veri zaten
+       gitmiş olur, hesap yetim kalır; engelleyici değil. */
+    try{ await authHesabiSil(); }catch(e){}
+    logout();
     return;
   }
   if(btn.dataset.confirming==='1'){
@@ -9420,6 +9525,18 @@ async function init(){
   try{
     const oturum=localStorage.getItem('aa-session');
     if(oturum && db.users && db.users[oturum]) girisGecmisineYaz(oturum);
+    /* Artık var olmayan hesapların rozetlerini düşür. Gökşin `test` hesabını
+       sildi ama rozeti giriş ekranında kaldı — silme anındaki temizlik yalnızca
+       o andan sonrası için çalışıyor, geçmişte silinenleri kapsamıyor.
+       ⚠️ KOŞUL ŞART: `db.users` DOLU olmalı. Boşsa "okuyamadım" demektir, "hesap
+       yok" değil — ayırt edilmezse tüm rozetler silinir. Aynı tuzağa bugün raf
+       karşılaştırmasında düşülmüştü (bkz. _rafListesiOkundu). */
+    if(db.users && Object.keys(db.users).length){
+      const g=girisGecmisiOku();
+      let degisti=false;
+      for(const u of Object.keys(g)) if(!db.users[u]){ delete g[u]; degisti=true; }
+      if(degisti) localStorage.setItem(GIRIS_GECMISI, JSON.stringify(g));
+    }
   }catch(e){}
   renderPills();
   setTimeout(checkHintAvailable, 500);
