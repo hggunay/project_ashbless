@@ -1900,6 +1900,11 @@ try{
 <script src="diyar-esleme.js"></script>
 <script src="diyarlar.js"></script>
 <script src="diyar-harita.js"></script>
+<!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
+     (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
+     gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
+<script src="hesap-vakti-cumleler.js"></script>
+<script src="hesap-vakti.js"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -7717,6 +7722,8 @@ function eglenceyiTasi(){
     if(!kap||!govde) return;
     const bolum=govde.closest('.stats-section');
     if(bolum && bolum.parentElement!==kap){ kap.innerHTML=''; kap.appendChild(bolum); }
+    // Hesap Vakti falın ALTINA ekleniyor; kendi kapısı var (yalnızca deneme).
+    if(typeof hesapVaktiCiz==='function') hesapVaktiCiz();
   }catch(e){}
 }
 function switchStatsTab(tab){
