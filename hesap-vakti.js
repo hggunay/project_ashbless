@@ -158,14 +158,14 @@ function hvEnIyiSeri(kitaplar){
      • metin           → Şeytan'ın açılış balonu
      • {melek,seytan}  → sahnelenmiş açılış: Melek bir şey söyler, Şeytan yanıtlar */
 const HESAP_VAKTI_SENARYOLARI = [
-  { id:'hic-okumama',   ad:'Hiç okumama',
+  { id:'hic-okumama',   ad:'Hiç okumama', kisa:'Geçen ay hiç kitap bitmemiş',
     baglamlar:[
       'Geçen ay hiç kitap bitirememişsin.',
       'Geçen ayın kitap sayısı: sıfır.',
       'Geçen ay hangi kitapları bitirmişsin diye bakayım dedim, bir de ne göreyim? Ya da görmeyeyim. Çünkü göremedim.. Sıfır kitap.'
     ],
     kosul:v => v.bitirilen===0 },
-  { id:'gun-60',        ad:'60 gündür bitmiyor',
+  { id:'gun-60',        ad:'60 gündür bitmiyor', kisa:'Aynı kitap iki aydır sürüyor',
     baglamlar:[
       '60 gündür aynı kitabı okuyorsun, bitireceğin yok. Sen de biliyorsun.',
       'İki aydır aynı kitaptasın.',
@@ -175,28 +175,28 @@ const HESAP_VAKTI_SENARYOLARI = [
       { sonra:'60 gün oldu. Kitap hâlâ yarım.' }
     ],
     kosul:v => v.enUzunTakilan && v.enUzunTakilan.gun>=HV_GUN_2 },
-  { id:'tsundoku-t3',   ad:'T3 — tsundoku kritik',
+  { id:'tsundoku-t3',   ad:'T3 — tsundoku kritik', kisa:'Okunmayı bekleyen çok kitap var',
     baglamlar:[
       'Tsundoku listen şişmiş.',
       'Okumayı düşünüyor musun? Tsundokundan bahsediyorum..',
       'Listeye eklemeyi seviyorsun, okumayı pek değil.'
     ],
     kosul:v => v.tsundoku>=HV_TSUNDOKU_KRITIK && v.bitirilen<=1 },
-  { id:'seri-s2',       ad:'S2 — seri kırıldı',
+  { id:'seri-s2',       ad:'S2 — seri kırıldı', kisa:'Aylık okuma serisi kırılmış',
     /* Açılışı yok: cümlelerinin hepsi serinin kırıldığını kendisi söylüyor.
        Şeytanca olan iki açılış cümle bankasına taşındı (2026-09-05).
        "Duyduğum ses kırılan serin miydi?" ÇAT! + 😴😯🤨😏 animasyonuyla
        oynuyor — bkz. `hvCatSahnesi`, planda `[çat]` damgası. */
     baglamlar:[],
     kosul:v => v.seri===0 && v.enIyiSeri>=2 },
-  { id:'gun-30',        ad:'30 gündür bitmiyor',
+  { id:'gun-30',        ad:'30 gündür bitmiyor', kisa:'Aynı kitap bir aydır sürüyor',
     baglamlar:[
       '30 gündür aynı kitabı okuyorsun.',
       'Bir aydır aynı kitaptasın.',
       '30 gün, tek kitap, hâlâ bitmedi.'
     ],
     kosul:v => v.enUzunTakilan && v.enUzunTakilan.gun>=HV_GUN_1 },
-  { id:'kisa-kitap',    ad:'5 kısa okuma üst üste',
+  { id:'kisa-kitap',    ad:'5 kısa okuma üst üste', kisa:'Art arda kısa kitaplar',
     baglamlar:[
       'Art arda 5 kısa kitap/hikaye okudun.',
       'Bu işin cheat kodunu bulmuşsun, art arda kısa kitaplar okuyorsun.',
@@ -204,12 +204,12 @@ const HESAP_VAKTI_SENARYOLARI = [
     ],
     kosul:v => v.sonOkumalar.length>=HV_KISA_DIZI &&
                v.sonOkumalar.slice(-HV_KISA_DIZI).every(x=>x.kisa) },
-  { id:'tsundoku-t4',   ad:'T4 — tsundoku büyüyor',
+  { id:'tsundoku-t4',   ad:'T4 — tsundoku büyüyor', kisa:'Okuma listesi büyüyor',
     /* Açılışı yok — cümleleri kendini açıklıyor. İki şeytanca açılış bankaya
        taşındı; "Tsundoku listen boyunu aştı." düz tarif olduğu için silindi. */
     baglamlar:[],
     kosul:v => v.tsundoku>0 && v.gecenAyEklenen>=Math.max(1,v.bitirilen) },
-  { id:'tsundoku-t2',   ad:'T2 — dokunulmayan liste',
+  { id:'tsundoku-t2',   ad:'T2 — dokunulmayan liste', kisa:'Listeye uzun süredir dokunulmamış',
     /* 4. açılış Gökşin'in isteği: bu senaryoda Melek başlasın, Şeytan cevap
        versin. Aynı Eco sözü T1'in 3. açılışında da var — ikisi hiç aynı gün
        çıkamaz (biri tsundoku boşken, diğeri doluyken tetikleniyor). */
@@ -224,7 +224,7 @@ const HESAP_VAKTI_SENARYOLARI = [
        Gökşin'in onayıyla vekil ölçüt: liste dolu ve en eski kaydı 6+ aydır
        bekliyor — "liste var, kimse dokunmuyor" aynı yere çıkıyor. */
     kosul:v => v.tsundoku>0 && v.tsundokuBeklemeGun >= HV_TSUNDOKU_BAYAT_AY*30 },
-  { id:'seri-s1',       ad:'S1 — hiç seri yok',
+  { id:'seri-s1',       ad:'S1 — hiç seri yok', kisa:'Henüz aylık seri yok',
     /* "en az 1 kitap" doğru sayı — aylık seri, arka arkaya her ay en az bir
        kitap bitirmek (`hvEnIyiSeri`). Şeytan çıtayı parça parça tekrarlıyor. */
     baglamlar:[
@@ -233,13 +233,13 @@ const HESAP_VAKTI_SENARYOLARI = [
       'Aylık serin boş.. döktüğüm diller boş..'
     ],
     melekBaslar:true, kosul:v => v.enIyiSeri<2 },
-  { id:'tsundoku-t1',   ad:'T1 — tsundoku boş',
+  { id:'tsundoku-t1',   ad:'T1 — tsundoku boş', kisa:'Okuma listesi boş',
     /* Açılışı yok — üç açılışın üçü de cümle bankasına taşındı. Bankadaki
        "Tsundokun boş. Gelecekten ümidini kesmiş olmalısın..." cümlesi silindi;
        taşınan açılışla neredeyse aynıydı, Gökşin açılışı seçti (2026-09-05). */
     baglamlar:[],
     melekBaslar:true, kosul:v => v.tsundoku===0 },
-  { id:'mukemmel',      ad:'Her şey mükemmel',
+  { id:'mukemmel',      ad:'Her şey mükemmel', kisa:'Her şey yolunda',
     /* Utanma düğmeleri yerine captcha — burada suçlama yok, şaşkınlık var. */
     dugmeler:'captcha',
     baglamlar:[
@@ -372,17 +372,6 @@ function hesapVaktiCiz(){
   const secilen = _hesapVaktiZorla
     ? HESAP_VAKTI_SENARYOLARI.find(s=>s.id===_hesapVaktiZorla) || hesapVaktiSenaryo(v)
     : hesapVaktiSenaryo(v);
-  /* Önizleme, sohbetin gerçekten oynatacağı ilk repliği göstermeli. Açılış o
-     gün çıkmıyorsa Şeytan'ın cümlesi yazılıyor — kutuda "açılış yok" gibi bir
-     boşluk görünmesin. */
-  const ilkCumle = hvIlkCumle(secilen);
-  const acilis = hvAcilisiBelirle(secilen, ilkCumle);
-  /* Kutuda ilk duyulan replik yazıyor. `{sonra}` açılışı ikinci sırada
-     oynadığı için ilk sırada yine Şeytan'ın cümlesi görünüyor. */
-  const baglam = (acilis && acilis.melek) ? '😇 '+acilis.melek+'  →  😈 '+acilis.seytan
-    : (acilis && !acilis.sonra) ? hvKitapDoldur(acilis, v)
-    : (ilkCumle ? hvKitapDoldur(ilkCumle.metin, v) : '');
-
   const kutu = (etiket,deger,alt) =>
     `<div style="flex:1;min-width:82px;text-align:center;padding:.5rem .3rem;background:rgba(201,162,39,.08);border:1px solid rgba(201,162,39,.2);border-radius:6px">
        <div style="font-family:'Space Mono',monospace;font-size:1.25rem;color:var(--gold-light)">${deger}</div>
@@ -408,12 +397,15 @@ function hesapVaktiCiz(){
         ${kutu('Tsundoku', v.tsundoku)}
         ${kutu('Seri', v.seri+' ay', 'en iyi '+v.enIyiSeri)}
       </div>
+      <!-- Kısa açıklama kutusu. İÇ KODLAR ("S1", "T3") ve ilk repliğin önizlemesi
+           BİLEREK YOK (Gökşin, 2026-09-06): kodlar kullanıcıya bir şey anlatmıyor,
+           replik önizlemesi de sohbetin birazdan söyleyeceği cümleyi önceden
+           okutup espriyi bozuyordu. Teknik ayrıntı sınama kutusuna taşındı. -->
       <div style="border-left:2px solid var(--gold);padding:.5rem .7rem;background:rgba(0,0,0,.15);border-radius:0 6px 6px 0">
         <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);opacity:.8">Seçilen senaryo</div>
-        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--parchment);margin:.2rem 0">
-          ${secilen.melekBaslar?'😇':'😈'} ${secilen.ad}
+        <div style="font-family:'Playfair Display',serif;font-size:1rem;color:var(--parchment);margin:.2rem 0 0">
+          ${secilen.melekBaslar?'😇':'😈'} ${secilen.kisa||secilen.ad}
         </div>
-        <div style="font-style:italic;font-size:.85rem;color:var(--parchment);opacity:.8">"${baglam}"</div>
       </div>
       <div style="margin-top:.7rem;display:flex;align-items:center;gap:.5rem">
         <button onclick="hesapVaktiTekrar()"
@@ -422,7 +414,7 @@ function hesapVaktiCiz(){
                        font-size:.65rem;cursor:pointer">↻ Tekrar oynat</button>
       </div>
       <div id="hvSohbet"></div>
-      ${hesapVaktiSinamaAktif()?hesapVaktiSinamaKutusu(secilen.id):''}
+      ${hesapVaktiSinamaAktif()?hesapVaktiSinamaKutusu(secilen.id, v):''}
     </div>`;
   kap.appendChild(bolum);
   // Sohbet çizimden hemen sonra kendiliğinden oynuyor.
@@ -456,7 +448,30 @@ function hesapVaktiTekrar(){
 /* Sınama kutusu — 11 senaryonun hepsini elle görebilmek için. `deneme`'nin
    geçen ayı tek bir senaryoya denk geliyor; diğer onu böyle sınanacak.
    Harita ayar şeridinin muadili: iş bitince silinecek. */
-function hesapVaktiSinamaKutusu(aktifId){
+function hesapVaktiSinamaKutusu(aktifId, v){
+  /* Senaryo döndürmesi ancak BİRDEN FAZLA senaryo uyduğunda görünür. Tek
+     senaryo uyuyorsa günü ileri atmak senaryoyu değiştirmez — bu bir hata
+     değil, ama dışarıdan hataya benziyor (Gökşin 11 gün ilerletip hep aynısını
+     gördü, 2026-09-06). O yüzden uyan senaryolar burada yazılı. */
+  const uyan = v ? hesapVaktiUyanlar(v) : [];
+  /* Teknik ad ("S1 — hiç seri yok") ve o günkü ilk replik burada gösteriliyor —
+     panelden kaldırıldılar, test ederken lazım oldukları için buraya taşındılar. */
+  const secilenSenaryo = v ? HESAP_VAKTI_SENARYOLARI.find(s=>s.id===aktifId) : null;
+  const ilk = secilenSenaryo ? hvIlkCumle(secilenSenaryo) : null;
+  const acilis = secilenSenaryo ? hvAcilisiBelirle(secilenSenaryo, ilk) : null;
+  const ilkReplik = acilis
+    ? (typeof acilis==='object' ? (acilis.sonra || (acilis.melek+' → '+acilis.seytan)) : acilis)
+    : (ilk ? hvKitapDoldur(ilk.metin, v) : '');
+  const uyanSatiri = uyan.length
+    ? `<div style="font-size:.6rem;color:var(--parchment);opacity:.7;margin-bottom:.35rem;line-height:1.45">
+         Veriye uyan senaryo (${uyan.length}): ${uyan.map(s=>s.ad).join(' · ')}
+         ${uyan.length===1?'<br><span style="color:var(--rust)">Tek senaryo uyuyor — gün ilerletmek senaryoyu değiştirmez, yalnızca cümleleri değiştirir.</span>':''}
+         ${secilenSenaryo?`<br>Oynayan: <b>${secilenSenaryo.ad}</b>`:''}
+         ${ilkReplik?`<br>İlk replik: <i>${escapeHtml(ilkReplik).slice(0,90)}</i>`:''}
+       </div>` : '';
+  return hesapVaktiSinamaKutusuGovde(aktifId, uyanSatiri);
+}
+function hesapVaktiSinamaKutusuGovde(aktifId, uyanSatiri){
   const secenekler = HESAP_VAKTI_SENARYOLARI.map((s,i)=>
     `<option value="${s.id}"${s.id===aktifId&&_hesapVaktiZorla?' selected':''}>${i+1}. ${s.ad}</option>`).join('');
   return `
@@ -464,6 +479,7 @@ function hesapVaktiSinamaKutusu(aktifId){
       <div style="font-size:.6rem;text-transform:uppercase;letter-spacing:.08em;color:var(--rust);opacity:.9;margin-bottom:.3rem">
         🔧 Sınama — yalnızca test hesabında
       </div>
+      ${uyanSatiri}
       <select onchange="hesapVaktiSinamaSec(this.value)"
               style="width:100%;padding:.35rem;background:rgba(0,0,0,.25);color:var(--parchment);border:1px solid rgba(201,162,39,.3);border-radius:4px;font-size:.8rem">
         <option value="">— gerçek veriye göre seç —</option>
