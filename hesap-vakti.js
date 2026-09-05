@@ -250,9 +250,25 @@ const HESAP_VAKTI_SENARYOLARI = [
     kosul:() => true }   // hiçbiri tutmazsa buraya düşer
 ];
 
+/* O ayın verisine UYAN bütün senaryolar, öncelik sırasında.
+   ⚠️ "Her şey mükemmel" listenin sonunda ve koşulu her zaman doğru — hiçbiri
+   tutmazsa düşülen yedek. Döndürmeye katılırsa her gün sıraya girip yer kapar,
+   o yüzden ayrı tutuluyor: yalnızca başka hiçbir şey tutmazsa çıkıyor. */
+function hesapVaktiUyanlar(v){
+  const yedek=HESAP_VAKTI_SENARYOLARI[HESAP_VAKTI_SENARYOLARI.length-1];
+  const uyan=HESAP_VAKTI_SENARYOLARI.filter(s=>s!==yedek && s.kosul(v));
+  return uyan.length ? uyan : [yedek];
+}
+
+/* Uyan senaryolar GÜNLÜK DÖNÜYOR (Gökşin, 2026-09-06). Eskiden hep en
+   öncelikli olan çıkıyordu; veri ay boyunca değişmediği için aynı senaryo bir
+   ay takılı kalıyordu. Artık aynı ay içinde farklı senaryolar da geliyor —
+   cümleler zaten kendi içinde dönüyordu, bu ikinci bir çeşitlilik katmanı.
+   Dizinin sırası korunuyor, yalnızca başlangıç kayıyor: ayın ilk gününde yine
+   en ağır durum çıkıyor. */
 function hesapVaktiSenaryo(v){
-  for(const s of HESAP_VAKTI_SENARYOLARI) if(s.kosul(v)) return s;
-  return HESAP_VAKTI_SENARYOLARI[HESAP_VAKTI_SENARYOLARI.length-1];
+  const uyan=hesapVaktiUyanlar(v);
+  return hvDondur(uyan,1,0)[0] || uyan[0];
 }
 
 /* ── GÜNLÜK TOHUM ────────────────────────────────────────────────────────
