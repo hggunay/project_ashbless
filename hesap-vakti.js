@@ -378,7 +378,7 @@ function hesapVaktiCiz(){
   bolum.className = 'stats-section';
   bolum.id = 'hesapVaktiBolum';
   bolum.innerHTML = `
-    <div class="stats-acc-header" onclick="toggleSection('hesap-vakti')">
+    <div class="stats-acc-header" onclick="hesapVaktiAcKapa()">
       <div class="stats-section-title" style="margin-bottom:0">⚖️ Hesap Vakti</div>
       <span class="acc-arrow open" id="arr-hesap-vakti">▶</span>
     </div>
@@ -412,6 +412,23 @@ function hesapVaktiCiz(){
   // Sohbet çizimden hemen sonra kendiliğinden oynuyor.
   hesapVaktiSohbetOynat(secilen.id, v);
 }
+/* Akordeon açılınca bölümü görünür yap. Sohbet aşağıda başlıyor; kaydırana
+   kadar ilk balonlar kaçıyordu (Gökşin, 2026-09-06). Kapatırken kaydırma yok —
+   kapatan kişi zaten oradan uzaklaşmak istiyor.
+   Küçük gecikme akordeonun açılma animasyonunun bitmesini bekliyor, yoksa
+   yükseklik daha değişirken ölçüp yanlış yere kaydırıyor. */
+function hesapVaktiAcKapa(){
+  toggleSection('hesap-vakti');
+  setTimeout(()=>{
+    const govde=document.getElementById('body-hesap-vakti');
+    const bolum=document.getElementById('hesapVaktiBolum');
+    if(!govde || !bolum || !govde.classList || !govde.classList.contains('open')) return;
+    if(typeof bolum.scrollIntoView==='function'){
+      try{ bolum.scrollIntoView({behavior:'smooth', block:'start'}); }catch(e){}
+    }
+  }, 260);
+}
+
 function hesapVaktiTekrar(){
   const v = hesapVaktiVerisi(viewing||me);
   const secilen = _hesapVaktiZorla
@@ -621,6 +638,13 @@ function hvStil(){
   s.id='hvStil';
   s.textContent=`
     #hvSohbet{display:flex;flex-direction:column;gap:.45rem;margin-top:.2rem}
+    /* Yeni balon ekranın ALT KENARINA yapışmasın, biraz yukarıda dursun.
+       İki parça birlikte çalışıyor (Gökşin, 2026-09-06):
+       • scroll-margin-bottom → kaydırma balonun altında boşluk bırakarak duruyor
+       • .oynuyor padding → Hesap Vakti sayfanın SON bölümü, altında kaydırılacak
+         yer yok; o boşluğu sohbet sürerken biz açıyoruz, bitince kapatıyoruz. */
+    #hvSohbet.oynuyor{padding-bottom:32vh}
+    .hv-satir,.hv-dugmeler{scroll-margin-bottom:26vh}
     .hv-satir{display:flex;gap:.5rem;align-items:flex-end;max-width:100%}
     .hv-satir.sag{justify-content:flex-end}
     .hv-yuz{font-size:1.1rem;line-height:1;flex:none;padding-bottom:.25rem}
@@ -730,6 +754,18 @@ function hvStil(){
 }
 
 const hvBekle = ms => new Promise(r=>setTimeout(r,ms));
+
+/* Sohbet aşağı doğru büyüdüğü için yeni balonlar ekranın altında kalıyordu ve
+   Gökşin elle kaydırana kadar animasyonun bir kısmını kaçırıyordu (2026-09-06).
+   `block:'nearest'` bilerek seçildi: balon ZATEN görünüyorsa sayfa hiç
+   kıpırdamıyor, yalnızca dışarı taşınca en az kadarıyla kaydırıyor. */
+function hvEkle(kap, dugum){
+  kap.appendChild(dugum);
+  if(dugum && typeof dugum.scrollIntoView==='function'){
+    try{ dugum.scrollIntoView({behavior:'smooth', block:'nearest'}); }catch(e){}
+  }
+  return dugum;
+}
 /* Bekleme süresi cümle uzunluğuna göre — kısa cümleden sonra kısa, uzun
    cümleden sonra uzun. Plandaki "organik his" isteği bu. */
 const hvSure = m => Math.min(2200, 550 + m.length*14);
@@ -738,7 +774,7 @@ function hvSatir(kap, kim, sinif, icerik){
   const d=document.createElement('div');
   d.className='hv-satir';
   d.innerHTML=`<span class="hv-yuz">${kim}</span><div class="${sinif}">${icerik}</div>`;
-  kap.appendChild(d);
+  hvEkle(kap, d);
   return d;
 }
 
@@ -782,24 +818,29 @@ function hvSor(kap, secenekler){
       b.onclick=()=>{ kutu.remove(); hvBenimBalonum(kap,s.etiket); coz(s.deger); };
       kutu.appendChild(b);
     });
-    kap.appendChild(kutu);
+    hvEkle(kap, kutu);
   });
 }
 
 /* Seçilen düğme, sohbete kullanıcının kendi repliği olarak giriyor: sağa
    yaslı balon, yanında kullanıcının avatarı (Gökşin'in isteği, 2026-09-05).
    Avatar `avatarHtml` ile — fotoğraf yüklediyse fotoğraf, yoksa emoji. */
+/* Kullanıcının avatarı 😈/😇 emojilerinden büyük: fotoğraf yüklenmişse
+   1.15rem'de neredeyse seçilmiyordu (Gökşin, 2026-09-06). Emoji o boyutta
+   okunuyor çünkü şekli basit, fotoğraf okunmuyor. */
+const HV_BEN_AVATAR_BOY = '1.6rem';
+
 function hvBenimBalonum(kap, metin){
   const kisi=(typeof db!=='undefined' && db.users && db.users[me]) || {};
   const av=(typeof avatarHtml==='function')
-    ? avatarHtml(kisi.avatar||'📚','1.15rem')
+    ? avatarHtml(kisi.avatar||'📚',HV_BEN_AVATAR_BOY)
     : '<span style="font-size:1.15rem;line-height:1">'+(kisi.avatar||'📚')+'</span>';
   const d=document.createElement('div');
   d.className='hv-satir sag';
   // Avatar SAĞDA: balon önce, yüz sonra.
   d.innerHTML='<div class="hv-balon hv-ben">'+escapeHtml(metin)+'</div>'+
               '<span class="hv-yuz">'+av+'</span>';
-  kap.appendChild(d);
+  hvEkle(kap, d);
 }
 
 /* Şeytan çalışıyormuş gibi: emojiler tek tek birikiyor, aralara bekleyiş
@@ -812,7 +853,7 @@ async function hvCalismaSahnesi(kap){
   const yuz=document.createElement('span'); yuz.className='hv-yuz'; yuz.textContent='😈';
   const balon=document.createElement('div'); balon.className='hv-balon hv-seytan hv-calisma';
   satir.appendChild(yuz); satir.appendChild(balon);
-  kap.appendChild(satir);
+  hvEkle(kap, satir);
 
   /* Kod satırları HER OYNATIŞTA rastgele — günlük tohum kullanılmıyor.
      Bunlar diyalog değil, animasyon süsü; günlük tohumla seçilince aynı gün
@@ -1027,7 +1068,7 @@ async function hvYuzDizisi(kap, kim, yuzler, avatarGoster){
   if(avatarGoster) bosluk.textContent = kim==='melek' ? '😇' : '😈';
   const yuz=document.createElement('div'); yuz.className='hv-cat-yuz';
   satir.appendChild(bosluk); satir.appendChild(yuz);
-  kap.appendChild(satir);
+  hvEkle(kap, satir);
 
   for(const [emoji,sure] of yuzler){
     yuz.textContent=emoji;
@@ -1131,7 +1172,7 @@ function hvBuyuyenBalon(kap, kim, ekSinif){
   const balon=document.createElement('div');
   balon.className='hv-balon '+(kim==='melek'?'hv-melek':'hv-seytan')+(ekSinif?' '+ekSinif:'');
   satir.appendChild(yuz); satir.appendChild(balon);
-  kap.appendChild(satir);
+  hvEkle(kap, satir);
   return balon;
 }
 
@@ -1155,6 +1196,10 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
   if(!kap) return;
   kap.innerHTML='';
   _hvKullanilanSesler=[];   // her sohbet kendi ses havuzuyla başlıyor
+  /* Sohbet sürerken altta boşluk açılıyor ki yeni balonlar ekranın alt
+     kenarına yapışmasın. Sonda kapanıyor; arada hata olursa da bir sonraki
+     oynatış burada sıfırlıyor. */
+  kap.className='oynuyor';
   const banka=(typeof HV_CUMLELER!=='undefined') && HV_CUMLELER[senaryoId];
   if(!banka){ kap.innerHTML='<div style="opacity:.6;font-size:.8rem">Bu senaryo için cümle bulunamadı.</div>'; return; }
   const senaryo=HESAP_VAKTI_SENARYOLARI.find(s=>s.id===senaryoId);
@@ -1332,4 +1377,5 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
   }
   await melegiKapat();
   await hvPsst(kap, trenckotOynadi, seytanCekildi);
+  kap.className='';   // sohbet bitti, alttaki boşluk kalksın
 }
