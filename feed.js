@@ -255,7 +255,13 @@ function renderFeed(append=false){
   else if(feedFilter==='quotes') cards=cards.filter(c=>c.type==='quote');
   else if(feedFilter==='stories') cards=cards.filter(c=>c.type==='story');
   else if(feedFilter==='coreading') cards=cards.filter(c=>c.type==='coreading_invite');
-  else if(feedFilter==='journey') cards=cards.filter(c=>c.type==='reading_event'&&c.eventType==='started');
+  /* Yolculuk filtresi: NOTU OLAN kartlar. Eskiden "başlandı" olaylarının hepsi
+     geliyordu — kitaba başlamak tek başına kart üretiyordu ve filtre, hiç not
+     yazılmamış kitaplarla doluyordu (Gökşin, 2026-09-09: "gereksiz yer
+     kaplıyor"). Notlar `card.notes` içinde, yukarıda dolduruluyor (bkz. ~146).
+     Kart kaybolmuyor: nota bağlı olduğu için ilk not yazıldığında filtrede
+     kendiliğinden beliriyor. Akışın kendisi etkilenmiyor, yalnızca bu filtre. */
+  else if(feedFilter==='journey') cards=cards.filter(c=>c.type==='reading_event'&&c.eventType==='started'&&(c.notes||[]).length>0);
 
   cards.sort((a,b)=>{
     // Birlikte okuma kartları aktifse en üste
