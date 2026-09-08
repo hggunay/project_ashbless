@@ -599,8 +599,13 @@ const DIYAR_KATALOG = [
     ],
     tetikleyiciler: {
       kitaplar: [
+        /* ⚠️ "Kısa Bir Cehennem Ziyareti" — Gökşin'in kitaplığındaki gerçek ad
+           (06.09.2026). Kataloğa "Cehenneme Kısa Bir Ziyaret" diye yazılmıştı;
+           aynı kelimeler, farklı sıra. Eşleştirme BİREBİR olduğu için diyar
+           hiç açılmamıştı ve bu sessizce oldu — hata vermiyor, sadece açılmıyor.
+           Türkçe baskı adı değişebildiği için her varyant buraya yazılmalı. */
         { baslik: 'Cehenneme Kısa Bir Ziyaret', yazar: 'Steven L. Peck',
-          takmaAdlar: ['A Short Stay in Hell'] }
+          takmaAdlar: ['A Short Stay in Hell', 'Kısa Bir Cehennem Ziyareti'] }
       ]
     }
   },
