@@ -1759,8 +1759,16 @@ try{
                 <!-- G11 (2026-08-31): "📨 Şifre Sıfırlama İstekleri" kutusu kaldırıldı.
                      Ölü koddu: listeyi OKUYAN üç yer vardı ama isteği YAZAN tek bir yer
                      yoktu, yani kutu hiçbir zaman dolamazdı. -->
-                <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Burada yalnızca <b>girişini henüz güvenli hale getirmemiş</b> üyeler görünür. Taşınmış üyeler şifrelerini kendileri sıfırlıyor — giriş ekranındaki "Şifremi unuttum" bağlantısı onlara e-posta gönderiyor.</div>
-                <div id="adminMemberList"></div>
+                <!-- ONAY KAPISI (2026-09-09). Kayıt herkese açık; onaylanmayan
+                     üye hiçbir veri okuyamıyor. Onayı geri almak erişimi kesiyor,
+                     yani çıkarma aracı da bu. Ayrıntı: uye-onay.js -->
+                <div id="onayPaneli"></div>
+
+                <div style="margin-top:1.25rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
+                  <div style="font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);opacity:.8;margin-bottom:.4rem">🔑 Şifre sıfırlama</div>
+                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Burada yalnızca <b>girişini henüz güvenli hale getirmemiş</b> üyeler görünür. Taşınmış üyeler şifrelerini kendileri sıfırlıyor — giriş ekranındaki "Şifremi unuttum" bağlantısı onlara e-posta gönderiyor.</div>
+                  <div id="adminMemberList"></div>
+                </div>
               </div>
             </div>
           </div>
@@ -1903,6 +1911,7 @@ try{
 <!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
+<script src="uye-onay.js"></script>
 <script src="hesap-vakti-cumleler.js"></script>
 <script src="hesap-vakti.js"></script>
 
@@ -2391,6 +2400,18 @@ async function fbGet(path){
     return await r.json();
   }catch(e){return null;}
 }
+/* fbGet HATAYI ve "veri yok"u ayırt edemiyor — ikisinde de null dönüyor.
+   Onay kapısı için bu ayrım şart: izin reddi (401) ile boş veritabanı çok
+   farklı iki durum. `fbGet`e dokunulmadı, çağıran onlarca yer var; ihtiyacı
+   olan buradan sorar. (2026-09-09)
+   durum: HTTP kodu, ağ hatasında 0. */
+async function fbGetDurum(path){
+  try{
+    const r=await fetch(await fbAdres(path));
+    if(!r.ok) return { ok:false, durum:r.status, veri:null };
+    return { ok:true, durum:r.status, veri:await r.json() };
+  }catch(e){ return { ok:false, durum:0, veri:null }; }
+}
 /* `sessiz` (2026-09-03): başarısızlığı KULLANICIYA GÖSTERME. Yalnızca isteğe
    bağlı arka plan onarımları için — kullanıcının kaydettiği bir şey değilse
    kırmızı şerit yalan söylemiş olur. Gökşin bunu canlıda yakaladı: giriş
@@ -2444,7 +2465,17 @@ let _lastBooksSnapshot=null, _lastShelfSnapshot=null;
 async function loadDb(fbOnly){
   // Firebase'den yükle
   try{
-    const data=await fbGet('aa-v4');
+    /* ONAY KAPISI (2026-09-09): kurallar, onaylanmamış üyenin `aa-v4` okumasını
+       reddediyor. Eskiden bu sessizce null dönerdi ve kişi boş bir uygulamayla
+       ya da kırmızı hata şeridiyle baş başa kalırdı — ikisi de yanıltıcı.
+       401 = kimlik var ama izin yok, yani "onay bekliyor". Ağ hatasından (0) ve
+       gerçekten boş veritabanından ayırt ediliyor. */
+    const cevap=await fbGetDurum('aa-v4');
+    if(cevap.durum===401){
+      if(typeof onayBekliyorEkrani==='function') onayBekliyorEkrani();
+      return;
+    }
+    const data=cevap.veri;
     if(data&&data.users){db=data;if(!db.stories)db.stories={};if(!db.seriesData)db.seriesData={};if(!db.seriesEvents)db.seriesEvents={};if(!db.archivedNotes)db.archivedNotes={};if(!db.countryEvents)db.countryEvents={};if(!db.notifications)db.notifications={};if(!db.readingSessions)db.readingSessions={};
   if(!db.streakEvents)db.streakEvents={};if(!db.settings)db.settings={};if(!db.shelf)db.shelf={};if(!db.reactions)db.reactions={};if(!db.realmEvents)db.realmEvents={};
       // readingSessions ayrı path'ten yükle
@@ -3571,6 +3602,10 @@ function renderSettings(){
   // Üye Yönetimi bölümü herkese görünüyordu; artık yalnızca yetkili olanlara.
   const uyeBolum=document.getElementById('uyeYonetimiBolumu');
   if(uyeBolum) uyeBolum.style.display=uyeYonetimiGorunur()?'':'none';
+
+  /* Onay paneli — yalnızca sahip görür, kendi içinde de kontrol ediyor.
+     await edilmiyor: renderSettings senkron, panel hazır olunca kendini yazar. */
+  if(typeof onayPaneliCiz==='function') onayPaneliCiz();
 
   const adminList=document.getElementById('adminMemberList');
   if(adminList){
