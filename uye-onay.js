@@ -196,7 +196,18 @@ function onayBekliyorEkrani(){
          Kütüphaneye katılman için onay bekleniyor. Onaylandığında bu ekran
          kendiliğinden kalkacak — tekrar giriş yapman yeterli.</p>
        <button class="btn btn-sm" style="background:transparent;border:1px solid rgba(201,162,39,.5);
-         color:var(--gold,#c9a227)" onclick="logout()">Çıkış yap</button>
+         color:var(--gold,#c9a227)" onclick="onayEkranindanCik()">Çıkış yap</button>
      </div>`;
   document.body.appendChild(kat);
+}
+
+/* ⚠️ Düğme `logout()` çağırıyordu ve logout GERÇEKTEN çalışıyordu — ama bu katman
+   `position:fixed; inset:0; z-index:9999` olduğu için altındaki giriş ekranını
+   kapatıyordu. Kullanıcıya "düğme çalışmıyor, aynı sayfada sıkıştım" gibi
+   görünüyor (Gökşin 10.09'da iki cihazda birden yaşadı). Katman AÇIKÇA
+   kaldırılmalı; kendiliğinden kalkmıyor. */
+function onayEkranindanCik(){
+  try{ logout(); }catch(e){}
+  const kat = document.getElementById('onayBekliyorKat');
+  if(kat) kat.remove();
 }

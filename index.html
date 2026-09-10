@@ -2468,11 +2468,19 @@ async function loadDb(fbOnly){
     /* ONAY KAPISI (2026-09-09): kurallar, onaylanmamış üyenin `aa-v4` okumasını
        reddediyor. Eskiden bu sessizce null dönerdi ve kişi boş bir uygulamayla
        ya da kırmızı hata şeridiyle baş başa kalırdı — ikisi de yanıltıcı.
-       401 = kimlik var ama izin yok, yani "onay bekliyor". Ağ hatasından (0) ve
-       gerçekten boş veritabanından ayırt ediliyor. */
+       Ağ hatasından (0) ve gerçekten boş veritabanından ayırt ediliyor.
+
+       ⚠️ authGirisliMi() ŞART (2026-09-10'da eklendi, Gökşin canlıda kilitlendi).
+       401 "kimlik var ama izin yok" DEĞİL — Firebase, jeton hiç gönderilmediğinde
+       de 401 döndürüyor. loadDb() ise açılışta, GİRİŞ YAPILMADAN ÖNCE bir kez
+       çalışıyor (bkz. _girisYap: "açılıştaki loadDb() yetkisiz olduğu için db boş
+       geliyor"). Kontrolsüz hâlinde uygulamayı her açan kişi — daha kullanıcı adını
+       yazmadan — "onay bekleniyor" ekranına düşüyordu ve ekran giriş ekranının
+       üstünü kapattığı için oradan çıkış yoktu. İki cihazda birden yaşandı.
+       Jeton yoksa eski davranış: sessizce dön, giriş ekranı görünsün. */
     const cevap=await fbGetDurum('aa-v4');
     if(cevap.durum===401){
-      if(typeof onayBekliyorEkrani==='function') onayBekliyorEkrani();
+      if(authGirisliMi() && typeof onayBekliyorEkrani==='function') onayBekliyorEkrani();
       return;
     }
     const data=cevap.veri;
