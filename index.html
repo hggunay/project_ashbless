@@ -2521,7 +2521,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,onayli:_on,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2689,8 +2689,24 @@ async function _saveDbNow(){
        — kurallar sıkılaştıktan sonra o kişi uygulamaya hiç giremez. Eşleşme
        zaten kendi granüler yoluna yazılıyor (aa-v4/uidMap/<uid>).
        Aynı sebeple books/shelf/notifications/readingSessions/reactions/
-       realmEvents de burada hariç. */
-    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,girisAdresleri,...restFields}={...db};
+       realmEvents de burada hariç.
+
+       ⚠️ onayli DE HARİÇ (2026-09-10). Üye onay listesi buraya girdiğinde iki
+       ayrı şey birden bozuluyordu:
+       (1) `onayli` bu iki listede olmadığı için "tanınmayan düğüm" dalına
+           düşüp TOPTAN paylaşılan PATCH'e giriyordu. Kurala göre oraya yalnızca
+           hggunay yazabildiği için, başka bir üye herhangi bir şey kaydettiğinde
+           PATCH tümden reddediliyor ve "kaydedilmedi" kırmızı şeridi çıkıyordu —
+           oysa kişisel düğümler (users/… ) bir üstteki döngüde ZATEN yazılmıştı.
+           Yani uyarı yalan söylüyordu: kayıt olmuştu. (Gökşin bildirdi: deneme
+           hesabının adını değiştirdi, kırmızı uyarı çıktı, ad yine de kaydedildi.)
+       (2) hggunay kaydettiğinde ise reddedilmiyor — onay listesinin TAMAMI
+           tarayıcıdaki kopyadan geri yazılıyordu. Bayat bir sekme, başka bir
+           sekmede yapılmış onayı/çıkarmayı sessizce geri alabilirdi. Bu, 102
+           kitabı yok eden kalıbın aynısı.
+       Onay listesi zaten kendi granüler yoluna yazılıyor (uye-onay.js →
+       `aa-v4/onayli/<kişi>`), tıpkı uidMap gibi. */
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,girisAdresleri,onayli,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -2726,7 +2742,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,onayli:_on,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
@@ -3490,9 +3506,19 @@ async function deleteAllUserData(u){
   }
   /* Giriş adresi de gitmeli — yoksa silinen hesabın e-postası, herkese açık
      okunabilen o düğümde kalır. (2026-09-03'te eklenen düğümü silme listesine
-     yazmayı unutmuştum; `aa-v4` altına yeni düğüm eklerken bakılacak ÜÇÜNCÜ yer
-     burası — diğer ikisi saveDb'nin destructure'ları.) */
+     yazmayı unutmuştum; `aa-v4` altına yeni düğüm eklerken bakılacak DÖRDÜNCÜ
+     yer burası — diğer üçü saveDb'nin destructure'ları.) */
   await fbSet('aa-v4/girisAdresleri/'+u, null, true);
+  /* Onay kaydı da gitmeli (2026-09-10). Kalırsa şu delik açılıyor: hesap
+     silinince kullanıcı adı yeniden serbest kalıyor, o adı alan bir YABANCI
+     `onayli/<ad>` hâlâ true olduğu için kendiliğinden onaylı üye oluyor.
+     ⚠️ `sessiz=true` bilerek: kurala göre buraya yalnızca hggunay yazabiliyor.
+     Kendi hesabını silen başka bir üyede istek reddedilecek ve kırmızı şerit
+     çıkacaktı — oysa silme işleminin geri kalanı başarılı. Reddedilen durumda
+     geriye YETİM bir onay kaydı kalıyor; sahibin panelinde ayrı başlık altında
+     gösteriliyor ve oradan çıkarılabiliyor (uye-onay.js → yetim onaylar). */
+  if(db.onayli) delete db.onayli[u];
+  await fbSet('aa-v4/onayli/'+u, null, true);
   // Katıldığı birlikte-okuma oturumlarından çık — oturumun kendisini silme, başka katılımcılar hâlâ içinde olabilir
   // readingSessions de (K3) genel kayıttan hariç tutulduğu için, silinen katılımcı
   // her etkilenen oturumun kendi granüler yoluna ayrıca yazılmalı

@@ -105,6 +105,15 @@ async function onayPaneliCiz(){
       `<button class="btn btn-sm btn-primary" onclick="onayEt('${u}')">✓ Onayla</button>`)).join('');
   }
 
+  /* YETİM ONAYLAR: `onayli` içinde adı geçen ama artık üye listesinde olmayan
+     kişiler. Hesabını silen bir üyenin onay kaydı sunucuda kalabiliyor —
+     silme sırasındaki temizlik yalnızca sahibin elinde başarılı oluyor
+     (kurala göre `onayli`ye başka kimse yazamıyor, bkz. deleteAllUserData).
+     Kalırsa delik açılıyor: kullanıcı adı yeniden serbest kalıyor ve o adı
+     alan bir yabancı kendiliğinden onaylı üye oluyor. Burada görünür
+     olmasalardı kimse fark etmezdi — panel yalnızca db.users'ı listeliyor. */
+  const yetimler = Object.keys(_onayListesi || {}).filter(k => !uyeler.includes(k));
+
   html += `<div style="font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;
               letter-spacing:.08em;color:var(--gold);margin:${bekleyen.length?'1rem':'.2rem'} 0 .5rem">
               ✓ Onaylı üye (${onayli.length})</div>`;
@@ -113,6 +122,24 @@ async function onayPaneliCiz(){
         ? '<span style="font-size:.72rem;opacity:.5;font-style:italic">sen</span>'
         : `<button class="btn btn-sm" style="background:transparent;border:1px solid rgba(176,90,52,.5);color:var(--rust)" onclick="onayCikar('${u}', this)">Çıkar</button>`)).join('')
     : '<div style="font-size:.85rem;opacity:.5;font-style:italic">Henüz onaylı üye yok.</div>';
+
+  if(yetimler.length){
+    html += `<div style="font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;
+                letter-spacing:.08em;color:var(--rust);margin:1rem 0 .5rem">
+                ⚠️ Yetim onay (${yetimler.length})</div>
+             <div style="font-size:.78rem;opacity:.7;font-style:italic;margin-bottom:.5rem">
+               Bu adlar onaylı listesinde duruyor ama artık üye değiller — hesap
+               silinmiş olabilir. Kullanıcı adı yeniden serbest olduğu için, o adı
+               alan biri kendiliğinden onaylı olur. Çıkarman iyi olur.</div>`;
+    html += yetimler.map(u => `<div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.5rem;flex-wrap:wrap">
+        <span style="font-size:1.15rem">👻</span>
+        <span style="font-family:'Playfair Display',serif;font-size:.92rem;color:var(--ink);flex:1;min-width:120px">
+          <span style="opacity:.5;font-size:.75rem">@${escapeHtml(u)}</span></span>
+        <div style="display:flex;gap:.35rem">
+          <button class="btn btn-sm" style="background:transparent;border:1px solid rgba(176,90,52,.5);color:var(--rust)"
+            onclick="onayCikar('${u}', this)">Çıkar</button></div>
+      </div>`).join('');
+  }
 
   /* Tek seferlik kurulum düğmesi. Onaysız üye varken görünmesi kasıtlı:
      kuralı yayınlamadan önceki adım bu. */
