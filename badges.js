@@ -319,8 +319,27 @@ const BADGE_CATS = [
           const series1=completedSeriesCount(b)>=1;
           const books2=validBooks();
           let genreRozetCount=0;
-          const turZincirleri=['kc_roman','kc_sf','kc_fantastik','kc_polisiye','kc_korku','kc_tarih','kc_felsefe','kc_psikoloji','kc_gezi','kc_biyografi','kc_deneme','kc_dis','kc_romantik','kc_mitoloji','kc_oyku'];
-          BADGE_CATS.forEach(cat=>{(cat.chains||[]).forEach(ch=>{if(turZincirleri.includes(ch.id)){const allEarned=ch.badges.every(bg=>bstat(bg,books2).earned);if(allEarned)genreRozetCount++;}});});
+          /* ⚠️ 2026-09-10: İKİ HATA BİRDEN DÜZELTİLDİ (Gökşin'in kararı: "a şıkkı").
+             (1) Listedeki 15 addan 11'i YOKTU. Kodda 'kc_korku' yazıyordu ama
+                 gerçek zincir adı 'kc_hor'; kc_felsefe→kc_phi, kc_mitoloji→kc_myt,
+                 kc_polisiye→kc_det, kc_tarih→kc_his, kc_psikoloji→kc_psy,
+                 kc_deneme→kc_ess, kc_biyografi→kc_bio, kc_fantastik→kc_fan,
+                 kc_romantik→kc_rom. Yalnızca 4'ü tutuyordu (kc_sf, kc_gezi,
+                 kc_dis, kc_oyku) ve rozet 5 istediği için ULAŞILAMAZDI —
+                 dolayısıyla ona bağlı olan Yaratıcının Tanığı da öyle.
+                 'kc_roman' listeden çıktı: öyle bir zincir hiç yok.
+                 Bilerek DIŞARIDA: kc_ger, kc_sci, kc_kisisel, kc_siir, kc_genc
+                 (Gökşin'in seçtiği tür kümesi korunuyor) ve kc_genre — o bir tür
+                 değil, "🔍 Tür Keşfi" meta zinciri.
+             (2) Eskiden zincirin TAMAMI isteniyordu (`every`). Bir zincirin son
+                 halkası 30 kitap, yani şart gerçekte "5 türde 30'ar kitap = 150
+                 kitap"tı. Oysa rozetin ekranda yazan açıklaması "5 tür rozeti
+                 kazan" — zincir değil, rozet. Artık açıklamayla aynı şeyi
+                 yapıyor: bir türde EN AZ BİR rozet (en alt halka 3 kitap) o türü
+                 sayıyor, beş farklı tür gerekiyor.
+             Sayı 5'te bırakıldı; Gökşin fazla kolaylaşmasını istemedi. */
+          const turZincirleri=['kc_fan','kc_sf','kc_det','kc_hor','kc_his','kc_phi','kc_psy','kc_ess','kc_myt','kc_rom','kc_bio','kc_gezi','kc_dis','kc_oyku'];
+          BADGE_CATS.forEach(cat=>{(cat.chains||[]).forEach(ch=>{if(turZincirleri.includes(ch.id)){const varMi=ch.badges.some(bg=>bstat(bg,books2).earned);if(varMi)genreRozetCount++;}});});
           const genres5=genreRozetCount>=5;
           return flag(books25&&countries5&&series1&&genres5);
         }},
