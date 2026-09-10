@@ -71,6 +71,37 @@ async function mevcutUyeleriOnayla(){
   }
 }
 
+/* ── AYARLAR SEKMESİNDEKİ SAYI (2026-09-10) ────────────────────────────
+   Panel yalnızca Ayarlar açıldığında çiziliyordu; yeni bir üye kayıt olunca
+   Gökşin'e HİÇBİR ŞEY haber vermiyordu, günlerce kapıda bekleyebilirdi.
+
+   ⚠️ Bildirim göndermek (pushNotification) BİLEREK yapılmadı: o fonksiyon önce
+   uzaktaki bildirim dizisini okuyup üstüne ekliyor, onaylanmamış üye ise hiçbir
+   şey okuyamıyor — listeyi boş sanıp Gökşin'in TÜM bildirimlerini silerdi.
+   Aynı "önce oku, sonra yaz" tuzağı.
+
+   Bu çözümde hiçbir yazma yok: sayı, zaten yüklü olan `db.users` ile
+   `db.onayli`den hesaplanıyor. (`onayli` düğümü loadDb'nin tek hamlelik
+   `fbGet('aa-v4')` okumasıyla zaten geliyor — yalnızca KAYDETMEDEN hariç
+   tutuldu, okumadan değil.) */
+function onayRozetiniTazele(){
+  const sekme = document.getElementById('settingsTab');
+  if(!sekme) return;
+  const temel = '⚙️ Ayarlar';
+  if(typeof me === 'undefined' || me !== SAHIP){ sekme.textContent = temel; return; }
+  const liste  = _onayListesi || (typeof db !== 'undefined' && db.onayli) || {};
+  const uyeler = Object.keys((typeof db !== 'undefined' && db.users) || {});
+  const bekleyen = uyeler.filter(u => liste[u] !== true).length;
+  /* ⚠️ Renkler satır içinde AÇIKÇA veriliyor — sekme çubuğunun zemini koyu,
+     renk verilmezse yazı görünmez (proje kalıbı). */
+  sekme.innerHTML = bekleyen
+    ? temel + ' <span style="display:inline-block;min-width:1.15rem;padding:0 .3rem;' +
+      'border-radius:999px;background:var(--rust,#b05a34);color:#fff;' +
+      'font-family:\'Space Mono\',monospace;font-size:.62rem;line-height:1.15rem;' +
+      'text-align:center;vertical-align:middle">' + bekleyen + '</span>'
+    : temel;
+}
+
 /* ── PANEL ─────────────────────────────────────────────────────────────
    Yalnızca sahibe görünüyor; görünürlüğü renderSettings ayarlıyor. */
 async function onayPaneliCiz(){
@@ -153,6 +184,7 @@ async function onayPaneliCiz(){
   }
 
   kap.innerHTML = html;
+  onayRozetiniTazele();   // panelde onay/çıkarma yapıldıysa sekmedeki sayı da düzelsin
 }
 
 /* Onaylama yıkıcı değil, doğrudan yapılıyor. ÇIKARMA erişim kesiyor —

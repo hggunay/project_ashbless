@@ -929,7 +929,7 @@ try{
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
       <button class="nav-tab" onclick="showPanel('stats',this)">📊 İstatistikler</button>
       <button class="nav-tab" onclick="showPanel('members',this)">👥 Üyeler</button>
-      <button class="nav-tab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
+      <button class="nav-tab" id="settingsTab" onclick="showPanel('settings',this)">⚙️ Ayarlar</button>
     </div>
 
     <!-- FEED PANEL -->
@@ -8657,6 +8657,19 @@ function render(){
 }
 
 // Modal açıkken çağrılacak güvenli render — modal'a dokunmaz
+/* İlerleme çubuğuna dokununca kalan sayfayı göster, tekrar dokununca geri dön
+   (2026-09-10, Gökşin istedi). İki metin de HTML üretilirken `data-` içine
+   yazılıyor; burada hesap yapılmıyor, yalnızca değiş tokuş var.
+   ⚠️ event.stopPropagation() ŞART: satırın kendisinde `openBook()` duruyor,
+   olmazsa dokunuş kitabı açar ve kullanıcı ne olduğunu anlamaz. */
+function kalanSayfaCevir(kutu, ev){
+  if(ev) ev.stopPropagation();
+  const yazi=kutu.querySelector('.reading-progress-text');
+  if(!yazi) return;
+  const normal=yazi.dataset.normal||'', kalan=yazi.dataset.kalan||'';
+  yazi.textContent=(yazi.textContent===normal)?kalan:normal;
+}
+
 function renderSafe(){
   diyarKilidiUygula();
   const modalOpen=document.getElementById('modalOverlay').classList.contains('open');
@@ -8970,7 +8983,7 @@ function renderBookList(){
             ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
 			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>escapeHtml((db.users[u]||{}).displayName||u)).join(', ')}</span>`:''}
-            ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text">${b.currentPage}/${b.pages} sayfa · %${pct}</div>`:''}
+            ${pct!==null?`<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(this,event)" title="Kalan sayfa için dokun"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${b.currentPage}/${b.pages} sayfa · %${pct}" data-kalan="${Math.max(0,b.pages-b.currentPage)} sayfa kaldı">${b.currentPage}/${b.pages} sayfa · %${pct}</div></div>`:''}
           </div>
         </div>`;
       }).join('');
@@ -9505,6 +9518,11 @@ function renderSafeNoModal(){
 
 
 function renderMembers(){
+  /* Onay bekleyen üye sayısı Ayarlar sekmesinde görünsün (2026-09-10).
+     Buraya bağlandı çünkü renderMembers her iki çizim yolundan da geçiyor
+     (render ve renderSafe/renderSafeNoModal) — yeni üye ancak veri yeniden
+     yüklendiğinde ortaya çıkıyor, o da bu yollardan biriyle ekrana geliyor. */
+  if(typeof onayRozetiniTazele==='function') onayRozetiniTazele();
   const all=Object.keys(db.users);
   const sorted=all.map(u=>{const books=db.books[u]||[];let badges=0;const ctx=badgeCtxFor(u);BADGE_CATS.forEach(c=>{const _bb=c.chains?c.chains.flatMap(ch=>ch.badges):(c.badges||[]);_bb.forEach(b=>{if(bstat(b,books,ctx).earned)badges++;});});return{u,books:books.length,badges,...db.users[u]};}).sort((a,b)=>b.badges-a.badges);
   document.getElementById('leaderboardGrid').innerHTML=sorted.map((m,i)=>`
