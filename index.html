@@ -1910,6 +1910,8 @@ try{
 <script src="series.js"></script>
 <script src="feed.js"></script>
 <script src="badges.js"></script>
+<!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
+<script src="sezonluk.js"></script>
 <script src="shelves.js"></script>
 <script src="avatar.js"></script>
 <script src="shelf.js"></script>
@@ -4664,6 +4666,9 @@ function enterApp(){
   /* Giriş sonrası açılan ilk sekme showPanel'den GEÇMİYOR — şerit burada da
      çağrılmazsa yeni üye ilk gördüğü sekmenin tanıtımını hiç görmez. */
   if(typeof karsilamaGoster==='function') karsilamaGoster(targetPanel);
+  /* Sezon açılış duyurusu — Ana Sayfa'nın en üstüne giriyor, hangi sekmede
+     olduğumuzdan bağımsız. Kendi kopya kontrolü var, iki kez eklenmiyor. */
+  if(typeof sezonDuyuruCiz==='function') sezonDuyuruCiz();
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
   setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
   // İlk state'i kaydet
@@ -6369,6 +6374,10 @@ function renderEditMode(bookId, fromShelf){
           ${flagChip(book,'reread','🔄 Yeniden okuma',isMe)}
           ${flagChip(book,'nightReading','🌙 Çoğunlukla gece okudum',isMe)}
           ${flagChip(book,'hundredPages','📑 Bir günde 100 sayfa',isMe)}
+          <!-- Sezonluk işaret: yalnızca sezon açıkken ve geçmişte okunmayan
+               kitaplarda görünüyor. Sezon kapanınca kayboluyor, yani geriye
+               dönük işaretlenemiyor (sezonluk.js → sezonChip). -->
+          ${typeof sezonChip==='function'?sezonChip(book,isMe,`toggleSezonKitap(${book.id},this)`):''}
         </div>
       </div>
     </div>
@@ -7273,7 +7282,16 @@ function openStoryDetail(ownerId, storyId){
       </div>
       <label style="display:flex;align-items:center;gap:.35rem;margin-top:.5rem;font-size:.8rem;opacity:.75;cursor:pointer">
         <input type="checkbox" ${story.retroactive?'checked':''} onchange="saveStoryField(${storyId},'retroactive',this.checked)" style="margin:0"/> Geçmişte okudum (rozet sayımına dahil etme)
-      </label>`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
+      </label>
+      <!-- Sezonluk isaret (sezonluk.js). saveStoryField zaten kaydi yazip
+           rozet kontrolunu oyku baglamiyla birlikte tetikliyor, ayri bir
+           fonksiyon gerekmiyor. Gecmiste okunan oykuler sayima girmiyor;
+           eleme rozetin kendi hesabinda (sezonSayisi).
+           DIKKAT: bu yorum bir JS sablon dizesinin icinde — ters tirnak
+           KULLANILAMAZ, sablonu kapatip sayfayi bozar. -->
+      ${typeof sezonChip==='function'&&sezonBul()?`<div class="check-chips" style="margin-top:.5rem">
+        ${sezonChip(story,true,`saveStoryField(${storyId},'sezon',this.classList.contains('active')?null:sezonAnahtari());this.classList.toggle('active')`)}
+      </div>`:''}`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">⭐ Puan</div>
@@ -8375,6 +8393,21 @@ parentRows.forEach(r=>{
               </div>
               <span style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--rust);opacity:.5">⟳</span>
             </div>`:''}
+          `,false);
+        })()}
+
+        ${(()=>{
+          /* SEZONLUK ROZET GEÇMİŞİ — "Okuma Serisi"nin İÇİNE konmadı, bilerek:
+             o başlık kalıcı aylık serileri anlatıyor, bunlar ise süreli
+             rozetler. Aynı kutuya koymak ikisini karıştırırdı.
+             Kaynak `badgeEvents`, yani rozet ızgaradan kaybolsa bile geçmiş
+             duruyor. Liste yıllar biriktikçe uzayacağı için kısaltılmış. */
+          if(typeof sezonGecmisiSatirlari!=='function') return '';
+          const satirlar=sezonGecmisiSatirlari(viewing||me);
+          if(!satirlar.length) return '';
+          return statsSection('stats-sezon','🎃 Sezonluk Rozetler',`
+            ${kisaltilmisListe('sezon-yillar',satirlar)}
+            <div style="font-size:.72rem;color:var(--ink);opacity:.8;font-style:italic;margin-top:.4rem">🥈 1 kitap/öykü · 🥇 2 kitap/öykü — sezon bitince rozet kaybolur, kayıt burada kalır</div>
           `,false);
         })()}
 
