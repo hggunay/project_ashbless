@@ -867,7 +867,11 @@ function hvSor(kap, secenekler){
       b.type='button';
       b.className='hv-dugme'+(s.renk?' '+s.renk:'');
       b.textContent=s.etiket;
-      b.onclick=()=>{ kutu.remove(); hvBenimBalonum(kap,s.etiket); coz(s.deger); };
+      /* Captcha düğmeleri boş kutuyla (⬛) duruyor — işaretlenmemiş bir onay
+         kutusu gibi. Seçildikten sonra o etiket kullanıcının kendi balonuna
+         dönüşüyor; orada boş kutu yanlış oluyor, çünkü kutu artık işaretli
+         (Gökşin, 2026-09-11). Yalnızca balonda değişiyor, düğmede değil. */
+      b.onclick=()=>{ kutu.remove(); hvBenimBalonum(kap,s.etiket.replace('⬛','✅')); coz(s.deger); };
       kutu.appendChild(b);
     });
     hvEkle(kap, kutu);
