@@ -8690,7 +8690,16 @@ function kisaltilmisListe(id, satirlar, ilk, adim){
 }
 function dahaFazlaGoster(id, adim){
   _listeAcik[id] = (_listeAcik[id] || LISTE_ILK) + (adim || LISTE_ADIM);
-  renderStats();
+  /* ⚠️ `renderStats()` DEĞİL (2026-09-11'de düzeltildi, Gökşin bildirdi:
+     "basıyorum ama bir şey olmuyor"). İki ayrı fonksiyon var ve adları
+     yanıltıcı derecede benziyor:
+       renderStats()      → yalnızca üstteki üç sayı kartı (#statsRow)
+       renderStatsPanel() → panelin kendisi, yıllık rozet listesi dahil
+     Yanlış olanı çağrılınca sayaç artıyor ama ekranda hiçbir şey değişmiyordu —
+     hata da vermiyordu, sessiz kusur.
+     Akordeonun açık/kapalı hâli `localStorage`'daki `aa-acc`'ten okunuyor
+     (bkz. statsSection), o yüzden yeniden çizim bölümü kapatmıyor. */
+  if(typeof renderStatsPanel==='function') renderStatsPanel();
 }
 
 /* İlerleme çubuğuna dokununca kalan sayfayı göster, tekrar dokununca geri dön
