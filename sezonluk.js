@@ -28,7 +28,7 @@ const SEZONLAR = [
     basAy:9, bitAy:10,                       // 1 Eylül – 31 Ekim
     gumus:{ ad:'Cadılar Gecesi Okuru',  gorsel:'badges/badge_sezon_cadilar_gumus.png' },
     altin:{ ad:'Cadılar Gecesi Ustası', gorsel:'badges/badge_sezon_cadilar_altin.png' },
-    duyuru:'Karanlık bir mevsim başladı. Bu sezona uygun okuduğun kitap ya da öyküyü işaretle.'
+    duyuru:'Karanlık bir mevsim başladı. Bu sezona yakışan bir kitap ya da öykü okuduğunda işaretle.'
   },
   {
     id:'kis', ad:'Kış', emoji:'❄️',
@@ -260,11 +260,20 @@ function sezonDuyuruCiz(){
     'background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.35);' +
     'border-radius:6px;padding:.85rem 1rem;margin-bottom:.85rem;' +
     'font-family:\'Crimson Pro\',serif;color:var(--parchment);line-height:1.6';
+  /* ⚠️ "Nerede işaretlenir" cümlesi ŞART (Gökşin, 2026-09-11): işaret kitabın
+     modalında, akordeonun içinde duruyor — arayan bilmeden bulamaz, bulamayan
+     rozeti hiç kazanamaz. Yer tarifi sezona göre değişmediği için sezon
+     tanımına değil buraya yazıldı. */
   d.innerHTML =
     '<div style="font-family:\'Playfair Display\',serif;font-size:1.02rem;color:var(--gold);' +
          'margin-bottom:.3rem">' + s.emoji + ' Sezonluk rozet ortaya çıktı — ' + s.ad + '</div>' +
     '<div style="font-size:.93rem">' + s.duyuru +
       ' Kazanmak için <b>' + gun + ' günün</b> var; sezon bitince rozet kaybolacak.</div>' +
+    '<div style="font-size:.86rem;margin-top:.5rem;opacity:.85">' +
+      '<b>Nerede işaretlenir:</b> kitabı aç → <b>✨ Okuma Deneyimi</b> bölümünü genişlet → ' +
+      '<b>' + s.emoji + ' ' + s.ad + '</b> kutucuğuna dokun. ' +
+      'Öykülerde aynı kutucuk <b>📌 Durum</b> bölümünde. ' +
+      '<span style="opacity:.75">1 kitap ya da öykü 🥈 gümüş, 2 tanesi 🥇 altın kazandırır.</span></div>' +
     '<button onclick="sezonDuyuruKapat(\'' + anahtar + '\')" ' +
       'style="margin-top:.7rem;background:transparent;border:1px solid rgba(201,162,39,.45);' +
       'border-radius:4px;padding:.28rem .7rem;font-family:\'Space Mono\',monospace;' +
