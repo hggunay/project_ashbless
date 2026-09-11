@@ -408,17 +408,32 @@ function hesapVaktiCiz(){
         </div>
       </div>
       <div style="margin-top:.7rem;display:flex;align-items:center;gap:.5rem">
-        <button onclick="hesapVaktiTekrar()"
+        <button id="hvOynatBtn" onclick="hesapVaktiTekrar()"
                 style="background:transparent;color:var(--gold);border:1px solid rgba(201,162,39,.5);
                        border-radius:6px;padding:.3rem .8rem;font-family:'Space Mono',monospace;
-                       font-size:.65rem;cursor:pointer">↻ Tekrar oynat</button>
+                       font-size:.65rem;cursor:pointer">▶ Başlat</button>
+        <!-- Ses açma/kapama. Sesler yalnızca başlatma düğmesiyle çaldığı için
+             zaten habersiz çalmıyorlar; bu düğme sessiz ortamda olan kişi için.
+             Tercih cihazda saklanıyor (localStorage) — hesapta yer tutmuyor. -->
+        <button id="hvSesBtn" onclick="hvSesAcKapa(this)" title="Sesi aç / kapat"
+                style="background:transparent;border:1px solid rgba(201,162,39,.35);
+                       border-radius:6px;padding:.3rem .55rem;font-size:.75rem;
+                       color:var(--gold);cursor:pointer"></button>
       </div>
       <div id="hvSohbet"></div>
       ${hesapVaktiSinamaAktif()?hesapVaktiSinamaKutusu(secilen.id, v):''}
     </div>`;
   kap.appendChild(bolum);
-  // Sohbet çizimden hemen sonra kendiliğinden oynuyor.
-  hesapVaktiSohbetOynat(secilen.id, v);
+  // Ses düğmesinin simgesi kayıtlı tercihten geliyor (HTML'de boş bırakıldı).
+  const sesBtn = document.getElementById('hvSesBtn');
+  if(sesBtn) sesBtn.textContent = hvSesAcikMi() ? '🔊' : '🔇';
+  /* ⚠️ ARTIK KENDİLİĞİNDEN OYNAMIYOR (2026-09-10, Gökşin istedi): "melek şeytan
+     animasyonu sayfaya girer girmez başlıyor, istenildiği zaman açılan bir
+     başlatma butonu olsun." Eğlence sekmesine her girişte sohbetin baştan
+     akması yorucuydu.
+     Yan faydası ileriye dönük: sesler eklendiğinde tarayıcıların otomatik ses
+     engeline takılmayacak — ses, kullanıcının BU düğmeye dokunmasıyla
+     başlayacağı için "kullanıcı etkileşimi" şartı sağlanmış oluyor. */
 }
 /* Akordeon açılınca bölümü görünür yap. Sohbet aşağıda başlıyor; kaydırana
    kadar ilk balonlar kaçıyordu (Gökşin, 2026-09-06). Kapatırken kaydırma yok —
@@ -442,6 +457,11 @@ function hesapVaktiTekrar(){
   const secilen = _hesapVaktiZorla
     ? HESAP_VAKTI_SENARYOLARI.find(s=>s.id===_hesapVaktiZorla) || hesapVaktiSenaryo(v)
     : hesapVaktiSenaryo(v);
+  /* Düğme ilk açılışta "▶ Başlat" diyor; bir kez oynatıldıktan sonra aynı düğme
+     "↻ Tekrar oynat"a dönüyor. İki ayrı düğme koymak yerine tek düğme, çünkü
+     ikisinin işi birebir aynı — yalnızca kullanıcıya söyledikleri farklı. */
+  const dugme = document.getElementById('hvOynatBtn');
+  if(dugme) dugme.textContent = '↻ Tekrar oynat';
   hesapVaktiSohbetOynat(secilen.id, v);
 }
 
@@ -877,6 +897,93 @@ function hvBenimBalonum(kap, metin){
 
 /* Şeytan çalışıyormuş gibi: emojiler tek tek birikiyor, aralara bekleyiş
    noktaları giriyor. Hepsi TEK balonun içinde büyüyor. */
+/* ══ SESLER (2026-09-11) ═══════════════════════════════════════════════════
+   Zamanlamalar Gökşin'in kurduğu düzenden geliyor; şeritli bir ayar aracında
+   animasyonla birlikte dinlenerek ayarlandı, ekrandan tahminle yazılmadı.
+
+   ⚠️ Dosyalar `sesler/` klasöründe, deponun KÖKÜNDE DEĞİL.
+   ⚠️ Ses ancak kullanıcı ▶ Başlat'a bastıktan sonra çalıyor — tarayıcıların
+      kendiliğinden çalan sesi engellemesi böyle aşılıyor. Başlatma düğmesi
+      olmasaydı ÇAT sesi hiç duyulmazdı (animasyonun ilk karesinde).
+   ⚠️ Hareket duyarlılığı açıkken sahne anında çiziliyor, senkronlanacak bir
+      animasyon kalmıyor — o durumda ses de çalmıyor. */
+const HV_EFEKT_YOLU = 'sesler/';
+const HV_EFEKT_DOSYA = {
+  cam:        'cam.mp3',          // dragon-studio-glass-shattering
+  testere:    'testere.mp3',      // sound_garage-hand-saw-4-fx
+  matkap:     'matkap.mp3',       // freesound_community-power-drill
+  bilgisayar: 'bilgisayar.mp3',   // freesound_community-8-bit-beeping
+  kivilcim:   'kivilcim.mp3'      // freesound_community-electric — glitch sahnesinde
+};
+
+/* Çalışma sahnesinin ses düzeni. `tetik` sahne başlangıcına göre, `bas`/`bit`
+   dosyanın içinde kesilecek aralık, `cikis` sönme süresi.
+   matkap'ın çıkışı parçasından uzun — bilerek: baştan sona sönüyor, motor
+   yavaşlayıp duruyormuş gibi. */
+const HV_CALISMA_SESLERI = [
+  { ad:'testere',    tetik:0,    bas:0,   bit:1261, ses:1, giris:0, cikis:0    },
+  { ad:'cam',        tetik:1210, bas:0,   bit:1190, ses:1, giris:0, cikis:0    },
+  { ad:'matkap',     tetik:1800, bas:900, bit:4250, ses:1, giris:0, cikis:3900 },
+  { ad:'bilgisayar', tetik:1850, bas:0,   bit:3080, ses:1, giris:0, cikis:0    }
+];
+
+const HV_SES_TERCIH = 'hv-ses-acik';
+function hvSesAcikMi(){
+  try{ return localStorage.getItem(HV_SES_TERCIH) !== 'kapali'; }catch(e){ return true; }
+}
+function hvSesAcKapa(dugme){
+  const yeni = !hvSesAcikMi();
+  try{ localStorage.setItem(HV_SES_TERCIH, yeni?'acik':'kapali'); }catch(e){}
+  if(!yeni) hvSesleriDurdur();
+  if(dugme) dugme.textContent = yeni ? '🔊' : '🔇';
+}
+
+let _hvCalanSesler = [], _hvSesZamanlari = [], _hvSesAraliklari = [];
+function hvSesleriDurdur(){
+  _hvSesZamanlari.forEach(clearTimeout);   _hvSesZamanlari = [];
+  _hvSesAraliklari.forEach(clearInterval); _hvSesAraliklari = [];
+  _hvCalanSesler.forEach(a=>{ try{ a.pause(); }catch(e){} });
+  _hvCalanSesler = [];
+}
+
+/* Tek bir sesi kesilmiş ve sönümlü olarak çalar.
+   Seviye 40 ms'de bir güncelleniyor; tek bir sayıyı yumuşatmak için Web Audio
+   grafiği kurmaya değmez, kulak bu adımları sürekli algılıyor. */
+function hvEfektCal(ad, bas, bit, seviye, giris, cikis){
+  if(!hvSesAcikMi()) return;
+  let a;
+  try{ a = new Audio(HV_EFEKT_YOLU + HV_EFEKT_DOSYA[ad]); }catch(e){ return; }
+  const sure = Math.max(60, bit - bas);
+  a.volume = giris > 0 ? 0 : Math.max(0, Math.min(1, seviye));
+  a.addEventListener('loadedmetadata', ()=>{
+    try{ a.currentTime = bas/1000; }catch(e){}
+    a.play().catch(()=>{});           // engellenirse sessizce vazgeç
+    const t0 = (performance && performance.now) ? performance.now() : Date.now();
+    const sayac = setInterval(()=>{
+      const simdi = (performance && performance.now) ? performance.now() : Date.now();
+      const g = simdi - t0, kalan = sure - g;
+      let v = seviye;
+      if(giris > 0 && g < giris)     v = seviye * (g/giris);
+      if(cikis > 0 && kalan < cikis) v = Math.min(v, seviye * Math.max(0, kalan/cikis));
+      try{ a.volume = Math.max(0, Math.min(1, v)); }catch(e){}
+      if(g >= sure){ clearInterval(sayac); try{ a.pause(); }catch(e){} }
+    }, 40);
+    _hvSesAraliklari.push(sayac);
+  });
+  try{ a.load(); }catch(e){}
+  _hvCalanSesler.push(a);
+}
+
+/* Çalışma sahnesinin seslerini sahne başlangıcına göre kurar. Sahne akışı
+   art arda `await` ile ilerlediği için sesleri tek tek aralara serpiştirmek
+   yerine, başlangıçta hepsi zamanlanıyor — çizelge deterministik. */
+function hvCalismaSesleriniKur(){
+  if(!hvSesAcikMi()) return;
+  for(const s of HV_CALISMA_SESLERI)
+    _hvSesZamanlari.push(setTimeout(
+      ()=>hvEfektCal(s.ad, s.bas, s.bit, s.ses, s.giris, s.cikis), s.tetik));
+}
+
 async function hvCalismaSahnesi(kap){
   const azHareket = typeof window!=='undefined' && window.matchMedia &&
                     window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -920,6 +1027,10 @@ async function hvCalismaSahnesi(kap){
     return;
   }
 
+  /* Sesler ancak BURADA kuruluyor — yukarıdaki `azHareket` dalı erken dönüyor
+     ve orada sahne anında çiziliyor, senkronlanacak bir animasyon yok. */
+  hvCalismaSesleriniKur();
+
   for(const adim of HV_CALISMA_ADIMLARI){
     if(adim.kod){ await kodSatiri(); await hvBekle(adim.sure); continue; }
     if(adim.nokta){
@@ -959,6 +1070,10 @@ async function hvEkranGlitch(){
   try{
     document.body.appendChild(kat);
     document.body.classList.add('hv-glitch-govde');
+    /* Kıvılcım sesi glitch'le birlikte (2026-09-11, Gökşin istedi).
+       Süresi glitch'le aynı; sonunda 300 ms sönüyor ki ekran düzelirken ses
+       de kesilmiş gibi değil, dinmiş gibi olsun. */
+    hvEfektCal('kivilcim', 0, HV_GLITCH_SURE, 1, 0, 300);
     await hvBekle(HV_GLITCH_SURE);
   } finally {
     document.body.classList.remove('hv-glitch-govde');
@@ -1007,10 +1122,18 @@ async function hvYokEtmeSekansi(kap){
   await hvBekle(250);
   satir().textContent=HV_CAPTCHA_ROBOT;
   await hvBekle(850);
+  /* Rakam ve üç nokta ARTIK AYNI ANDA ÇIKMIYOR (2026-09-11, Gökşin bildirdi):
+     "3..." tek hamlede basılıyordu, oysa hemen yukarıdaki virüs satırında
+     noktalar tek tek düşüyor — aynı sahnede iki farklı ritim vardı.
+     Şimdi rakam görünüyor, sonra noktalar birer birer ekleniyor.
+     ⚠️ Toplam süre BİLEREK değişmedi: 3×130 + 290 = 680 ms, yani sahnenin
+     uzunluğu aynı kaldı, yalnızca içindeki ritim düzeldi. */
   const sayim=satir('hv-sayim');
   for(const s of ['3','2','1']){
-    sayim.textContent+=(sayim.textContent?' ':'')+s+'...';
-    await hvBekle(680);
+    if(sayim.textContent) sayim.textContent+=' ';
+    sayim.textContent+=s;
+    for(let i=0;i<3;i++){ sayim.textContent+='.'; await hvBekle(130); }
+    await hvBekle(290);
   }
   await hvBekle(300);
 }
@@ -1121,9 +1244,9 @@ async function hvYuzDizisi(kap, kim, yuzler, avatarGoster){
    değil: tarayıcılar kullanıcı dokunmadan ses çalmayı zaten engelliyor, bu
    tasarım o engeli baştan aşıyor.
 
-   ⚠️ Ses dosyası henüz yok. Dosya gelene kadar çubuk görünüyor ama basınca bir
-   şey olmuyor. Beklenen yer: `sesler/seytan-kahkaha.mp3` (deponun kökünde
-   `sesler` klasörü). Lisans: CC0 ya da atıf istemeyen bir kaynak. */
+   ✅ Dosyalar geldi (aşağıdaki liste), `sesler/` klasöründe duruyorlar.
+   Bu bölüm KAHKAHA sesleri içindir; çalışma sahnesinin efektleri ayrı
+   (`HV_EFEKT_DOSYA`, yukarıda). İki listeyi karıştırma. */
 /* ⚠️ BU LİSTEYE YALNIZCA GERÇEKTEN VAR OLAN DOSYALARI YAZ. Olmayan bir dosya
    seçilirse çubuk çıkıyor ama basınca hiçbir şey olmuyor — sessiz bir kusur,
    fark etmesi zor. Yeni ses ekleyince buraya bir satır ekle. */
@@ -1212,6 +1335,9 @@ async function hvCatSahnesi(kap){
   // Hareket duyarlılığı — alohomora animasyonundaki kuralın aynısı.
   if(hvAzHareket()) return;
   hvSatir(kap,'😈','hv-balon hv-seytan hv-cat','ÇAT!');
+  /* Ses yazıyla AYNI ANDA — Gökşin araçta doğruladı: "çat sesi animasyonla çok
+     uyumlu". Dosya 4 sn; ilk 900 ms'i alınıyor, gerisi kuyruk. */
+  hvEfektCal('cam', 0, 900, 1, 0, 0);
   await hvBekle(1100);
   await hvYuzDizisi(kap,'seytan',HV_CAT_YUZLER,false);
 }
@@ -1227,6 +1353,9 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
   const kap=document.getElementById('hvSohbet');
   if(!kap) return;
   kap.innerHTML='';
+  /* Önceki oynatıştan kalan ses varsa sustur — "Tekrar oynat"a arka arkaya
+     basıldığında iki sahne üst üste binip gürültüye dönüyordu. */
+  hvSesleriDurdur();
   _hvKullanilanSesler=[];   // her sohbet kendi ses havuzuyla başlıyor
   /* Sohbet sürerken altta boşluk açılıyor ki yeni balonlar ekranın alt
      kenarına yapışmasın. Sonda kapanıyor; arada hata olursa da bir sonraki
