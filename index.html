@@ -1773,6 +1773,17 @@ try{
             </div>
           </div>
 
+          <!-- Sekme tanıtım yazıları — geri getirme.
+               ⚠️ Bu düğme OLMADAN `karsilamaSifirla` ölü kod olurdu: "tekrar
+               gösterme"ye basan biri şeridi bir daha hiç göremezdi ve geri
+               almanın yolu bulunmazdı. (Bkz. Velora'daki `logoPath` dersi:
+               hiçbir yerden çağrılmayan ayar bir işe yaramıyor.) -->
+          <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.85rem;margin-top:.25rem">
+            <div style="font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);opacity:.8;margin-bottom:.4rem">💡 Sekme tanıtımları</div>
+            <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.6rem">Her sekmeyi ilk açtığında ne işe yaradığını anlatan bir şerit çıkıyor. "Tekrar gösterme" dediklerini buradan geri getirebilirsin.</div>
+            <button class="btn btn-sm" onclick="karsilamaSifirla()" style="background:transparent;border:1px solid rgba(201,162,39,.4);color:var(--gold)">Tanıtım yazılarını geri getir</button>
+          </div>
+
           <!-- Veri Yedekleme — akordeon -->
           <div class="detail-section" style="border-top:1px solid rgba(201,162,39,.15);padding-top:.25rem;margin-top:.25rem">
             <div class="detail-acc-header" onclick="toggleSection('set-backup')">
@@ -1912,6 +1923,9 @@ try{
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
 <script src="uye-onay.js"></script>
+<!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
+     ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
+<script src="karsilama.js"></script>
 <script src="hesap-vakti-cumleler.js"></script>
 <script src="hesap-vakti.js"></script>
 
@@ -4647,6 +4661,9 @@ function enterApp(){
   document.getElementById(targetPanel).classList.add('active');
   if(targetTab) targetTab.classList.add('active');
   renderPanelContent(targetPanel);
+  /* Giriş sonrası açılan ilk sekme showPanel'den GEÇMİYOR — şerit burada da
+     çağrılmazsa yeni üye ilk gördüğü sekmenin tanıtımını hiç görmez. */
+  if(typeof karsilamaGoster==='function') karsilamaGoster(targetPanel);
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
   setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
   // İlk state'i kaydet
@@ -4689,6 +4706,8 @@ function _showPanelNoHistory(id, el){
   if(el) el.classList.add('active');
   try{ localStorage.setItem('aa-lastpanel', id); if(me) localStorage.setItem('aa-lastpanel-'+me, id); }catch(e){}
   renderPanelContent(id);
+  // Geri/ileri tuşuyla gelindiğinde de şerit görünsün.
+  if(typeof karsilamaGoster==='function') karsilamaGoster(id);
 }
 
 function showPanel(id,el){
@@ -4702,6 +4721,10 @@ function showPanel(id,el){
     history.pushState({panel:id},'',location.pathname+(id!=='myBooks'?'#'+id:''));
   }
   renderPanelContent(id);
+  /* Sekme karşılama şeridi (2026-09-11). İçerik çizildikten SONRA çağrılıyor:
+     bazı paneller kendi içeriğini innerHTML ile baştan yazıyor, önce
+     eklenseydi silinirdi. Şerit panelin ilk çocuğu olarak giriyor. */
+  if(typeof karsilamaGoster==='function') karsilamaGoster(id);
 }
 function viewMember(u){
   if(u===me){stopViewing();return;}
