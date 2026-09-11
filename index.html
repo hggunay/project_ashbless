@@ -9716,18 +9716,29 @@ function launchConfetti(type){
      Gökşin'in isteği: "ikiye ayrıldığı yerden, ekranın ortasından etrafa
      fırlayan yıldızlar". Bu yüzden yerçekimi düşük ve hız yatay. */
   const isAlohomora=type==='alohomora';
-  const count=isAlohomora?115:isCreator?200:isAshbless?120:isSecret?80:isBadge?40:isGroup?180:80;
+  /* Sezonluk rozetler (2026-09-11). Kendi paletleri var çünkü rozet kısa
+     ömürlü: birkaç hafta sonra ızgaradan kayboluyor ve geriye yalnızca
+     kazanma anı kalıyor. Gökşin: "rozetler zaten uzun süre görünmeyecek" —
+     tam da bu yüzden o an ayırt edilir olsun.
+     Tür adı 'sezon-<id>' biçiminde; palet sezonluk.js'den geliyor, burada
+     sabit liste tutulmuyor ki yeni sezon eklerken iki dosya değişmesin. */
+  const sezonTuru=(typeof type==='string'&&type.indexOf('sezon-')===0)?type.slice(6):null;
+  const isSezon=!!sezonTuru;
+  const count=isAlohomora?115:isCreator?200:isAshbless?120:isSezon?90:isSecret?80:isBadge?40:isGroup?180:80;
   // Yerçekimi 0.10 → 0.07: ömür uzayınca aynı düşüş hızı yıldızları alt kenara
   // sürüklüyordu; havada daha uzun kalsınlar diye hafifletildi.
-  const gravity=isAlohomora?0.07:isCreator?0.18:isAshbless?0.22:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
-  const spread=isCreator?1.8:isAshbless?1.6:isSecret?1.4:isGroup?1.6:isBadge?0.8:1.2;
+  const gravity=isAlohomora?0.07:isCreator?0.18:isAshbless?0.22:isSezon?0.24:isSecret?0.28:isGroup?0.28:isBadge?0.5:0.35;
+  const spread=isCreator?1.8:isAshbless?1.6:isSezon?1.5:isSecret?1.4:isGroup?1.6:isBadge?0.8:1.2;
 
   const goldPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#b8860b'];
   const colorPalette=['#c9a227','#8a4513','#4a6741','#6b3a2a','#f0d060','#c17f3c','#2d5a3d'];
   const ashblessPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe'];
   const secretPalette=['#c9a227','#f0d060','#ffeaa0','#e8c840','#fff8dc','#b8860b'];
   const creatorPalette=['#c9a227','#f0d060','#7c3aed','#a855f7','#67e8f9','#0ea5e9','#ffeaa0','#ddd6fe','#fff','#f0d060'];
-  const palette=isCreator?creatorPalette:isSecret?secretPalette:isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
+  /* Sezon paleti bulunamazsa altına düşüyor — sezonluk.js yüklenmemişse ya da
+     tanımsız bir sezon adı gelirse konfeti yine patlasın, sessizce kaybolmasın. */
+  const sezonPalet=(isSezon&&typeof sezonKonfetiPaleti==='function')?sezonKonfetiPaleti(sezonTuru):null;
+  const palette=sezonPalet?sezonPalet:isCreator?creatorPalette:isSecret?secretPalette:isAshbless?ashblessPalette:isGroup||isBadge?goldPalette:colorPalette;
 
   function drawStar(ctx,r){
     ctx.beginPath();

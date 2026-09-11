@@ -28,6 +28,7 @@ const SEZONLAR = [
     basAy:9, bitAy:10,                       // 1 Eylül – 31 Ekim
     gumus:{ ad:'Cadılar Gecesi Okuru',  gorsel:'badges/badge_sezon_cadilar_gumus.png' },
     altin:{ ad:'Cadılar Gecesi Ustası', gorsel:'badges/badge_sezon_cadilar_altin.png' },
+    konfeti:['#e07a2f','#c25a12','#f0a04b','#2b2118','#6b3fa0','#8f5bd0','#ffd08a'],
     duyuru:'Karanlık bir mevsim başladı. Bu sezona yakışan bir kitap ya da öykü okuduğunda işaretle.'
   },
   {
@@ -35,9 +36,18 @@ const SEZONLAR = [
     basAy:12, bitAy:2,                       // 1 Aralık – 28/29 Şubat (yıl aşar)
     gumus:{ ad:'Kış Okumaları',     gorsel:'badges/badge_sezon_kis_gumus.png' },
     altin:{ ad:'Kış Gecesi Ustası', gorsel:'badges/badge_sezon_kis_altin.png' },
+    konfeti:['#ffffff','#dff1ff','#a8d8f0','#7ab8dd','#c9d6e0','#9fb3c8','#eaf6ff'],
     duyuru:'Kış geldi. Bu mevsime yakışan bir kitap ya da öykü okuduğunda işaretle.'
   }
 ];
+
+/* Konfeti rengini sezon kimliğinden bulur. `launchConfetti` bunu çağırıyor;
+   palet burada duruyor ki yeni sezon eklerken index.html'e dokunmak gerekmesin.
+   Bulunamazsa null dönüyor, konfeti de altın paletine düşüyor. */
+function sezonKonfetiPaleti(sezonId){
+  const s = SEZONLAR.find(x => x.id === sezonId);
+  return (s && s.konfeti && s.konfeti.length) ? s.konfeti : null;
+}
 
 /* Kaç kitap hangi kademeyi veriyor. Gökşin'in kararı: sezonluk rozet zorlayıcı
    olmasın — okuyanın hazır bir listesi olabilir, araya kitap sıkıştırmak zor.

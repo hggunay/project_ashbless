@@ -1571,6 +1571,10 @@ function shimmerNewBadges(prevEarned){
         const bid=m[1];
         if(bid==='secret_creator') launchConfetti('creator');
         else if(SECRET_IDS.has(bid)) launchConfetti('secret');
+        /* Sezonluk rozetin kendi konfeti rengi var (sezonluk.js → palet).
+           Rozet birkaç hafta sonra ızgaradan kayboluyor; geriye kazanma anı
+           kalıyor, o an ayırt edilir olsun diye. Kimlik 'sezon_<id>_<kademe>'. */
+        else if(bid.indexOf('sezon_')===0) launchConfetti('sezon-'+bid.split('_')[1]);
         else launchConfetti('badge');
       }
     });
