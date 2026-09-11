@@ -1354,17 +1354,36 @@ const hvSeytanaDeginiyorMu = m => /Şeytan/i.test(m);
 
 async function hesapVaktiSohbetOynat(senaryoId, veri){
   hvStil();
-  const kap=document.getElementById('hvSohbet');
-  if(!kap) return;
-  kap.innerHTML='';
+  const disKap=document.getElementById('hvSohbet');
+  if(!disKap) return;
+  disKap.innerHTML='';
   /* Önceki oynatıştan kalan ses varsa sustur — "Tekrar oynat"a arka arkaya
      basıldığında iki sahne üst üste binip gürültüye dönüyordu. */
   hvSesleriDurdur();
   _hvKullanilanSesler=[];   // her sohbet kendi ses havuzuyla başlıyor
+
+  /* ⚠️ HER OYNATIŞ KENDİ KABINA YAZIYOR (2026-09-11, Gökşin bildirdi:
+     "tekrar oynata arka arkaya basınca aynı cümle arka arkaya çıkıyor…
+      4 tane utandım/arsızım sorusu çıktı").
+
+     Sebep: bu fonksiyon baştan sona `await`lerle ilerliyor. Yeni oynatış
+     `innerHTML=''` ile ekranı temizliyordu ama ÖNCEKİ çağrı hâlâ çalışıyordu
+     ve elindeki `kap` referansına yazmaya devam ediyordu — silinen şey eski
+     balonlardı, akışın kendisi değil. Sonuç: iki (ya da dört) diyalog aynı
+     kaba iç içe akıyordu.
+
+     Çözüm: dış kap temizleniyor, akışa ise HER SEFERİNDE YENİ bir iç kap
+     veriliyor. Eski çağrı yazmaya devam etse bile yazdığı düğüm artık DOM'da
+     değil — görünmüyor, kendiliğinden sönüyor. Bir "iptal bayrağı" koyup
+     onlarca `await` noktasında tek tek kontrol etmeye gerek kalmıyor.
+     ⚠️ `oynuyor` sınıfı DIŞ kapta kalmalı: alttaki boşluğu o açıyor. */
+  const kap=document.createElement('div');
+  disKap.appendChild(kap);
+
   /* Sohbet sürerken altta boşluk açılıyor ki yeni balonlar ekranın alt
      kenarına yapışmasın. Sonda kapanıyor; arada hata olursa da bir sonraki
      oynatış burada sıfırlıyor. */
-  kap.className='oynuyor';
+  disKap.className='oynuyor';
   const banka=(typeof HV_CUMLELER!=='undefined') && HV_CUMLELER[senaryoId];
   if(!banka){ kap.innerHTML='<div style="opacity:.6;font-size:.8rem">Bu senaryo için cümle bulunamadı.</div>'; return; }
   const senaryo=HESAP_VAKTI_SENARYOLARI.find(s=>s.id===senaryoId);
@@ -1542,5 +1561,9 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
   }
   await melegiKapat();
   await hvPsst(kap, trenckotOynadi, seytanCekildi);
-  kap.className='';   // sohbet bitti, alttaki boşluk kalksın
+  /* ⚠️ Boşluğu yalnızca HÂLÂ GEÇERLİ olan oynatış kapatabilir. Eski bir çağrı
+     geç bitip burayı çalıştırırsa, o sırada devam eden yeni sohbetin altındaki
+     boşluğu kapatır ve balonlar ekranın dibine yapışır. `kap` DOM'dan
+     düştüyse o oynatış artık geçersizdir. */
+  if(kap.parentNode===disKap) disKap.className='';
 }
