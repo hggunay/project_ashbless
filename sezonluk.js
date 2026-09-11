@@ -121,8 +121,19 @@ function sezonSayisi(kitaplar, ctx){
    ⚠️ `unshift`: sezonluk rozet süreli olduğu için listenin BAŞINDA duruyor,
    fark edilsin diye. Sıraya bağlı başka bir kod yok (kontrol edildi).
    ⚠️ badges.js'den SONRA yüklenmeli — BADGE_CATS orada tanımlı. */
-(function sezonRozetleriniKur(){
+/* ⚠️ IIFE DEĞİL, adlandırılmış fonksiyon (2026-09-11): kategori sayfa
+   yüklenirken bir kez kuruluyordu ve sonradan yeniden kurmanın yolu yoktu.
+   Sonucu: kış sezonunu denemek için `sezonBul`'u geçici olarak değiştirmek
+   işe yaramıyordu — rozetler zaten kurulmuş hâlde kalıyordu.
+   Artık dışarıdan çağrılabiliyor; her çağrıda önce eskisini çıkarıyor, yani
+   iki kez çalıştırmak kategoriyi çoğaltmıyor. */
+function sezonRozetleriniKur(){
   if(typeof BADGE_CATS === 'undefined') return;
+  // Önce varsa eski sezonluk kategoriyi çıkar (tekrar kurulabilsin).
+  for(let i = BADGE_CATS.length - 1; i >= 0; i--){
+    const c = BADGE_CATS[i];
+    if(c && c.chains && c.chains.length === 1 && c.chains[0].id === 'sezonluk') BADGE_CATS.splice(i, 1);
+  }
   const s = sezonBul();
   if(!s) return;
   BADGE_CATS.unshift({
@@ -142,7 +153,8 @@ function sezonSayisi(kitaplar, ctx){
       ]
     }]
   });
-})();
+}
+sezonRozetleriniKur();   // sayfa yüklenirken bir kez
 
 /* ── KİTAP / ÖYKÜ İŞARETİ ─────────────────────────────────────────────
    Mevcut `flagChip` kalıbının aynısı, tek farkı değerin boolean değil sezon
