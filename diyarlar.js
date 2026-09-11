@@ -113,6 +113,66 @@ async function checkAndAddRealmEvent(kaynakKayit) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// GERİ ALMA — okuma geri alınınca keşfi de kaldır (2026-09-11)
+// ──────────────────────────────────────────────────────────────────────
+// Gökşin bildirdi: *"bir kitabı yanlışlıkla okundu yapıp geri aldığında harita
+// ve anasayfadan silinmemesi bence normal olmamalı. çünkü gerçekten okunmamış.
+// sürekli firebase'e gidip silemem."* Haklı.
+//
+// Dosyanın başındaki "keşif KALICIDIR" kuralı KATALOG DEĞİŞİKLİKLERİNE karşı
+// konmuştu — takma ad eklenip çıkarıldığında hak edilmiş diyarlar kaybolmasın
+// diye. Kullanıcının kendi okumasını geri alması o kuralın kapsamı değil.
+//
+// ⚠️ DAR KAPSAMLI, bilerek: yalnızca kullanıcının geri aldığı KAYDA bakıyor.
+// "Her açılışta hepsini denkleştir" YAPILMIYOR — katalogdan bir takma ad
+// çıkarıldığı gün hak edilmiş diyarlar sessizce silinirdi. Veriyi bir kod
+// değişikliği silmemeli, yalnızca kullanıcının eylemi silebilir.
+//
+// Ülke kayıtlarında bu zaten böyle çalışıyordu (index.html: kitap silme,
+// geçmişe alma, "geri al"). Diyarlar o üç yerin hiçbirinde yoktu; bu fonksiyon
+// aynı kalıbı diyarlara getiriyor.
+//
+// `kaynakKayit` = artık okunmuş SAYILMAYAN kayıt {title, author, series}.
+// ⚠️ Kaydın durumu DEĞİŞTİRİLDİKTEN SONRA çağrılmalı: destek kontrolü
+// `diyarKaynaklari(me)`yi okuyor, o da güncel duruma bakıyor.
+async function diyarKaydiniGeriAl(kaynakKayit, sessiz) {
+  if (!kaynakKayit || !kaynakKayit.title) return null;
+  if (!db.realmEvents || !db.realmEvents[me]) return null;
+
+  const bulunan = diyarBul(kaynakKayit, DIYAR_KATALOG);
+  if (!bulunan) return null;
+  const id = bulunan.diyar.id;
+
+  // Zaten kayıt yoksa iş yok.
+  if (!db.realmEvents[me].some(e => e.diyarId === id)) return null;
+
+  // Bu diyarı açan BAŞKA bir okuma hâlâ duruyor mu? Duruyorsa dokunma.
+  // Örnek: 11/22/63 geri alındı ama "Karanlık Öyküler" hâlâ okunmuş — Derry kalır.
+  const halaAcik = acilmasiGerekenDiyarlar(diyarKaynaklari(me), DIYAR_KATALOG)
+    .some(a => a.diyarId === id);
+  if (halaAcik) return null;
+
+  /* ⚠️ Yazma başarısız olursa YEREL LİSTE GERİ ALINIYOR. Olmazsa diyar
+     ekrandan kayboluyor ama sunucuda duruyor; kullanıcı sayfayı yenileyince
+     geri geliyor ve "silmiştim, geri geldi" gibi görünüyor. Sınamada yakalandı
+     (2026-09-11). Ekranla sunucu ayrışmasın. */
+  const oncekiListe = db.realmEvents[me];
+  db.realmEvents[me] = db.realmEvents[me].filter(e => e.diyarId !== id);
+  const ok = await saveRealmEvents(me);
+  if (ok === false) {
+    db.realmEvents[me] = oncekiListe;
+    console.warn('diyarKaydiniGeriAl: yazılamadı, kayıt duruyor →', id);
+    if (typeof mesajGoster === 'function')
+      mesajGoster('Diyar kaydı kaldırılamadı — bağlantını kontrol edip tekrar dene.', 'uyari');
+    return null;
+  }
+  if (!sessiz && typeof mesajGoster === 'function') {
+    mesajGoster('🗺️ ' + bulunan.diyar.ad + ' haritandan kaldırıldı — onu açan okuma geri alındı.', 'uyari');
+  }
+  return bulunan.diyar;
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // ONARIM — "🗺️ Eksik Diyarları Ekle"
 // ──────────────────────────────────────────────────────────────────────
 // Uygulamadaki "🌍 Eksik Ülkeleri Ekle" (backfillCountryEvents) ile aynı işi
@@ -168,6 +228,7 @@ function backfillRealmEvents(sessiz) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     REALM_EVENTS_PATH, realmEventsOf, kesfedilenDiyarIdleri,
-    diyarKaynaklari, saveRealmEvents, checkAndAddRealmEvent, backfillRealmEvents
+    diyarKaynaklari, saveRealmEvents, checkAndAddRealmEvent, backfillRealmEvents,
+    diyarKaydiniGeriAl
   };
 }

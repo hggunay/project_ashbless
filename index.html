@@ -5938,6 +5938,13 @@ async function confirmRemoveBookFinal(id, deleteNote){
     if(!db.countryEvents[me].length) delete db.countryEvents[me];
   }
 }
+  /* Diyar keşfini de geri al (2026-09-11) — ülke kaydıyla aynı mantık.
+     ⚠️ Kitap listeden ÇIKARILDIKTAN sonra çağrılıyor: fonksiyon "bu diyarı
+     açan başka okuma kaldı mı" diye güncel listeye bakıyor. */
+  if(typeof diyarKaydiniGeriAl==='function'){
+    diyarKaydiniGeriAl({title:book.title,author:book.author,series:book.series})
+      .catch(e=>console.warn('diyar geri alma:',e));
+  }
   // Seri referanslarını temizle — silinen kitaba işaret eden öksüz bookId bırakma (Ö34)
   if(db.seriesData&&db.seriesData[me]&&db.seriesData[me].series){
     Object.values(db.seriesData[me].series).forEach(ser=>{
@@ -6897,6 +6904,18 @@ function confirmMarkAsUnread(bookId, status){
       );
     }
   }
+  /* Diyar keşfini de geri al (2026-09-11) — ülke kaydının hemen yanında,
+     aynı gerekçeyle: kitap artık okunmuş sayılmıyorsa açtığı diyar da
+     haritada durmamalı. Başka bir okuma o diyarı destekliyorsa kalıyor.
+     ⚠️ Durum DEĞİŞTİKTEN sonra çağrılıyor (yukarıda readingStatus/endDate
+     güncellendi), çünkü kontrol güncel listeye bakıyor.
+     ⚠️ Retroaktif (geçmişte okundu) işaretine kanca TAKILMADI: o kitaplar
+     `readBooksOf` tarafından hâlâ kaynak sayılıyor, yani diyar hak edilmiş
+     kalıyor. */
+  if(typeof diyarKaydiniGeriAl==='function'){
+    diyarKaydiniGeriAl({title:book.title,author:book.author,series:book.series})
+      .catch(e=>console.warn('diyar geri alma:',e));
+  }
   saveDb();
   // Birlikte okuma oturumundaki "bitirdi" kaydı da geri alınsın (2026-08-30).
   // Eskiden bu düğme yalnızca kitabı geri alıyor, oturumdaki %100'ü olduğu gibi
@@ -7336,11 +7355,22 @@ function saveStoryField(storyId, field, value){
   if(!story) return;
   const prevValid=snapshotValidBooks();
   const prevCtx=snapshotBadgeContext();
+  const oncekiDurum=story.status;
   story[field]=value;
   saveDb();
   renderStories();
   renderJournal();
   checkAndAwardBadges(prevValid,500,prevCtx);
+  /* Öykü "okundu"dan çıktıysa açtığı diyar da geri alınsın (2026-09-11).
+     Kitaplardaki davranışın aynısı — Gökşin bir öyküyü deneme amacıyla okundu
+     yapıp geri aldığında Derry haritasında kalmıştı.
+     ⚠️ Yalnızca durum DEĞİŞTİĞİNDE: her alan kaydında (başlık, not, puan…)
+     boşuna çalışmasın. */
+  if(field==='status' && oncekiDurum==='read' && value!=='read' &&
+     typeof diyarKaydiniGeriAl==='function'){
+    diyarKaydiniGeriAl({title:story.title,author:story.author,series:null})
+      .catch(e=>console.warn('diyar geri alma (öykü):',e));
+  }
 }
 
 function setStoryRating(storyId, rating){

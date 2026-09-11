@@ -958,7 +958,18 @@ function confirmFeedEventDelete(btnEl,cardType,eventId){
   } else if(cardType==='story'){
     if(db.stories&&db.stories[me]){
       const idx=db.stories[me].findIndex(s=>s.id===Number(eventId));
-      if(idx>-1) db.stories[me].splice(idx,1);
+      if(idx>-1){
+        const silinen=db.stories[me][idx];
+        db.stories[me].splice(idx,1);
+        /* Silinen öykü bir diyar açmışsa ve başka okuma onu desteklemiyorsa
+           keşif de geri alınsın (2026-09-11). Kitap silmedeki davranışın
+           aynısı. Listeden ÇIKARILDIKTAN sonra çağrılıyor — kontrol güncel
+           listeye bakıyor. */
+        if(silinen && typeof diyarKaydiniGeriAl==='function'){
+          diyarKaydiniGeriAl({title:silinen.title,author:silinen.author,series:null})
+            .catch(e=>console.warn('diyar geri alma (öykü silme):',e));
+        }
+      }
     }
   } else if(cardType==='streak_milestone'){
     if(db.streakEvents&&db.streakEvents[me]){
