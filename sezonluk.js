@@ -138,20 +138,67 @@ function sezonSayisi(kitaplar, ctx){
    Mevcut `flagChip` kalıbının aynısı, tek farkı değerin boolean değil sezon
    anahtarı olması — böylece hangi yılın hangi sezonuna ait olduğu kayıtlı
    kalıyor ve ertesi yıl eski işaretler yeni rozeti kazandırmıyor. */
+/* O sezonun rozeti kazanılmış mı? Kaynak `badgeEvents` — geçmiş sezonlar için
+   tek bilgi kaynağı orası (rozetin kendisi ızgaradan kalkmış oluyor). */
+function sezonKazanildiMi(anahtar, kullanici){
+  const c = sezonCoz(anahtar);
+  if(!c) return false;
+  const olaylar = (typeof db !== 'undefined' && db.badgeEvents &&
+                   db.badgeEvents[kullanici || (typeof me !== 'undefined' ? me : null)]) || [];
+  return olaylar.some(e => {
+    if(!e || !e.badgeId || e.badgeId.indexOf('sezon_' + c.sezon.id + '_') !== 0) return false;
+    return sezonYili(c.sezon, new Date(e.ts || 0)) === c.yil;
+  });
+}
+
+/* Kitap/öykü üzerindeki sezon işareti. İKİ ayrı şey basabiliyor:
+
+   1. GEÇMİŞ İŞARET — kayıtta başka bir sezonun anahtarı varsa, salt okunur bir
+      rozet olarak duruyor ("🎃 Cadılar Bayramı 2026"). Gökşin'in isteği:
+      *"emoji kalabilir; kazanana kadar soluk, kazanınca renkli."* Rozet
+      kazanıldıysa tam renkli, kazanılmadıysa soluk.
+      ⚠️ Bu olmadan sezon kapanınca kitapta HİÇBİR iz kalmıyordu: hangi kitabı
+      hangi sezon için okuduğun görünmez oluyordu ve gelecek yıl o kayıt sessizce
+      üzerine yazılıyordu (Gökşin sordu, 2026-09-11).
+
+   2. AÇIK SEZONUN İŞARETİ — yalnızca sezon açıkken ve kayıt "geçmişte okundu"
+      değilken; tıklanabilir.
+
+   Not: geçmiş işaret SİLİNEMİYOR. Sezon kapandıktan sonra o kayıt bir tarih;
+   değiştirilebilseydi geçmiş rozet geçmişiyle tutarsız hale gelirdi. */
 function sezonChip(kayit, duzenlenebilir, tiklama){
-  const s = sezonBul();
-  if(!s) return '';                                  // sezon kapalı
-  if(kayit && kayit.retroactive) return '';          // geçmişte okunan sayılmıyor
   const anahtar = sezonAnahtari();
-  const acik = kayit && kayit.sezon === anahtar;
-  const cls = duzenlenebilir ? 'check-chip' : 'check-chip readonly';
-  const tik = duzenlenebilir && tiklama ? 'onclick="' + tiklama + '"' : '';
-  return '<span class="' + cls + (acik ? ' active' : '') + '" ' + tik + '>' +
-         s.emoji + ' ' + s.ad + '</span>';
+  const s = sezonBul();
+  let html = '';
+
+  const eski = kayit && kayit.sezon && kayit.sezon !== anahtar ? sezonCoz(kayit.sezon) : null;
+  if(eski){
+    const kazanildi = sezonKazanildiMi(kayit.sezon);
+    html += '<span class="check-chip readonly active" title="' +
+            (kazanildi ? 'Bu sezonun rozeti kazanıldı' : 'Bu sezon için okundu ama rozet kazanılmadı') +
+            '" style="' + (kazanildi ? '' : 'opacity:.45;') + '">' +
+            eski.sezon.emoji + ' ' + eski.sezon.ad + ' ' +
+            sezonYilEtiketi(eski.sezon, eski.yil) + '</span>';
+  }
+
+  if(s && !(kayit && kayit.retroactive)){
+    const acik = kayit && kayit.sezon === anahtar;
+    const cls = duzenlenebilir ? 'check-chip' : 'check-chip readonly';
+    const tik = duzenlenebilir && tiklama ? 'onclick="' + tiklama + '"' : '';
+    html += '<span class="' + cls + (acik ? ' active' : '') + '" ' + tik + '>' +
+            s.emoji + ' ' + s.ad + '</span>';
+  }
+  return html;
 }
 
 /* Kitaptaki işaret. `toggleFlag`'in aynısı; tek farkı değerin boolean değil
-   sezon anahtarı olması. Rozet kontrolü aynı şekilde tetikleniyor. */
+   sezon anahtarı olması. Rozet kontrolü aynı şekilde tetikleniyor.
+   ⚠️ Alan TEK değer tutuyor: aynı kitap iki farklı yılın sezonunda
+   işaretlenirse eskisi yenisiyle değişir. Bilerek böyle — aynı kitabı iki
+   sezonda okumak nadir, dizi tutmak veri şeklini gereksiz karmaşıklaştırırdı.
+   Kullanıcı körlemesine yapmıyor: eski işaret ekranda ayrı bir rozet olarak
+   duruyor, yenisine bastığında kaybolduğunu görüyor. Rozet GEÇMİŞİ bundan
+   etkilenmiyor — o `badgeEvents`te, kitapta değil. */
 function toggleSezonKitap(bookId, el){
   const kitap = (db.books[me] || []).find(b => b.id === bookId);
   if(!kitap) return;

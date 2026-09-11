@@ -7289,9 +7289,14 @@ function openStoryDetail(ownerId, storyId){
            eleme rozetin kendi hesabinda (sezonSayisi).
            DIKKAT: bu yorum bir JS sablon dizesinin icinde — ters tirnak
            KULLANILAMAZ, sablonu kapatip sayfayi bozar. -->
-      ${typeof sezonChip==='function'&&sezonBul()?`<div class="check-chips" style="margin-top:.5rem">
-        ${sezonChip(story,true,`saveStoryField(${storyId},'sezon',this.classList.contains('active')?null:sezonAnahtari());this.classList.toggle('active')`)}
-      </div>`:''}`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
+      ${(()=>{
+        /* Sezon KAPALIYKEN de basılabilmeli: geçmiş sezon işareti salt okunur
+           rozet olarak görünüyor. Bu yüzden koşul "sezon açık mı" değil,
+           "gösterilecek bir şey var mı". */
+        if(typeof sezonChip!=='function') return '';
+        const c=sezonChip(story,true,`saveStoryField(${storyId},'sezon',this.classList.contains('active')?null:sezonAnahtari());this.classList.toggle('active')`);
+        return c?`<div class="check-chips" style="margin-top:.5rem">${c}</div>`:'';
+      })()}`:`<span class="story-status-badge ${story.status==='read'?'story-read':'story-toread'}">${story.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>`}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">⭐ Puan</div>
