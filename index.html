@@ -7371,6 +7371,17 @@ function saveStoryField(storyId, field, value){
     diyarKaydiniGeriAl({title:story.title,author:story.author,series:null})
       .catch(e=>console.warn('diyar geri alma (öykü):',e));
   }
+  /* …ve tersi: "okundu"ya geçince diyar kontrolü (2026-09-11, Gökşin bildirdi:
+     "bu sefer bildirim çıkmadı").
+     ⚠️ EKSİKTİ: Tsundoku'daki düğme `diyarKesifKontrol()` çağırıyordu ama
+     modaldeki durum kutucuğu çağırmıyordu. Sonuç: diyar o anda açılmıyor,
+     bildirim de çıkmıyordu; kayıt ancak kullanıcı haritayı açtığında sessizce
+     ekleniyordu. Kart "kendiliğinden belirmiş" gibi görünüyordu. */
+  if(field==='status' && value==='read' && oncekiDurum!=='read' &&
+     typeof diyarKesifKontrol==='function'){
+    diyarKesifKontrol();
+    saveDb();
+  }
 }
 
 function setStoryRating(storyId, rating){
@@ -7455,7 +7466,7 @@ function renderStories(){
             ${s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
           </div>
           <div class="wishlist-actions" onclick="event.stopPropagation()">
-            <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="startReadingStory(${s.id})">📖 Okumaya Başla</button>
+            <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="oykuyuOkunduYap(${s.id})">✔ Okudum</button>
             <button class="btn btn-sm btn-danger" style="font-size:.6rem" onclick="removeStory(${s.id})">✕</button>
           </div>
         </div>`).join('');
@@ -7500,14 +7511,21 @@ function renderStories(){
   }
 }
 
-function startReadingStory(storyId){
+/* Tsundoku'daki öyküyü OKUNDU yapar.
+   ⚠️ Eski adı `startReadingStory`, düğmesi de "📖 Okumaya Başla" idi ve bu
+   YANILTICIYDI (Gökşin, 2026-09-11: "okunuyor durumuna geçeceğini sandım,
+   onun yerine direkt okundu yaptı"). Bildirim de kendisiyle çelişiyordu:
+   başlığı "Okumaya Başlandı", gövdesi "okundu listesine taşındı".
+   Öykülerde "okunuyor" diye bir durum YOK — yalnızca `read` ve `toread`.
+   O yüzden düğme de, ad da, bildirim de "okundu" diyor. */
+function oykuyuOkunduYap(storyId){
   if(!db.stories||!db.stories[me]) return;
   const story=db.stories[me].find(s=>s.id===storyId);
   if(!story) return;
   story.status='read';
   diyarKesifKontrol();
   saveDb();renderStories();
-  notify('📖 Okumaya Başlandı',`"${story.title}" okundu listesine taşındı.`);
+  notify('✔ Öykü okundu',`"${story.title}" okundu listesine taşındı.`);
 }
 
 
