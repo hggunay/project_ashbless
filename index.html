@@ -314,7 +314,6 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
     line-height: 1.4 !important;
   }
 }
-@keyframes oraclePulse{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes fireGrow{0%{transform:scale(0.05);opacity:.3}20%{transform:scale(0.25);opacity:.6}45%{transform:scale(0.6);opacity:.85}65%{transform:scale(0.85);opacity:.95}80%{transform:scale(1.08)}90%{transform:scale(0.96)}100%{transform:scale(1);opacity:1}}
 @keyframes romAura{0%,100%{box-shadow:0 0 0 0 rgba(255,110,180,.8)}50%{box-shadow:0 0 0 20px rgba(255,110,180,0)}}
 @keyframes badgeGlow{0%,100%{box-shadow:0 0 8px rgba(201,162,39,.2)}50%{box-shadow:0 0 22px rgba(201,162,39,.7),0 0 40px rgba(201,162,39,.35)}}
@@ -4735,7 +4734,7 @@ function enterApp(){
 // (biri 'shelf'i, diğeri 'myBadges'i unutmuştu) — Ö37.
 function renderPanelContent(id){
   if(id==='settings') renderSettings();
-  else if(id==='stats'){ renderStatsPanel(); eglenceyiTasi(); }
+  else if(id==='stats'){ renderStatsPanel(); }   // taşımayı renderStatsPanel kendi sonunda yapıyor
   else if(id==='journal'){_journalAcBooks=[];populateJournalBookSelect();journalPage=1;renderJournal();}
   else if(id==='stories') renderStories();
   else if(id==='feed'){markFeedVisited();renderFeed();}
@@ -8125,7 +8124,6 @@ function setStatsTimeFilter(filter){
     if(btn) btn.classList.toggle('active', f===filter);
   });
   renderStatsPanel();
-  eglenceyiTasi();
 }
 function showMonthBooks(monthStr, el){
   const books = readBooksOf(viewing||me, {dateRange:{month:monthStr}});
@@ -8353,19 +8351,12 @@ parentRows.forEach(r=>{
             <div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7">${finishedBooks.length} kitap · ${badgeCount} rozet · ${countries.size} ülke</div>
           </div>
         </div>
-        <div style="font-family:'Playfair Display',serif;font-size:.88rem;color:var(--ink);line-height:1.5;padding:.6rem .75rem;background:linear-gradient(135deg,rgba(91,58,138,0.2),rgba(201,162,39,0.1));background-size:200% 200%;animation:oraclePulse 4s ease-in-out infinite;border-left:2px solid var(--gold);border-radius:0 6px 6px 0;font-style:italic">
-          ${(()=>{
-            const eksenler={evren:['fantastik','bilimkurgu','distopya','mitoloji'],gerilim:['polisiye','gerilim','korku'],dusunce:['felsefe','psikoloji','deneme','bilim'],insan:['romantik','biyografi','oyku','genclik','roman','kurgu'],gercek:['tarih','gezi','siir']};
-            const eksenPuan={evren:0,gerilim:0,dusunce:0,insan:0,gercek:0};
-            books.forEach(b=>(b.genres||[]).forEach(g=>{const gn=g.toLowerCase().replace(/ı/g,'i').replace(/ü/g,'u').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ç/g,'c');Object.entries(eksenler).forEach(([e,l])=>{if(l.some(x=>gn.includes(x)))eksenPuan[e]++;});}));
-            const sira=Object.entries(eksenPuan).sort((a,b)=>b[1]-a[1]).filter(([,v])=>v>0);
-            const ana=sira[0]?sira[0][0]:null;
-            const etiket={evren:'farklı dünyalara yönelen',gerilim:'bilinmeyeni çözmeyi seven',dusunce:'anlam arayışında olan',insan:'insan hikâyelerine yakın duran',gercek:'gerçeklik odaklı'};
-            const streak=currentReadingStreak(books,new Date().getFullYear());
-            const ritim=streak>=6?'Akış stabil.':streak>=3?'Ritmini yakalamış.':streak>=1?'Okuma alışkanlığı oluşuyor.':'';
-            return ana?`${etiket[ana]} bir okuyucu.${ritim?' '+ritim:''}`:target+' henüz okuma profilini oluşturuyor.';
-          })()}
-        </div>
+        <!-- Mor "okuyucu profili" cümlesi 2026-09-16'da KALDIRILDI (Gökşin:
+             "ziyaretçi modunda en üstte mor renkli kişinin falı yazıyor,
+             tamamen kaldıralım, gerek yok"). Fal artık Eğlence sekmesinde ve
+             yalnızca kişinin kendisine ait; başkasının profilinde kısaltılmış
+             bir kopyasını göstermenin bir karşılığı yoktu.
+             Kimlik satırı (avatar · ad · kitap/rozet/ülke sayısı) KALDI. -->
       </div>
     </div>`:''}
     <div class="card" style="margin-bottom:1rem">
@@ -8702,6 +8693,20 @@ parentRows.forEach(r=>{
         ${books.length===0?'<div class="empty-state">Henüz yeterli veri yok. Kitap ekledikçe istatistikler burada görünür.</div>':''}
       </div>
     </div>`;
+
+  /* ⚠️ TAŞIMA BURADA, ÇAĞIRANLARDA DEĞİL (2026-09-16, Gökşin bildirdi:
+     "fal hâlâ istatistiklerde görünüyor ama çalışmıyor").
+     Fal bölümü bu şablonun ortasında üretiliyor ve çizildikten sonra Eğlence
+     paneline TAŞINIYOR. Taşıma eskiden yalnızca iki çağıranda yazılıydı;
+     `dahaFazlaGoster` (2026-09-11) üçüncü çağıran oldu ve taşımayı unuttu.
+     Sonuç: panel yeniden çizilince istatistiklerde YENİ bir fal beliriyordu,
+     Eğlence'de de eskisi kalıyordu. İkisinin de id'si `falPanel`; HTML'de
+     `sPanel-fun`, `sPanel-stats`ten ÖNCE geldiği için `getElementById`
+     gizli olanı buluyor — düğmeye basınca hiçbir şey olmuyordu.
+     Taşımayı çizimin kendisine bağlayınca hangi yoldan gelinirse gelinsin
+     tek fal kalıyor. Çağıranlara AYRICA eklemeyin: hesapVaktiCiz() boşuna
+     iki kez çalışır. */
+  eglenceyiTasi();
 }
 
 // ── FAL PANELİ FONKSİYONU ──
