@@ -4434,27 +4434,42 @@ function getSpecialDay(){
    (2) Tek koruma bellekteki `_algernonTriggered` bayrağıydı; sayfa her
        yenilendiğinde sıfırlanıyordu, yani her açılışta yeniden oynuyordu.
 
-   Çözüm, GECE YARISI MESAJININ kalıbı (tryShowNightMessage): günde bir kez,
-   tarihi `localStorage`'a yazarak. Gösterilmeden ÖNCE kaydediliyor ki çift
-   tetiklenme olmasın. Çağrı artık `enterApp` içinde — yani giriş yapıldıktan
-   sonra, bir kez. */
-let _algernonTriggered=false;
-const ALGERNON_TARIH='aa-algernon-tarih';
+   Çağrı artık `enterApp` içinde — yani giriş yapıldıktan sonra.
+
+   ⚠️ SIKLIK: "günde bir kez" DEĞİL. Gökşin: *"bir kez görüp kaybolsun
+   istemiyorum ama sürekli görünmesi de sıkıcı olur."* Çözüm ARA VERME:
+   uygulamayı her açışta gösterilebiliyor, ama son gösterimden bu yana
+   `ALGERNON_ARALIK_DK` geçmemişse atlanıyor. Gün içinde birkaç kez açarsan
+   birkaç kez görüyorsun; arka arkaya açıp kapatırsan bir kez.
+   Sıklığı değiştirmek için tek sayı: aşağıdaki sabit.
+
+   Gün aralığı `SPECIAL_DAYS`'teki Algernon Günü ile aynı olmalı: 15-17 Eylül.
+   Konfeti yalnızca 15'inde ve o günün İLK gösteriminde — her seferinde
+   patlarsa gösterişli olmaktan çıkıp yorucu oluyor. */
+const ALGERNON_ZAMAN='aa-algernon-son';   // son gösterim (ms)
+const ALGERNON_KONFETI='aa-algernon-konfeti';  // konfetinin patladığı tarih
+const ALGERNON_ARALIK_DK=120;             // iki gösterim arası en az kaç dakika
 function checkAlgernonDay(){
-  if(_algernonTriggered) return;
   const now=new Date();
   const m=now.getMonth()+1;
   const d=now.getDate();
   if(!(m===9&&d>=15&&d<=17)) return;
 
-  _algernonTriggered=true;                 // aynı oturumda tekrar etmesin
-  const bugun=todayLocal();                // yerel tarih — UTC kayması olmasın
+  const bugun=todayLocal();               // yerel tarih — UTC kayması olmasın
+  let son=0, konfetiGunu=null;
   try{
-    if(localStorage.getItem(ALGERNON_TARIH)===bugun) return;   // bugün gösterildi
-    localStorage.setItem(ALGERNON_TARIH,bugun);                // ÖNCE kaydet
-  }catch(e){}                              // depolama kapalıysa yine de göster
+    son=parseInt(localStorage.getItem(ALGERNON_ZAMAN)||'0',10)||0;
+    konfetiGunu=localStorage.getItem(ALGERNON_KONFETI);
+  }catch(e){}
 
-  if(d===15) launchFlowerConfetti();
+  if(Date.now()-son < ALGERNON_ARALIK_DK*60000) return;   // çok yakın, atla
+  try{ localStorage.setItem(ALGERNON_ZAMAN,String(Date.now())); }catch(e){}  // ÖNCE kaydet
+
+  // Konfeti: yalnızca 15 Eylül'de ve o günün ilk gösteriminde.
+  if(d===15 && konfetiGunu!==bugun){
+    try{ localStorage.setItem(ALGERNON_KONFETI,bugun); }catch(e){}
+    launchFlowerConfetti();
+  }
   showAlgernonBanner();
 }
 function launchFlowerConfetti(){
@@ -8845,27 +8860,31 @@ function dahaFazlaGoster(id, adim){
    ⚠️ event.stopPropagation() ŞART: satırın kendisinde `openBook()` duruyor,
    olmazsa dokunuş kitabı açar ve kullanıcı ne olduğunu anlamaz.
 
-   ⚠️ TERCİH KALICI (2026-09-16, Gökşin bildirdi: "kalıcı değil, her sayfa
-   yenilemede yüzdeye dönüyor"). Eskiden yalnızca o anki yazı değiştiriliyordu;
-   liste yeniden çizilince tercih kayboluyordu.
-   Tercih CİHAZDA tutuluyor (`localStorage`), Firebase'e düğüm eklenmiyor —
-   karşılama şeritlerinde ve Hesap Vakti ses ayarında izlenen yolun aynısı.
-   TÜM kitaplar için ortak: okuyan kişi ya yüzdeyi sever ya kalan sayfayı,
-   kitap kitap ayarlamak istemez. */
-const KALAN_SAYFA_TERCIH='aa-kalan-sayfa';
-function kalanSayfaModu(){
-  try{ return localStorage.getItem(KALAN_SAYFA_TERCIH)==='1'; }catch(e){ return false; }
-}
-function kalanSayfaCevir(kutu, ev){
+   ⚠️ TERCİH KALICI ve KİTAP BAŞINA (2026-09-16).
+   Önce hiç kaydedilmiyordu (Gökşin: "her sayfa yenilemede yüzdeye dönüyor"),
+   sonra tüm kitaplar için ortak yapıldı. Gökşin gerekçesiyle düzeltti:
+   *"bir kitaba ilk başladığımda ne kadar ilerlediğimi, son yarıya geçtiğimde
+   kalan sayfa sayısını görmeyi seviyorum."* — yani tercih kitabın nerede
+   olduğuna göre değişiyor, genel bir ayar değil.
+
+   Değer kitabın KENDİ kaydında (`sayfaModu`), tıpkı `challenging` /
+   `hundredPages` gibi. Yeni veri düğümü gerekmiyor (kitaplar zaten kişi
+   başına `aa-v4/books/<kişi>` yoluna yazılıyor) ve cihazlar arası
+   senkronlanıyor — telefonda çevirdiğin kitap bilgisayarda da öyle açılıyor.
+
+   ⚠️ `renderSafe()` çağrılMIYOR: yalnızca bir yazı değişiyor, tüm listeyi
+   yeniden çizmek gereksiz kırpışma yaratır. Rozet kontrolü de yok — bu bir
+   görünüm tercihi, veriye dair bir şey değil. */
+function kalanSayfaCevir(bookId, kutu, ev){
   if(ev) ev.stopPropagation();
-  const yeni=!kalanSayfaModu();
-  try{ localStorage.setItem(KALAN_SAYFA_TERCIH, yeni?'1':'0'); }catch(e){}
-  /* Ekrandaki TÜM ilerleme yazıları birlikte değişiyor — biri kalan sayfa,
-     diğeri yüzde gösterirse liste tutarsız görünür. */
-  document.querySelectorAll('.reading-progress-text').forEach(y=>{
-    const metin=yeni?y.dataset.kalan:y.dataset.normal;
-    if(metin) y.textContent=metin;
-  });
+  const kitap=(db.books[me]||[]).find(b=>b.id===bookId);
+  if(!kitap) return;
+  kitap.sayfaModu = (kitap.sayfaModu==='kalan') ? null : 'kalan';
+  saveDb();
+  const yazi=kutu.querySelector('.reading-progress-text');
+  if(!yazi) return;
+  const metin = (kitap.sayfaModu==='kalan') ? yazi.dataset.kalan : yazi.dataset.normal;
+  if(metin) yazi.textContent=metin;
 }
 
 function renderSafe(){
@@ -9184,10 +9203,11 @@ function renderBookList(){
             ${pct!==null?(()=>{
               const _normal=`${b.currentPage}/${b.pages} sayfa · %${pct}`;
               const _kalan=`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
-              /* Tercih KALICI (2026-09-16). Eskiden yalnızca ekrandaki yazı
-                 değiştiriliyordu; liste her yeniden çizildiğinde (kitap
-                 eklendi, sayfa yenilendi) yüzdeye dönüyordu. */
-              return `<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(this,event)" title="Yüzde / kalan sayfa"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${_normal}" data-kalan="${_kalan}">${kalanSayfaModu()?_kalan:_normal}</div></div>`;
+              /* Tercih KALICI ve KİTAP BAŞINA (2026-09-16).
+                 Gökşin: "bir kitaba ilk başladığımda ne kadar ilerlediğimi,
+                 son yarıya geçtiğimde kalan sayfa sayısını görmeyi seviyorum."
+                 Yani bu kitaptan kitaba değişen bir tercih, genel bir ayar değil. */
+              return `<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(${b.id},this,event)" title="Yüzde / kalan sayfa"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${_normal}" data-kalan="${_kalan}">${b.sayfaModu==='kalan'?_kalan:_normal}</div></div>`;
             })():''}
           </div>
         </div>`;
