@@ -6055,6 +6055,19 @@ if(coreadingEl){
 }
   const fmtMap={'kitap':'📖 Fiziksel','ekitap':'📱 E-Kitap','sesli':'🎧 Sesli','cizgi':'🎨 Çizgi/Manga'};
 
+  /* Seri No boşsa Serilerim'deki sıradan doldur (2026-09-16). Yalnızca KENDİ
+     kitabında ve yalnızca BOŞSA çalışıyor; dolu bir numaraya dokunmuyor.
+     Burada da yapılmasının sebebi: "📖 Başla" yolu bundan sonrası için sorunu
+     çözüyor ama ESKİDEN başlatılmış kitapların numarası boş kalmıştı. Modal
+     açılınca bir kez doluyor, sonraki açılışlarda hiçbir şey yapmıyor.
+     `saveDb()` yalnızca gerçekten bir değişiklik olduysa çağrılıyor — her
+     kitap açılışında boşuna yazma yapmamak için. */
+  if(isMe && typeof seriNoDoldur==='function' && book.series && !book.seriesNum){
+    const _sd=(db.seriesData&&db.seriesData[me]&&db.seriesData[me].series)||{};
+    const _ser=Object.values(_sd).find(s=>(s.books||[]).some(x=>x.bookId===book.id));
+    if(_ser && seriNoDoldur(book,_ser)) saveDb();
+  }
+
   renderViewMode(book, fromShelf);
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -6374,7 +6387,13 @@ function renderEditMode(bookId, fromShelf){
     style="accent-color:var(--gold);width:18px;height:18px"
     onchange="toggleSeriesOngoing('${book.series}',this.checked)"/>
 </div>`:''}
-          ${dField('Çizgi Seri','comicSeries',book.comicSeries,'text',isMe)}
+          <!-- "Çizgi Seri" kutusu 2026-09-16'da KALDIRILDI. Hiç çalışmamıştı:
+               otomatik arama bu alanı asla doldurmuyordu, tek tüketicisi olan
+               maxComicSeries() de hiçbir rozetten çağrılmıyordu. Yerine geçen
+               "📚 Çizgi Seri Takibi" zinciri artık SERİ ADI + 🎨 formatından
+               hesaplıyor, yani ayrı bir kutu doldurmaya gerek yok.
+               ⚠️ Eski kayıtlardaki comicSeries verisi SİLİNMEDİ, sadece
+               gösterilmiyor — veriye dokunmak ayrı bir karar. -->
         </div>
       </div>
     </div>

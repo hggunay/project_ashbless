@@ -734,6 +734,29 @@ function toggleSeriesOngoing(seriesName, val){
   renderSeriesList();
 }
 
+/* ── SERİ NO'YU KİTABA KOPYALA (2026-09-16, Gökşin bildirdi) ───────────────
+   Aynı bilgi İKİ yerde duruyordu ve hiç eşitlenmiyordu:
+     · seri kaydındaki `ser.books[i].num`  → Serilerim listesinde görünen sıra
+     · kitabın kendi `book.seriesNum`      → kitap modalindeki "Seri No" kutusu
+   Seriye toplu kitap eklerken numara YALNIZCA seri kaydına yazılıyor
+   (`createSeries` → `num:i+1`, yani senin yazdığın sıra). Kitap kaydı ise
+   "📖 Başla" ile o an oluşturuluyor ve numarasız doğuyordu — Sandman'in 3.
+   kitabına başlayınca modalde "Seri No" boş çıkmasının sebebi buydu.
+
+   ⚠️ TEK YÖNLÜ ve YALNIZCA BOŞSA. Kitapta bir numara varsa ona dokunulmuyor:
+   elle yazılmış bir cilt numarası, seri kaydındaki sıradan daha güvenilirdir.
+   Ters yöne (kitaptan seriye) yazmıyor; orayı `saveFieldCommit` zaten
+   `recalcSeriesCompletion` ile kendi yoluyla güncelliyor.
+   Rozetlerin hiçbiri `seriesNum`'a bakmıyor (tarandı) — bu alan yalnızca
+   görüntüleme ve sıralama için, o yüzden doldurmanın yan etkisi yok. */
+function seriNoDoldur(book, ser, bkEntry){
+  if(!book || !ser || book.seriesNum) return false;
+  const bk = bkEntry || (ser.books||[]).find(b=>b.bookId===book.id);
+  if(!bk || !bk.num) return false;
+  book.seriesNum = bk.num;
+  return true;
+}
+
 function startReadingSeriesBook(bookId){
   const book = myBooks().find(b=>b.id===bookId);
   if(!book) return;
@@ -746,6 +769,7 @@ function startReadingSeriesBook(bookId){
   Object.values(data.series||{}).forEach(ser=>{
     const bk = (ser.books||[]).find(b=>b.bookId===bookId);
     if(!bk) return;
+    seriNoDoldur(book, ser, bk);
     const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
     const readCount = (ser.books||[]).filter(b=>{
       if(!b.bookId) return false;
@@ -789,6 +813,7 @@ function startPlannedBook(seriesId, manualTitle, manualAuthor){
     // Seri kaydındaki planned girişini bookId ile güncelle
     const bkEntry = (ser.books||[]).find(b=>b.planned&&(b.manualTitle||'').toLowerCase()===title.toLowerCase());
     if(bkEntry){ delete bkEntry.planned; delete bkEntry.manualTitle; delete bkEntry.manualAuthor; bkEntry.bookId=existing.id; }
+    seriNoDoldur(existing, ser, bkEntry);
     saveDb(); render();
     notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
     return;
@@ -814,6 +839,10 @@ function startPlannedBook(seriesId, manualTitle, manualAuthor){
   // Seri kaydındaki planned girişini bookId ile güncelle
   const bkEntry = (ser.books||[]).find(b=>b.planned&&(b.manualTitle||'').toLowerCase()===title.toLowerCase());
   if(bkEntry){ delete bkEntry.planned; delete bkEntry.manualTitle; delete bkEntry.manualAuthor; bkEntry.bookId=book.id; }
+  /* "📖 Başla" ile YENİ doğan kitap — numarası seri kaydından geliyor.
+     `seriesTotal` da buradan verilebilirdi ama bilerek verilmedi: seri hedefi
+     sonradan değişebiliyor ve kitaba kopyalanınca iki yerde ayrı ayrı eskiyor. */
+  seriNoDoldur(book, ser, bkEntry);
   saveDb(); render();
   notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
 }

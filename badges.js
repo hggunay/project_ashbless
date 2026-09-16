@@ -62,6 +62,17 @@ const BADGE_CATS = [
       {id:'comic4',tier:'gold',   icon:'⚡', name:'Çizgi Ustası',       desc:'20 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,20)},
       {id:'comic5',tier:'diamond',icon:'👑', name:'Çizgi Efsanesi',    desc:'50 çizgi roman/manga oku.',  check:b=>cap(b.filter(x=>(x.formats||[]).includes('cizgi')).length,50)},
     ]},
+    /* Yukarıdaki zincir TOPLAM çizgi roman sayısına bakıyor; bu zincir ise
+       TEK BİR SERİNİN derinliğine (2026-09-16). Ölçüt: seri adı aynı olan ve
+       🎨 formatı işaretli kitaplar — bkz. maxComicSeries().
+       Basamaklar Red Kit (80+), Asteriks (39), Tenten (24), Sandman (10) gibi
+       gerçek seri uzunluklarına göre seçildi. */
+    {id:'cizgi_seri', label:'📚 Çizgi Seri Takibi', badges:[
+      {id:'cser1',tier:'bronze', icon:'📗', name:'Cilt Takipçisi',   desc:'Aynı çizgi seriden 5 cilt oku.',  check:b=>cap(maxComicSeries(b),5)},
+      {id:'cser2',tier:'silver', icon:'📚', name:'Raf Dolduran',     desc:'Aynı çizgi seriden 10 cilt oku.', check:b=>cap(maxComicSeries(b),10)},
+      {id:'cser3',tier:'gold',   icon:'🗂️', name:'Koleksiyoncu',     desc:'Aynı çizgi seriden 25 cilt oku.', check:b=>cap(maxComicSeries(b),25)},
+      {id:'cser4',tier:'diamond',icon:'🏛️', name:'Çizgi Arşivcisi',  desc:'Aynı çizgi seriden 50 cilt oku.', check:b=>cap(maxComicSeries(b),50)},
+    ]},
   ], badges:[]},
   // ── 2. TÜR KEŞFİ ──────────────────────────────────────────────
   {label:'🎭 Tür Keşfi', chains:[
@@ -384,7 +395,23 @@ function genre(books,kw,max){const n=books.filter(b=>(b.genres||[]).some(g=>{con
 
 function maxMonth(books){const c={};books.forEach(b=>{if(b.month)c[b.month]=(c[b.month]||0)+1;});return Math.max(0,...Object.values(c));}
 function maxSeries(books){const c={};books.filter(b=>b.series).forEach(b=>{c[b.series]=(c[b.series]||0)+1;});return Math.max(0,...Object.values(c));}
-function maxComicSeries(books){const c={};books.filter(b=>b.comicSeries).forEach(b=>{c[b.comicSeries]=(c[b.comicSeries]||0)+1;});return Math.max(0,...Object.values(c));}
+/* "Aynı çizgi seriden kaç cilt" — 2026-09-16'da YENİDEN YAZILDI.
+   Eskiden kitabın ayrı bir `comicSeries` alanına bakıyordu. O alan ölüydü:
+   otomatik arama hiç doldurmuyordu (Google Books da Open Library de bu bilgiyi
+   vermiyor), yalnızca elle yazılabiliyordu ve bu fonksiyon da hiçbir rozetten
+   çağrılmıyordu. Alan modalden kaldırıldı.
+   Şimdi zaten var olan iki bilgiden hesaplanıyor: SERİ ADI + 🎨 formatı.
+   Gökşin'in gerekçesi: "kimse o kutuyu doldurup rozet kazanmaya çalışmaz."
+   ⚠️ Seri adı `normalizeSeries` ile karşılaştırılıyor — "Red Kit" ve "red kit"
+   aynı seri sayılsın diye. maxSeries() bunu yapmıyor; oraya dokunulmadı. */
+function maxComicSeries(books){
+  const c={};
+  books.filter(b=>b.series&&(b.formats||[]).includes('cizgi')).forEach(b=>{
+    const k=(typeof normalizeSeries==='function')?normalizeSeries(b.series):b.series;
+    if(k) c[k]=(c[k]||0)+1;
+  });
+  return Math.max(0,...Object.values(c));
+}
 function totalPages(books){return books.reduce((s,b)=>s+(b.pages||0),0);}
 function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.country.trim()).map(b=>b.country.trim().toLowerCase())).size;}
 function uniqueISOs(books){return new Set(books.filter(b=>b.country).map(b=>countryToISO(b.country)).filter(Boolean));}
@@ -574,6 +601,15 @@ function booksForBadge(badge,books){
   if(['long1','long2','long3'].includes(id)) return filtered.filter(b=>b.pages&&b.pages>=500);
   if(['short1','short2','short3','short4'].includes(id)) return filtered.filter(b=>b.pages&&b.pages<=150);
   if(['comic1','comic2','comic3','comic4','comic5'].includes(id)) return filtered.filter(b=>(b.formats||[]).includes('cizgi'));
+  /* Çizgi seri takibi — ipucu balonunda TÜM çizgi romanlar değil, YALNIZCA
+     en kalabalık serinin ciltleri listeleniyor; rozeti ilerleten onlar. */
+  if(['cser1','cser2','cser3','cser4'].includes(id)){
+    const ciltler=filtered.filter(b=>b.series&&(b.formats||[]).includes('cizgi'));
+    const c={};
+    ciltler.forEach(b=>{const k=normalizeSeries(b.series);if(k)(c[k]=c[k]||[]).push(b);});
+    const enBuyuk=Object.values(c).sort((a,b)=>b.length-a.length)[0];
+    return enBuyuk||[];
+  }
   // Tür Keşfi
   if(['genre1','genre2','genre3','genre4'].includes(id)) return filtered.filter(b=>(b.genres||[]).length>0);
   if(['fan1','fan2','fan3','fan4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>g.includes('fantastik')));
