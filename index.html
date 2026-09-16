@@ -4422,18 +4422,40 @@ function getSpecialDay(){
 
   return matches;
 }
-// ── Algernon Günü animasyonu ──
+/* ── Algernon Günü animasyonu ───────────────────────────────────────────
+   ⚠️ 2026-09-16'da DÜZELTİLDİ. Gökşin ilk kez gerçek günde denedi ve bildirdi:
+   *"her sekmeye geçtiğimde mesaj gözüküyor"* ve *"giriş sayfasında animasyon
+   oynadı, daha şifremi yazıp giriş yapmamıştım."*
+
+   İki ayrı kusur vardı:
+   (1) `checkAlgernonDay()` belgeye bağlı genel bir `mousedown` dinleyicisinin
+       İÇİNDEN çağrılıyordu — yani sayfadaki HERHANGİ bir tıklamayla. Giriş
+       ekranındaki tıklama da sayılıyordu, o yüzden giriş yapmadan oynadı.
+   (2) Tek koruma bellekteki `_algernonTriggered` bayrağıydı; sayfa her
+       yenilendiğinde sıfırlanıyordu, yani her açılışta yeniden oynuyordu.
+
+   Çözüm, GECE YARISI MESAJININ kalıbı (tryShowNightMessage): günde bir kez,
+   tarihi `localStorage`'a yazarak. Gösterilmeden ÖNCE kaydediliyor ki çift
+   tetiklenme olmasın. Çağrı artık `enterApp` içinde — yani giriş yapıldıktan
+   sonra, bir kez. */
 let _algernonTriggered=false;
+const ALGERNON_TARIH='aa-algernon-tarih';
 function checkAlgernonDay(){
   if(_algernonTriggered) return;
   const now=new Date();
   const m=now.getMonth()+1;
   const d=now.getDate();
-  if(m===9&&d>=15&&d<=17){
-    _algernonTriggered=true;
-    if(d===15) launchFlowerConfetti();
-    showAlgernonBanner();
-  }
+  if(!(m===9&&d>=15&&d<=17)) return;
+
+  _algernonTriggered=true;                 // aynı oturumda tekrar etmesin
+  const bugun=todayLocal();                // yerel tarih — UTC kayması olmasın
+  try{
+    if(localStorage.getItem(ALGERNON_TARIH)===bugun) return;   // bugün gösterildi
+    localStorage.setItem(ALGERNON_TARIH,bugun);                // ÖNCE kaydet
+  }catch(e){}                              // depolama kapalıysa yine de göster
+
+  if(d===15) launchFlowerConfetti();
+  showAlgernonBanner();
 }
 function launchFlowerConfetti(){
   let canvas=document.getElementById('confetti-canvas');
@@ -4623,6 +4645,10 @@ function enterApp(){
     checkStreakMilestone(_fullBooks, _csCurStreak);
   }catch(e){}
   showSpecialDayBanner();
+  /* Algernon Günü (15-17 Eylül) — giriş yapıldıktan SONRA, günde bir kez.
+     Özel gün şeridiyle çakışmıyor: şerit sayfanın içinde duran kapatılabilir
+     kart, bu ise ortada beliren kısa bir kutlama. */
+  setTimeout(()=>{ try{ checkAlgernonDay(); }catch(e){ console.warn('algernon:',e); } },900);
   // Süresi dolmuş birlikte okuma davetlerini kapat (2026-08-29). Sunucu yok —
   // işi uygulamayı açan istemci yapıyor. checkNotifications'tan ÖNCE tetikleniyor
   // ki kapanış bildirimi aynı açılışta duyurulabilsin; kendi içinde ağa çıktığı
@@ -6979,7 +7005,9 @@ let _modalMouseDownPos=null;
 let _modalMouseDownTime=null;
 let _mouseDownOnModal=false;
 document.addEventListener('mousedown',e=>{
-  checkAlgernonDay();
+  /* ⚠️ `checkAlgernonDay()` BURADAN KALDIRILDI (2026-09-16). Her tıklamada
+     çağrılıyordu ve giriş ekranındaki tıklamayla bile tetikleniyordu.
+     Artık `enterApp` içinde, giriş yapıldıktan sonra bir kez çağrılıyor. */
   const modal=document.querySelector('#modalOverlay .modal');
   _mouseDownOnModal=modal&&modal.contains(e.target);
   const dd=_genreDropdown;
@@ -8815,13 +8843,29 @@ function dahaFazlaGoster(id, adim){
    (2026-09-10, Gökşin istedi). İki metin de HTML üretilirken `data-` içine
    yazılıyor; burada hesap yapılmıyor, yalnızca değiş tokuş var.
    ⚠️ event.stopPropagation() ŞART: satırın kendisinde `openBook()` duruyor,
-   olmazsa dokunuş kitabı açar ve kullanıcı ne olduğunu anlamaz. */
+   olmazsa dokunuş kitabı açar ve kullanıcı ne olduğunu anlamaz.
+
+   ⚠️ TERCİH KALICI (2026-09-16, Gökşin bildirdi: "kalıcı değil, her sayfa
+   yenilemede yüzdeye dönüyor"). Eskiden yalnızca o anki yazı değiştiriliyordu;
+   liste yeniden çizilince tercih kayboluyordu.
+   Tercih CİHAZDA tutuluyor (`localStorage`), Firebase'e düğüm eklenmiyor —
+   karşılama şeritlerinde ve Hesap Vakti ses ayarında izlenen yolun aynısı.
+   TÜM kitaplar için ortak: okuyan kişi ya yüzdeyi sever ya kalan sayfayı,
+   kitap kitap ayarlamak istemez. */
+const KALAN_SAYFA_TERCIH='aa-kalan-sayfa';
+function kalanSayfaModu(){
+  try{ return localStorage.getItem(KALAN_SAYFA_TERCIH)==='1'; }catch(e){ return false; }
+}
 function kalanSayfaCevir(kutu, ev){
   if(ev) ev.stopPropagation();
-  const yazi=kutu.querySelector('.reading-progress-text');
-  if(!yazi) return;
-  const normal=yazi.dataset.normal||'', kalan=yazi.dataset.kalan||'';
-  yazi.textContent=(yazi.textContent===normal)?kalan:normal;
+  const yeni=!kalanSayfaModu();
+  try{ localStorage.setItem(KALAN_SAYFA_TERCIH, yeni?'1':'0'); }catch(e){}
+  /* Ekrandaki TÜM ilerleme yazıları birlikte değişiyor — biri kalan sayfa,
+     diğeri yüzde gösterirse liste tutarsız görünür. */
+  document.querySelectorAll('.reading-progress-text').forEach(y=>{
+    const metin=yeni?y.dataset.kalan:y.dataset.normal;
+    if(metin) y.textContent=metin;
+  });
 }
 
 function renderSafe(){
@@ -9137,7 +9181,14 @@ function renderBookList(){
             ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
 			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>escapeHtml((db.users[u]||{}).displayName||u)).join(', ')}</span>`:''}
-            ${pct!==null?`<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(this,event)" title="Kalan sayfa için dokun"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${b.currentPage}/${b.pages} sayfa · %${pct}" data-kalan="${Math.max(0,b.pages-b.currentPage)} sayfa kaldı">${b.currentPage}/${b.pages} sayfa · %${pct}</div></div>`:''}
+            ${pct!==null?(()=>{
+              const _normal=`${b.currentPage}/${b.pages} sayfa · %${pct}`;
+              const _kalan=`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
+              /* Tercih KALICI (2026-09-16). Eskiden yalnızca ekrandaki yazı
+                 değiştiriliyordu; liste her yeniden çizildiğinde (kitap
+                 eklendi, sayfa yenilendi) yüzdeye dönüyordu. */
+              return `<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(this,event)" title="Yüzde / kalan sayfa"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${_normal}" data-kalan="${_kalan}">${kalanSayfaModu()?_kalan:_normal}</div></div>`;
+            })():''}
           </div>
         </div>`;
       }).join('');
