@@ -4150,8 +4150,12 @@ function dosyaIndir(nesne,dosyaAdi){
 // yedeğin yanlış bir anı dondurmaması için doğrudan kaynaktan okunuyor.
 // Sunucuya ulaşılamazsa yereldeki halle devam edilir (yedeksiz kalmaktan iyi).
 async function kisiselYedegiOlustur(kisi){
-  const kok=await fbGet('');
-  const v4=(kok&&kok['aa-v4'])||null;
+  /* ⚠️ KÖK OKUNMUYOR (2026-09-17). Onay kapısından beri `fbGet('')` her zaman
+     null dönüyordu; bu fonksiyon da sessizce "yerel" moda düşüp yedeği
+     tarayıcının belleğinden üretiyordu. Kitaplar orada doğru olduğu için fark
+     edilmedi, ama AVATAR yedeğe hiç girmiyordu (yalnızca kök okunabilirken
+     alınıyordu). Artık okunabilen düğümler tek tek çekiliyor. */
+  const v4=await fbGet('aa-v4');
   const paket={version:'aa-v4-kisisel',kisi:kisi,exportDate:new Date().toISOString(),
                kaynak:v4?'sunucu':'yerel'};
   for(const d of KISISEL_DUGUMLER){
@@ -4161,9 +4165,9 @@ async function kisiselYedegiOlustur(kisi){
     // yedek dosyaları da aynı kodla okunabiliyor, ayrı bir yol gerekmiyor.
     if(deger!==undefined&&deger!==null) paket[d]={[kisi]:deger};
   }
-  const raf=kok?((kok['aa-shelf']||{})[kisi]):((db.shelf||{})[kisi]);
+  const raf=v4?await fbGet('aa-shelf/'+kisi):((db.shelf||{})[kisi]);
   if(raf!==undefined&&raf!==null) paket.shelf={[kisi]:raf};
-  const av=kok?((kok['aa-avatars']||{})[kisi]):undefined;
+  const av=v4?await fbGet('aa-avatars/'+kisi):undefined;
   if(av!==undefined&&av!==null) paket.avatars={[kisi]:av};
   return paket;
 }
