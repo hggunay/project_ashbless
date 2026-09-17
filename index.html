@@ -7415,7 +7415,7 @@ function openStoryDetail(ownerId, storyId){
           const etiket=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,storyId):'';
           return etiket?`<div class="detail-field" style="grid-column:1/-1">
             <span class="detail-field-label">📚 Ara öykü olarak bağlı olduğu seri</span>
-            <span style="font-size:.9rem;color:#5e3f80">${etiket}</span>
+            <span style="font-size:.9rem;color:#4f3470">${etiket}</span>
           </div>`:'';
         })()}
         <div class="detail-field" style="grid-column:1/-1">
@@ -7611,7 +7611,14 @@ function renderStories(){
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${s.title}</span>
             ${s.author?`<span class="book-meta">— ${s.author}</span>`:''}
-            ${(()=>{const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(me,s.id):'';return e?`<span class="book-meta" style="color:#dccbf0">📄 ara öykü · ${e}</span>`:'';})()}
+            ${(()=>{
+              /* ⚠️ Hikâyelerim kartı AÇIK zeminli (.card = parşömen) — seri kartındaki
+                 açık mor burada okunmuyordu (kontrast 1.30, Gökşin bildirdi). Koyu mor
+                 #4f3470 ölçülerek seçildi: parşömende 8.73, bu satırın %75 saydamlığıyla
+                 4.58 — yanındaki pas rengi açıklamalardan (4.10) daha okunaklı. */
+              const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(me,s.id):'';
+              return e?`<span class="book-meta" style="color:#4f3470">📄 ara öykü · ${e}</span>`:'';
+            })()}
             ${s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
           </div>
           <div class="wishlist-actions" onclick="event.stopPropagation()">
@@ -7686,7 +7693,7 @@ function storyItemHtml(s, ownerId, srcMap){
       <span class="book-title-text">${s.title}</span>
       ${s.author?`<span class="book-meta">— ${s.author}</span>`:''}
       ${s.sourceBook?`<span class="book-meta" style="color:var(--moss)">📚 ${s.sourceBook}</span>`:''}
-      ${(()=>{const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,s.id):'';return e?`<span class="book-meta" style="color:#dccbf0">📄 ara öykü · ${e}</span>`:'';})()}
+      ${(()=>{const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,s.id):'';return e?`<span class="book-meta" style="color:#4f3470">📄 ara öykü · ${e}</span>`:'';})()}
       ${dateDisplay?`<span class="book-meta">📅 ${dateDisplay}${s.readYearOnly?' (yıl)':''}</span>`:''}
       <div class="book-tags-row">
         <span class="tag format-tag">${srcMap[s.source]||s.source}</span>
