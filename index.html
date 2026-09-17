@@ -3738,6 +3738,10 @@ async function guvenliGirisDurumu(){
    ⚠️ Şerit KOYU zeminde (sayfa gövdesi) — açık renk yazı şart. */
 let _hesapTasinmisMi=null;      // sunucuda bu kullanıcı adına ait eşleşme var mı
 let _tasinanKullanicilar=null;  // taşınmış tüm kullanıcı adları (uidMap değerleri)
+/* enterApp'taki iki sunucu sorusunun cevabı geldi mi (2026-09-17). Bkz.
+   renderTasimaSeridi içindeki "CEVAP GELMEDEN ÇİZME" notu. */
+let _guvenliGirisSorgulandi=false;   // uidMap/<uid>  → bu cihazın bileti kime ait
+let _tasimaListesiSorgulandi=false;  // uidMap        → hesap taşınmış mı
 
 /* İKİ AYRI DURUM, iki ayrı mesaj — karıştırmak kullanıcıyı yanlış yere yollar:
    (a) hesap hiç taşınmamış        → Ayarlar'dan taşıması gerekiyor
@@ -3750,6 +3754,21 @@ function renderTasimaSeridi(){
   if(!s) return;
   const tasindi = authGirisliMi() && _guvenliGirisKullanici===me;
   if(tasindi || !me){ s.style.display='none'; s.innerHTML=''; return; }
+  /* ⚠️ CEVAP GELMEDEN ÇİZME (2026-09-17, Gökşin bildirdi: "sayfayı yenileyince
+     üstte bir an bir banner görünüp kayboluyor").
+     Kayıtlı oturumla açılışta giriş ekranı atlanıyor, dolayısıyla
+     `_guvenliGirisKullanici` HENÜZ BOŞ. Eskiden şerit bu boş değere bakıp
+     "🔐 Girişini güvenli hale getirmen gerekiyor" diye hemen çiziliyor,
+     sunucu cevabı gelince kayboluyordu. Chrome'da ölçüldü: 90–430 ms görünür
+     kalıyordu; telefonda daha uzun. Hem gereksiz hem YANLIŞ bir alarmdı —
+     taşınmış bir hesaba "değişikliklerin kaydedilmez" diyordu.
+     Artık bilgi eksikken şerit gizli kalıyor:
+       · bu cihazda bilet VARSA → bilet kime ait sorusunun cevabını bekle
+       · her durumda → hangi mesajın doğru olduğunu (taşınmış mı) bekle
+     Taşınmamış üye şeridi yine görüyor, yalnızca birkaç yüz ms gecikmeyle. */
+  if((authGirisliMi() && !_guvenliGirisSorgulandi) || !_tasimaListesiSorgulandi){
+    s.style.display='none'; s.innerHTML=''; return;
+  }
   s.style.display='';
   if(_hesapTasinmisMi){
     s.innerHTML='<b style="color:var(--gold)">🔐 Bu cihazda yeniden giriş yapman gerekiyor.</b><br>'+
@@ -4657,8 +4676,16 @@ function enterApp(){
   updateFeedBadge();
   /* G9: taşıma durumu sunucudan okunup şerit çiziliyor. Girişte hemen değil,
      cevap gelince — o yüzden şerit bir an gecikmeli görünebilir. */
-  renderTasimaSeridi();
-  guvenliGirisDurumu().then(k=>{ _guvenliGirisKullanici=k; renderTasimaSeridi(); }).catch(()=>{});
+  /* Her girişte sıfırla: çıkış yapıp BAŞKA bir hesapla girilirse önceki
+     kişinin cevapları kullanılmasın. (Giriş ekranından gelindiyse
+     _guvenliGirisKullanici zaten dolu — şerit o yoldan hemen gizleniyor.) */
+  _guvenliGirisSorgulandi=false;
+  _tasimaListesiSorgulandi=false;
+  renderTasimaSeridi();   // cevaplar gelene kadar gizli tutar
+  guvenliGirisDurumu()
+    .then(k=>{ _guvenliGirisKullanici=k; })
+    .catch(()=>{})
+    .then(()=>{ _guvenliGirisSorgulandi=true; renderTasimaSeridi(); });
   /* Bu kullanıcı adına ait bir eşleşme SUNUCUDA var mı — şeridin hangi mesajı
      göstereceğini bu belirliyor. Okuma açık olduğu için bilete gerek yok.
      `db.users[me].email` ile tahmin etmek yanlış olurdu: deneme hesabında
@@ -4666,8 +4693,8 @@ function enterApp(){
   fbGet('aa-v4/uidMap').then(m=>{
     _tasinanKullanicilar = m ? Object.values(m) : [];
     _hesapTasinmisMi = _tasinanKullanicilar.indexOf(me)>-1;
-    renderTasimaSeridi();
-  }).catch(()=>{});
+  }).catch(()=>{})
+    .then(()=>{ _tasimaListesiSorgulandi=true; renderTasimaSeridi(); });
 
   render();setTodayDate();updateAddFormFields();updateNotifDot();
   // Seri kırılma/kilometre taşı kontrolü — filtresiz tam listeyle, uygulama açılışında bir kez
