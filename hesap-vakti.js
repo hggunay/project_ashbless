@@ -830,7 +830,12 @@ const HV_KOD_SATIRLARI = [
 const HV_MELEK_TESEKKUR = [
   'Rica ederim.',
   'Ne demek. Ben buradayım.',
-  'Sen kendine teşekkür et, okuyan sensin.',
+  /* Gökşin'in eklemesi (2026-09-17): "uzun süre girmeme" senaryosunda
+     40 gündür okumamış birine düz "okuyan sensin" ters düşüyordu. Havuz
+     BÜTÜN senaryolarda ortak — ek hepsinde geçerli, bilerek.
+     " | " → iki ayrı balon (bkz. melegiKapat). Gökşin tek balonlu hâli değil
+     bunu seçti. */
+  'Sen kendine teşekkür et, okuyan sensin. | ...yani... anladın sen onu.',
   'Bir şey yapmadım ki, sadece doğruyu söyledim.'
 ];
 const HV_MELEK_SOZ = [
@@ -980,6 +985,12 @@ function hvStil(){
        yerine geçiyor: tek bir yüz değişiyormuş gibi görünsün. */
     .hv-cat-yuz{font-size:2.4rem;line-height:1.1;padding:.1rem .2rem;
       animation:hvYuzGel .22s ease}
+    /* Emoji balonunda tek tek beliren emojiler (2026-09-17) — ÇAT yüzlerinin
+       "belirme" hareketini paylaşıyor. Hareket azaltma açıksa sınıf verilmiyor,
+       emojiler yine tek tek ama hareketsiz geliyor. */
+    .hv-emoji-tek{display:inline-block;animation:hvYuzGel .3s ease}
+    .hv-emoji-ayrac{display:inline-block;margin:0 .35em;opacity:.75}
+    .hv-emoji-ayrac.hv-emoji-tek{animation:hvYuzGel .22s ease}
     @keyframes hvYuzGel{
       0%{opacity:.35;transform:scale(.78)}
       60%{transform:scale(1.12)}
@@ -1510,6 +1521,56 @@ async function hvSesMesaji(kap){
 /* Büyüyen balon — içeriği adım adım eklenen balonlar için ortak iskelet.
    `hvSatir` innerHTML yazıyor; burada ise aynı düğüme sonradan satır eklemek
    gerekiyor. Çalışma sahnesi ve yok etme sekansı bunu kullanıyor. */
+/* ── TEK TEK BELİREN EMOJİLER (2026-09-17) ────────────────────────────────
+   Gökşin: "emojiler tek tek görünür olabilir mi? böylece şeytan görsellerle
+   yavaş yavaş laf anlatmaya çalışıyormuş gibi görünür."
+   Yalnızca HİÇ HARF/RAKAM içermeyen balonlarda — yazılı cümleler eskisi gibi.
+
+   ⚠️ Emojiyi karakter karakter BÖLME: ✍️ ve 🗣️ ikişer parça (emoji + görünüm
+   seçici), bazı emojiler üç-dört parçalı (ZWJ dizileri, ten rengi). Düz
+   bölünürse emojiden ayrı görünmez bir karakter ya da yarım bir çizim çıkar.
+   `Intl.Segmenter` göze görünen birimlere doğru bölüyor; olmayan eski
+   tarayıcıda emoji kalıbına bakan düzenli ifade devreye giriyor. */
+const HV_EMOJI_ARALIK = 520;   // bir emoji belirdikten sonra bekleme (ms)
+/* Emojiler arasına giren ayraç (Gökşin, 2026-09-17): "aralarına ... koyabiliriz.
+   veya - koyalım." Ayraç da KENDİ SIRASI gelince beliriyor — "her bir karakter
+   teker teker ortaya çıksın". Hiçbir şey kaybolmuyor, balon soldan sağa doluyor:
+   📚  →  📚 -  →  📚 - ❓  → …
+   "..." denemek istenirse yalnızca bu sabit değişir. */
+const HV_EMOJI_AYRAC = '-';
+const HV_AYRAC_ARALIK = 300;   // ayraç belirdikten sonra bekleme (ms) — emojiden kısa
+const hvSadeceEmojiMi = m => !!String(m).trim() && !/[\p{L}\p{N}]/u.test(m);
+function hvGorunenBirimler(m){
+  m = String(m);
+  try{
+    if(typeof Intl!=='undefined' && Intl.Segmenter){
+      return [...new Intl.Segmenter(undefined,{granularity:'grapheme'}).segment(m)].map(x=>x.segment);
+    }
+  }catch(e){}
+  return m.match(/\p{Extended_Pictographic}(?:️|⃣|[\u{1F3FB}-\u{1F3FF}]|‍\p{Extended_Pictographic}️?)*|[\s\S]/gu) || [];
+}
+async function hvEmojiBalon(kap, kim, metin){
+  metin = hvEmojiYedek(metin);   // 🫵 → 👉 gerekiyorsa BÖLMEDEN önce
+  const birimler = hvGorunenBirimler(metin).filter(b=>b.trim());
+  const balon = hvBuyuyenBalon(kap, kim);
+  const hareketli = !hvAzHareket();
+  /* ⚠️ appendChild — öncekinin YERİNE koymuyor, YANINA ekliyor. ÇAT sahnesindeki
+     yüzlerden yalnızca "belirme" hareketi alındı; orada her yüz öncekinin yerine
+     geçiyor, burada hepsi yan yana kalıyor. */
+  const ekle = (metin, sinif, bekleme) => {
+    const s = document.createElement('span');
+    s.className = [sinif, hareketli ? 'hv-emoji-tek' : ''].filter(Boolean).join(' ');
+    s.textContent = metin;
+    balon.appendChild(s);
+    return hvBekle(bekleme);
+  };
+  for(let i=0;i<birimler.length;i++){
+    if(i>0 && HV_EMOJI_AYRAC) await ekle(HV_EMOJI_AYRAC, 'hv-emoji-ayrac', HV_AYRAC_ARALIK);
+    await ekle(birimler[i], '', HV_EMOJI_ARALIK);
+  }
+  await hvBekle(650);   // son emojiden sonra okunsun
+}
+
 function hvBuyuyenBalon(kap, kim, ekSinif){
   const satir=document.createElement('div'); satir.className='hv-satir';
   const yuz=document.createElement('span'); yuz.className='hv-yuz';
@@ -1594,7 +1655,10 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
       const parcalar=c.metin.split(' | ').map(s=>s.trim()).filter(Boolean);
       for(let i=0;i<parcalar.length;i++){
         await hvYaziyor(kap,'seytan',c.kararsiz && i===0);
-        await hvBalon(kap,'seytan',(i===0?(onek||''):'')+parcalar[i]);
+        const parca=(i===0?(onek||''):'')+parcalar[i];
+        // Yalnızca emojiden oluşan parça tek tek beliriyor (bkz. hvEmojiBalon)
+        if(hvSadeceEmojiMi(parca)) await hvEmojiBalon(kap,'seytan',parca);
+        else await hvBalon(kap,'seytan',parca);
       }
       return;
     }
@@ -1730,8 +1794,14 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
       {etiket:'Teşekkürler melek 😇',        deger:'tesekkur',  renk:'melek'},
       {etiket:'Şeytan\'a kulak asmayacağım', deger:'kulakasma', renk:'melek'}
     ]);
-    await hvYaziyor(kap,'melek',false);
-    await hvBalon(kap,'melek', hvRastgele(cevap==='tesekkur'?HV_MELEK_TESEKKUR:HV_MELEK_SOZ));
+    /* Cevap " | " içeriyorsa parçalar AYRI balon, araya yeniden "yazıyor…"
+       giriyor (2026-09-17, Gökşin iki balonlu hâli seçti). Aradaki duraksama
+       espriyi taşıyor: "okuyan sensin." … "...yani... anladın sen onu." */
+    const kapanis=hvRastgele(cevap==='tesekkur'?HV_MELEK_TESEKKUR:HV_MELEK_SOZ).split(' | ');
+    for(const parca of kapanis){
+      await hvYaziyor(kap,'melek',false);
+      await hvBalon(kap,'melek', parca);
+    }
     if(cevap==='kulakasma'){
       await hvYaziyor(kap,'seytan',true);
       await hvBalon(kap,'seytan', hvRastgele(HV_SEYTAN_SINIRLI));

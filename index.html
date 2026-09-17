@@ -8042,11 +8042,25 @@ function checkNotifications(){
    HER ÇAĞRIDAN SONRA çalışmalı — iki çağrı yerine de eklendi. */
 function eglenceyiTasi(){
   try{
+    /* ⚠️ ASIL HATA BURADAYDI (2026-09-17, Chrome'da yakalandı — bir önceki gün
+       yapılan "taşımayı renderStatsPanel'e bağla" düzeltmesi YETMEMİŞTİ).
+       Eskiden bölüm `document.getElementById('body-stats-profile')` ile
+       aranıyordu. İstatistikler İKİNCİ kez çizilince sayfada iki tane oluyor:
+       eskisi Eğlence'de, yenisi İstatistikler'de. HTML'de `sPanel-fun`,
+       `sPanel-stats`ten ÖNCE geldiği için getElementById Eğlence'dekini
+       buluyor, "zaten yerinde" deyip hiçbir şey yapmıyordu → yeni kopya
+       İstatistikler'de kalıyordu. Tetikleyen: filtre düğmeleri (Bu Yıl…),
+       "Daha fazla", sekmeden çıkıp dönmek — yani sekmeye İKİNCİ girişte.
+       Artık arama İstatistikler'in İÇİNDE yapılıyor; bulunan her yeni kopya
+       Eğlence'dekinin yerini alıyor. Ölçüldü: 8 farklı yoldan sonra fal
+       yalnızca Eğlence'de, sayfada tek kopya. */
     const kap=document.getElementById('funContainer');
-    const govde=document.getElementById('body-stats-profile');
-    if(!kap||!govde) return;
-    const bolum=govde.closest('.stats-section');
-    if(bolum && bolum.parentElement!==kap){ kap.innerHTML=''; kap.appendChild(bolum); }
+    const stats=document.getElementById('statsContainer');
+    if(!kap||!stats) return;
+    const govde=stats.querySelector('#body-stats-profile');
+    const bolum=govde && govde.closest('.stats-section');
+    // Filtre o dönemde kitap bulamazsa fal hiç üretilmiyor — o zaman Eğlence'deki kalsın.
+    if(bolum){ kap.innerHTML=''; kap.appendChild(bolum); }
     // Hesap Vakti falın ALTINA ekleniyor; kendi kapısı var (yalnızca deneme).
     if(typeof hesapVaktiCiz==='function') hesapVaktiCiz();
   }catch(e){}
@@ -8825,7 +8839,9 @@ parentRows.forEach(r=>{
      gizli olanı buluyor — düğmeye basınca hiçbir şey olmuyordu.
      Taşımayı çizimin kendisine bağlayınca hangi yoldan gelinirse gelinsin
      tek fal kalıyor. Çağıranlara AYRICA eklemeyin: hesapVaktiCiz() boşuna
-     iki kez çalışır. */
+     iki kez çalışır.
+     ⚠️ Bu tek başına YETMEDİ (2026-09-17): asıl kusur eglenceyiTasi'nin bölümü
+     yanlış yerde aramasıydı — oradaki nota bak. */
   eglenceyiTasi();
 }
 
