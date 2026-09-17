@@ -1927,6 +1927,28 @@ function oykuSeriBaglariniTemizle(storyId){
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
 
+/* Başkasının seri satırını SENİN listene "planlanan" satır olarak çevirir
+   (2026-09-17, düzeltme). Seri ve grup kopyalama ikisi de bunu kullanıyor.
+   ⚠️ ESKİ HATA: kitap adı `myBooks()` içinde, yani KOPYALAYANIN kütüphanesinde
+   aranıyordu. bookId'ler kişiye özel (Date.now) — başkasının kitabı senin
+   listende hiç bulunmuyor, ad boş kalıyor, satır süzgeçte atılıyordu. Sonuç:
+   kopyaya YALNIZCA sahibinin "planlanan" kitapları geçiyor, okudukları
+   kayboluyordu. Kopyalama ziyaret modunda yapılıyor; doğru kütüphane
+   `targetBooks()` = ziyaret edilen kişininki.
+   Seri kopyalamada ayrıca bir öncelik hatası vardı: `a || b ? x : y`,
+   `(a || b) ? x : y` diye okunuyordu.
+   Ara öykü satırları (storyId) bilerek atlanıyor: sahibinin öykü kaydına
+   işaret ediyorlar, senin Hikâyelerim'inde karşılıkları yok. */
+function seriKopyaSatiri(bk){
+  let ad = bk.manualTitle || '';
+  let yazar = bk.manualAuthor || '';
+  if(!ad && bk.bookId){
+    const kitap = targetBooks().find(b=>b.id===bk.bookId);
+    if(kitap){ ad = kitap.title||''; yazar = yazar || kitap.author||''; }
+  }
+  return { manualTitle:ad, manualAuthor:yazar, num:bk.num||null, pages:bk.pages||null, planned:true };
+}
+
 function copySeriesToMyList(seriesId){
   const srcData = viewSeriesData();
   const ser = srcData.series[seriesId];
@@ -1937,13 +1959,7 @@ function copySeriesToMyList(seriesId){
   if(exists){ notify('⚠️',ser.name+' zaten serilerinizde var.'); return; }
   const newId = 'ser_'+Date.now();
   // Kitapları planned olarak kopyala (bookId'ler başkasına ait)
-  const books = (ser.books||[]).map((bk,i)=>({
-    manualTitle: bk.manualTitle || bk.bookId ? (myBooks().find(b=>b.id===bk.bookId)||{title:bk.manualTitle||''}).title || '' : '',
-    manualAuthor: bk.manualAuthor||'',
-    num: bk.num||null,
-    pages: bk.pages||null,
-    planned: true
-  })).filter(b=>b.manualTitle);
+  const books = (ser.books||[]).map(bk=>seriKopyaSatiri(bk)).filter(b=>b.manualTitle);
   myData.series[newId] = { id:newId, name:ser.name, total:ser.total||null, books, createdAt:new Date().toISOString() };
   saveDb();
   renderSeriesList();
@@ -1965,11 +1981,7 @@ function copyGroupToMyList(pathId){
     const alreadyExists = Object.values(myData.series||{}).find(ms=>ms.name.toLowerCase()===ser.name.toLowerCase());
     if(alreadyExists){ newSteps.push({seriesId:alreadyExists.id}); return; }
     const newId = 'ser_'+(Date.now()+Math.random()*1000|0);
-    const books = (ser.books||[]).map(bk=>({
-      manualTitle: bk.manualTitle||(myBooks().find(b=>b.id===bk.bookId)||{}).title||'',
-      manualAuthor: bk.manualAuthor||'',
-      num: bk.num||null, pages: bk.pages||null, planned:true
-    })).filter(b=>b.manualTitle);
+    const books = (ser.books||[]).map(bk=>seriKopyaSatiri(bk)).filter(b=>b.manualTitle);
     myData.series[newId] = {id:newId, name:ser.name, total:ser.total||null, books, createdAt:new Date().toISOString()};
     newSteps.push({seriesId:newId});
   });
