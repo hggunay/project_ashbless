@@ -391,7 +391,9 @@ function addBulkBooksToSeries(seriesId){
   if(!ser) return;
   const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
   const commonAuthor = authorEl?authorEl.value.trim():'';
-  const startNum = (ser.books||[]).reduce((m,b)=>Math.max(m,b.num||0),0);
+  // Math.floor: son satır ara öykü (ör. 7.5) olabilir — toplu eklenen
+  // kitaplar 8.5, 9.5 diye değil 8, 9 diye devam etsin.
+  const startNum = (ser.books||[]).reduce((m,b)=>Math.max(m,Math.floor(b.num||0)),0);
   let added = 0;
   lines.forEach((line,i)=>{
     const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
@@ -483,7 +485,10 @@ function addBookToSeries(seriesId){
   // sayısı hedefi geçtiğinde yükseltiyoruz (Robot'ta 5 kitap vardı, toplam 4'te
   // kalmıştı). Hiç girilmemişse (null) dokunmuyoruz — ekran zaten kitap sayısını
   // gösteriyor, oraya sayı yazmak "hedef belirlenmiş" gibi görünürdü.
-  if(ser.total!=null && ser.books.length>ser.total) ser.total = ser.books.length;
+  // ⚠️ Ara öyküler SAYILMIYOR (2026-09-17): yoksa Katilbot'a HOME'u bağlamak
+  // 7'lik hedefi kendiliğinden 8'e çıkarabilirdi.
+  const _kitapSayisi = ser.books.filter(b=>!b.storyId).length;
+  if(ser.total!=null && _kitapSayisi>ser.total) ser.total = _kitapSayisi;
 
   saveDb();
   titleEl.value='';
@@ -500,6 +505,7 @@ function addBookToSeries(seriesId){
 // Seri kartındaki tek bir kitap satırının HTML'i — renderSeriesList VE _refreshSeriesBookList
 // tarafından ortak kullanılır (önceden iki ayrı kopya vardı, biri kaçış hatası taşıyordu — Ö22)
 function renderSeriesBookItemHtml(seriesId, bk){
+  if(bk.storyId) return oykuSatiriHtml(seriesId, bk);   // ara öykü (2026-09-17)
   const b = bk.book;
   const mapKey = seriesId+'_'+ensureBkEid(bk);
   seriesBkMap[mapKey] = bk;
@@ -556,6 +562,7 @@ function _refreshSeriesBookList(seriesId){
 
   (ser.books||[]).forEach(ensureBkEid);
   const books = (ser.books||[]).map(bk=>{
+    if(bk.storyId) return oykuSatiriniCoz(bk, me);   // ara öykü — bkz. ARA ÖYKÜLER
     if(bk.planned){
       const linked = myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
       if(linked) return {...bk, book:linked, planned:false};
@@ -619,12 +626,14 @@ function _refreshSeriesBookList(seriesId){
   // Toplam/yüzde göstergesini de güncelle (önceden eksikti — Ö22)
   const statsEl = document.getElementById('seriesStats_'+seriesId);
   if(statsEl){
-    const readCount = books.filter(bk=>{
+    // Ara öyküler sayaca girmez — toplam da okunan da yalnızca kitaplardan.
+    const kitaplar = seriKitaplari(books);
+    const readCount = kitaplar.filter(bk=>{
       const b=bk.book; if(!b||b.readingStatus==='planned'||b.readingStatus==='reading'||b.readingStatus==='paused'||b.readingStatus==='wishlist') return false; return true;
     }).length;
-    const total = seriToplam(ser, books.length) || 1;
+    const total = seriToplam(ser, kitaplar.length) || 1;
     const ongoing = ser.ongoing||false;
-    const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriToplam(ser, books.length)||'?');
+    const totalDisplay = ongoing ? (seriToplam(ser, kitaplar.length)||'?')+'+' : (seriToplam(ser, kitaplar.length)||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
     statsEl.textContent = readCount+' / '+totalDisplay+' kitap · %'+pct+(isDone?' · ✅ Tamamlandı':'');
@@ -858,6 +867,8 @@ function checkSeriesComplete(seriesId){
   // kütüphanede karşılığı olmayan satırlar var (canlı veride Dune ve Efsaneler'de
   // birer tane). Ekranda zaten gösterilmiyorlar; burada sayılsalardı Dune 6 gerçek
   // kitapla hiçbir zaman "tamamlandı" olamazdı.
+  // Ara öykü satırlarında (storyId) ne manualTitle ne bookId var → burada
+  // kendiliğinden sayılmıyorlar. Bilerek: öykü seri tamamlanmayı engellemez.
   const gecerliSayi = (ser.books||[]).filter(bk=>
     bk.manualTitle || myBooksList.some(b=>b.id===bk.bookId)
   ).length;
@@ -894,7 +905,7 @@ function _buildSeriesEditFormEl(seriesId, eid, bk, override){
       <input class="book-input" id="edit_author_${containerId}" type="text" value="${(author||'').replace(/"/g,'&quot;')}" placeholder="Yazar" style="flex:1;font-size:.82rem;padding:.3rem .5rem"/>
     </div>`:''}
     <div style="display:flex;gap:.4rem;flex-wrap:wrap">
-      <input class="book-input" id="edit_num_${containerId}" type="number" value="${num}" placeholder="#" style="width:55px;font-size:.82rem;padding:.3rem .4rem"/>
+      <input class="book-input" id="edit_num_${containerId}" type="number" value="${num}" ${bk.storyId?'step="any" min="0" placeholder="örn. 4.5" style="width:72px;':'placeholder="#" style="width:55px;'}font-size:.82rem;padding:.3rem .4rem"/>
       <input class="book-input" id="edit_pages_${containerId}" type="number" value="${pages}" placeholder="Sayfa" style="width:70px;font-size:.82rem;padding:.3rem .4rem"/>
       <button class="btn btn-sm btn-primary" style="font-size:.72rem" onclick="saveEditSeriesBook('${seriesId}','${eid}','${containerId}',${isPlanned})">&#10003; Kaydet</button>
       <button class="btn btn-sm" style="font-size:.72rem;background:rgba(100,160,200,.15);color:rgba(100,180,220,.9)" onclick="closeEditSeriesBook('${containerId}')">Iptal</button>
@@ -916,9 +927,14 @@ function openEditSeriesBook(evt, seriesId, eid){
     if(!ser) return;
     const rawBk = (ser.books||[]).find(b=>b._eid===eid);
     if(!rawBk) return;
-    const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
-    const linked = rawBk.bookId ? myBooksList.find(b=>b.id===rawBk.bookId) : null;
-    bk = linked ? {...rawBk, book:linked} : {...rawBk, book:{id:null,title:rawBk.manualTitle,author:rawBk.manualAuthor||'',readingStatus:'planned'}};
+    if(rawBk.storyId){
+      bk = oykuSatiriniCoz(rawBk, me);   // ara öykü — bkz. ARA ÖYKÜLER
+      if(!bk) return;
+    } else {
+      const myBooksList = myBooks().filter(b=>b.title&&!b.title.startsWith('ISBN:'));
+      const linked = rawBk.bookId ? myBooksList.find(b=>b.id===rawBk.bookId) : null;
+      bk = linked ? {...rawBk, book:linked} : {...rawBk, book:{id:null,title:rawBk.manualTitle,author:rawBk.manualAuthor||'',readingStatus:'planned'}};
+    }
     seriesBkMap[seriesId+'_'+eid] = bk;
   }
   const data = mySeriesData();
@@ -949,12 +965,29 @@ function saveEditSeriesBook(seriesId, eid, containerId, isPlanned){
   if(!ser) return;
   const bkRef = seriesBkMap[seriesId+'_'+eid];
   if(!bkRef) return;
+  /* ⚠️ Öykü dalı EN BAŞTA olmalı (2026-09-17). Öykü satırında ne `bookId` ne
+     `manualTitle` var; eski koşul `b.manualTitle===bkRef.manualTitle` yani
+     `undefined===undefined` olur ve serideki İLK BAĞLI KİTABIN satırıyla
+     eşleşirdi — öykünün numarasını değiştirmek bir kitabın numarasını
+     değiştirirdi. */
   const rawIdx = ser.books.findIndex(b=>
+    bkRef.storyId ? b.storyId===bkRef.storyId :
     bkRef.bookId ? b.bookId===bkRef.bookId : b.manualTitle===bkRef.manualTitle
   );
   if(rawIdx<0) return;
   const numEl = document.getElementById('edit_num_'+containerId);
   const pagesEl = document.getElementById('edit_pages_'+containerId);
+  if(bkRef.storyId){
+    // Ara öykü: ondalık numara, KAYDIRMA YOK (araya giriyor, kimsenin yerini almıyor).
+    const n = parseFloat(numEl?.value);
+    ser.books[rawIdx].num = (isFinite(n)&&n>=0) ? n : null;
+    ser.books[rawIdx].pages = parseInt(pagesEl?.value)||null;
+    ser.books.sort((a,b)=>(a.num??999)-(b.num??999));
+    saveDb();
+    closeEditSeriesBook(containerId);
+    renderSeriesList();
+    return;
+  }
   // ── NUMARA TAŞIMA (2026-08-31) ──
   // Eskiden girilen numara başka bir kitapta duruyorsa iki kitap aynı numarayı
   // alıyordu. Artık aradakiler kayıyor: 5. kitabı 2 yaparsan eski 2,3,4 birer
@@ -1106,6 +1139,7 @@ function renderSeriesList(){
   container.innerHTML = visibleSeries.map(ser=>{
     (ser.books||[]).forEach(ensureBkEid);
     const books = (ser.books||[]).map(bk=>{
+      if(bk.storyId) return oykuSatiriniCoz(bk, viewing||me);   // ara öykü — bkz. ARA ÖYKÜLER
       if(bk.planned){
         // Planlanan kitap — kitaplarımda yok, ama title eşleşirse bağla
         const linked = myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
@@ -1115,22 +1149,26 @@ function renderSeriesList(){
       const book = myBooksList.find(b=>b.id===bk.bookId);
       return book ? {...bk, book} : null;
     }).filter(Boolean);
+    // Sayaçlar, yüzde, sayfa modu ve "sıradaki" YALNIZCA kitaplardan.
+    // `books` (öyküler dahil) yalnızca listeyi çizmek için kullanılıyor.
+    const kitaplar = seriKitaplari(books);
+    const oykuSayisi = books.length - kitaplar.length;
 
-    const readCount = books.filter(bk=>{
+    const readCount = kitaplar.filter(bk=>{
       const b=bk.book; if(!b||b.readingStatus==="planned"||b.readingStatus==="reading"||b.readingStatus==="paused"||b.readingStatus==="wishlist") return false; return true;
     }).length;
-    const total = seriToplam(ser, books.length) || 1;
+    const total = seriToplam(ser, kitaplar.length) || 1;
 	const ongoing = ser.ongoing||false;
-const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriToplam(ser, books.length)||'?');
+const totalDisplay = ongoing ? (seriToplam(ser, kitaplar.length)||'?')+'+' : (seriToplam(ser, kitaplar.length)||'?');
     const pct = Math.round((readCount/total)*100);
     const isDone = readCount>=total && total>0;
 
     // Sayfa modu hesabi
-    const allHavePages = books.length>0 && books.every(bk=>{
+    const allHavePages = kitaplar.length>0 && kitaplar.every(bk=>{
       const pg=bk.pages||(bk.book&&bk.book.pages); return !!pg;
     });
-    const totalPages = allHavePages ? books.reduce((s,bk)=>s+(bk.pages||(bk.book&&bk.book.pages)||0),0) : 0;
-    const readPages = books.reduce((s,bk)=>{
+    const totalPages = allHavePages ? kitaplar.reduce((s,bk)=>s+(bk.pages||(bk.book&&bk.book.pages)||0),0) : 0;
+    const readPages = kitaplar.reduce((s,bk)=>{
       const b=bk.book; if(!b) return s;
       if(b.readingStatus==="reading"&&b.currentPage) return s+b.currentPage;
       const pg=bk.pages||b.pages||0;
@@ -1151,12 +1189,17 @@ const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriT
     // Şu an okunan kitap
     const currentlyReading = books.find(bk=>bk.book.readingStatus==='reading');
 
-    // Sıradaki okunmamış
-   const nextUnread = books.find(bk=>
+    // Sıradaki okunmamış — KİTAP. Öykü ayrıca, yanında seçenek olarak (siradakiOyku).
+   const nextUnread = kitaplar.find(bk=>
   bk.book.readingStatus==='wishlist'||
   bk.book.readingStatus==='planned'||
   (!bk.book.readingStatus)
 );
+    const nextOyku = siradakiOyku(books, nextUnread);
+    const siradakiParcalar = [
+      nextOyku ? '<span style="color:#dccbf0">📄 '+escapeHtml(nextOyku.book.title)+'</span>' : '',
+      nextUnread ? escapeHtml(nextUnread.book.title) : ''
+    ].filter(Boolean);
 
     // Kitap listesi HTML — gruplara ayır
     const booksReading = books.filter(bk=>bk.book.readingStatus==='reading');
@@ -1195,11 +1238,15 @@ const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriT
       return '';
     })();
     const bookSelectHtml = `<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.4rem">
-      <div style="display:flex;gap:.3rem;margin-bottom:.2rem">
+      <div style="display:flex;gap:.3rem;margin-bottom:.2rem;flex-wrap:wrap">
         <button class="btn btn-sm" id="seriesAddModeBtn_${ser.id}"
           style="font-size:.68rem;padding:.15rem .5rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
           onclick="toggleSeriesAddMode('${ser.id}')">📋 Toplu giriş</button>
+        <button class="btn btn-sm seri-oyku-dugme" id="seriesAddOykuBtn_${ser.id}"
+          style="font-size:.68rem;padding:.15rem .5rem"
+          onclick="seriOykuFormuAc('${ser.id}')">📄 Ara öykü</button>
       </div>
+      ${oykuEkleFormuHtml(ser.id, false)}
       <div id="seriesAddSingle_${ser.id}">
         <div style="position:relative">
           <input class="book-input" id="seriesBookTitle_${ser.id}" type="text" placeholder="Kitap adı..." 
@@ -1272,11 +1319,11 @@ const totalDisplay = ongoing ? (seriToplam(ser, books.length)||'?')+'+' : (seriT
         ${currentlyReading.book.currentPage&&currentlyReading.book.pages
           ?`<span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.7"> · ${currentlyReading.book.currentPage}/${currentlyReading.book.pages} sayfa</span>`:''}
       </div>` : ''}
-      ${!currentlyReading && nextUnread ? `<div style="font-size:.8rem;color:var(--gold-light);opacity:.92;margin:.3rem 0">⏭ Sıradaki: ${escapeHtml(nextUnread.book.title)}</div>` : ''}
+      ${!currentlyReading && siradakiParcalar.length ? `<div style="font-size:.8rem;color:var(--gold-light);opacity:.92;margin:.3rem 0">⏭ Sıradaki: ${siradakiParcalar.join(' / ')}</div>` : ''}
       <div class="series-actions">
         <button class="btn btn-sm" id="seriesToggleBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
-          onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${books.length})</button>
+          onclick="toggleSeriesBooks('${ser.id}')">▼ Kitaplar (${kitaplar.length}${oykuSayisi?' + '+oykuSayisi+' öykü':''})</button>
         <button class="btn btn-sm" id="seriesCloseBtn_${ser.id}" 
           style="font-size:.7rem;background:rgba(139,0,0,.1);color:var(--gold-light);border:1px solid rgba(139,0,0,.2);display:none"
           onclick="closeSeriesCard('${ser.id}')">✓ Bitti</button>
@@ -1360,6 +1407,7 @@ function renderGroupCards(seriesContainer){
       if(!ser) return null;
       (ser.books||[]).forEach(ensureBkEid);
       const serBooks = (ser.books||[]).map(bk=>{
+        if(bk.storyId) return oykuSatiriniCoz(bk, viewing||me);   // ara öykü — bkz. ARA ÖYKÜLER
         if(bk.planned){
           const linked=myBooksList.find(b=>b.title.toLowerCase()===(bk.manualTitle||'').toLowerCase());
           return linked?{...bk,book:linked}:{...bk,book:{readingStatus:'planned',title:bk.manualTitle,pages:bk.pages||null}};
@@ -1367,8 +1415,10 @@ function renderGroupCards(seriesContainer){
         const book=myBooksList.find(b=>b.id===bk.bookId);
         return book?{...bk,book}:null;
       }).filter(Boolean);
-      const readCount=serBooks.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist';}).length;
-      const total=seriToplam(ser, serBooks.length)||1;
+      // Grup sayaçları da yalnızca kitaplardan (öykü toplamı şişirmesin).
+      const serKitaplar=seriKitaplari(serBooks);
+      const readCount=serKitaplar.filter(bk=>{const b=bk.book;return b&&b.readingStatus!=='planned'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly))&&b.readingStatus!=='wishlist';}).length;
+      const total=seriToplam(ser, serKitaplar.length)||1;
       const pct=Math.round((readCount/total)*100);
       return {...s,ser,serBooks,readCount,total,pct};
     }).filter(Boolean);
@@ -1407,6 +1457,7 @@ function renderGroupCards(seriesContainer){
       <div class="group-card-body" style="display:${isOpen?'block':'none'};margin-top:.75rem">
         ${steps.map((st,i)=>{
           const booksHtml=st.serBooks.map((bk,bkIdx)=>{
+            if(bk.storyId) return oykuGrupSatiriHtml(st.ser.id, bk);   // ara öykü
             const title=bk.book.title||bk.manualTitle||'?';
             const lb=bk.book;
             const ico=lb.readingStatus==='reading'?'📖':lb.readingStatus==='paused'?'🚧':(lb.readingStatus==='planned'||lb.readingStatus==='wishlist')?'⏳':'✅';
@@ -1425,11 +1476,15 @@ function renderGroupCards(seriesContainer){
           const serOpenKey='serInGrp_'+st.ser.id;
           const serIsOpen=sessionStorage.getItem(serOpenKey)==='1';
           const grpAddFormHtml=!viewing?`<div class="series-add-book-row" style="flex-direction:column;align-items:stretch;gap:.35rem;padding:.4rem .5rem .2rem 1.25rem">
-            <div style="display:flex;gap:.3rem">
+            <div style="display:flex;gap:.3rem;flex-wrap:wrap">
               <button class="btn btn-sm" id="seriesAddModeBtn_${st.ser.id}"
                 style="font-size:.62rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)"
                 onclick="toggleSeriesAddMode('${st.ser.id}')">📋 Toplu giriş</button>
+              <button class="btn btn-sm seri-oyku-dugme" id="seriesAddOykuBtn_${st.ser.id}"
+                style="font-size:.62rem;padding:.1rem .4rem"
+                onclick="seriOykuFormuAc('${st.ser.id}')">📄 Ara öykü</button>
             </div>
+            ${oykuEkleFormuHtml(st.ser.id, true)}
             <div id="seriesAddSingle_${st.ser.id}">
               <div style="position:relative">
                 <input class="book-input" id="seriesBookTitle_${st.ser.id}" type="text" placeholder="Kitap adı..."
@@ -1507,6 +1562,368 @@ function toggleSeriesInGroup(seriesId, headerEl){
 }
 
 
+
+// ══════════════════════════════════════════════════════════════════════
+// ARA ÖYKÜLER — seriye Hikâyelerim'deki bir öyküyü bağlama (2026-09-17)
+// ══════════════════════════════════════════════════════════════════════
+// Gökşin'in örneği: Katilbot Günlükleri #4.5 "HOME" — 17 sayfa, Türkçe
+// çevirisi yok, Hikâyelerim → Tsundoku'da duruyor, seriyle bağı yoktu.
+//
+// ⚠️ MODEL: seri satırı öykünün KOPYASINI tutmuyor, ona İŞARET ediyor:
+//     { storyId, num, pages, _eid }
+// Başlık, yazar, okundu/okunacak, yıldız, not — hepsi Hikâyelerim'deki TEK
+// kayıttan geliyor. Kitap satırlarının `bookId` ile yaptığının aynısı.
+// Reddedilen yol (gelecek-planlar.md): seriye ayrı bir "ara öykü" kaydı
+// yazmak — HOME zaten Hikâyelerim'deydi, çift kayıt olurdu.
+//
+// ⚠️ SAYIM: öykü satırı serinin TOPLAMINA ve OKUNAN sayısına GİRMEZ.
+// Gökşin'in 7'si "6 Türkçe + 1 çevrilmemiş kitap"; HOME o 7'nin içinde değil.
+// Rozetler kendiliğinden doğru: completedSeriesCount / maxSeriesBooks /
+// sameUniverseFromGroups hepsi `bk.bookId`'ye bakıyor, öykü satırında o yok.
+// checkSeriesComplete de `bookId || manualTitle` sayıyor — o da görmüyor.
+// Ekrandaki sayaçlar ise elle ayrıldı: `seriKitaplari()` kullanılıyor.
+//
+// ⚠️ SATIRI ÇÖZEN YER DÖRT TANE: _refreshSeriesBookList, renderSeriesList,
+// renderGroupCards, openEditSeriesBook. Dördü de en başta
+// `if(bk.storyId) return oykuSatiriniCoz(...)` çağırıyor. Beşinci bir yer
+// eklenirse oraya da konmalı — yoksa o görünümde öykü satırı "kitabı
+// silinmiş" sanılıp sessizce kaybolur.
+
+/* Başlık karşılaştırması — kitap eklemedeki `normalizeForDup` ile AYNI kural
+   (index.html, addBook). "zaten mevcut" uyarısı iki yerde aynı davransın diye. */
+function oykuNormal(s){
+  return (s||'').toLowerCase()
+    .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
+    .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c')
+    .replace(/[^a-z0-9]/g,'').trim();
+}
+
+function kisininOykuleri(sahip){ return (db.stories&&db.stories[sahip])||[]; }
+
+/* Seri satırını çizime hazır hale getirir. Öykü için sahte bir "book" kuruluyor
+   ki mevcut gruplama (Okundu / Okunacak) aynen çalışsın:
+     okundu   → readingStatus 'new'     → "Okundu" grubu
+     okunacak → readingStatus 'planned' → "Okunacak / Planlanan" grubu
+   Öykü Hikâyelerim'den SİLİNMİŞSE null döner ve satır gizlenir (kitaplarda da
+   böyle). Silme zaten bağlantıyı temizliyor; bu yalnızca eski kayıt güvencesi. */
+function oykuSatiriniCoz(bk, sahip){
+  const s = kisininOykuleri(sahip).find(x=>x.id===bk.storyId);
+  if(!s) return null;
+  return {...bk, book:{
+    id:null, storyId:s.id, _oyku:true,
+    title:s.title||'', author:s.author||'',
+    readingStatus: s.status==='read' ? 'new' : 'planned',
+    pages: bk.pages||null
+  }};
+}
+
+/* Sayaçlar için: öykü satırları ÇIKARILMIŞ liste. */
+function seriKitaplari(books){ return (books||[]).filter(bk=>!bk.storyId); }
+
+/* "⏭ Sıradaki" satırında öykü de gösterilsin mi? (Gökşin'in isteği: kısa
+   öyküler her zaman erişilebilir değil — sıradaki KİTABI gizlememeli, onun
+   yanında seçenek olarak durmalı: "Sıradaki: 📄 HOME / Ağ Etkisi")
+   Kural: okunmamış bir öykü, sıradaki kitap ile ONDAN ÖNCEKİ kitap arasında
+   duruyorsa gösterilir. Öyküyü atlayıp #5'i okuduysan, sıradaki #6 olur ve
+   4.5 bir daha çıkmaz — atlanmış öykü seriyi sonsuza kadar dürtmüyor.
+   Hiç okunmamış kitap kalmadıysa: son kitaptan SONRA gelen öykü gösterilir
+   (ör. finalden sonra yazılmış bir 7.5). */
+function siradakiOyku(books, siradakiKitap){
+  const bekleyen = (books||[]).filter(bk=>bk.storyId && bk.book && bk.book.readingStatus!=='new' && bk.num!=null);
+  if(!bekleyen.length) return null;
+  const kitapNolari = seriKitaplari(books).map(bk=>bk.num).filter(n=>n!=null);
+  if(siradakiKitap){
+    if(siradakiKitap.num==null) return null;
+    const onceki = kitapNolari.filter(n=>n<siradakiKitap.num);
+    const alt = onceki.length ? Math.max(...onceki) : -Infinity;
+    return bekleyen.find(o=>o.num>alt && o.num<siradakiKitap.num) || null;
+  }
+  const enSon = kitapNolari.length ? Math.max(...kitapNolari) : -Infinity;
+  return bekleyen.find(o=>o.num>enSon) || null;
+}
+
+/* Bir öykünün bağlı olduğu seriler — Hikâyelerim tarafında "📚 Katilbot
+   Günlükleri #4.5" satırı için. */
+function oykununSerileri(sahip, storyId){
+  const seriler = (db.seriesData&&db.seriesData[sahip]&&db.seriesData[sahip].series)||{};
+  const sonuc = [];
+  Object.values(seriler).forEach(ser=>{
+    (ser.books||[]).forEach(bk=>{
+      if(bk.storyId===storyId) sonuc.push({ ad:ser.name||'', num:bk.num });
+    });
+  });
+  return sonuc;
+}
+function oykuSeriEtiketi(sahip, storyId){
+  return oykununSerileri(sahip, storyId)
+    .map(x=>escapeHtml(x.ad)+(x.num!=null?' #'+x.num:'')).join(' · ');
+}
+
+/* Seri kartındaki öykü satırı. Kitap satırıyla (renderSeriesBookItemHtml) AYNI
+   iskelet; farkları: mor renk, "kısa öykü" etiketi, tıklayınca öykü detayı,
+   "📖 Başla" yerine "✔ Okudum" (öykülerde "okunuyor" durumu yok). */
+function oykuSatiriHtml(seriesId, bk){
+  const b = bk.book;
+  const eid = ensureBkEid(bk);
+  seriesBkMap[seriesId+'_'+eid] = bk;
+  const okundu = b.readingStatus==='new';
+  const sahip = viewing||me;
+  const benim = !viewing;
+  return `<div class="series-book-item seri-oyku ${okundu?'':'seri-oyku-bekliyor'}" data-eid="${eid}" onclick="openStoryDetail('${sahip}',${b.storyId})">
+    <span class="series-book-num">${bk.num!=null?'#'+bk.num:''}</span>
+    <span class="series-book-status">${okundu?'✅':'⏳'}</span>
+    <span class="series-book-title">📄 ${escapeHtml(b.title)}${b.author?'<span style="opacity:.6;font-size:.75rem"> — '+escapeHtml(b.author)+'</span>':''}<span class="seri-oyku-etiket">kısa öykü</span>${bk.pages?'<span style="opacity:.6;font-size:.7rem"> · '+bk.pages+' sayfa</span>':''}</span>
+    <div style="display:flex;gap:.25rem;margin-left:auto" onclick="event.stopPropagation()">
+      ${benim&&!okundu?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .4rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="seridenOykuOkundu(${b.storyId})">✔ Okudum</button>`:''}
+      ${benim?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}','${eid}')">✏️</button>
+      <button class="btn btn-sm btn-danger" style="font-size:.55rem;padding:.1rem .35rem" onclick="oykuyuSeridenCikarSor(event,'${seriesId}',${b.storyId})">✕</button>`:''}
+    </div>
+  </div>`;
+}
+
+/* Grup (okuma yolu) kartının içindeki kısa satır — oradaki kitap satırlarının
+   kalıbı: ikon · numara · başlık · düğmeler. Kitap satırlarında orada silme
+   düğmesi yok, öyküde de yok. */
+function oykuGrupSatiriHtml(seriesId, bk){
+  const b = bk.book;
+  const eid = ensureBkEid(bk);
+  seriesBkMap[seriesId+'_'+eid] = bk;
+  const okundu = b.readingStatus==='new';
+  const sahip = viewing||me;
+  return `<div data-grp-book="1" data-eid="${eid}" class="seri-oyku-grup" onclick="openStoryDetail('${sahip}',${b.storyId})" style="display:flex;align-items:center;gap:.3rem;padding:.15rem .5rem .15rem 1.25rem;font-size:.8rem;cursor:pointer">${okundu?'✅':'⏳'}${bk.num!=null?' #'+bk.num+' ':' '}<span style="flex:1;color:#dccbf0">📄 ${escapeHtml(b.title)}<span class="seri-oyku-etiket">kısa öykü</span></span><div style="display:flex;gap:.2rem;flex-shrink:0" onclick="event.stopPropagation()">${!viewing&&!okundu?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .35rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="seridenOykuOkundu(${b.storyId})">✔ Okudum</button>`:''}${!viewing?`<button class="btn btn-sm" style="font-size:.55rem;padding:.1rem .3rem;background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="openEditSeriesBook(event,'${seriesId}','${eid}')" title="Öyküyü düzenle">✏️</button>`:''}</div></div>`;
+}
+
+/* "📄 Ara öykü" ekleme formu — seri kartında ve grup kartında AYNI form, o
+   yüzden tek yerde üretiliyor (kitap formu iki yerde ayrı ayrı yazılmış;
+   aynı hatayı tekrarlamayalım). `kucuk` grup kartının sıkışık ölçüsü. */
+function oykuEkleFormuHtml(seriesId, kucuk){
+  const fs = kucuk ? '.75rem' : '.82rem';
+  const pd = kucuk ? '.3rem .45rem' : '.35rem .5rem';
+  return `<div id="seriesAddOyku_${seriesId}" style="display:none">
+    <div style="position:relative">
+      <input class="book-input" id="seriOykuBaslik_${seriesId}" type="text" placeholder="Öykü adı — Hikâyelerim'de ara..."
+        style="width:100%;font-size:${kucuk?'.78rem':'.85rem'};padding:${kucuk?'.32rem .5rem':'.4rem .6rem'}"
+        oninput="delete this.dataset.oykuId;seriOykuAra('${seriesId}')" onblur="setTimeout(()=>seriOykuAraGizle('${seriesId}'),300)"/>
+      <div id="seriOykuListe_${seriesId}" class="series-ac-dropdown" style="display:none"></div>
+    </div>
+    <div style="display:flex;gap:.4rem;flex-wrap:wrap;margin-top:.3rem">
+      <input class="book-input" id="seriOykuYazar_${seriesId}" type="text" placeholder="Yazar (opsiyonel)"
+        style="flex:1;min-width:110px;font-size:${fs};padding:${pd}"/>
+      <input class="book-input" id="seriOykuNo_${seriesId}" type="number" step="any" min="0" placeholder="örn. 4.5"
+        style="width:72px;font-size:${fs};padding:${pd}"/>
+      <input class="book-input" id="seriOykuSayfa_${seriesId}" type="number" min="1" placeholder="Sayfa"
+        style="width:62px;font-size:${fs};padding:${pd}"/>
+    </div>
+    <div class="confirm-bar" id="seriOykuOnay_${seriesId}">
+      <span id="seriOykuOnayMsg_${seriesId}" style="flex:1;color:var(--gold-light)"></span>
+      <button class="btn btn-sm btn-primary" onclick="seriyeOykuEkle('${seriesId}','bagla')">🔗 Onu Bağla</button>
+      <button class="btn btn-sm" style="background:rgba(201,162,39,.1);color:var(--gold);border:1px solid rgba(201,162,39,.2)" onclick="seriyeOykuEkle('${seriesId}','yeni')">Yine de Yeni Ekle</button>
+      <button class="btn btn-sm" style="background:rgba(138,69,19,.1);color:var(--gold-light);border:1px solid rgba(201,162,39,.3)" onclick="seriOykuOnayKapat('${seriesId}')">İptal</button>
+    </div>
+    <div style="display:flex;gap:.4rem;align-items:center;margin-top:.3rem">
+      <button class="btn btn-sm btn-primary" style="font-size:${kucuk?'.68rem':''}" onclick="seriyeOykuEkle('${seriesId}')">+ Öyküyü Ekle</button>
+    </div>
+    <div style="font-size:.7rem;color:#dccbf0;opacity:.9;font-style:italic;margin-top:.3rem">Hikâyelerim'de yoksa oraya ⏳ Okunacak olarak eklenir. Ara öykü serinin toplamına sayılmaz.</div>
+  </div>`;
+}
+
+/* Form düğmesi: "📄 Ara öykü" ↔ kitap formuna geri dönüş. Toplu giriş
+   düğmesiyle aynı yerde duruyor; üç form aynı anda açık olmuyor. */
+function seriOykuFormuAc(seriesId){
+  const oyku = document.getElementById('seriesAddOyku_'+seriesId);
+  const tek = document.getElementById('seriesAddSingle_'+seriesId);
+  const toplu = document.getElementById('seriesAddBulk_'+seriesId);
+  const dugme = document.getElementById('seriesAddOykuBtn_'+seriesId);
+  const modDugme = document.getElementById('seriesAddModeBtn_'+seriesId);
+  if(!oyku) return;
+  const acik = getComputedStyle(oyku).display!=='none';
+  oyku.style.display = acik ? 'none' : '';
+  if(tek) tek.style.display = acik ? '' : 'none';
+  if(toplu) toplu.style.display = 'none';
+  if(modDugme){ modDugme.textContent = '📋 Toplu giriş'; modDugme.style.display = acik ? '' : 'none'; }
+  if(dugme) dugme.textContent = acik ? '📄 Ara öykü' : '📖 Kitap ekle';
+  if(!acik){ const b=document.getElementById('seriOykuBaslik_'+seriesId); if(b) b.focus(); }
+}
+
+/* Hikâyelerim'de ara — kitaplardaki seriesAcSearch'ün kopyası. */
+function seriOykuAra(seriesId){
+  const input = document.getElementById('seriOykuBaslik_'+seriesId);
+  const liste = document.getElementById('seriOykuListe_'+seriesId);
+  if(!input||!liste) return;
+  seriOykuOnayKapat(seriesId);
+  const q = input.value.trim().toLowerCase();
+  if(q.length < 2){ liste.style.display='none'; return; }
+  const ser = mySeriesData().series[seriesId];
+  const bagli = new Set(((ser&&ser.books)||[]).map(b=>b.storyId).filter(Boolean));
+  const eslesen = kisininOykuleri(me).filter(s=>
+    (s.title||'').toLowerCase().includes(q) || (s.author||'').toLowerCase().includes(q)
+  ).slice(0,6);
+  if(!eslesen.length){ liste.style.display='none'; return; }
+  liste.innerHTML = eslesen.map(s=>{
+    const zaten = bagli.has(s.id);
+    return `<div class="series-ac-item" ${zaten?'style="opacity:.5;cursor:default"':`onclick="seriOykuSec('${seriesId}',${s.id})"`}>
+      <span style="font-size:.88rem;color:var(--parchment);font-weight:600">📄 ${escapeHtml(s.title)}</span>
+      ${s.author?`<span style="font-size:.75rem;color:var(--gold-light);opacity:.92"> — ${escapeHtml(s.author)}</span>`:''}
+      <span style="font-size:.65rem;color:#dccbf0;font-family:'Space Mono',monospace"> · ${zaten?'bu seride zaten var':(s.status==='read'?'✔ okundu':'⏳ okunacak')}</span>
+    </div>`;
+  }).join('');
+  liste.style.display='block';
+}
+function seriOykuAraGizle(seriesId){
+  const liste = document.getElementById('seriOykuListe_'+seriesId);
+  if(liste) liste.style.display='none';
+}
+function seriOykuSec(seriesId, storyId){
+  const s = kisininOykuleri(me).find(x=>x.id===storyId);
+  if(!s) return;
+  const baslik = document.getElementById('seriOykuBaslik_'+seriesId);
+  const yazar = document.getElementById('seriOykuYazar_'+seriesId);
+  if(baslik){ baslik.value = s.title||''; baslik.dataset.oykuId = String(s.id); }
+  if(yazar) yazar.value = s.author||'';
+  seriOykuAraGizle(seriesId);
+  const no = document.getElementById('seriOykuNo_'+seriesId);
+  if(no) no.focus();
+}
+function seriOykuOnayKapat(seriesId){
+  const bar = document.getElementById('seriOykuOnay_'+seriesId);
+  if(bar) bar.classList.remove('show');
+}
+
+/* Seriye öykü ekle / bağla.
+   secim: undefined → normal ekleme (aynı adlı öykü varsa önce SOR)
+          'bagla'   → sorudan sonra: var olanı bağla
+          'yeni'    → sorudan sonra: yine de yeni öykü oluştur
+   "zaten mevcut" sorusu kitap eklemedeki dupConfirmBar'ın karşılığı; farkı,
+   burada asıl önerilen şeyin YENİ KAYIT değil VAR OLANI BAĞLAMAK olması. */
+function seriyeOykuEkle(seriesId, secim){
+  const baslikEl = document.getElementById('seriOykuBaslik_'+seriesId);
+  const yazarEl = document.getElementById('seriOykuYazar_'+seriesId);
+  const noEl = document.getElementById('seriOykuNo_'+seriesId);
+  const sayfaEl = document.getElementById('seriOykuSayfa_'+seriesId);
+  const baslik = baslikEl ? baslikEl.value.trim() : '';
+  if(!baslik){ notify('⚠️','Öykü adı boş olamaz.'); return; }
+  const ser = mySeriesData().series[seriesId];
+  if(!ser) return;
+  if(!db.stories) db.stories={};
+  if(!db.stories[me]) db.stories[me]=[];
+  const oykuler = db.stories[me];
+
+  let oyku = null;
+  if(baslikEl.dataset.oykuId){
+    // Listeden seçildi — soru sormaya gerek yok, kullanıcı zaten o kaydı seçti.
+    oyku = oykuler.find(s=>String(s.id)===baslikEl.dataset.oykuId) || null;
+  } else if(secim==='bagla'){
+    oyku = oykuler.find(s=>String(s.id)===baslikEl.dataset.oykuAday) || null;
+  } else if(secim!=='yeni'){
+    const ayni = oykuler.find(s=>oykuNormal(s.title)===oykuNormal(baslik));
+    if(ayni){
+      const bar = document.getElementById('seriOykuOnay_'+seriesId);
+      const msg = document.getElementById('seriOykuOnayMsg_'+seriesId);
+      baslikEl.dataset.oykuAday = String(ayni.id);
+      if(msg) msg.textContent = `"${ayni.title}" zaten Hikâyelerim'de var (${ayni.status==='read'?'Okundu':'Tsundoku'}). Onu mu bağlayayım?`;
+      if(bar) bar.classList.add('show');
+      return;
+    }
+  }
+
+  if(oyku && (ser.books||[]).some(b=>b.storyId===oyku.id)){
+    notify('⚠️','Bu öykü zaten seriye ekli.'); return;
+  }
+
+  let yeni = false;
+  if(!oyku){
+    // Yazar boşsa serideki bir kitaptan al — addBookToSeries'in yaptığı gibi.
+    let yazar = yazarEl ? yazarEl.value.trim() : '';
+    if(!yazar){
+      for(const bk of (ser.books||[])){
+        if(bk.manualAuthor){ yazar = bk.manualAuthor; break; }
+        if(bk.bookId){ const lb=(db.books[me]||[]).find(b=>b.id===bk.bookId); if(lb&&lb.author){ yazar=lb.author; break; } }
+      }
+    }
+    // addStory ile AYNI alanlar — Hikâyelerim'in beklediği şekil.
+    oyku = {
+      id:Date.now(),
+      title:baslik, author:yazar, source:'kitap', status:'toread',
+      link:null, sourceBook:null, readDate:null, readYearOnly:null,
+      rating:0, note:null, retroactive:false,
+      addedAt:new Date().toISOString(),
+    };
+    oykuler.push(oyku);
+    yeni = true;
+  }
+
+  const no = parseFloat(noEl ? noEl.value : '');
+  ser.books = ser.books||[];
+  // ⚠️ Kaydırma YOK: kitap eklerken aynı numara doluysa sonrakiler kayıyor,
+  // ama ara öykü bir kitabın yerini almıyor — araya giriyor.
+  ser.books.push({ storyId:oyku.id, num:(isFinite(no)&&no>=0)?no:null, pages:parseInt(sayfaEl?sayfaEl.value:'')||null });
+  ser.books.sort((a,b)=>(a.num??999)-(b.num??999));
+  saveDb();
+
+  [baslikEl,yazarEl,noEl,sayfaEl].forEach(el=>{ if(el){ el.value=''; delete el.dataset.oykuId; delete el.dataset.oykuAday; } });
+  seriOykuOnayKapat(seriesId);
+  seriOykuAraGizle(seriesId);
+  notify(yeni?'📄 Öykü eklendi':'🔗 Öykü bağlandı',
+    yeni ? `"${baslik}" Hikâyelerim'e ⏳ Okunacak olarak eklendi ve seriye bağlandı.`
+         : `Hikâyelerim'deki "${oyku.title}" seriye bağlandı.`);
+  renderSeriesList();
+  // Kitap formu eklemeden sonra açık kalıyor; öykü formu da kalsın — art arda
+  // birkaç ara öykü eklenebilsin (liste yeniden çizilince form kapalı doğuyor).
+  seriOykuFormuAc(seriesId);
+  if(typeof renderStories==='function') renderStories();
+}
+
+/* Seri satırındaki "✔ Okudum" — öykünün KENDİSİNİ okundu yapar.
+   ⚠️ saveStoryField üzerinden gidiyor, oykuyuOkunduYap üzerinden DEĞİL:
+   saveStoryField rozet kontrolünü ve diyar keşfini de yapıyor;
+   oykuyuOkunduYap rozet kontrolü yapmıyor. */
+function seridenOykuOkundu(storyId){
+  const s = kisininOykuleri(me).find(x=>x.id===storyId);
+  if(!s) return;
+  saveStoryField(storyId,'status','read');   // seri kartını da o yeniden çiziyor
+  notify('✔ Öykü okundu', `"${s.title}" okundu olarak işaretlendi.`);
+}
+
+/* Seriden çıkar — yalnızca BAĞLANTIYI siler, öykü Hikâyelerim'de kalır.
+   Onay metni bunu açıkça söylüyor; yoksa "✕" öyküyü de siliyor sanılır. */
+function oykuyuSeridenCikarSor(evt, seriesId, storyId){
+  evt.stopPropagation();
+  const s = kisininOykuleri(me).find(x=>x.id===storyId);
+  const kutuId = 'rmOyku_'+seriesId+'_'+storyId;
+  const eski = document.getElementById(kutuId);
+  if(eski){ eski.remove(); return; }
+  const satir = evt.target.closest('.series-book-item');
+  if(!satir) return;
+  const kutu = document.createElement('div');
+  kutu.id = kutuId;
+  kutu.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--gold-light);flex-wrap:wrap;margin-top:.2rem';
+  const ad = document.createElement('span');
+  ad.textContent = `"${(s&&s.title)||'Bu öykü'}" seriden çıkarılsın mı? Hikâyelerim'de kalır.`;
+  kutu.appendChild(ad);
+  kutu.insertAdjacentHTML('beforeend',
+    `<button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="oykuyuSeridenCikar('${seriesId}',${storyId})">Evet</button>
+     <button class="btn btn-sm" style="font-size:.68rem;padding:.1rem .4rem;background:rgba(201,162,39,.1);color:var(--gold)" onclick="this.parentElement.remove()">İptal</button>`);
+  satir.insertAdjacentElement('afterend', kutu);
+}
+function oykuyuSeridenCikar(seriesId, storyId){
+  const ser = mySeriesData().series[seriesId];
+  if(!ser) return;
+  ser.books = (ser.books||[]).filter(b=>b.storyId!==storyId);
+  saveDb();
+  renderSeriesList();
+  if(typeof renderStories==='function') renderStories();
+}
+
+/* Öykü Hikâyelerim'den SİLİNİNCE tüm serilerdeki bağlantısını temizle —
+   kitap silmedeki "öksüz bookId bırakma" (Ö34) kuralının öykü karşılığı. */
+function oykuSeriBaglariniTemizle(storyId){
+  const seriler = (db.seriesData&&db.seriesData[me]&&db.seriesData[me].series)||{};
+  Object.values(seriler).forEach(ser=>{
+    if((ser.books||[]).some(b=>b.storyId===storyId)){
+      ser.books = ser.books.filter(b=>b.storyId!==storyId);
+    }
+  });
+}
 
 // ── OKUMA YOLLARI ─────────────────────────────────────────────
 

@@ -720,6 +720,19 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .path-overall{font-family:'Space Mono',monospace;font-size:.68rem;color:var(--moss);margin-top:.4rem;}
 .series-add-book-row{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin-top:.5rem;}
 .series-book-item.planned{opacity:.55;border-left:3px solid var(--rust);}
+/* Ara öykü satırı (2026-09-17, Gökşin: "rengi farklı olsun ki görsel ayırım
+   olsun"). MOR seçildi çünkü kartta başka hiçbir yerde yok: okunan = yosun
+   yeşili, planlanan = pas, düzenleme formu = mavi, başlıklar = altın.
+   Zemin koyu (.series-book-title parşömen rengi) — açık mor yazı okunuyor. */
+.series-book-item.seri-oyku{background:rgba(120,80,160,.14);border-left:3px solid rgba(175,135,215,.8);}
+.series-book-item.seri-oyku:hover{background:rgba(120,80,160,.26);}
+.series-book-item.seri-oyku .series-book-title{color:#dccbf0;}
+.series-book-item.seri-oyku .series-book-num{color:#c9b1e6;}
+.series-book-item.seri-oyku-bekliyor{opacity:.82;}
+.seri-oyku-grup{border-left:3px solid rgba(175,135,215,.8);background:rgba(120,80,160,.1);}
+.seri-oyku-grup:hover{background:rgba(120,80,160,.22);}
+.seri-oyku-etiket{font-family:'Space Mono',monospace;font-size:.52rem;letter-spacing:.04em;padding:.05rem .35rem;margin-left:.35rem;border-radius:10px;background:rgba(175,135,215,.2);color:#dccbf0;border:1px solid rgba(175,135,215,.35);vertical-align:middle;white-space:nowrap;}
+.seri-oyku-dugme{background:rgba(120,80,160,.18);color:#dccbf0;border:1px solid rgba(175,135,215,.4);}
 .series-ac-dropdown{position:absolute;top:100%;left:0;right:0;background:#2a1a08;border:1px solid rgba(201,162,39,.35);border-radius:6px;z-index:100;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.5);}
 .series-ac-item{padding:.5rem .75rem;cursor:pointer;border-bottom:1px solid rgba(201,162,39,.1);transition:background .12s;color:var(--parchment);}
 .series-ac-item:hover{background:rgba(201,162,39,.15);}
@@ -1332,6 +1345,12 @@ try{
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">
           <button class="btn btn-primary" onclick="addStory()">+ Hikâye Ekle</button>
           <div class="status-msg" id="addStoryStatus"></div>
+        </div>
+        <!-- "zaten mevcut" uyarısı (2026-09-17) — kitap eklemedeki dupConfirmBar'ın aynısı -->
+        <div class="confirm-bar" id="storyDupConfirmBar">
+          <span id="storyDupConfirmMsg" style="flex:1"></span>
+          <button class="btn btn-sm btn-primary" onclick="addStoryConfirmed()">Yine de Ekle</button>
+          <button class="btn btn-sm" onclick="closeStoryDupConfirm()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
         </div>
         <button class="btn btn-sm" onclick="toggleAddStorySection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
         </div><!-- /addStoryAccBody -->
@@ -7256,6 +7275,22 @@ function addStory(){
   if(!title){notify('⚠️','Öykü başlığı boş olamaz.');return;}
   if(!db.stories) db.stories={};
   if(!db.stories[me]) db.stories[me]=[];
+  /* "zaten mevcut" (2026-09-17, Gökşin: "kitaplarımdaki modelin aynısını
+     kopyalayalım"). Karşılaştırma kuralı series.js'teki oykuNormal — kitap
+     eklemedeki normalizeForDup ile aynı. Engellemiyor, SORUYOR: aynı adlı iki
+     farklı öykü olabilir (farklı yazarların "Ev"i gibi). */
+  if(!window._skipStoryDupCheck && typeof oykuNormal==='function'){
+    const dup=db.stories[me].find(s=>oykuNormal(s.title)===oykuNormal(title));
+    if(dup){
+      const bar=document.getElementById('storyDupConfirmBar');
+      const msg=document.getElementById('storyDupConfirmMsg');
+      if(msg) msg.textContent=`"${dup.title}" zaten listenizde var (${dup.status==='read'?'Okundu':'Tsundoku'}${dup.author?' · '+dup.author:''}). Yine de eklensin mi?`;
+      if(bar) bar.classList.add('show');
+      return;
+    }
+  }
+  window._skipStoryDupCheck=false;
+  closeStoryDupConfirm();
   const prevValid=snapshotValidBooks();
   const prevCtx=snapshotBadgeContext();
   const story={
@@ -7284,6 +7319,15 @@ function addStory(){
   notify('✅ Hikâye eklendi',`"${title}" listenize eklendi.`);
   renderStories();
   renderJournal();
+}
+function addStoryConfirmed(){
+  closeStoryDupConfirm();
+  window._skipStoryDupCheck=true;
+  addStory();
+}
+function closeStoryDupConfirm(){
+  const bar=document.getElementById('storyDupConfirmBar');
+  if(bar) bar.classList.remove('show');
 }
 
 function filterStories(f,el){
@@ -7338,6 +7382,15 @@ function openStoryDetail(ownerId, storyId){
           <span class="detail-field-label">📚 Kaynak Kitap Adı <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(kitabın/e-kitabın adı)</span></span>
           ${isMe?`<input class="detail-input" value="${story.sourceBook||''}" placeholder="—" onchange="saveStoryField(${storyId},'sourceBook',this.value||null)"/>`:`<span style="font-size:.9rem;color:var(--moss)">${story.sourceBook||'—'}</span>`}
         </div>
+        ${(()=>{
+          /* Bağlı olduğu seri (2026-09-17). Modal zemini AÇIK — koyu mor yazı.
+             Bağlantı Serilerim'den kuruluyor/kaldırılıyor, burada yalnızca gösteriliyor. */
+          const etiket=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,storyId):'';
+          return etiket?`<div class="detail-field" style="grid-column:1/-1">
+            <span class="detail-field-label">📚 Ara öykü olarak bağlı olduğu seri</span>
+            <span style="font-size:.9rem;color:#5e3f80">${etiket}</span>
+          </div>`:'';
+        })()}
         <div class="detail-field" style="grid-column:1/-1">
           <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
           ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
@@ -7421,6 +7474,10 @@ function saveStoryField(storyId, field, value){
   saveDb();
   renderStories();
   renderJournal();
+  // Öykü bir seriye bağlıysa seri kartı da güncellensin — modal Serilerim'den
+  // açılmış olabilir, arkada eski durum kalmasın (2026-09-17).
+  if(typeof oykununSerileri==='function' && typeof renderSeriesList==='function' &&
+     oykununSerileri(me,storyId).length) renderSeriesList();
   checkAndAwardBadges(prevValid,500,prevCtx);
   /* Öykü "okundu"dan çıktıysa açtığı diyar da geri alınsın (2026-09-11).
      Kitaplardaki davranışın aynısı — Gökşin bir öyküyü deneme amacıyla okundu
@@ -7476,7 +7533,10 @@ function removeStory(storyId){
   if(!btn) return;
   if(btn.dataset.confirming==='1'){
     db.stories[me]=(db.stories[me]||[]).filter(s=>s.id!==storyId);
+    // Serilerdeki ara öykü bağlantısını da temizle — kitap silmedeki Ö34 kuralı.
+    if(typeof oykuSeriBaglariniTemizle==='function') oykuSeriBaglariniTemizle(storyId);
     saveDb();closeModal();renderStories();renderJournal();
+    if(typeof renderSeriesList==='function') renderSeriesList();
     return;
   }
   btn.dataset.confirming='1';
@@ -7524,6 +7584,7 @@ function renderStories(){
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${s.title}</span>
             ${s.author?`<span class="book-meta">— ${s.author}</span>`:''}
+            ${(()=>{const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(me,s.id):'';return e?`<span class="book-meta" style="color:#dccbf0">📄 ara öykü · ${e}</span>`:'';})()}
             ${s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
           </div>
           <div class="wishlist-actions" onclick="event.stopPropagation()">
@@ -7598,6 +7659,7 @@ function storyItemHtml(s, ownerId, srcMap){
       <span class="book-title-text">${s.title}</span>
       ${s.author?`<span class="book-meta">— ${s.author}</span>`:''}
       ${s.sourceBook?`<span class="book-meta" style="color:var(--moss)">📚 ${s.sourceBook}</span>`:''}
+      ${(()=>{const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,s.id):'';return e?`<span class="book-meta" style="color:#dccbf0">📄 ara öykü · ${e}</span>`:'';})()}
       ${dateDisplay?`<span class="book-meta">📅 ${dateDisplay}${s.readYearOnly?' (yıl)':''}</span>`:''}
       <div class="book-tags-row">
         <span class="tag format-tag">${srcMap[s.source]||s.source}</span>
