@@ -4189,16 +4189,36 @@ async function kisiselYedekAl(){
 // Uygulamaya yeni bir düğüm eklendiğinde yedek kendiliğinden onu da kapsar.
 // Geri yükleme bilerek YOK: Firebase panelinden "Import JSON" ile kök düğüme
 // yüklenir, orada ne yapıldığı görülerek yapılır.
+/* ⚠️ KÖK ARTIK OKUNAMIYOR (2026-09-17'de bulundu, Gökşin bildirdi: masaüstündeki
+   yedek betiği "401 Onaylanmadı" veriyordu).
+   Üyelik onay kapısı 10 Eylül'de yayınlandığından beri kurallar `".read": false`
+   diyor ve izin YALNIZCA ana düğümlerin her birine ayrı ayrı veriliyor
+   ("giriş yapmış + onaylı" üyeye). Yani `fbGet('')` her zaman boş dönüyor;
+   bu düğme de o günden beri sessizce çalışmıyordu.
+   Çözüm: kökü tek seferde istemek yerine okunabilen düğümleri tek tek çekip
+   aynı şekli kurmak. Dosyanın biçimi eski yedeklerle BİREBİR aynı kalıyor —
+   masaüstündeki betiğin ürettiği dosyalarla karşılaştırılabilsin diye.
+   ⚠️ Yeni bir ana düğüm eklenirse bu listeye de eklenmeli, yoksa yedeğe girmez. */
+const TAM_YEDEK_DUGUMLERI=['aa-v4','aa-shelf','aa-shelf-ts','aa-books-ts','aa-avatars'];
 async function tamYedekAl(){
   const durum=document.getElementById('tamYedekStatus');
   const yaz=t=>{if(durum)durum.textContent=t;};
-  yaz('⏳ Veritabanının tamamı indiriliyor…');
-  const kok=await fbGet('');
-  if(!kok){yaz('⚠️ Veritabanı okunamadı — internetini kontrol et.');return;}
-  dosyaIndir(kok,`armchair-TAM-yedek-${todayLocal()}.json`);
-  const kb=Math.round(JSON.stringify(kok).length/1024);
-  yaz(`✅ Tam yedek indi (${kb} KB). Firebase panelinde "Import JSON" ile kök düğüme geri yüklenir.`);
-  notify('🗄️ Tam Yedek Alındı',`Veritabanının birebir kopyası indirildi (${kb} KB).`);
+  const paket={};
+  for(const d of TAM_YEDEK_DUGUMLERI){
+    yaz(`⏳ ${d} indiriliyor…`);
+    const {ok,durum:kod,veri}=await fbGetDurum(d);
+    if(!ok && kod===401){
+      yaz('⚠️ Veritabanı izin vermedi. Giriş yapmış ve onaylı bir hesapla açık olmalısın.');
+      return;
+    }
+    if(veri!==null&&veri!==undefined) paket[d]=veri;
+  }
+  if(!paket['aa-v4']){yaz('⚠️ Ana veri okunamadı — internetini kontrol edip tekrar dene.');return;}
+  dosyaIndir(paket,`armchair-TAM-yedek-${todayLocal()}.json`);
+  const kb=Math.round(JSON.stringify(paket).length/1024);
+  const kisi=Object.keys((paket['aa-v4']||{}).users||{}).length;
+  yaz(`✅ Tam yedek indi (${kb} KB · ${kisi} üye). Firebase panelinde "Import JSON" ile kök düğüme geri yüklenir.`);
+  notify('🗄️ Tam Yedek Alındı',`Veritabanının kopyası indirildi (${kb} KB).`);
 }
 
 function dosyayiOku(file){
