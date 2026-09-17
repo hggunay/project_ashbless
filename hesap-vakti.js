@@ -117,7 +117,8 @@ function hesapVaktiVerisi(kisi){
             ? currentReadingStreak(okunanlar, new Date().getFullYear()) : 0,
     enIyiSeri: hvEnIyiSeri(okunanlar),
     enUzunTakilan,
-    sonOkumalar
+    sonOkumalar,
+    yokluk: (typeof hvYoklukDurumu==='function') ? hvYoklukDurumu(kisi) : null
   };
 }
 // Tarihi bilinen hikâyeler (yalnızca yılı bilinenler sıralamaya giremez)
@@ -141,6 +142,101 @@ function hvEnIyiSeri(kitaplar){
   return enIyi;
 }
 
+/* ── UZUN SÜRE GİRMEME (2026-09-17) ────────────────────────────────────────
+   Fikir ve cümleler Gökşin'in (telefon notlarından). Kararlar:
+   · Tetik: bu cihazda 30+ gündür açılmamış VE son 30 günde hiçbir okuma kaydı
+     yok. İki şart birlikte, çünkü "son giriş" bilgisi CİHAZ BAŞINA tutuluyor
+     (selamlama satırının `lastVisitDate` anahtarı): telefondan her gün okuyup
+     bilgisayarı iki ay sonra açan biri tek şartla haksız yere suçlanırdı.
+     Yeni Firebase düğümü AÇILMADI — `aa-v4` altına düğüm eklemek dört yere
+     dokunmak ve kural değişikliği demek, bu özellik buna değmez.
+   · Süre: dönüşten sonraki 7 GÜN boyunca oynuyor. Gökşin: "30 gün boyunca
+     '30 gündür yoksun' demesi mantıksız olurdu."
+   · Bu senaryo uyduğunda DÖNDÜRMEYE GİRMİYOR, tek başına oynuyor (bkz.
+     hesapVaktiUyanlar). Döndürmeye girseydi 7 günün bazılarında hiç çıkmazdı.
+
+   ⚠️ YAKALAMA ANI KRİTİK: `showGreeting()` her açılışta `lastVisitDate`'i
+   BUGÜNE yazıyor. O satırdan SONRA bakılırsa boşluk hep 0 gün görünür.
+   Bu yüzden `hvYoklukYakala()` enterApp'ta showGreeting'den ÖNCE çağrılıyor
+   ve sonucu ayrı bir anahtara yazıyor; Hesap Vakti günler sonra açılsa bile
+   o kayda bakıyor. */
+const HV_YOKLUK_GUN = 30;          // bu kadar gün girilmediyse
+const HV_YOKLUK_GECERLI_GUN = 7;   // dönüşten sonra kaç gün oynasın
+const HV_YOKLUK_ANAHTAR = 'hv-yokluk-';   // + kullanıcı adı (localStorage)
+
+/* Kişinin son 30 günde (dönüş anından geriye) okumayla ilgili bir kaydı var mı.
+   Bakılanlar: kitap ekleme/başlama/bitirme tarihleri, akıştaki okuma olayları,
+   hikâye ekleme/okuma tarihleri. Yalnızca yılı bilinen hikâye tarihleri ("2026")
+   atlanıyor — 1 Ocak'a düşüp yanlış "yakın zamanda okumuş" sonucu verirdi. */
+function hvSonGunlerdeKayitVar(kisi, simdi, gunSayisi){
+  const sinir = simdi - gunSayisi*86400000;
+  const yakin = t => {
+    if(t===null || t===undefined || t==='') return false;
+    if(typeof t==='string' && /^\d{4}$/.test(t)) return false;
+    const z = (typeof t==='number') ? t : Date.parse(t);
+    return isFinite(z) && z >= sinir && z <= simdi + 86400000;
+  };
+  const kitaplar  = (db.books && db.books[kisi]) || [];
+  const hikayeler = (db.stories && db.stories[kisi]) || [];
+  const olaylar   = (db.readingEvents && db.readingEvents[kisi]) || [];
+  return kitaplar.some(b => b && (yakin(b.addedAt) || yakin(b.startDate) || yakin(b.endDate)))
+      || hikayeler.some(h => h && (yakin(h.addedAt) || yakin(h.readDate)))
+      || olaylar.some(e => e && yakin(e.ts));
+}
+
+/* enterApp'tan, showGreeting'den ÖNCE çağrılıyor (yukarıdaki nota bak).
+   Yalnızca yeni bir yokluk tespit ederse yazıyor; varolan kaydı silmiyor —
+   aynı gün çıkış-giriş yapınca boşluk 0 görünür, 7 günlük pencere bozulmasın. */
+function hvYoklukYakala(){
+  if(typeof me==='undefined' || !me) return;
+  try{
+    const son = localStorage.getItem('lastVisitDate');   // showGreeting'in yazdığı: toDateString()
+    if(!son) return;                                     // bu cihazda ilk açılış — yokluk bilinmiyor
+    const sonT = new Date(son).getTime();
+    if(!isFinite(sonT)) return;
+    const simdi = Date.now();
+    // showGreeting'deki hesabın AYNISI — selamlama ile senaryo aynı günü saysın.
+    const gun = Math.floor((simdi - sonT) / 86400000);
+    if(gun < HV_YOKLUK_GUN) return;
+    if(hvSonGunlerdeKayitVar(me, simdi, HV_YOKLUK_GUN)) return;   // başka cihazdan okumaya devam etmiş
+    localStorage.setItem(HV_YOKLUK_ANAHTAR+me, JSON.stringify({ gun, donus: simdi }));
+  }catch(e){}
+}
+
+/* Geçerli yokluk kaydı: {gun, donus} ya da null. 7 günü geçen kayıt siliniyor.
+   Başkasının profiline bakarken HİÇBİR ZAMAN dönmüyor — bu bilgi yalnızca
+   bu cihazda ve yalnızca kişinin kendisi için var. */
+function hvYoklukDurumu(kisi){
+  if(typeof me==='undefined' || !me || kisi!==me) return null;
+  try{
+    const k = JSON.parse(localStorage.getItem(HV_YOKLUK_ANAHTAR+me) || 'null');
+    if(!k || !isFinite(k.gun) || !isFinite(k.donus)) return null;
+    if(Date.now() - k.donus > HV_YOKLUK_GECERLI_GUN*86400000){
+      localStorage.removeItem(HV_YOKLUK_ANAHTAR+me);
+      return null;
+    }
+    return k;
+  }catch(e){ return null; }
+}
+
+/* Teknik rapor için süre metni: "43g 07sa 12dk 38sn".
+   Gün GERÇEK. Saat/dakika/saniye UYDURMA — son giriş yalnızca gün olarak
+   biliniyor. Gökşin'in fikri: "kullanıcı gerçekten hesaplayıp doğruluğunu
+   teyit edemez, esprili bir dil olur, şeytan teknik hesap yapmış gibi görünür."
+   Uydurma kısım dönüş anından türetiliyor → aynı yokluk için HEP AYNI;
+   "Tekrar oynat"a basınca Şeytan'ın raporu değişmiyor (değişseydi Şeytan
+   hesabını bilmiyor gibi görünürdü). */
+function hvYoklukSuresi(y){
+  const t = Math.floor((y && y.donus) || 0);
+  const iki = n => String(n).padStart(2,'0');
+  const sa = (t >>> 3) % 24, dk = (t >>> 7) % 60, sn = (t >>> 11) % 60;
+  return (y ? y.gun : 0)+'g '+iki(sa)+'sa '+iki(dk)+'dk '+iki(sn)+'sn';
+}
+
+/* Sınama kutusundan senaryo ZORLANINCA gerçek yokluk kaydı yok — örnek veri.
+   Yalnızca deneme hesabında görünen kutudan erişiliyor. */
+const HV_YOKLUK_ORNEK = { gun:43, donus:1789600000000 };
+
 /* ── SENARYOLAR ──────────────────────────────────────────────────────────
    Sıra Gökşin'in kararı (2026-09-04): en ağır ve en güncel olan kazanır.
    İlk tutan kazanır — dizinin sırası önceliğin ta kendisidir.
@@ -158,6 +254,21 @@ function hvEnIyiSeri(kitaplar){
      • metin           → Şeytan'ın açılış balonu
      • {melek,seytan}  → sahnelenmiş açılış: Melek bir şey söyler, Şeytan yanıtlar */
 const HESAP_VAKTI_SENARYOLARI = [
+  { id:'uzun-yokluk',   ad:'Uzun süre girmeme', kisa:'Uzun zamandır uğramamışsın',
+    /* 2026-09-17 — bkz. yukarıdaki UZUN SÜRE GİRMEME notu.
+       Açılış Melek'in: belirsiz kalıyor ("uzun zamandır"), kesin hesap
+       Şeytan'ın teknik raporunda (Gökşin'in onayı). Açılış HER GÜN oynuyor —
+       Eco sahnesinin 3 günde bir kuralı burada geçerli değil, çünkü ardından
+       gelen Melek cümlesi ("Şeytan 'terk etti' dedi") bu sahneye atıf yapıyor. */
+    baglamlar:[
+      { melek:'Uzun zamandır girmemişsin... Belki meşgulsündür... Belki çok yorulmuştur... Belki...',
+        seytan:'Söyle artık, terk etti. 😈' }
+    ],
+    acilisHerGun:true,
+    /* Açılıştan hemen sonra oynayan sabit sahne: Şeytan'ın raporu, Melek'in
+       düzeltmesi. Metinler aşağıda HV_YOKLUK_RAPOR / HV_YOKLUK_DUZELTME. */
+    araSahne:'yokluk-raporu',
+    kosul:v => !!v.yokluk },
   { id:'hic-okumama',   ad:'Hiç okumama', kisa:'Geçen ay hiç kitap bitmemiş',
     baglamlar:[
       'Geçen ay hiç kitap bitirememişsin.',
@@ -256,6 +367,11 @@ const HESAP_VAKTI_SENARYOLARI = [
    o yüzden ayrı tutuluyor: yalnızca başka hiçbir şey tutmazsa çıkıyor. */
 function hesapVaktiUyanlar(v){
   const yedek=HESAP_VAKTI_SENARYOLARI[HESAP_VAKTI_SENARYOLARI.length-1];
+  /* Uzun süre girmeme uyuyorsa TEK BAŞINA döner — günlük döndürmeye girmez.
+     Girseydi dönüşten sonraki 7 günün bazılarında "geçen ayın tsundokusu"
+     konuşulurdu ve dönüş sahnesi kaçardı (2026-09-17). */
+  const yokluk=HESAP_VAKTI_SENARYOLARI.find(s=>s.id==='uzun-yokluk');
+  if(yokluk && yokluk.kosul(v)) return [yokluk];
   const uyan=HESAP_VAKTI_SENARYOLARI.filter(s=>s!==yedek && s.kosul(v));
   return uyan.length ? uyan : [yedek];
 }
@@ -339,7 +455,8 @@ function hvAcilisiBelirle(senaryo, ilkCumle){
   const a=hvAcilisSec(senaryo);
   if(!a) return null;
   // Sahne = {melek, seytan}. `{sonra}` sahne DEĞİL, sadece geç oynayan açılış.
-  if(a && typeof a==='object' && a.melek) return hvSahneGunuMu() ? a : null;
+  // `acilisHerGun`: sahne her gün oynar (uzun-yokluk — ardından gelen cümleler ona atıf yapıyor).
+  if(a && typeof a==='object' && a.melek) return (senaryo.acilisHerGun || hvSahneGunuMu()) ? a : null;
   return (ilkCumle && ilkCumle.baglamGerek) ? a : null;
 }
 /* Cümlelerdeki `[Kitap adı]` yer tutucusunu gerçek kitapla doldurur.
@@ -354,7 +471,73 @@ function hvAcilisiBelirle(senaryo, ilkCumle){
 function hvKitapDoldur(metin,veri){
   const ad=(veri && veri.enUzunTakilan && veri.enUzunTakilan.kitap &&
             veri.enUzunTakilan.kitap.title) || null;
-  return String(metin).split('[Kitap adı]').join(ad ? '“'+ad+'”' : 'o');
+  let m=String(metin).split('[Kitap adı]').join(ad ? '“'+ad+'”' : 'o');
+  /* Uzun süre girmeme yer tutucuları (2026-09-17):
+       [N gün]   → "43 gün"   (Melek: "[N gün]. Şeytan saydı, ben de saydım.")
+       [N aydır] → "1 aydır"  (Şeytan: "[N aydır] yoksun.")
+     Gökşin'in notunda "30 gün" / "1 aydır" sabit yazıyordu; 45 gün yok olan
+     birine "30 gün" demek yanlış olurdu, gerçek sayı konuyor.
+     Aynı ek kuralı: sayıdan sonra kesme işareti + ek YOK, ek sabit sözcükte. */
+  if(m.indexOf('[N ')>-1){
+    const y=hvYoklukVeya(veri);
+    m=m.split('[N gün]').join(y.gun+' gün')
+       .split('[N aydır]').join(Math.max(1,Math.floor(y.gun/30))+' aydır');
+  }
+  return m;
+}
+/* Gerçek yokluk kaydı ya da (sınama kutusundan zorlanınca) örnek veri. */
+function hvYoklukVeya(veri){ return (veri && veri.yokluk) || HV_YOKLUK_ORNEK; }
+
+/* Teknik rapor sahnesi — açılıştan hemen sonra, her gün aynı. Gökşin C
+   seçeneğini seçti (2026-09-17). `[süre]` hvYoklukSuresi ile dolduruluyor. */
+const HV_YOKLUK_RAPOR     = '📠 YOKLUK RAPORU — Süre: [süre]. Hata payı: ±0. Ben hata yapmam.';
+const HV_YOKLUK_DUZELTME  = 'Hata payı ±2 saniye. Saatini ileri almışsın, gördüm.';
+
+/* ── EMOJİ YEDEĞİ (2026-09-17) ───────────────────────────────────────────
+   🫵 (Unicode 14, 2021) eski sistemlerde — Windows 10 dahil — boş kutu
+   çiziliyor. Gökşin'in kararı: YALNIZCA çizemeyen cihazda 👉'e dönsün,
+   çizebilen cihazda olduğu gibi kalsın. 🪨 için yedek İSTENMEDİ, 🫨 da
+   (şok sahnesi) bilerek olduğu gibi — yalnızca bu tabloda olanlar değişir.
+
+   Nasıl anlaşılıyor: emoji küçük bir tuvale çiziliyor. Çizebilen cihazda
+   RENKLİ piksel çıkıyor (🫵 sarı bir el); çizemeyen cihazda gri/siyah bir
+   kutu ya da hiçbir şey. Renk bakmak "kutu ile emojiyi karşılaştır"dan daha
+   sağlam: bazı tarayıcılar kutunun içine kod numarası yazıyor, o zaman iki
+   çizim farklı çıkıp yanlışlıkla "destekleniyor" denirdi.
+   Sonuç cihaz başına bir kez hesaplanıp bellekte tutuluyor. */
+const HV_EMOJI_YEDEK = { '🫵':'👉' };
+const _hvEmojiCizilir = {};
+function hvEmojiCizilirMi(e){
+  if(e in _hvEmojiCizilir) return _hvEmojiCizilir[e];
+  let sonuc = true;   // ölçemezsek dokunma — varsayılan "olduğu gibi kalsın"
+  try{
+    const c = document.createElement('canvas');
+    c.width = c.height = 40;
+    const x = c.getContext && c.getContext('2d', { willReadFrequently:true });
+    if(x){
+      x.textBaseline = 'top';
+      x.font = '28px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif';
+      x.fillStyle = '#000';
+      x.fillText(e, 4, 4);
+      const d = x.getImageData(0, 0, 40, 40).data;
+      let renkli = false;
+      for(let i=0;i<d.length;i+=4){
+        if(d[i+3] < 60) continue;
+        const r=d[i], g=d[i+1], b=d[i+2];
+        if(Math.max(r,g,b) - Math.min(r,g,b) > 40){ renkli = true; break; }
+      }
+      sonuc = renkli;
+    }
+  }catch(err){ sonuc = true; }
+  _hvEmojiCizilir[e] = sonuc;
+  return sonuc;
+}
+function hvEmojiYedek(metin){
+  let m = String(metin);
+  for(const e in HV_EMOJI_YEDEK){
+    if(m.indexOf(e) > -1 && !hvEmojiCizilirMi(e)) m = m.split(e).join(HV_EMOJI_YEDEK[e]);
+  }
+  return m;
 }
 
 /* ── ÇİZİM ───────────────────────────────────────────────────────────────
@@ -849,6 +1032,9 @@ async function hvYaziyor(kap, kim, kararsiz){
 
 async function hvBalon(kap, kim, metin, sinif){
   const yuz = kim==='melek'?'😇':'😈';
+  // Emoji yedeği TEK YERDE, burada — bankadan, sabitlerden, nereden gelirse gelsin
+  // her balon buradan geçiyor (bkz. HV_EMOJI_YEDEK).
+  metin = hvEmojiYedek(metin);
   hvSatir(kap, yuz, sinif||(kim==='melek'?'hv-balon hv-melek':'hv-balon hv-seytan'), escapeHtml(metin));
   await hvBekle(hvSure(metin));
 }
@@ -1399,6 +1585,19 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
      (kahkahayı attıktan sonra sesli mesaj bırakıyor). */
   const seytanCumlesi=async(c,onek)=>{
     if(c.efekt==='cat') await hvCatSahnesi(kap);
+    /* `[ardarda]` (2026-09-17): cümle " | " ile bölünmüş ve her parça AYRI
+       balon, aralarında yeniden "yazıyor…". Gökşin'in emoji dizisi için:
+       Şeytan önce yazıyla soruyor, okuyamayacağını düşünüp emojiyle tekrar
+       soruyor, sonunda 🦍🪨🔥. Tek balona sığdırılsaydı espri ölürdü —
+       her adımın ayrı gelmesi gerekiyor. */
+    if(c.efekt==='ardarda'){
+      const parcalar=c.metin.split(' | ').map(s=>s.trim()).filter(Boolean);
+      for(let i=0;i<parcalar.length;i++){
+        await hvYaziyor(kap,'seytan',c.kararsiz && i===0);
+        await hvBalon(kap,'seytan',(i===0?(onek||''):'')+parcalar[i]);
+      }
+      return;
+    }
     await hvYaziyor(kap,'seytan',c.kararsiz);
     await hvBalon(kap,'seytan',(onek||'')+c.metin);
     if(c.efekt==='kahkaha') await hvSesMesaji(kap);
@@ -1443,6 +1642,18 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
   };
   if(!acilisSonra) await acilisiOyna();
   else seytanKonustu=true;   // Şeytan bu turda konuşacak, melek süzgeci gevşeyebilir
+
+  /* Ara sahne — açılıştan hemen sonra, senaryoya özel sabit bir alışveriş.
+     Şimdilik tek: uzun-yokluk'un teknik raporu (Şeytan rapor verir, Melek
+     hata payını düzeltir). Günlük döndürmeye girmiyor, her gün aynı. */
+  if(senaryo && senaryo.araSahne==='yokluk-raporu'){
+    const y=hvYoklukVeya(veri);
+    await hvYaziyor(kap,'seytan',false);
+    await hvBalon(kap,'seytan',HV_YOKLUK_RAPOR.split('[süre]').join(hvYoklukSuresi(y)));
+    await hvYaziyor(kap,'melek',false);
+    await hvBalon(kap,'melek',HV_YOKLUK_DUZELTME);
+    seytanKonustu=true;
+  }
 
   /* Melek cümlelerinden Şeytan'a atıf yapanlar, Şeytan hiç konuşmadıysa elenir
      (plan incelemesi md.1). Açılış artık her gün çıkmadığı için bu süzgeç

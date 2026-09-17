@@ -1,8 +1,9 @@
 // ⚙️ ÜRETİLMİŞ DOSYA — ELLE DÜZENLEME. Kaynak: gelecek-planlar.md → "Tüm
-// Şeytan Cümleleri" / "Tüm Melek Cümleleri". Yeniden üretmek için scratchpad'deki
-// cumle-uret.js. Cümleleri değiştirmek isteyen ÖNCE planı düzeltmeli — plan tek
-// doğru kaynak, bu dosya onun kopyası. (2026-09-04)
-// Sayım: Şeytan 42 cümle, Melek 55 cümle, 11 senaryo.
+// Şeytan Cümleleri" / "Tüm Melek Cümleleri". Yeniden üretmek için:
+//   node "Masaüstü/project_ashbless/cumle-uret.js"  (depo dışında, denetleyicinin yanında)
+// Cümleleri değiştirmek isteyen ÖNCE planı düzeltmeli — plan tek doğru kaynak,
+// bu dosya onun kopyası. (2026-09-04; üreteç 2026-09-17'de geçici klasörden taşındı)
+// Sayım: Şeytan 46 cümle, Melek 60 cümle, 12 senaryo.
 const HV_CUMLELER = {
   "hic-okumama": {
     "seytan": [
@@ -647,6 +648,66 @@ const HV_CUMLELER = {
       {
         "metin": "Şeytan bir şeyler bulmaya çalışacak. Bulamayacak. Ben zaten biliyordum.",
         "ton": "😏",
+        "baglamGerek": false,
+        "efekt": null
+      }
+    ]
+  },
+  "uzun-yokluk": {
+    "seytan": [
+      {
+        "metin": "Sen yokken melek hep konuştu. Telefonu kaybolmuştur, elektriği kesilmiştir... Bahane duymaktan kulaklarım kanadı.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "[N aydır] yoksun. Kitap okumadığını anladık da ne yaptığını anlamadık. Önceden de okuduğun söylenemez gerçi...",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Şimdi bir de yeni bir şey çıkmış: 'reading slump'. Bahanen bu mu? Hayatın slump.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Hala okuyabiliyor musun? Kime yazıyorum ki? | 📚❓🫵👀 | ✍️🗣️👻 | 🦍🪨🔥",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": "ardarda"
+      }
+    ],
+    "melek": [
+      {
+        "metin": "Şeytan 'terk etti' dedi. Ben inanmak istemedim. Ama... bu kadar süre?",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Geri döndüğüne sevindim. Gerçekten. Az kalsın ben de terk ediyordum.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Hoş geldin... sanırım. Nereye gittiğini sormayacağım.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Kitaplar değişmedi. Sen de değişmedin galiba. Hâlâ burada yoksun.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "[N gün]. Şeytan saydı, ben de saydım. Farklı bir şey söyleyemiyorum.",
+        "ton": null,
         "baglamGerek": false,
         "efekt": null
       }
