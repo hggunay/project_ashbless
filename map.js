@@ -586,6 +586,14 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       <g id="map-avatar-layer"></g>
     </svg>`;
 
+  // Harita sekmesine yeni girildiyse ortala — ancak ŞİMDİ, çizim bittikten
+  // sonra; boyu ancak şimdi belli. Bayrak tek seferlik: kitap eklenince
+  // yapılan tazelemelerde sayfa yerinden oynamasın (bkz. switchStatsTab).
+  if(window._dunyaHaritasiOrtalansin){
+    window._dunyaHaritasiOrtalansin=false;
+    if(typeof haritayiOrtala==='function') haritayiOrtala(false);
+  }
+
   // Animasyon butonları artık map-wrap içinde (tam ekranda da görünür)
 
   // Koordinat haritasını global'e kaydet — animasyon fonksiyonları kullanacak
