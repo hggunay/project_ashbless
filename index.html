@@ -1932,32 +1932,41 @@ try{
      gönderme ihtimali de ortadan kalktı. -->
 
 <!-- ═══ YEREL MODÜLLER ═══ index.html ile aynı klasörde olmalı.
-     Ana script bloğundan ÖNCE yüklenirler (Ö40, 2026-08-02). -->
-<script src="map.js"></script>
-<script src="coreading.js"></script>
-<script src="series.js"></script>
-<script src="feed.js"></script>
-<script src="badges.js"></script>
+     Ana script bloğundan ÖNCE yüklenirler (Ö40, 2026-08-02).
+
+     ⚠️ ADRESLERDEKİ `?s=...` SÜRÜM DAMGASI — SİLMEYİN, HER DEPLOY'DA GÜNCELLEYİN.
+     GitHub Pages her dosyayı `Cache-Control: max-age=600` ile veriyor: tarayıcı
+     .js dosyalarını 10 dakika (telefonda çoğu zaman daha uzun) yeniden sormadan
+     kullanıyor. Sonuç, sessiz ve aldatıcı bir arıza: index.html yenilenip
+     badges.js eski kalınca ekranda YENİ düğme görünüyor ama tıklayınca hiçbir
+     şey olmuyor, çünkü çağırdığı fonksiyon eski dosyada yok. Adresin sonundaki
+     damga değişince tarayıcı dosyayı yeni bir adres sanıp taze indiriyor.
+     Damga tarihi, .js dosyalarına en son dokunulan gündür. -->
+<script src="map.js?s=20260918"></script>
+<script src="coreading.js?s=20260918"></script>
+<script src="series.js?s=20260918"></script>
+<script src="feed.js?s=20260918"></script>
+<script src="badges.js?s=20260918"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
-<script src="sezonluk.js"></script>
-<script src="shelves.js"></script>
-<script src="avatar.js"></script>
-<script src="shelf.js"></script>
+<script src="sezonluk.js?s=20260918"></script>
+<script src="shelves.js?s=20260918"></script>
+<script src="avatar.js?s=20260918"></script>
+<script src="shelf.js?s=20260918"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
-<script src="diyarlar-katalog.js"></script>
-<script src="diyar-esleme.js"></script>
-<script src="diyarlar.js"></script>
-<script src="diyar-harita.js"></script>
+<script src="diyarlar-katalog.js?s=20260918"></script>
+<script src="diyar-esleme.js?s=20260918"></script>
+<script src="diyarlar.js?s=20260918"></script>
+<script src="diyar-harita.js?s=20260918"></script>
 <!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
-<script src="uye-onay.js"></script>
+<script src="uye-onay.js?s=20260918"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js"></script>
-<script src="hesap-vakti-cumleler.js"></script>
-<script src="hesap-vakti.js"></script>
+<script src="karsilama.js?s=20260918"></script>
+<script src="hesap-vakti-cumleler.js?s=20260918"></script>
+<script src="hesap-vakti.js?s=20260918"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -8118,7 +8127,11 @@ function switchStatsTab(tab){
     // sekmesine basınca bunu beklemesin diye harita paneli açılır açılmaz
     // arka planda indiriliyor. Test hesabı dışında hiç indirilmiyor.
     else if(typeof dhBulutOnYukle==='function') dhBulutOnYukle();
-    renderMap();
+    // ⚠️ Düz renderMap() DEĞİL: hangi harita açıksa o tazelenmeli. Eskiden
+    // yalnızca dünya haritası yenileniyordu, altta duran hayali harita önceki
+    // çizimiyle kalıyordu — ziyaret modunda ziyaret edilenin değil kendi
+    // haritan görünüyordu (2026-09-18).
+    renderHaritaAcikOlan();
   }
 }
 
@@ -8181,7 +8194,11 @@ function renderHaritaAcikOlan(){
   if(document.getElementById('sPanel-map')?.style.display==='none') return;
   const sarmal=document.getElementById('diyarSarmal');
   if(sarmal && sarmal.style.display!=='none'){
-    if(typeof yenileDiyarHarita!=='function' || !yenileDiyarHarita()) renderDiyarHarita('diyarHaritaKutu');
+    // Ziyaret moduna girip çıkıldıysa harita BAŞKASININ keşifleri için çizilmiş
+    // olur; kamerayı koruyan hafif tazeleme yerine tam çizim gerekir (gerekçe
+    // dhKisiDegisti()'nde).
+    const kisiDegisti = typeof dhKisiDegisti==='function' && dhKisiDegisti();
+    if(kisiDegisti || typeof yenileDiyarHarita!=='function' || !yenileDiyarHarita()) renderDiyarHarita('diyarHaritaKutu');
   } else {
     renderMap();
   }
@@ -8879,6 +8896,11 @@ parentRows.forEach(r=>{
      ⚠️ Bu tek başına YETMEDİ (2026-09-17): asıl kusur eglenceyiTasi'nin bölümü
      yanlış yerde aramasıydı — oradaki nota bak. */
   eglenceyiTasi();
+  /* Harita alt sekmesi AÇIK kalmışsa onu da tazele. İstatistikler paneline
+     harita seçiliyken dönüldüğünde hiçbir harita yenilenmiyordu: ziyaret
+     moduna girip İstatistikler'e dönünce ekranda ÖNCEKİ çizim (kendi haritan)
+     kalıyordu (2026-09-18). Harita kapalıysa fonksiyon hemen dönüyor. */
+  renderHaritaAcikOlan();
 }
 
 // ── FAL PANELİ FONKSİYONU ──

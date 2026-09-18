@@ -977,6 +977,7 @@ function dhCiz() {
 
   DH.yerlesim = dhYerlesim(dhKisi());   // ziyarette ziyaret edilenin keşifleri
   DH.kesifler = new Set(DH.yerlesim.map(d => d.q + ',' + d.r));
+  DH.cizilenKisi = dhKisi();            // bkz. dhKisiDegisti()
 
   const yariQ = Math.ceil(orta / (W * 0.75)) + 1;
   const yariR = Math.ceil(orta / H) + 1;
@@ -1498,6 +1499,20 @@ function yenileDiyarHarita() {
   if (!DH.kurulu || !document.getElementById('dhKutu')) return false;
   dhCiz();
   return true;
+}
+
+// Harita en son KİMİN keşifleri için çizildi?
+//
+// Gökşin bildirdi (2026-09-18): "ziyaret modunda hayali harita hâlâ benim
+// haritamı gösteriyor." Veri seçimi doğruydu — dhKisi() ziyaret edileni
+// veriyor — ama harita yeniden ÇİZİLMİYORDU: profil değişince render()
+// haritaya hiç dokunmuyor, istatistik panelindeki harita sekmesi de yalnızca
+// dünya haritasını tazeliyordu. Ekranda önceki çizim (kendi haritası) kalıyor.
+//
+// Kişi değiştiğinde hafif tazeleme (yenileDiyarHarita) YETMEZ: DH.bekleyen
+// "senin için yeni" işaretleri önceki kişiye ait, o yüzden tam çizim gerekiyor.
+function dhKisiDegisti() {
+  return DH.cizilenKisi !== dhKisi();
 }
 
 // ══════════════════════════════════════════════════════════════════════

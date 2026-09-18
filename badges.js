@@ -761,7 +761,9 @@ function filterBadges(f,el){
    aynı yardımcıyı paylaşıyor, her biri kendi yazısına dönüyor. */
 function _sifirlaOnayli(secici, eskiYazi, is){
   const btn=document.querySelector('[onclick="'+secici+'"]');
-  if(!btn) return;
+  /* Düğme bulunamazsa SESSİZCE dönmüyor: kullanıcı açısından "basıyorum,
+     hiçbir şey olmuyor" en kötü arıza türü — nedenini anlamanın yolu yok. */
+  if(!btn){ if(typeof notify==='function') notify('⚠️ Düğme bulunamadı','Sayfayı yenileyip tekrar dene.'); return; }
   if(btn.dataset.confirming==='1'){
     btn.dataset.confirming='';
     btn.textContent=eskiYazi;
