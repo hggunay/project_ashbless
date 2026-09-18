@@ -173,6 +173,53 @@ async function diyarKaydiniGeriAl(kaynakKayit, sessiz) {
 }
 
 // ──────────────────────────────────────────────────────────────────────
+// TOPLU SİLME SONRASI DENKLEŞTİRME
+// ──────────────────────────────────────────────────────────────────────
+// Kitap TEK TEK silindiğinde diyar kaydı diyarKaydiniGeriAl ile düşüyor.
+// "🗑️ Tüm Kitapları Sil" ise o yolu atlıyordu: `db.books[me]=[]` diyip
+// geçiyor, hiçbir kitabın silme kancası çalışmıyor. Sonuç ÖLÇÜLDÜ
+// (2026-09-18, `deneme` hesabı): 0 kitap kaldı, hayali harita hâlâ 16 diyar
+// gösteriyordu. Gökşin'in kararı: "tüm kitapları silince zaten harita
+// boşalmalı, tersi saçma olurdu."
+//
+// ⚠️ HİKÂYELER SİLİNMİYOR. Bir diyarı okunmuş bir hikâye açıyorsa o diyar
+// KALMALI — bu yüzden liste körlemesine boşaltılmıyor, "hâlâ desteği var mı"
+// diye tek tek bakılıyor. Aynı kural diyarKaydiniGeriAl'de de böyle.
+//
+// ⚠️ YALNIZCA KULLANICININ AÇIK BİR TOPLU SİLME EYLEMİNDEN çağrılır; açılışta
+// ya da her render'da ÇAĞIRMAYIN. Gerekçe yukarıda, diyarKaydiniGeriAl'in
+// başındaki "dar kapsamlı, bilerek" notunda: katalogdan bir takma ad çıktığı
+// gün hak edilmiş diyarlar sessizce silinirdi.
+async function diyarKayitlariniDenkle(sessiz) {
+  if (!db.realmEvents || !db.realmEvents[me] || !db.realmEvents[me].length) return 0;
+
+  const destekli = new Set(
+    acilmasiGerekenDiyarlar(diyarKaynaklari(me), DIYAR_KATALOG).map(a => a.diyarId)
+  );
+  const onceki = db.realmEvents[me];
+  const kalan = onceki.filter(e => destekli.has(e.diyarId));
+  if (kalan.length === onceki.length) return 0;
+
+  // Yazma başarısız olursa yerel liste geri alınıyor — ekranla sunucu
+  // ayrışmasın (diyarKaydiniGeriAl'deki aynı gerekçe).
+  db.realmEvents[me] = kalan;
+  const ok = await saveRealmEvents(me);
+  if (ok === false) {
+    db.realmEvents[me] = onceki;
+    console.warn('diyarKayitlariniDenkle: yazılamadı, kayıtlar duruyor');
+    if (typeof mesajGoster === 'function')
+      mesajGoster('Diyar kayıtları güncellenemedi — bağlantını kontrol edip tekrar dene.', 'uyari');
+    return 0;
+  }
+
+  const dusen = onceki.length - kalan.length;
+  if (!sessiz && dusen > 0 && typeof mesajGoster === 'function') {
+    mesajGoster('🗺️ ' + dusen + ' diyar haritandan kaldırıldı — onları açan okuma kalmadı.', 'uyari');
+  }
+  return dusen;
+}
+
+// ──────────────────────────────────────────────────────────────────────
 // ONARIM — "🗺️ Eksik Diyarları Ekle"
 // ──────────────────────────────────────────────────────────────────────
 // Uygulamadaki "🌍 Eksik Ülkeleri Ekle" (backfillCountryEvents) ile aynı işi
@@ -229,6 +276,6 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     REALM_EVENTS_PATH, realmEventsOf, kesfedilenDiyarIdleri,
     diyarKaynaklari, saveRealmEvents, checkAndAddRealmEvent, backfillRealmEvents,
-    diyarKaydiniGeriAl
+    diyarKaydiniGeriAl, diyarKayitlariniDenkle
   };
 }
