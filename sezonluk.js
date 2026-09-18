@@ -110,7 +110,13 @@ function sezonSayisi(kitaplar, ctx){
   const anahtar = sezonAnahtari();
   if(!anahtar) return 0;
   const k = (kitaplar || []).filter(b => b && b.sezon === anahtar).length;
-  const o = ((ctx && ctx.stories) || []).filter(s => s && s.sezon === anahtar && !s.retroactive).length;
+  /* Rozet sayımından çıkarma iki işaretli (2026-09-18): `retroactive` kullanıcının
+     kendi kutucuğu, `rozetDisi` ise "Rozetleri Sıfırla" düğmesinin bıraktığı iz.
+     Ortak kural badges.js'teki `oykuRozeteSayilir` — orada değişirse burası da uysun. */
+  const o = ((ctx && ctx.stories) || []).filter(s =>
+    s && s.sezon === anahtar &&
+    (typeof oykuRozeteSayilir === 'function' ? !s.retroactive && !s.rozetDisi : !s.retroactive)
+  ).length;
   return k + o;
 }
 

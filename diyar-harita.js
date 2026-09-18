@@ -163,6 +163,18 @@ function dhPozisyonlar(adet) {
 // listenin başına bir diyar girer ve HERKES yerinden oynardı — kullanıcının
 // haritası bir sabah bambaşka görünürdü. e.id (Date.now) hep artan olduğu
 // için yeni kayıt her zaman sona eklenir, eskiler yerinde kalır.
+/* ── HARİTA KİMİN? (2026-09-18, Gökşin bildirdi: "ziyaretçi modunda diyar
+   haritası ziyaret ettiğim kişinin değil benim haritamı gösteriyor")
+   Çizim tarafı `me` diyordu, yani başkasının profiline bakarken bile kendi
+   keşiflerimi diziyordu. Uygulamanın her yerindeki kalıp `viewing||me`.
+   ⚠️ YALNIZCA OKUMA/ÇİZİM buradan geçer. YAZAN yerler (diyarlar.js'teki keşif
+   kaydı, geri alma, onarım) `me` demeye DEVAM ETMELİ — yoksa başkasının
+   profiline bakarken onun verisine yazmaya kalkarız. */
+function dhKisi() {
+  return (typeof viewing !== 'undefined' && viewing) ? viewing : me;
+}
+const dhZiyaretteMi = () => (typeof viewing !== 'undefined' && !!viewing);
+
 function dhKesifSirasi(kullanici) {
   const olaylar = (typeof realmEventsOf === 'function' ? realmEventsOf(kullanici) : []);
   return olaylar.slice().sort((a, b) => (a.id || 0) - (b.id || 0));
@@ -704,7 +716,7 @@ function dhOynatKur() {
 function dhOynatTazele() {
   const kap = document.getElementById('dhOynat');
   if (!kap) return;
-  const adet = (typeof dhKesifSirasi === 'function' ? dhKesifSirasi(me) : []).length;
+  const adet = (typeof dhKesifSirasi === 'function' ? dhKesifSirasi(dhKisi()) : []).length;
   kap.style.display = adet ? '' : 'none';
   kap.querySelectorAll('button').forEach(b => { b.disabled = dhKesifOynuyor; });
 }
@@ -713,7 +725,7 @@ function dhOynatTazele() {
 //      'tek' → yalnızca diyarId'si verilen keşif (akış kartından geliniyor)
 function dhKesifTekrar(mod, diyarId) {
   if (dhKesifOynuyor) return;
-  const sira = dhKesifSirasi(me).map(e => e.diyarId);
+  const sira = dhKesifSirasi(dhKisi()).map(e => e.diyarId);
   if (!sira.length) return;
   const liste = mod === 'hepsi' ? sira
               : mod === 'tek'   ? sira.filter(id => id === diyarId)
@@ -895,6 +907,10 @@ function dhSecilenSahne(diyar) {
   const i = tercih[diyar.id];
   return s[(i >= 0 && i < s.length) ? i : 0];
 }
+/* Sahne tercihi CİHAZA ait (hangi görseli seçtiğim), veriye değil — bu yüzden
+   ziyarette de `me` kalıyor. Başkasının haritasına bakarken o diyarın hangi
+   görselinin çıkacağını yine benim tercihim belirliyor; onunkini bilemeyiz,
+   localStorage'da onun cihazında duruyor. */
 function dhSahneTercihi() {
   try { return JSON.parse(localStorage.getItem('aa-diyar-sahne-' + me) || '{}'); }
   catch (e) { return {}; }
@@ -959,7 +975,7 @@ function dhCiz() {
   document.getElementById('dhKaydir').setAttribute('scale', (W * 0.055).toFixed(1));
   document.getElementById('dhBulanik').setAttribute('stdDeviation', (W * 0.018).toFixed(1));
 
-  DH.yerlesim = dhYerlesim(me);
+  DH.yerlesim = dhYerlesim(dhKisi());   // ziyarette ziyaret edilenin keşifleri
   DH.kesifler = new Set(DH.yerlesim.map(d => d.q + ',' + d.r));
 
   const yariQ = Math.ceil(orta / (W * 0.75)) + 1;
@@ -1619,6 +1635,9 @@ function dhBekliyor(id) { return !!(DH.bekleyen && DH.bekleyen.has(id)); }
 // Son bakış zamanı — dünya haritasındaki desenin AYNISI (map.js:437-467):
 // Firebase birincil, localStorage çevrimdışı yedek. Aynı ekranda iki farklı
 // mekanizma olmasın diye bilerek aynı şekilde yazıldı.
+/* ⚠️ "Son bakış" ve "bekleyen keşif" BANA ait kavramlar, ziyaret edilene değil:
+   başkasının haritasındaki diyarları "senin için yeni" diye işaretlemek
+   yanlış olurdu. Ziyarette ikisi de devre dışı (2026-09-18). */
 function dhSonBakis() {
   try {
     if (typeof db !== 'undefined' && db.users && db.users[me] &&
@@ -1627,6 +1646,7 @@ function dhSonBakis() {
   } catch (e) { return 0; }
 }
 function dhBakisiYaz() {
+  if (dhZiyaretteMi()) return;   // başkasının haritasına bakmak kendi "gördüm" damgamı basmaz
   const t = Date.now();
   try {
     if (typeof db !== 'undefined' && db.users && db.users[me]) {
@@ -1639,6 +1659,7 @@ function dhBakisiYaz() {
 
 // Son bakıştan SONRA keşfedilmiş diyarlar. Keşif sırasına göre döner.
 function dhBekleyenKesifler() {
+  if (dhZiyaretteMi()) return [];
   const son = dhSonBakis();
   return dhKesifSirasi(me)
     .filter(e => new Date(e.ts).getTime() > son)

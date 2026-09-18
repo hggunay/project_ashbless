@@ -1860,10 +1860,20 @@ try{
                   <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitapların kalır ama tüm ülke bilgileri silinir. Haritaya sıfırdan başlamak istersen kullan.</div>
                   <button class="btn btn-danger" onclick="confirmResetMap()">🗺️ Haritayı Sıfırla</button>
                 </div>
+                <!-- ÜÇ SIFIRLAMA DÜĞMESİ (2026-09-18, Gökşin'in kararı).
+                     Önceden tek "Rozetleri Sıfırla" vardı ve adı yanıltıcıydı:
+                     "geçmişte okundu" etiketi rozetleri de haritayı da siliyordu.
+                     Artık: yalnız harita · yalnız rozet · ikisi birden. -->
                 <div style="margin-bottom:1.2rem">
-                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Rozetleri sıfırla</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Bu buton, kayıtlı tüm kitaplarına ve hikayelerine "geçmişte okundu" etiketi verir — çoğu rozet böylece 0'a döner ve yeniden kazanılabilir hale gelir. İsme özel rozetler (Dune, Harry Potter, Yüzüklerin Efendisi vb.) etkilenmez, zaten kazanılmışsa öyle kalır. Etiketi kaldırırsan ilgili rozet geri gelebilir — geri almak istersen kitap/hikaye kayıtlarındaki "geçmişte okudum" kutucuklarını tek tek kaldırman gerekir, toplu bir "geri al" yok.</div>
-                  <button class="btn btn-danger" onclick="confirmResetBadges()">🏅 Rozetleri Sıfırla</button>
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Yalnızca rozetleri sıfırla</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitaplarını ve hikayelerini rozet sayımının dışında bırakır; rozetler 0'a döner ve yeniden kazanılabilir. <b>Haritana, kitap listene ve ülke kayıtlarına dokunmaz.</b> İsme özel rozetler (Dune, Harry Potter, Yüzüklerin Efendisi vb.) etkilenmez. Tek düğmeyle geri alınabilir.</div>
+                  <button class="btn btn-danger" onclick="confirmRozetSifirla()">🏅 Yalnızca Rozetleri Sıfırla</button>
+                  <button id="rozetGeriAlBtn" class="btn btn-sm" style="display:none;margin-left:.5rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="confirmRozetSifirlaGeriAl()">↩️ Rozet Sıfırlamasını Geri Al</button>
+                </div>
+                <div style="margin-bottom:1.2rem">
+                  <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Harita + rozetleri birlikte sıfırla</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kayıtlı tüm kitaplarına ve hikayelerine <b>"geçmişte okundu"</b> etiketi verir. Rozetler sıfırlanır; dünya haritası bu kitapları saymadığı için <b>harita da boşalır</b> (ülke renkleri, ülke sayısı, avatarın konumu). Kitaplarım listesinde hepsi "geçmiş" bölümüne geçer. Hayali diyarlar haritası etkilenmez; kitapların, notların ve ülke kayıtların silinmez. İsme özel rozetler korunur. <b>Toplu geri alma yok</b> — geri almak için kitap/hikaye kayıtlarındaki "geçmişte okudum" kutucuklarını tek tek kaldırman gerekir.</div>
+                  <button class="btn btn-danger" onclick="confirmResetBadges()">🗺️🏅 Harita + Rozetleri Sıfırla</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Eksik ülke kayıtlarını onar</div>
@@ -3600,6 +3610,8 @@ function uyeGorunenAd(u){
 function renderSettings(){
   const user=db.users[me];
   if(!user) return;
+  // "Rozet sıfırlamasını geri al" düğmesi yalnızca sıfırlama yapılmışsa görünür
+  if(typeof rozetSifirlamaDugmesiTazele==='function') rozetSifirlamaDugmesiTazele();
   setAvatarEl(document.getElementById('settingsAvatar'), user.avatar||'📚');
   document.getElementById('settingsDisplayName').textContent=user.displayName||'';
   document.getElementById('settingsUsername').textContent='@'+me;

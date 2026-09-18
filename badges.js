@@ -179,10 +179,10 @@ const BADGE_CATS = [
       {id:'siir4',tier:'diamond',icon:'🌙', name:'Şiir Ustası',        desc:'20 şiir kitabı oku.', check:b=>genre(b,'siir',20)},
     ]},
     {id:'kc_oyku',   label:'📖 Öykü',             badges:[
-      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,5)},
-      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,15)},
-      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,30)},
-      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(s=>s.status==="read"&&!s.retroactive).length,50)},
+      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,5)},
+      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,15)},
+      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,30)},
+      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,50)},
     ]},
     {id:'kc_dis',    label:'🔥 Distopya',          badges:[
       {id:'dis1',tier:'bronze', icon:'🔥', name:'Distopya Kaçkını',   desc:'3 distopya/cyberpunk kitabı oku.',  check:b=>genre(b,'distopya',3)},
@@ -477,7 +477,7 @@ function sameUniverseFromGroups(books,user){
       return (ser.books||[]).some(bk=>{
         if(!bk.bookId) return false;
         const book=books.find(b=>b.id===bk.bookId);
-        return book&&book.readingStatus==='new'&&!book.retroactive;
+        return book&&book.readingStatus==='new'&&!isRetroactive(book);
       });
     });
     if(readSeries.length>=2) count+=readSeries.length-1;
@@ -516,7 +516,7 @@ function completedSeriesCount(books,user){
     const readCount=(ser.books||[]).filter(bk=>{
       if(!bk.bookId) return false;
       const book=books.find(b=>b.id===bk.bookId);
-      return book&&book.readingStatus==='new'&&!book.retroactive;
+      return book&&book.readingStatus==='new'&&!isRetroactive(book);
     }).length;
     if(readCount>=ser.total) count++;
   });
@@ -532,7 +532,7 @@ function maxSeriesBooks(books,user){
     const readCount=(ser.books||[]).filter(bk=>{
       if(!bk.bookId) return false;
       const book=books.find(b=>b.id===bk.bookId);
-      return book&&book.readingStatus==='new'&&!book.retroactive;
+      return book&&book.readingStatus==='new'&&!isRetroactive(book);
     }).length;
     if(readCount>max) max=readCount;
   });
@@ -569,8 +569,23 @@ const ZAMANDAN_BAGIMSIZ_ROZETLER = new Set(['semavi','kadim1','kadim2','kadim3']
 function retroaktifSayilirMi(badgeId){
   return SERIES_BADGE_IDS.has(badgeId)||ZAMANDAN_BAGIMSIZ_ROZETLER.has(badgeId);
 }
+/* ── ROZET SAYIMINDAN ÇIKARMA — İKİ AYRI İŞARET (2026-09-18) ────────────────
+   `retroactive` ("geçmişte okudum") tek başına ÜÇ iş birden yapıyordu: rozeti
+   saymamak, DÜNYA HARİTASINI boşaltmak (map.js o kitapları saymıyor) ve kitabı
+   listede "geçmiş" bölümüne taşımak. Bu yüzden "Rozetleri Sıfırla" düğmesi
+   haritayı da siliyordu — Gökşin sordu: "teknik olarak haritayı da sıfırlamaz mı?"
+   Evet, sıfırlıyordu.
+
+   Çözüm: rozetlere ÖZEL ikinci bir işaret. `rozetDisi` yalnızca rozet motorunda
+   okunuyor; harita, liste grupları, ülke kayıtları ondan habersiz.
+   ⚠️ `retroactive`e DOKUNULMADI — kullanıcının tek tek işaretlediği kutucuk ve
+   ona bağlı bütün davranışlar aynen duruyor. */
 function isRetroactive(b){
-  return b.retroactive===true;
+  return b.retroactive===true || b.rozetDisi===true;
+}
+/* Hikâyeler için aynı kural (öykü rozetleri ve sezonluk rozetler kullanıyor). */
+function oykuRozeteSayilir(s){
+  return !!s && s.status==='read' && !s.retroactive && !s.rozetDisi;
 }
 function bstat(badge,books,ctx){
   const filteredBooks = retroaktifSayilirMi(badge.id)
@@ -741,21 +756,66 @@ function filterBadges(f,el){
   badgeFilter=f;openBadgeId=null;document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');renderBadges();
 }
 
-function confirmResetBadges(){
-  const btn=document.querySelector('[onclick="confirmResetBadges()"]');
+/* İki kademeli onay — tek düğme, ikinci tıklamada işliyor. Tarayıcı kutusu
+   kullanılmıyor (proje kuralı). `eskiYazi` düğmenin kendi metni: üç düğme
+   aynı yardımcıyı paylaşıyor, her biri kendi yazısına dönüyor. */
+function _sifirlaOnayli(secici, eskiYazi, is){
+  const btn=document.querySelector('[onclick="'+secici+'"]');
+  if(!btn) return;
   if(btn.dataset.confirming==='1'){
-    (db.books[me]||[]).forEach(b=>{ b.retroactive=true; });
-    ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.retroactive=true; });
-    saveDb();renderSafe();renderBadges();
-    btn.textContent='🏅 Rozetleri Sıfırla';
     btn.dataset.confirming='';
-    notify('🏅 Rozetler Sıfırlandı','Tüm kitap ve hikayelerin "geçmişte okundu" olarak işaretlendi.');
+    btn.textContent=eskiYazi;
+    btn.style.background='';
+    is();
     return;
   }
   btn.dataset.confirming='1';
   btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
   btn.style.background='rgba(160,82,45,.5)';
-  setTimeout(()=>{btn.textContent='🏅 Rozetleri Sıfırla';btn.dataset.confirming='';btn.style.background='';},4000);
+  setTimeout(()=>{btn.textContent=eskiYazi;btn.dataset.confirming='';btn.style.background='';},4000);
+}
+
+/* ESKİ DÜĞME, DOĞRU ADIYLA (2026-09-18). Davranışı değişmedi: "geçmişte okundu"
+   etiketi rozetleri de haritayı da sıfırlıyor. Adı ve açıklaması artık bunu
+   söylüyor; rozetleri TEK BAŞINA sıfırlamak isteyen alttaki düğmeyi kullanıyor. */
+function confirmResetBadges(){
+  _sifirlaOnayli('confirmResetBadges()', '🗺️🏅 Harita + Rozetleri Sıfırla', ()=>{
+    (db.books[me]||[]).forEach(b=>{ b.retroactive=true; });
+    ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.retroactive=true; });
+    saveDb();renderSafe();renderBadges();
+    notify('🗺️🏅 Sıfırlandı','Tüm kitap ve hikayelerin "geçmişte okundu" olarak işaretlendi. Harita da sıfırlandı.');
+  });
+}
+
+/* YENİ (2026-09-18, Gökşin istedi): yalnızca rozetler. Kitaplara `rozetDisi`
+   işareti koyuyor — harita, liste grupları ve ülke kayıtları etkilenmiyor.
+   Geri alınabilir: aşağıdaki düğme işareti tek hamlede kaldırıyor. */
+function confirmRozetSifirla(){
+  _sifirlaOnayli('confirmRozetSifirla()', '🏅 Yalnızca Rozetleri Sıfırla', ()=>{
+    (db.books[me]||[]).forEach(b=>{ b.rozetDisi=true; });
+    ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.rozetDisi=true; });
+    saveDb();renderSafe();renderBadges();
+    rozetSifirlamaDugmesiTazele();
+    notify('🏅 Rozetler Sıfırlandı','Rozetler yeniden kazanılabilir. Haritana ve kitap listene dokunulmadı.');
+  });
+}
+function confirmRozetSifirlaGeriAl(){
+  _sifirlaOnayli('confirmRozetSifirlaGeriAl()', '↩️ Rozet Sıfırlamasını Geri Al', ()=>{
+    (db.books[me]||[]).forEach(b=>{ delete b.rozetDisi; });
+    ((db.stories&&db.stories[me])||[]).forEach(s=>{ delete s.rozetDisi; });
+    saveDb();renderSafe();renderBadges();
+    rozetSifirlamaDugmesiTazele();
+    notify('↩️ Geri Alındı','Rozet sayımı eski haline döndü.');
+  });
+}
+/* "Geri al" düğmesi yalnızca sıfırlama yapılmışsa görünüyor — hiç kullanmamış
+   birine geri alınacak bir şey yokken düğme göstermek kafa karıştırır. */
+function rozetSifirlamaDugmesiTazele(){
+  const btn=document.getElementById('rozetGeriAlBtn');
+  if(!btn) return;
+  const varMi=(db.books[me]||[]).some(b=>b.rozetDisi)
+    || ((db.stories&&db.stories[me])||[]).some(s=>s.rozetDisi);
+  btn.style.display=varMi?'':'none';
 }
 
 let openBadgeId=null;
