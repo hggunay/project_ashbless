@@ -68,36 +68,47 @@ const COUNTRY_ISO = {
   'moldava':'MD','moldova':'MD','zambiya':'ZM','zambia':'ZM','ürdün':'JO','jordan':'JO','israil':'IL',
 };
 
+/* ⚠️ KUZEY VE GÜNEY AMERİKA AYRI KITALAR (2026-09-18). Önce ikisi de tek bir
+   'americas' değeriydi; tabloda toplam BEŞ kıta vardı ve "Dünyayı Dolaşan"
+   rozeti altı kıta istediği için HİÇ KAZANILAMIYORDU — dünyadaki her kitabı
+   okuyan biri bile beşte kalıyordu. Rozet denetiminde ölçülerek bulundu.
+   Gökşin'in gerekçesi ayırmanın da doğrusu olduğu yönündeydi: "kuzey ve güney
+   gerçekten iki farklı kültür."
+   Yeni bir kıta değeri eklerken CONTINENT_COLORS'a da karşılığını ekleyin;
+   yoksa getCountryColor tanımsıza düşer. */
 const ISO_CONTINENT = {
-  AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'americas',AT:'europe',AU:'oceania',AZ:'asia',
-  BA:'europe',BD:'asia',BE:'europe',BF:'africa',BG:'europe',BH:'asia',BI:'africa',BJ:'africa',BN:'asia',BO:'americas',BR:'americas',BT:'asia',BW:'africa',BY:'europe',BZ:'americas',
-  CA:'americas',CD:'africa',CF:'africa',CG:'africa',CH:'europe',CI:'africa',CL:'americas',CM:'africa',CN:'asia',CO:'americas',CR:'americas',CU:'americas',CY:'europe',CZ:'europe',
-  DE:'europe',DJ:'africa',DK:'europe',DO:'americas',DZ:'africa',
-  EC:'americas',EE:'europe',EG:'africa',ER:'africa',ES:'europe',ET:'africa',
+  AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'southAmerica',AT:'europe',AU:'oceania',AZ:'asia',
+  BA:'europe',BD:'asia',BE:'europe',BF:'africa',BG:'europe',BH:'asia',BI:'africa',BJ:'africa',BN:'asia',BO:'southAmerica',BR:'southAmerica',BT:'asia',BW:'africa',BY:'europe',BZ:'northAmerica',
+  CA:'northAmerica',CD:'africa',CF:'africa',CG:'africa',CH:'europe',CI:'africa',CL:'southAmerica',CM:'africa',CN:'asia',CO:'southAmerica',CR:'northAmerica',CU:'northAmerica',CY:'europe',CZ:'europe',
+  DE:'europe',DJ:'africa',DK:'europe',DO:'northAmerica',DZ:'africa',
+  EC:'southAmerica',EE:'europe',EG:'africa',ER:'africa',ES:'europe',ET:'africa',
   FI:'europe',FJ:'oceania',FR:'europe',
-  GA:'africa',GB:'europe',GE:'asia',GH:'africa',GM:'africa',GN:'africa',GR:'europe',GT:'americas',GW:'africa',GY:'americas',
-  HN:'americas',HR:'europe',HT:'americas',HU:'europe',
+  GA:'africa',GB:'europe',GE:'asia',GH:'africa',GM:'africa',GN:'africa',GR:'europe',GT:'northAmerica',GW:'africa',GY:'southAmerica',
+  HN:'northAmerica',HR:'europe',HT:'northAmerica',HU:'europe',
   ID:'asia',IE:'europe',IL:'asia',IN:'asia',IQ:'asia',IR:'asia',IS:'europe',IT:'europe',
-  JM:'americas',JO:'asia',JP:'asia',
+  JM:'northAmerica',JO:'asia',JP:'asia',
   KE:'africa',KG:'asia',KH:'asia',KP:'asia',KR:'asia',KW:'asia',KZ:'asia',
   LA:'asia',LB:'asia',LI:'europe',LK:'asia',LR:'africa',LS:'africa',LT:'europe',LU:'europe',LV:'europe',LY:'africa',
-  MA:'africa',MC:'europe',MD:'europe',ME:'europe',MG:'africa',MK:'europe',ML:'africa',MM:'asia',MN:'asia',MR:'africa',MT:'europe',MW:'africa',MX:'americas',MY:'asia',MZ:'africa',
-  NA:'africa',NE:'africa',NG:'africa',NI:'americas',NL:'europe',NO:'europe',NP:'asia',NZ:'oceania',
-  OM:'asia',PA:'americas',PE:'americas',PG:'oceania',PH:'asia',PK:'asia',PL:'europe',PT:'europe',PY:'americas',
+  MA:'africa',MC:'europe',MD:'europe',ME:'europe',MG:'africa',MK:'europe',ML:'africa',MM:'asia',MN:'asia',MR:'africa',MT:'europe',MW:'africa',MX:'northAmerica',MY:'asia',MZ:'africa',
+  NA:'africa',NE:'africa',NG:'africa',NI:'northAmerica',NL:'europe',NO:'europe',NP:'asia',NZ:'oceania',
+  OM:'asia',PA:'northAmerica',PE:'southAmerica',PG:'oceania',PH:'asia',PK:'asia',PL:'europe',PT:'europe',PY:'southAmerica',
   QA:'asia',RO:'europe',RS:'europe',RU:'europe',RW:'africa',
-  SA:'asia',SD:'africa',SE:'europe',SG:'asia',SI:'europe',SK:'europe',SL:'africa',SN:'africa',SO:'africa',SR:'americas',SS:'africa',SV:'americas',SY:'asia',SZ:'africa',
-  TD:'africa',TG:'africa',TH:'asia',TJ:'asia',TM:'asia',TN:'africa',TR:'asia',TT:'americas',TZ:'africa',
-  UA:'europe',UG:'africa',US:'americas',UY:'americas',UZ:'asia',
-  VA:'europe',VE:'americas',VN:'asia',
+  SA:'asia',SD:'africa',SE:'europe',SG:'asia',SI:'europe',SK:'europe',SL:'africa',SN:'africa',SO:'africa',SR:'southAmerica',SS:'africa',SV:'northAmerica',SY:'asia',SZ:'africa',
+  TD:'africa',TG:'africa',TH:'asia',TJ:'asia',TM:'asia',TN:'africa',TR:'asia',TT:'northAmerica',TW:'asia',TZ:'africa',
+  UA:'europe',UG:'africa',US:'northAmerica',UY:'southAmerica',UZ:'asia',
+  VA:'europe',VE:'southAmerica',VN:'asia',
   XK:'europe',YE:'asia',ZA:'africa',ZM:'africa',ZW:'africa',
 };
 
 const CONTINENT_COLORS = {
-  europe:   ['#2d1a08','#f5e070','#d4a820','#a07010','#6a4a00'],
-  asia:     ['#2d1a08','#f0c090','#d07030','#a04010','#6a1a00'],
-  americas: ['#2d1a08','#a0e8a0','#50a050','#207020','#0a3a0a'],
-  africa:   ['#2d1a08','#f8d070','#d09020','#a05a00','#6a2a00'],
-  oceania:  ['#2d1a08','#d0b0e0','#9060b0','#603080','#381050'],
+  europe:       ['#2d1a08','#f5e070','#d4a820','#a07010','#6a4a00'],
+  asia:         ['#2d1a08','#f0c090','#d07030','#a04010','#6a1a00'],
+  // Kuzey Amerika eski 'americas' yeşilini SÜRDÜRÜYOR — haritada alışılmış
+  // görüntü bozulmasın diye. Güney Amerika yeni bir renk aldı.
+  northAmerica: ['#2d1a08','#a0e8a0','#50a050','#207020','#0a3a0a'],
+  southAmerica: ['#2d1a08','#8fdcd0','#3fa79a','#1c756c','#06403a'],
+  africa:       ['#2d1a08','#f8d070','#d09020','#a05a00','#6a2a00'],
+  oceania:      ['#2d1a08','#d0b0e0','#9060b0','#603080','#381050'],
 };
 
 function countryToISO(name){
