@@ -196,6 +196,32 @@ const ULKE_ONERILERI = [
   'Vanuatu','Yeni Kaledonya','Antarktika',
 ];
 
+/* KÜÇÜK ÜLKELER — HARİTADA NOKTA (2026-09-18, Gökşin'in kararı).
+   Harita verisi (world-atlas countries-110m) düşük çözünürlüklü: bu ülkeler
+   dosyada HİÇ YOK, yakınlaştırmak da göstermez. Ölçüldü: ayrıntılı 50m harita
+   28'ini içeriyordu ama dosya 105 KB → 739 KB oluyor ve Vatikan, Monako gibi
+   ülkeler yine birkaç piksel kalıyordu. Onun yerine okunmuş küçük ülke,
+   başkentinin/merkezinin üstünde ülke rengiyle bir NOKTA olarak çiziliyor.
+   [boylam, enlem, harita üstündeki ad] — ad, çizili ülkelerle tutarlı olsun
+   diye harita verisindeki gibi İngilizce. */
+const KUCUK_ULKE_KOORD = {
+  AD:[1.52,42.51,'Andorra'],          AG:[-61.80,17.07,'Antigua and Barbuda'],
+  BB:[-59.54,13.19,'Barbados'],       BH:[50.56,26.07,'Bahrain'],
+  CV:[-23.60,15.10,'Cabo Verde'],     DM:[-61.37,15.41,'Dominica'],
+  FM:[158.20,6.90,'Micronesia'],      GD:[-61.68,12.12,'Grenada'],
+  KI:[173.00,1.40,'Kiribati'],        KM:[43.30,-11.70,'Comoros'],
+  KN:[-62.78,17.30,'Saint Kitts and Nevis'], LC:[-60.98,13.91,'Saint Lucia'],
+  LI:[9.55,47.14,'Liechtenstein'],    MC:[7.42,43.74,'Monaco'],
+  MH:[171.20,7.10,'Marshall Is.'],    MT:[14.43,35.90,'Malta'],
+  MU:[57.55,-20.35,'Mauritius'],      MV:[73.50,4.20,'Maldives'],
+  NR:[166.93,-0.53,'Nauru'],          PW:[134.58,7.51,'Palau'],
+  SC:[55.45,-4.62,'Seychelles'],      SG:[103.82,1.35,'Singapore'],
+  SM:[12.46,43.94,'San Marino'],      ST:[6.61,0.19,'São Tomé and Príncipe'],
+  TO:[-175.20,-21.18,'Tonga'],        TV:[179.20,-8.52,'Tuvalu'],
+  VA:[12.45,41.90,'Vatican'],         VC:[-61.20,13.25,'Saint Vincent and the Grenadines'],
+  WS:[-172.10,-13.76,'Samoa'],
+};
+
 function countryToISO(name){
   if(!name) return null;
   const n=name.trim().toLowerCase().replace(/i̇/g,'i').replace(/İ/gi,'i');
@@ -491,6 +517,27 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       style="cursor:${count?'pointer':'default'};transition:fill .2s"/>`;
   }).join('');
 
+  /* Küçük ülke noktaları (bkz. KUCUK_ULKE_KOORD). YALNIZCA kitabı olan küçük
+     ülke çiziliyor — okunmamış 29 nokta Karayipler'i ve Pasifik'i doldururdu.
+     Çizili ülkeler okunmayınca koyu kalıyor; noktanın karşılığı "hiç yok".
+     İki daire: görünen küçük nokta + üstünde saydam, büyük dokunma alanı.
+     Telefonda harita ~360 px genişliğinde ve nokta 2 px'e iniyor; parmakla
+     vurulabilsin diye dokunma alanı ayrı ve büyük. */
+  const cizilenIso=new Set(countries.features.map(ozellikISO).filter(Boolean));
+  const noktalar=Object.entries(KUCUK_ULKE_KOORD)
+    .filter(([iso])=>counts[iso]&&!cizilenIso.has(iso))
+    .map(([iso,[lon,lat,ad]])=>{
+      const[x,y]=project(lon,lat);
+      const count=counts[iso];
+      const tipBooks=(db.books[target]||[]).filter(b=>countryToISO(b.country)===iso&&!b.retroactive&&b.readingStatus==='new').map(b=>b.title).slice(0,5);
+      const tip=JSON.stringify({name:ad,count,books:tipBooks}).replace(/"/g,'&quot;');
+      return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="4.5" fill="${getCountryColor(iso,count)}"
+        stroke="rgba(201,162,39,0.95)" stroke-width="1" pointer-events="none"/>
+      <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="12" fill="transparent" data-iso="${iso}" data-tip="${tip}"
+        onmouseenter="showMapTip(event,this)" onmouseleave="hideMapTip()" onclick="showMapTip(event,this)" ontouchstart="showMapTip(event,this)"
+        style="cursor:pointer"/>`;
+    }).join('');
+
   // Avatar ayarları
   const avatarVal=(db.users[target]&&db.users[target].avatar)||null;
   const mapAvatarUrl=avatarVal&&avatarVal.startsWith('avatar_')?`https://hggunay.github.io/project_ashbless/avatars/${avatarVal}`:null;
@@ -517,6 +564,10 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       if(n>0) countryCoords[iso2]=[sx/n,sy/n];
     }catch(e){}
   });
+  // Küçük ülkelerin de koordinatı olsun: avatar animasyonu oraya da uçabilsin.
+  Object.entries(KUCUK_ULKE_KOORD).forEach(([iso,[lon,lat]])=>{
+    if(!countryCoords[iso]) countryCoords[iso]=project(lon,lat);
+  });
   // Türkiye fallback — hiç kitap yoksa başlangıç noktası
   if(!countryCoords['TR']) countryCoords['TR']=[project(35,39)[0],project(35,39)[1]];
 
@@ -530,6 +581,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
       style="display:block;max-width:100%">
       <rect width="${W}" height="${H}" fill="#1a0f00"/>
       ${paths}
+      ${noktalar}
       <g id="map-trail-layer"></g>
       <g id="map-avatar-layer"></g>
     </svg>`;
