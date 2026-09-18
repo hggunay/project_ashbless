@@ -1946,31 +1946,31 @@ try{
      çünkü tarayıcı adresi aynı görüp önbellekteki eski dosyayı kullanır. -->
 <!-- ⚠️ 17 etiketin damgası AYNI tutuluyor; hangi .js değişti diye ayıklamak
      gerekmesin, index.html zaten her deploy'da yükleniyor. -->
-<script src="map.js?s=20260918d"></script>
-<script src="coreading.js?s=20260918d"></script>
-<script src="series.js?s=20260918d"></script>
-<script src="feed.js?s=20260918d"></script>
-<script src="badges.js?s=20260918d"></script>
+<script src="map.js?s=20260918e"></script>
+<script src="coreading.js?s=20260918e"></script>
+<script src="series.js?s=20260918e"></script>
+<script src="feed.js?s=20260918e"></script>
+<script src="badges.js?s=20260918e"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
-<script src="sezonluk.js?s=20260918d"></script>
-<script src="shelves.js?s=20260918d"></script>
-<script src="avatar.js?s=20260918d"></script>
-<script src="shelf.js?s=20260918d"></script>
+<script src="sezonluk.js?s=20260918e"></script>
+<script src="shelves.js?s=20260918e"></script>
+<script src="avatar.js?s=20260918e"></script>
+<script src="shelf.js?s=20260918e"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
-<script src="diyarlar-katalog.js?s=20260918d"></script>
-<script src="diyar-esleme.js?s=20260918d"></script>
-<script src="diyarlar.js?s=20260918d"></script>
-<script src="diyar-harita.js?s=20260918d"></script>
+<script src="diyarlar-katalog.js?s=20260918e"></script>
+<script src="diyar-esleme.js?s=20260918e"></script>
+<script src="diyarlar.js?s=20260918e"></script>
+<script src="diyar-harita.js?s=20260918e"></script>
 <!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
-<script src="uye-onay.js?s=20260918d"></script>
+<script src="uye-onay.js?s=20260918e"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js?s=20260918d"></script>
-<script src="hesap-vakti-cumleler.js?s=20260918d"></script>
-<script src="hesap-vakti.js?s=20260918d"></script>
+<script src="karsilama.js?s=20260918e"></script>
+<script src="hesap-vakti-cumleler.js?s=20260918e"></script>
+<script src="hesap-vakti.js?s=20260918e"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -6700,6 +6700,15 @@ function dField(label,field,val,type,editable,placeholder){
   
  // !! BU SATIRI DEĞİŞTİRME — ülke normalizasyonu burada yapılıyor
 const unique=['Afganistan','Almanya','Amerika Birleşik Devletleri','Angola','Arjantin','Arnavutluk','Avustralya','Avusturya','Azerbaycan','Bangladeş','Belarus','Belçika','Bolivya','Bosna Hersek','Brezilya','Bulgaristan','Burkina Faso','Çad','Çekya','Çin','Cezayir','Demokratik Kongo Cumhuriyeti','Danimarka','Dominik Cumhuriyeti','Ekvador','El Salvador','Endonezya','Ermenistan','Eritre','Estonya','Etiyopya','Fas','Fildişi Sahili','Filipinler','Finlandiya','Fransa','Gana','Guatemala','Güney Afrika','Güney Kore','Güney Sudan','Gürcistan','Haiti','Hindistan','Hırvatistan','Hollanda','Honduras','Irak','İngiltere','İran','İrlanda','İspanya','İsrail','İsveç','İsviçre','İtalya','İzlanda','Jamaika','Japonya','Kamboçya','Kamerun','Kanada','Karadağ','Kazakistan','Kenya','Kıbrıs','Kolombiya','Kongo','Kosta Rika','Kosova','Küba','Letonya','Libya','Litvanya','Lübnan','Lüksemburg','Madagaskar','Makedonya','Malezya','Mali','Malta','Macaristan','Meksika','Mısır','Moldava','Mozambik','Myanmar','Nepal','Nijer','Nijerya','Nikaragua','Norveç','Pakistan','Panama','Paraguay','Peru','Polonya','Portekiz','Romanya','Rusya','Senegal','Sırbistan','Slovenya','Slovakya','Somali','Sri Lanka','Sudan','Suriye','Suudi Arabistan','Şili','Tanzanya','Tayland','Tayvan','Trinidad','Tunus','Uganda','Ukrayna','Uruguay','Venezuela','Vietnam','Yeni Zelanda','Yunanistan','Zambiya','Zimbabve','Ürdün','Özbekistan'].sort();
+  /* Dünyanın geri kalanı (2026-09-18) — üstteki satıra bilerek DOKUNULMADI.
+     map.js'teki tam listeden, yukarıda ZATEN bulunan ülkeler ülke koduyla
+     ayıklanarak ekleniyor: "Makedonya" varken "Kuzey Makedonya" ikinci kez
+     çıkmasın. Sonra Türkçe alfabeye göre yeniden sıralanıyor (Ç, İ, Ş doğru yerde). */
+  if(typeof ULKE_ONERILERI!=='undefined'){
+    const olanlar=new Set(unique.map(countryToISO).filter(Boolean));
+    ULKE_ONERILERI.forEach(ad=>{const iso=countryToISO(ad);if(iso&&!olanlar.has(iso)){unique.push(ad);olanlar.add(iso);}});
+    unique.sort((a,b)=>a.localeCompare(b,'tr'));
+  }
   const dlId='dl_country_'+modalBookId;
   return`<div class="detail-field">
     <span class="detail-field-label">${label}</span>

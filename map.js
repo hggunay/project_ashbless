@@ -66,6 +66,49 @@ const COUNTRY_ISO = {
   'kibris':'CY','kıbrıs':'CY','cyprus':'CY','malta':'MT','kosova':'XK','kosovo':'XK',
   'karadağ':'ME','montenegro':'ME','isvicre':'CH',
   'moldava':'MD','moldova':'MD','zambiya':'ZM','zambia':'ZM','ürdün':'JO','jordan':'JO','israil':'IL',
+  // ── 2026-09-18: DÜNYA TAMAMLANDI ──────────────────────────────
+  // Önce 129 ülke yazılabiliyordu; Singapur, Moğolistan, Fiji gibi 40 ülkenin
+  // adı hiç yoktu, girilen kitap haritada da rozette de sayılmıyordu.
+  // Türkçe adların Türkçe karaktersiz yazımları da var (telefonda yazan için).
+  'andorra':'AD','belcika':'BE','bosnia and herzegovina':'BA','hirvatistan':'HR','cekya':'CZ',
+  'çek cumhuriyeti':'CZ','cek cumhuriyeti':'CZ','lihtenştayn':'LI','lihtenstayn':'LI','liechtenstein':'LI',
+  'luksemburg':'LU','monako':'MC','monaco':'MC','karadag':'ME','kuzey makedonya':'MK',
+  'macedonia':'MK','norvec':'NO','san marino':'SM','sirbistan':'RS','isvec':'SE',
+  'birlesik krallik':'GB','iskoçya':'GB','iskocya':'GB','galler':'GB','kuzey irlanda':'GB',
+  'scotland':'GB','wales':'GB','northern ireland':'GB','vatikan':'VA','vatican':'VA',
+  'vatican city':'VA','bahreyn':'BH','bahrain':'BH','banglades':'BD','butan':'BT',
+  'bhutan':'BT','brunei':'BN','kambocya':'KH','cin':'CN','gurcistan':'GE',
+  'urdun':'JO','kuveyt':'KW','kuwait':'KW','kırgızistan':'KG','kirgizistan':'KG',
+  'kyrgyzstan':'KG','laos':'LA','lubnan':'LB','maldivler':'MV','maldives':'MV',
+  'moğolistan':'MN','mogolistan':'MN','mongolia':'MN','burma':'MM','umman':'OM',
+  'oman':'OM','filistin':'PS','palestine':'PS','katar':'QA','qatar':'QA',
+  'singapur':'SG','singapore':'SG','guney kore':'KR','tacikistan':'TJ','tajikistan':'TJ',
+  'doğu timor':'TL','dogu timor':'TL','timor-leste':'TL','east timor':'TL','turkiye':'TR',
+  'türkmenistan':'TM','turkmenistan':'TM','birlesik arap emirlikleri':'AE','united arab emirates':'AE','ozbekistan':'UZ',
+  'yemen':'YE','benin':'BJ','botsvana':'BW','botswana':'BW','burundi':'BI',
+  'yeşil burun adaları':'CV','yesil burun adalari':'CV','cape verde':'CV','cabo verde':'CV','orta afrika cumhuriyeti':'CF',
+  'central african republic':'CF','cad':'TD','komorlar':'KM','comoros':'KM','democratic republic of the congo':'CD',
+  'kongo cumhuriyeti':'CG','congo':'CG','republic of the congo':'CG','fildisi sahili':'CI','cibuti':'DJ',
+  'djibouti':'DJ','misir':'EG','ekvator ginesi':'GQ','equatorial guinea':'GQ','esvatini':'SZ',
+  'svaziland':'SZ','eswatini':'SZ','swaziland':'SZ','gabon':'GA','gambiya':'GM',
+  'gambia':'GM','gine':'GN','guinea':'GN','gine-bissau':'GW','guinea-bissau':'GW',
+  'lesotho':'LS','liberya':'LR','liberia':'LR','malavi':'MW','malawi':'MW',
+  'moritanya':'MR','mauritania':'MR','mauritius':'MU','namibya':'NA','namibia':'NA',
+  'ruanda':'RW','rwanda':'RW','são tomé ve príncipe':'ST','sao tome ve principe':'ST','sao tome and principe':'ST',
+  'seyşeller':'SC','seyseller':'SC','seychelles':'SC','sierra leone':'SL','guney afrika':'ZA',
+  'guney sudan':'SS','togo':'TG','batı sahra':'EH','bati sahra':'EH','western sahara':'EH',
+  'antigua ve barbuda':'AG','antigua and barbuda':'AG','bahamalar':'BS','bahamas':'BS','barbados':'BB',
+  'belize':'BZ','kuba':'CU','dominika':'DM','dominica':'DM','grenada':'GD',
+  'saint kitts ve nevis':'KN','saint kitts and nevis':'KN','saint lucia':'LC','saint vincent ve grenadinler':'VC','saint vincent and the grenadines':'VC',
+  'trinidad ve tobago':'TT','amerika birlesik devletleri':'US','grönland':'GL','gronland':'GL','greenland':'GL',
+  'porto riko':'PR','puerto rico':'PR','sili':'CL','guyana':'GY','surinam':'SR',
+  'suriname':'SR','falkland adaları':'FK','falkland adalari':'FK','falkland islands':'FK','fiji':'FJ',
+  'kiribati':'KI','marshall adaları':'MH','marshall adalari':'MH','marshall islands':'MH','mikronezya':'FM',
+  'micronesia':'FM','nauru':'NR','palau':'PW','papua yeni gine':'PG','papua new guinea':'PG',
+  'samoa':'WS','solomon adaları':'SB','solomon adalari':'SB','solomon islands':'SB','tonga':'TO',
+  'tuvalu':'TV','vanuatu':'VU','yeni kaledonya':'NC','new caledonia':'NC','antarktika':'AQ',
+  'antarctica':'AQ',
+
 };
 
 /* ⚠️ KUZEY VE GÜNEY AMERİKA AYRI KITALAR (2026-09-18). Önce ikisi de tek bir
@@ -98,6 +141,12 @@ const ISO_CONTINENT = {
   UA:'europe',UG:'africa',US:'northAmerica',UY:'southAmerica',UZ:'asia',
   VA:'europe',VE:'southAmerica',VN:'asia',
   XK:'europe',YE:'asia',ZA:'africa',ZM:'africa',ZW:'africa',
+  // 2026-09-18: yeni eklenen ülkelerin kıtaları
+  SM:'europe',MV:'asia',PS:'asia',TL:'asia',CV:'africa',KM:'africa',GQ:'africa',MU:'africa',
+  ST:'africa',SC:'africa',EH:'africa',AG:'northAmerica',BS:'northAmerica',BB:'northAmerica',DM:'northAmerica',GD:'northAmerica',
+  KN:'northAmerica',LC:'northAmerica',VC:'northAmerica',GL:'northAmerica',PR:'northAmerica',FK:'southAmerica',KI:'oceania',MH:'oceania',
+  FM:'oceania',NR:'oceania',PW:'oceania',WS:'oceania',SB:'oceania',TO:'oceania',TV:'oceania',VU:'oceania',
+  NC:'oceania',
 };
 
 const CONTINENT_COLORS = {
@@ -111,10 +160,48 @@ const CONTINENT_COLORS = {
   oceania:      ['#2d1a08','#d0b0e0','#9060b0','#603080','#381050'],
 };
 
+/* Kitap kartındaki ülke kutusunun ÖNERİ listesi için dünyanın tamamı
+   (2026-09-18). index.html'deki eski elle yazılmış liste olduğu gibi duruyor;
+   bu liste onun yanına ekleniyor, aynı ülke iki adla çıkmasın diye ülke
+   koduna göre ayıklanarak (bkz. index.html, dField). */
+const ULKE_ONERILERI = [
+  'Arnavutluk','Andorra','Avusturya','Belarus','Belçika','Bosna Hersek','Bulgaristan','Hırvatistan',
+  'Kıbrıs','Çekya','Danimarka','Estonya','Finlandiya','Fransa','Almanya','Yunanistan',
+  'Macaristan','İzlanda','İrlanda','İtalya','Kosova','Letonya','Lihtenştayn','Litvanya',
+  'Lüksemburg','Malta','Moldova','Monako','Karadağ','Hollanda','Kuzey Makedonya','Norveç',
+  'Polonya','Portekiz','Romanya','Rusya','San Marino','Sırbistan','Slovakya','Slovenya',
+  'İspanya','İsveç','İsviçre','Ukrayna','İngiltere','Vatikan','Afganistan','Ermenistan',
+  'Azerbaycan','Bahreyn','Bangladeş','Butan','Brunei','Kamboçya','Çin','Gürcistan',
+  'Hindistan','Endonezya','İran','Irak','İsrail','Japonya','Ürdün','Kazakistan',
+  'Kuveyt','Kırgızistan','Laos','Lübnan','Malezya','Maldivler','Moğolistan','Myanmar',
+  'Nepal','Kuzey Kore','Umman','Pakistan','Filistin','Filipinler','Katar','Suudi Arabistan',
+  'Singapur','Güney Kore','Sri Lanka','Suriye','Tayvan','Tacikistan','Tayland','Doğu Timor',
+  'Türkiye','Türkmenistan','Birleşik Arap Emirlikleri','Özbekistan','Vietnam','Yemen','Cezayir','Angola',
+  'Benin','Botsvana','Burkina Faso','Burundi','Yeşil Burun Adaları','Kamerun','Orta Afrika Cumhuriyeti','Çad',
+  'Komorlar','Demokratik Kongo Cumhuriyeti','Kongo','Fildişi Sahili','Cibuti','Mısır','Ekvator Ginesi','Eritre',
+  'Esvatini','Etiyopya','Gabon','Gambiya','Gana','Gine','Gine-Bissau','Kenya',
+  'Lesotho','Liberya','Libya','Madagaskar','Malavi','Mali','Moritanya','Mauritius',
+  'Fas','Mozambik','Namibya','Nijer','Nijerya','Ruanda','São Tomé ve Príncipe','Senegal',
+  'Seyşeller','Sierra Leone','Somali','Güney Afrika','Güney Sudan','Sudan','Tanzanya','Togo',
+  'Tunus','Uganda','Batı Sahra','Zambiya','Zimbabve','Antigua ve Barbuda','Bahamalar','Barbados',
+  'Belize','Kanada','Kosta Rika','Küba','Dominika','Dominik Cumhuriyeti','El Salvador','Grenada',
+  'Guatemala','Haiti','Honduras','Jamaika','Meksika','Nikaragua','Panama','Saint Kitts ve Nevis',
+  'Saint Lucia','Saint Vincent ve Grenadinler','Trinidad ve Tobago','Amerika Birleşik Devletleri','Grönland','Porto Riko','Arjantin','Bolivya',
+  'Brezilya','Şili','Kolombiya','Ekvador','Guyana','Paraguay','Peru','Surinam',
+  'Uruguay','Venezuela','Falkland Adaları','Avustralya','Fiji','Kiribati','Marshall Adaları','Mikronezya',
+  'Nauru','Yeni Zelanda','Palau','Papua Yeni Gine','Samoa','Solomon Adaları','Tonga','Tuvalu',
+  'Vanuatu','Yeni Kaledonya','Antarktika',
+];
+
 function countryToISO(name){
   if(!name) return null;
   const n=name.trim().toLowerCase().replace(/i̇/g,'i').replace(/İ/gi,'i');
-  return COUNTRY_ISO[n]||COUNTRY_ISO[name.trim().toLowerCase()]||null;
+  /* Son çare: Türkçe karakterleri sadeleştirip dene (2026-09-18). JavaScript
+     büyük "I"yı "ı" değil "i" diye küçültüyor; "BİRLEŞİK KRALLIK" yazan
+     "birleşik krallik"e düşüp eşleşmiyordu. Tablodaki her Türkçe adın
+     sadeleştirilmiş yazımı da bulunduğu için bu adım hepsini yakalıyor. */
+  const sade=n.replace(/ç/g,'c').replace(/ş/g,'s').replace(/ğ/g,'g').replace(/ö/g,'o').replace(/ü/g,'u').replace(/ı/g,'i');
+  return COUNTRY_ISO[n]||COUNTRY_ISO[name.trim().toLowerCase()]||COUNTRY_ISO[sade]||null;
 }
 
 function getCountryColor(iso, count){
@@ -365,13 +452,19 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   }
 
   // ISO numeric → ISO2 eşleştirmesi (topojson numeric id kullanıyor)
-  const NUM_TO_ISO2={4:'AF',8:'AL',12:'DZ',24:'AO',32:'AR',36:'AU',40:'AT',50:'BD',56:'BE',64:'BT',68:'BO',76:'BR',100:'BG',116:'KH',120:'CM',124:'CA',152:'CL',156:'CN',170:'CO',180:'CD',188:'CR',192:'CU',196:'CY',203:'CZ',208:'DK',218:'EC',818:'EG',231:'ET',246:'FI',250:'FR',276:'DE',288:'GH',300:'GR',320:'GT',324:'GN',340:'HN',348:'HU',356:'IN',360:'ID',364:'IR',368:'IQ',372:'IE',376:'IL',380:'IT',392:'JP',400:'JO',398:'KZ',404:'KE',408:'KP',410:'KR',414:'KW',418:'LA',422:'LB',430:'LR',434:'LY',440:'LT',442:'LU',450:'MG',454:'MW',458:'MY',466:'ML',484:'MX',504:'MA',508:'MZ',516:'NA',524:'NP',528:'NL',558:'NI',562:'NE',566:'NG',578:'NO',586:'PK',591:'PA',598:'PG',600:'PY',604:'PE',608:'PH',616:'PL',620:'PT',630:'PR',634:'QA',642:'RO',643:'RU',646:'RW',682:'SA',686:'SN',694:'SL',706:'SO',710:'ZA',724:'ES',740:'SR',752:'SE',756:'CH',760:'SY',762:'TJ',764:'TH',768:'TG',788:'TN',792:'TR',800:'UG',804:'UA',784:'AE',826:'GB',840:'US',858:'UY',860:'UZ',862:'VE',704:'VN',887:'YE',894:'ZM',716:'ZW',32:'AR',76:'BR',124:'CA',144:'LK',191:'HR',208:'DK',214:'DO',222:'SV',232:'ER',233:'EE',246:'FI',288:'GH',328:'GY',332:'HT',388:'JM',426:'LS',428:'LV',496:'MN',498:'MD',499:'ME',512:'OM',531:'CW',535:'BQ',585:'PW',624:'GW',630:'PR',659:'KN',670:'VC',780:'TT',882:'WS',887:'YE',895:'XK'};
+  const NUM_TO_ISO2={4:'AF',8:'AL',12:'DZ',24:'AO',32:'AR',36:'AU',40:'AT',50:'BD',56:'BE',64:'BT',68:'BO',76:'BR',100:'BG',116:'KH',120:'CM',124:'CA',152:'CL',156:'CN',170:'CO',180:'CD',188:'CR',192:'CU',196:'CY',203:'CZ',208:'DK',218:'EC',818:'EG',231:'ET',246:'FI',250:'FR',276:'DE',288:'GH',300:'GR',320:'GT',324:'GN',340:'HN',348:'HU',356:'IN',360:'ID',364:'IR',368:'IQ',372:'IE',376:'IL',380:'IT',392:'JP',400:'JO',398:'KZ',404:'KE',408:'KP',410:'KR',414:'KW',418:'LA',422:'LB',430:'LR',434:'LY',440:'LT',442:'LU',450:'MG',454:'MW',458:'MY',466:'ML',484:'MX',504:'MA',508:'MZ',516:'NA',524:'NP',528:'NL',558:'NI',562:'NE',566:'NG',578:'NO',586:'PK',591:'PA',598:'PG',600:'PY',604:'PE',608:'PH',616:'PL',620:'PT',630:'PR',634:'QA',642:'RO',643:'RU',646:'RW',682:'SA',686:'SN',694:'SL',706:'SO',710:'ZA',724:'ES',740:'SR',752:'SE',756:'CH',760:'SY',762:'TJ',764:'TH',768:'TG',788:'TN',792:'TR',800:'UG',804:'UA',784:'AE',826:'GB',840:'US',858:'UY',860:'UZ',862:'VE',704:'VN',887:'YE',894:'ZM',716:'ZW',32:'AR',76:'BR',124:'CA',144:'LK',191:'HR',208:'DK',214:'DO',222:'SV',232:'ER',233:'EE',246:'FI',288:'GH',328:'GY',332:'HT',388:'JM',426:'LS',428:'LV',496:'MN',498:'MD',499:'ME',512:'OM',531:'CW',535:'BQ',585:'PW',624:'GW',630:'PR',659:'KN',670:'VC',780:'TT',882:'WS',887:'YE',895:'XK',20:'AD',112:'BY',70:'BA',352:'IS',438:'LI',470:'MT',492:'MC',807:'MK',674:'SM',688:'RS',703:'SK',705:'SI',336:'VA',51:'AM',31:'AZ',48:'BH',96:'BN',268:'GE',417:'KG',462:'MV',104:'MM',275:'PS',702:'SG',158:'TW',626:'TL',795:'TM',204:'BJ',72:'BW',854:'BF',108:'BI',132:'CV',140:'CF',148:'TD',174:'KM',178:'CG',384:'CI',262:'DJ',226:'GQ',748:'SZ',266:'GA',270:'GM',478:'MR',480:'MU',678:'ST',690:'SC',728:'SS',729:'SD',834:'TZ',732:'EH',28:'AG',44:'BS',52:'BB',84:'BZ',212:'DM',308:'GD',662:'LC',304:'GL',238:'FK',242:'FJ',296:'KI',584:'MH',583:'FM',520:'NR',554:'NZ',90:'SB',776:'TO',798:'TV',548:'VU',540:'NC',10:'AQ'};
+  /* Haritada NUMARASI OLMAYAN ülkeler (2026-09-18). Harita verisinde Kosova'nın
+     sayısal kodu yok (Kosova ISO'nun resmi listesinde değil), yukarıdaki tabloyla
+     hiç eşleşmiyordu — Kosova'da geçen kitap haritada asla boyanmıyordu.
+     Bu ülkeler harita verisindeki ADLARIYLA bağlanıyor. Kuzey Kıbrıs ve
+     Somaliland bilerek bağlanmadı: onlar için bir karar verilmedi. */
+  const AD_ILE_ISO2={'Kosovo':'XK'};
+  const ozellikISO=f=>NUM_TO_ISO2[parseInt(f.id)]||(f.properties&&AD_ILE_ISO2[f.properties.name])||undefined;
 
   const avatarUser=db.users[target]?.avatar||'📚';
 
   const paths=countries.features.map(f=>{
-    const numId=parseInt(f.id);
-    const iso2=NUM_TO_ISO2[numId];
+    const iso2=ozellikISO(f);
     const count=iso2?counts[iso2]:0;
     const continent=iso2?ISO_CONTINENT[iso2]:'europe';
     let fill='#2d1a08';
@@ -401,7 +494,7 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   // Ülke koordinat haritası — animasyon için
   const countryCoords={};
   countries.features.forEach(f=>{
-    const iso2=NUM_TO_ISO2[parseInt(f.id)];
+    const iso2=ozellikISO(f);
     if(!iso2||!f.geometry) return;
     try{
       const coords=f.geometry.type==='Polygon'?f.geometry.coordinates[0]:f.geometry.coordinates[0][0];
