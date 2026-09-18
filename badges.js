@@ -541,7 +541,8 @@ function maxSeriesBooks(books,user){
 
 // Bölge ISO setleri
 const REGIONS={
-  mediterranean:new Set(['TR','GR','IT','ES','PT','FR','HR','MA','EG','IL','TN','DZ','LB','CY','MT','SI','BA','ME','AL','LY']),
+  // XC = Kuzey Kıbrıs (2026-09-18'de ayrı ülke oldu, bkz. map.js AD_ILE_ISO2)
+  mediterranean:new Set(['TR','GR','IT','ES','PT','FR','HR','MA','EG','IL','TN','DZ','LB','CY','XC','MT','SI','BA','ME','AL','LY']),
   nordic:new Set(['NO','SE','DK','FI','IS']),
   latin:new Set(['BR','AR','MX','CO','PE','CL','VE','EC','BO','PY','UY','CR','CU','DO','HN','NI','PA','SV','GT']),
   eastasia:new Set(['JP','CN','KR','TW','MN','VN','TH','KH','LA','MM','PH','ID','MY','SG']),

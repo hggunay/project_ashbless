@@ -64,6 +64,9 @@ const COUNTRY_ISO = {
   'eritre':'ER','eritrea':'ER','libya':'LY','lüksemburg':'LU','luxembourg':'LU',
   'irlanda':'IE','ireland':'IE','izlanda':'IS','İzlanda':'IS','iceland':'IS',
   'kibris':'CY','kıbrıs':'CY','cyprus':'CY','malta':'MT','kosova':'XK','kosovo':'XK',
+  // Kuzey Kıbrıs ayrı ülke (2026-09-18, Gökşin'in kararı) — bkz. AD_ILE_ISO2
+  'kuzey kıbrıs':'XC','kuzey kibris':'XC','kktc':'XC','kuzey kıbrıs türk cumhuriyeti':'XC',
+  'kuzey kibris turk cumhuriyeti':'XC','northern cyprus':'XC','north cyprus':'XC','trnc':'XC',
   'karadağ':'ME','montenegro':'ME','isvicre':'CH',
   'moldava':'MD','moldova':'MD','zambiya':'ZM','zambia':'ZM','ürdün':'JO','jordan':'JO','israil':'IL',
   // ── 2026-09-18: DÜNYA TAMAMLANDI ──────────────────────────────
@@ -122,7 +125,7 @@ const COUNTRY_ISO = {
 const ISO_CONTINENT = {
   AD:'europe',AE:'asia',AF:'asia',AL:'europe',AM:'asia',AO:'africa',AR:'southAmerica',AT:'europe',AU:'oceania',AZ:'asia',
   BA:'europe',BD:'asia',BE:'europe',BF:'africa',BG:'europe',BH:'asia',BI:'africa',BJ:'africa',BN:'asia',BO:'southAmerica',BR:'southAmerica',BT:'asia',BW:'africa',BY:'europe',BZ:'northAmerica',
-  CA:'northAmerica',CD:'africa',CF:'africa',CG:'africa',CH:'europe',CI:'africa',CL:'southAmerica',CM:'africa',CN:'asia',CO:'southAmerica',CR:'northAmerica',CU:'northAmerica',CY:'europe',CZ:'europe',
+  CA:'northAmerica',CD:'africa',CF:'africa',CG:'africa',CH:'europe',CI:'africa',CL:'southAmerica',CM:'africa',CN:'asia',CO:'southAmerica',CR:'northAmerica',CU:'northAmerica',CY:'europe',XC:'europe',CZ:'europe',
   DE:'europe',DJ:'africa',DK:'europe',DO:'northAmerica',DZ:'africa',
   EC:'southAmerica',EE:'europe',EG:'africa',ER:'africa',ES:'europe',ET:'africa',
   FI:'europe',FJ:'oceania',FR:'europe',
@@ -166,7 +169,7 @@ const CONTINENT_COLORS = {
    koduna göre ayıklanarak (bkz. index.html, dField). */
 const ULKE_ONERILERI = [
   'Arnavutluk','Andorra','Avusturya','Belarus','Belçika','Bosna Hersek','Bulgaristan','Hırvatistan',
-  'Kıbrıs','Çekya','Danimarka','Estonya','Finlandiya','Fransa','Almanya','Yunanistan',
+  'Kıbrıs','Kuzey Kıbrıs','Çekya','Danimarka','Estonya','Finlandiya','Fransa','Almanya','Yunanistan',
   'Macaristan','İzlanda','İrlanda','İtalya','Kosova','Letonya','Lihtenştayn','Litvanya',
   'Lüksemburg','Malta','Moldova','Monako','Karadağ','Hollanda','Kuzey Makedonya','Norveç',
   'Polonya','Portekiz','Romanya','Rusya','San Marino','Sırbistan','Slovakya','Slovenya',
@@ -456,9 +459,10 @@ function renderTopoMap(topo, counts, avatarISO, target, books){
   /* Haritada NUMARASI OLMAYAN ülkeler (2026-09-18). Harita verisinde Kosova'nın
      sayısal kodu yok (Kosova ISO'nun resmi listesinde değil), yukarıdaki tabloyla
      hiç eşleşmiyordu — Kosova'da geçen kitap haritada asla boyanmıyordu.
-     Bu ülkeler harita verisindeki ADLARIYLA bağlanıyor. Kuzey Kıbrıs ve
-     Somaliland bilerek bağlanmadı: onlar için bir karar verilmedi. */
-  const AD_ILE_ISO2={'Kosovo':'XK'};
+     Bu ülkeler harita verisindeki ADLARIYLA bağlanıyor.
+     Kuzey Kıbrıs: Gökşin'in kararıyla AYRI ülke ("XC" — ISO'da kodu yok,
+     Kosova'nın XK'sı gibi uygulamaya özel). Somaliland için karar verilmedi. */
+  const AD_ILE_ISO2={'Kosovo':'XK','N. Cyprus':'XC'};
   const ozellikISO=f=>NUM_TO_ISO2[parseInt(f.id)]||(f.properties&&AD_ILE_ISO2[f.properties.name])||undefined;
 
   const avatarUser=db.users[target]?.avatar||'📚';

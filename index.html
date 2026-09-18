@@ -1946,31 +1946,31 @@ try{
      çünkü tarayıcı adresi aynı görüp önbellekteki eski dosyayı kullanır. -->
 <!-- ⚠️ 17 etiketin damgası AYNI tutuluyor; hangi .js değişti diye ayıklamak
      gerekmesin, index.html zaten her deploy'da yükleniyor. -->
-<script src="map.js?s=20260918e"></script>
-<script src="coreading.js?s=20260918e"></script>
-<script src="series.js?s=20260918e"></script>
-<script src="feed.js?s=20260918e"></script>
-<script src="badges.js?s=20260918e"></script>
+<script src="map.js?s=20260918f"></script>
+<script src="coreading.js?s=20260918f"></script>
+<script src="series.js?s=20260918f"></script>
+<script src="feed.js?s=20260918f"></script>
+<script src="badges.js?s=20260918f"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
-<script src="sezonluk.js?s=20260918e"></script>
-<script src="shelves.js?s=20260918e"></script>
-<script src="avatar.js?s=20260918e"></script>
-<script src="shelf.js?s=20260918e"></script>
+<script src="sezonluk.js?s=20260918f"></script>
+<script src="shelves.js?s=20260918f"></script>
+<script src="avatar.js?s=20260918f"></script>
+<script src="shelf.js?s=20260918f"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
-<script src="diyarlar-katalog.js?s=20260918e"></script>
-<script src="diyar-esleme.js?s=20260918e"></script>
-<script src="diyarlar.js?s=20260918e"></script>
-<script src="diyar-harita.js?s=20260918e"></script>
+<script src="diyarlar-katalog.js?s=20260918f"></script>
+<script src="diyar-esleme.js?s=20260918f"></script>
+<script src="diyarlar.js?s=20260918f"></script>
+<script src="diyar-harita.js?s=20260918f"></script>
 <!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
-<script src="uye-onay.js?s=20260918e"></script>
+<script src="uye-onay.js?s=20260918f"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js?s=20260918e"></script>
-<script src="hesap-vakti-cumleler.js?s=20260918e"></script>
-<script src="hesap-vakti.js?s=20260918e"></script>
+<script src="karsilama.js?s=20260918f"></script>
+<script src="hesap-vakti-cumleler.js?s=20260918f"></script>
+<script src="hesap-vakti.js?s=20260918f"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -5669,18 +5669,35 @@ function todayLocal(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
+/* Ay adları — Türkçe karakterli ve karaktersiz yazımlar, üç harfli kısaltmalar.
+   2026-09-18: "16 Temmuz 2026" diye yazılan bir bitiş tarihi hiç tanınmıyordu;
+   kutu da metni olduğu gibi kaydediyordu. Sonuç: o kitap aylık istatistiklere,
+   okuma serisine ve "Aylık Seri" rozetine hiç girmiyordu (Nimet'in "Anne Bak"
+   kaydında bulundu). */
+const TARIH_AY_ADLARI={ocak:1,oca:1,subat:2,şubat:2,şub:2,sub:2,mart:3,mar:3,nisan:4,nis:4,
+  mayis:5,mayıs:5,may:5,haziran:6,haz:6,temmuz:7,tem:7,agustos:8,ağustos:8,ağu:8,agu:8,
+  eylul:9,eylül:9,eyl:9,ekim:10,eki:10,kasim:11,kasım:11,kas:11,aralik:12,aralık:12,ara:12};
 function normalizeDate(s){
   if(!s) return null;
-  s=s.trim().replace(/[,\/]/g,'.').replace(/\s+/g,'');
-  // YYYY-MM-DD veya YYYY.MM.DD
-  let m=s.match(/^(\d{4})[-.](\d{2})[-.](\d{2})$/);
-  if(m) return `${m[1]}-${m[2]}-${m[3]}`;
-  // DD.MM.YYYY veya DD-MM-YYYY
-  m=s.match(/^(\d{2})[-.](\d{2})[-.](\d{4})$/);
-  if(m) return `${m[3]}-${m[2]}-${m[1]}`;
+  s=String(s).trim();
+  const tarih=(y,a,g)=>{
+    a=+a; g=+g;
+    if(a<1||a>12||g<1||g>31) return null;   // "32.13.2026" gibi girişler tarih sayılmasın
+    return `${y}-${String(a).padStart(2,'0')}-${String(g).padStart(2,'0')}`;
+  };
+  // "16 Temmuz 2026" · "16 temmuz, 2026" · "Temmuz 2026" (gün yoksa ayın 1'i)
+  const yazili=s.toLocaleLowerCase('tr').match(/^(?:(\d{1,2})\s*[.\-\/]?\s*)?([a-zçğıöşü]+)\.?\s*[,.]?\s*(\d{4})$/);
+  if(yazili && TARIH_AY_ADLARI[yazili[2]]) return tarih(yazili[3],TARIH_AY_ADLARI[yazili[2]],yazili[1]||1);
+  s=s.replace(/[,\/]/g,'.').replace(/\s+/g,'');
+  // YYYY-MM-DD veya YYYY.MM.DD (tek haneli ay/gün de: 2026-7-5)
+  let m=s.match(/^(\d{4})[-.](\d{1,2})[-.](\d{1,2})$/);
+  if(m) return tarih(m[1],m[2],m[3]);
+  // DD.MM.YYYY veya DD-MM-YYYY (tek haneli: 5.7.2026)
+  m=s.match(/^(\d{1,2})[-.](\d{1,2})[-.](\d{4})$/);
+  if(m) return tarih(m[3],m[2],m[1]);
   // YYYY.MM (ay bazlı)
-  m=s.match(/^(\d{4})[-.](\d{2})$/);
-  if(m) return `${m[1]}-${m[2]}-01`;
+  m=s.match(/^(\d{4})[-.](\d{1,2})$/);
+  if(m) return tarih(m[1],m[2],1);
   return null;
 }
 
@@ -5804,7 +5821,18 @@ async function addBook(){
   const endDate=document.getElementById('bookEndDate').value||null;
   const formats=getFormats();
   if(!rawInput){ mesajGoster('Kitap adı veya ISBN giriniz.','uyari'); return; }
-  
+  /* Tarih kutuları serbest metin; tanınmayan tarih artık kaydedilmiyor
+     (2026-09-18 — gerekçesi saveFieldTyped'da). Bitişe yalnızca YIL yazmak
+     ("2018") geçerli: kitap kartındaki gibi yearOnly olarak saklanıyor.
+     Eskiden bu formda yıl, ham metin olarak endDate'e yazılıyordu. */
+  const bitisYili=endDate&&/^\d{4}$/.test(endDate.trim())?parseInt(endDate.trim()):null;
+  for(const [ad,deger] of [['Başlama',document.getElementById('bookStartDate').value],['Bitiş',bitisYili?null:endDate]]){
+    if(deger&&deger.trim()&&!normalizeDate(deger)){
+      mesajGoster(ad+' tarihini anlayamadım: "'+deger.trim()+'". Şöyle yazabilirsin: 16.07.2026 ya da 16 Temmuz 2026','uyari');
+      return;
+    }
+  }
+
 // Birlikte okuma oturumu başlat
   if(getReadingTime()==='coreading'){
     await startCoreadingSession(rawInput,author);
@@ -5920,7 +5948,8 @@ async function addBook(){
     publisher:publisher||null,
     isbn:isbn||null,
     retroactive:getReadingTime()==='past',
-    month:endDate?normalizeDate(endDate)?.substring(0,7):month,addedAt:now.toISOString(),startDate:normalizeDate(startDate)||startDate,endDate:normalizeDate(endDate)||endDate,
+    month:bitisYili?bitisYili+'-01':(endDate?normalizeDate(endDate)?.substring(0,7):month),addedAt:now.toISOString(),startDate:normalizeDate(startDate)||startDate,endDate:bitisYili?null:(normalizeDate(endDate)||null),
+    yearOnly:bitisYili,
     currentPage:null, // şu an okunan sayfa
     // manual flags
     nightReading:false,reread:false,challenging:false,
@@ -6853,7 +6882,10 @@ async function saveFieldTyped(bookId,field,type,rawVal){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
   const prevValid=snapshotValidBooks();
   // Bitiş tarihi alanına sadece yıl girilmişse (4 haneli sayı) yearOnly olarak kaydet
-  if(field==='endDate'&&type==='date'&&rawVal){
+  // ⚠️ `type==='date'` koşulu KALDIRILDI (2026-09-18): kitap kartındaki kutu
+  // 'text' gönderiyor, bu dal hiç çalışmıyordu — "2018" ham metin olarak
+  // endDate'e yazılıyordu, kutunun kendi ipucu "veya sadece yyyy" dediği halde.
+  if(field==='endDate'&&rawVal){
     const onlyYear=/^\d{4}$/.test(rawVal.trim());
     if(onlyYear){
       book.yearOnly=parseInt(rawVal.trim());
@@ -6863,6 +6895,20 @@ async function saveFieldTyped(bookId,field,type,rawVal){
     } else {
       book.yearOnly=null;
     }
+  }
+  /* Tanınmayan tarih metni KAYDEDİLMİYOR (2026-09-18). Eskiden normalizeDate
+     çözemeyince yazılan metin olduğu gibi kaydediliyordu ve kitap hiçbir aylık
+     sayıma girmiyordu. Kutu da eski değerine döndürülüyor — yoksa kullanıcı
+     yazdığını ekranda görüp kaydedildi sanar. */
+  if((field==='endDate'||field==='startDate')&&rawVal&&rawVal.trim()&&!normalizeDate(rawVal)){
+    mesajGoster('Bu tarihi anlayamadım: "'+rawVal.trim()+'". Şöyle yazabilirsin: 16.07.2026 ya da 16 Temmuz 2026','uyari');
+    const kutu=document.querySelector(`#modalOverlay [onchange*="'${field}'"]`);
+    if(kutu){
+      const eski=book[field]||'';
+      const p=String(eski).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      kutu.value=p?`${p[3]}.${p[2]}.${p[1]}`:eski;
+    }
+    return;
   }
   let value=type==='number'?(rawVal===''?null:Number(rawVal)):rawVal||null;
   book[field]=value;
