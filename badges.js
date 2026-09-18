@@ -774,7 +774,8 @@ function _sifirlaOnayli(secici, eskiYazi, is){
   btn.dataset.confirming='1';
   btn.textContent='⚠️ Emin misin? Tekrar tıkla!';
   btn.style.background='rgba(160,82,45,.5)';
-  setTimeout(()=>{btn.textContent=eskiYazi;btn.dataset.confirming='';btn.style.background='';},4000);
+  /* 8 saniye — gerekçesi confirmResetMap'te (4 saniye ölçümle yetersiz çıktı). */
+  setTimeout(()=>{btn.textContent=eskiYazi;btn.dataset.confirming='';btn.style.background='';},8000);
 }
 
 /* ESKİ DÜĞME, DOĞRU ADIYLA (2026-09-18). Davranışı değişmedi: "geçmişte okundu"
