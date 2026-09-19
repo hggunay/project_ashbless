@@ -623,6 +623,40 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
    ⚠️ `!important` gerekli: fal metinleri satır içi `style="color:var(--ink)"`
    taşıyor (açık zemin varsayımıyla yazılmışlar) ve satır içi stil normal
    kuralı yener. Zemini değiştirmek yerine yazıyı çevirmek Gökşin'in tercihi. */
+/* ── OYUNLAR (2026-09-19) ─────────────────────────────────────────────
+   Kartlar: ikon, ad, kitap, açıklama, durum. Kilitli olanlar görünür ama
+   tıklanamaz — Gökşin'in kararı: "kilitliler gri bir duvar gibi değil,
+   keşfedilmeyi bekliyor gibi dursun." */
+#oyunContainer .oyun-ustyazi{ color:var(--parchment); opacity:.85; font-family:'Crimson Pro',serif;
+  font-size:.95rem; line-height:1.5; margin-bottom:.9rem; }
+#oyunContainer .oyun-bos{ color:var(--parchment); opacity:.6; font-style:italic; font-size:.9rem; margin-top:.8rem; }
+.oyun-izgara{ display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:.7rem; }
+.oyun-kart{ display:flex; flex-direction:column; align-items:flex-start; gap:.25rem; text-align:left;
+  padding:.85rem .9rem; border-radius:6px; cursor:pointer; font:inherit;
+  background:rgba(201,162,39,.08); border:1px solid rgba(201,162,39,.35); transition:transform .15s, background .15s; }
+.oyun-kart:hover:not(.kilitli){ background:rgba(201,162,39,.16); transform:translateY(-2px); }
+.oyun-kart.kilitli{ cursor:default; opacity:.72; border-style:dashed; }
+.oyun-ikon{ font-size:1.7rem; line-height:1; }
+.oyun-ad{ font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--gold-light); font-weight:700; }
+.oyun-kitap{ font-family:'Space Mono',monospace; font-size:.6rem; color:var(--gold); opacity:.8; letter-spacing:.03em; }
+.oyun-aciklama{ font-family:'Crimson Pro',serif; font-size:.88rem; color:var(--parchment); opacity:.85; line-height:1.4; }
+.oyun-durum{ margin-top:.35rem; font-family:'Space Mono',monospace; font-size:.65rem; color:var(--parchment); opacity:.9; }
+.oyun-kart.kilitli .oyun-durum{ color:var(--gold); }
+
+/* Oyun penceresi: haritadaki gibi alttan kayarak açılıyor. */
+#oyunPencere{ position:fixed; inset:0; z-index:9500; background:#120b02;
+  display:flex; flex-direction:column; transform:translateY(100%); transition:transform .26s ease-out; }
+#oyunPencere.acik{ transform:none; }
+#oyunPencere .oyun-baslik{ display:flex; align-items:center; gap:.5rem; padding:.6rem .8rem;
+  padding-top:calc(.6rem + env(safe-area-inset-top)); background:#1a0f00; border-bottom:1px solid rgba(201,162,39,.3); }
+#oyunPencere .oyun-baslik-ad{ flex:1; font-family:'Playfair Display',serif; color:var(--gold-light); font-size:1rem; }
+#oyunPencere .oyun-dugme{ width:40px; height:40px; border-radius:6px; font-size:1.1rem; cursor:pointer;
+  background:rgba(201,162,39,.12); border:1px solid rgba(201,162,39,.35); color:var(--gold-light); }
+#oyunPencere .oyun-govde{ position:relative; flex:1; min-height:0; }
+#oyunPencere .oyun-cerceve{ position:absolute; inset:0; width:100%; height:100%; border:0; background:#120b02; }
+#oyunPencere .oyun-yukleniyor{ position:absolute; inset:0; display:grid; place-items:center; padding:1rem;
+  text-align:center; color:var(--parchment); font-family:'Crimson Pro',serif; opacity:.8; }
+
 #sPanel-fun .stats-section{ color:var(--parchment); }
 #sPanel-fun .stats-section [style*="var(--ink)"]{ color:var(--parchment)!important; }
 #sPanel-fun .stats-section strong{ color:var(--gold-light); }
@@ -1473,9 +1507,16 @@ try{
              kitap-oyun da buraya gelecek. Ad bilerek geniş tutuldu:
              "diğerleri içeriği daraltıyor, ileride ne ekleriz bilemeyiz." -->
         <button id="sTab-fun" class="filter-tab" onclick="switchStatsTab('fun')">🎲 Eğlence</button>
+        <!-- Oyunlar (2026-09-19): Eğlence'nin İÇİNDE değil, yanında kendi alt
+             sekmesi — Gökşin'in kararı. Fal ve Hesap Vakti tek sayfada zaten
+             uzun; oyun listesi ayrı dursun. -->
+        <button id="sTab-oyun" class="filter-tab" onclick="switchStatsTab('oyun')">🎮 Oyunlar</button>
       </div>
       <div id="sPanel-fun" style="display:none">
         <div id="funContainer"></div>
+      </div>
+      <div id="sPanel-oyun" style="display:none">
+        <div id="oyunContainer"></div>
       </div>
       <div id="sPanel-stats">
         <div style="display:flex;gap:.4rem;margin-bottom:.75rem;flex-wrap:wrap">
@@ -1961,31 +2002,36 @@ try{
      çünkü tarayıcı adresi aynı görüp önbellekteki eski dosyayı kullanır. -->
 <!-- ⚠️ 17 etiketin damgası AYNI tutuluyor; hangi .js değişti diye ayıklamak
      gerekmesin, index.html zaten her deploy'da yükleniyor. -->
-<script src="map.js?s=20260919a"></script>
-<script src="coreading.js?s=20260919a"></script>
-<script src="series.js?s=20260919a"></script>
-<script src="feed.js?s=20260919a"></script>
-<script src="badges.js?s=20260919a"></script>
+<script src="map.js?s=20260919b"></script>
+<script src="coreading.js?s=20260919b"></script>
+<script src="series.js?s=20260919b"></script>
+<script src="feed.js?s=20260919b"></script>
+<script src="badges.js?s=20260919b"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
-<script src="sezonluk.js?s=20260919a"></script>
-<script src="shelves.js?s=20260919a"></script>
-<script src="avatar.js?s=20260919a"></script>
-<script src="shelf.js?s=20260919a"></script>
+<script src="sezonluk.js?s=20260919b"></script>
+<script src="shelves.js?s=20260919b"></script>
+<script src="avatar.js?s=20260919b"></script>
+<script src="shelf.js?s=20260919b"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
-<script src="diyarlar-katalog.js?s=20260919a"></script>
-<script src="diyar-esleme.js?s=20260919a"></script>
-<script src="diyarlar.js?s=20260919a"></script>
-<script src="diyar-harita.js?s=20260919a"></script>
+<script src="diyarlar-katalog.js?s=20260919b"></script>
+<script src="diyar-esleme.js?s=20260919b"></script>
+<script src="diyarlar.js?s=20260919b"></script>
+<script src="diyar-harita.js?s=20260919b"></script>
 <!-- Hesap Vakti (😈 Şeytan & 😇 Melek) — yalnızca `deneme` hesabında görünüyor
      (hesapVaktiAktif). Cümle bankası ÜRETİLMİŞ dosyadır, kaynağı
      gelecek-planlar.md; sıra önemli, cümleler motordan ÖNCE yüklenmeli. -->
-<script src="uye-onay.js?s=20260919a"></script>
+<script src="uye-onay.js?s=20260919b"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js?s=20260919a"></script>
-<script src="hesap-vakti-cumleler.js?s=20260919a"></script>
-<script src="hesap-vakti.js?s=20260919a"></script>
+<script src="karsilama.js?s=20260919b"></script>
+<script src="hesap-vakti-cumleler.js?s=20260919b"></script>
+<script src="hesap-vakti.js?s=20260919b"></script>
+<!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
+     her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
+     Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
+<script src="oyunlar/oyun-listesi.js?s=20260919b"></script>
+<script src="oyunlar.js?s=20260919b"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -8189,10 +8235,20 @@ function switchStatsTab(tab){
   document.getElementById('sPanel-map').style.display = tab==='map'?'':'none';
   const fp=document.getElementById('sPanel-fun');
   if(fp) fp.style.display = tab==='fun'?'':'none';
+  const op=document.getElementById('sPanel-oyun');
+  if(op) op.style.display = tab==='oyun'?'':'none';
   document.getElementById('sTab-stats').classList.toggle('active', tab==='stats');
   document.getElementById('sTab-map').classList.toggle('active', tab==='map');
   const ft=document.getElementById('sTab-fun');
   if(ft) ft.classList.toggle('active', tab==='fun');
+  const ot=document.getElementById('sTab-oyun');
+  if(ot){
+    // Geçici kapı: özellik bitene kadar yalnızca test hesaplarında görünür
+    // (gerekçesi oyunlar.js'in başında).
+    ot.style.display = (typeof oyunModu==='function' && oyunModu()) ? '' : 'none';
+    ot.classList.toggle('active', tab==='oyun');
+  }
+  if(tab==='oyun' && typeof renderOyunlar==='function') renderOyunlar();
   if(tab==='map'){
     const tog=document.getElementById('diyarToggleSatir');
     if(tog) tog.style.display = diyarTestModu() ? 'flex' : 'none';
