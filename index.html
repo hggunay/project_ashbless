@@ -15,21 +15,22 @@
 <link rel="apple-touch-icon" href="images/ikon.jpg">
 <!-- Bu satır olmadan tarayıcı /favicon.ico arıyor, depoda yok, konsola 404 düşüyordu. -->
 <link rel="icon" href="images/ikon.jpg" type="image/jpeg">
-<!-- 2026-08-31: BURADA İKİ manifest vardı; tarayıcı sonuncuyu kullanır, o da
-     ikonu 📚 emojisinden yapılmış SVG olandı. Emojili olan silindi, gerçek
-     ikonu (images/ikon.jpg) gösteren kaldı. `sizes` de yanlıştı: 512x512
-     yazıyordu, dosya gerçekte 192x192 — düzeltildi.
+<!-- ⚠️ Yukarıdaki iki satır KALDIRILMAMALI: `apple-touch-icon` iOS'ta
+     manifest'in önüne geçer, `rel="icon"` de masaüstü sekmesini besler.
+     Manifest'i tek başına yeterli sanıp bunlara dokunmak gerçek bir hataya
+     yol açar (2026-08-31'de bir kez yaşandı).
 
-     ⚠️ AMA BU GÖRÜNÜR BİR HATA DEĞİLDİ — Gökşin'in cihazlarında ikon zaten
-     doğruydu. Sebebi: yukarıdaki `apple-touch-icon` (iOS'ta manifest'in önüne
-     geçer) ve `rel="icon"` (masaüstü/sekme) ikisi de ikon.jpg'yi gösteriyor;
-     ayrıca Chrome ana ekran ikonu için SVG data-URI'yi genelde atlıyor.
-     Yani emoji hiç görünmedi. Bu satırlar KALDIRILMAMALI: manifest'i tek başına
-     doğru sanıp onlara dokunmak gerçek bir hataya yol açar.
-
-     ⚠️ ikon.jpg yalnızca DEPODA var, `claude code` klasöründe yok (klasör
+     ⚠️ Görseller yalnızca DEPODA var, `claude code` klasöründe yok (klasör
      deponun eksik bir kopyası). Silinmiş sanıp eklemeye kalkma. -->
-<link rel="manifest" href="data:application/json,%7B%22name%22%3A%22The%20Armchair%20Adventurers%22%2C%22short_name%22%3A%22Armchair%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%231a0f00%22%2C%22theme_color%22%3A%22%231a0f00%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22images/ikon.jpg%22%2C%22sizes%22%3A%22192x192%22%2C%22type%22%3A%22image%2Fjpeg%22%7D%5D%7D">
+<!-- ⚠️ 2026-09-19: manifest artık GERÇEK BİR DOSYA (manifest.json), eskiden
+     `data:` ile adresin içine gömülüydü. Gökşin bilgisayara yeniden yükleyince
+     uygulama ayrı pencerede değil, sıradan bir sekmede açıldı. Sebebi ikon
+     değil, buydu: tarayıcılar `data:` manifestini uygulama yüklemek için
+     saymıyor ve içindeki `start_url`/ikon yolları göreli olduğu için
+     çözülemiyor (neye göre çözecek?). Sepetim ve Geminio'da baştan gerçek
+     dosya var, onlar ayrı pencerede açılıyor.
+     ⚠️ manifest.json depo KÖKÜNE konulmalı, index.html ile aynı yere. -->
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
