@@ -1,0 +1,47 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Maymunlar Gezegeni</title><style>
+body{margin:0;background:#18120e;color:#ead9b5;font-family:system-ui;text-align:center}.app{width:min(96vw,680px);margin:auto;padding:10px}h1{font-size:21px;margin:3px}.sub{font-size:12px;color:#c8b58f}#stats{font-size:12px;min-height:40px;padding:6px}canvas{width:100%;max-width:600px;aspect-ratio:1;background:#d0b17a;border:2px solid #765a35;border-radius:8px;display:block;margin:auto}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}button{min-height:45px;background:#34271b;color:#ead9b5;border:1px solid #765a35;border-radius:8px}button:disabled{opacity:.35}#msg{font-size:12px;min-height:22px;margin:7px}</style></head><body><div class="app"><h1>MAYMUNLAR GEZEGENİ</h1><div class="sub">Popülasyonu izle. Gerekirse müdahale et.</div><div id="stats"></div>
+<div style="font-size:12px;margin:3px 0 6px">
+🐒 Şempanze → 🧑 İnsan<br>
+🧑 İnsan → 🦧 Orangutan → 🦍 Goril → 🐒 Şempanze
+</div>
+<canvas id="game" width="600" height="600"></canvas>
+<div style="margin:7px"><button id="speed" style="width:180px">⏩ Hız: 1×</button></div><div id="msg">Türler karşılaştıkça birbirlerine dönüşür.</div><div class="buttons"><button id="plague">🦠 Salgın</button><button id="ulis">⭐ Ulis doğdu</button><button id="revolt">⚔️ İsyan</button><button id="famine">🌵 Kıtlık</button></div></div><script>
+const c=document.getElementById("game"),x=c.getContext("2d"),W=600,H=600;
+let a=[],u=[],used={plague:0,ulis:0,revolt:0,famine:0},last=0,speed=1;
+const emoji={chimp:"🐒",human:"🧑",orang:"🦧",gorilla:"🦍"};
+function add(t,X,Y){a.push({t,x:X??Math.random()*560+20,y:Y??Math.random()*560+20,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4})}
+function init(){for(let t of ["chimp","human","orang","gorilla"])for(let i=0;i<10;i++)add(t);requestAnimationFrame(loop)}
+function dist(p,q){return Math.hypot(p.x-q.x,p.y-q.y)}
+function win(t){return {chimp:"human",human:"orang",orang:"gorilla",gorilla:"chimp"}[t]}
+function encounter(p,q){
+ if(p.t===q.t)return;
+ if((p.t==="human"&&q.t==="orang")||(q.t==="human"&&p.t==="orang")){
+  let h=a.filter(z=>z.t==="human"&&dist(z,p)<42).length;
+  if(h>=2)(p.t==="orang"?p:q).t="human";
+  return;
+ }
+ if(win(p.t)===q.t)q.t=p.t;else if(win(q.t)===p.t)p.t=q.t;
+}
+function step(dt){
+ for(const p of a){p.x+=p.vx*dt*60;p.y+=p.vy*dt*60;if(p.x<15||p.x>585)p.vx*=-1;if(p.y<15||p.y>585)p.vy*=-1}
+ for(const z of u){z.x+=z.vx*dt*60;z.y+=z.vy*dt*60;if(z.x<20||z.x>580)z.vx*=-1;if(z.y<20||z.y>580)z.vy*=-1;for(const p of a)if(dist(z,p)<25)p.t="human"}
+ for(let i=0;i<a.length;i++)for(let j=i+1;j<a.length;j++)if(dist(a[i],a[j])<18)encounter(a[i],a[j])
+}
+function draw(){
+ x.clearRect(0,0,W,H);x.fillStyle="#d0b17a";x.fillRect(0,0,W,H);
+ for(const p of a){x.font="22px sans-serif";x.textAlign="center";x.textBaseline="middle";x.fillText(emoji[p.t],p.x,p.y)}
+ for(const z of u){x.font="26px sans-serif";x.fillText("🟣",z.x,z.y)}
+ let n={chimp:0,human:0,orang:0,gorilla:0};a.forEach(p=>n[p.t]++);document.getElementById("stats").innerHTML=`🐒 ${n.chimp}　🧑 ${n.human}　🦧 ${n.orang}　🦍 ${n.gorilla}　🟣 ${u.length}`;
+}
+function loop(t){let dt=Math.min(.03,(t-last)/1000);last=t;step(dt*speed);draw();requestAnimationFrame(loop)}
+function once(id,fn){if(used[id])return;used[id]=1;document.getElementById(id).disabled=true;fn()}
+plague.onclick=()=>once("plague",()=>{let n={};a.forEach(p=>n[p.t]=(n[p.t]||0)+1);let t=Object.keys(n).sort((i,j)=>n[j]-n[i])[0],q=a.filter(p=>p.t===t).sort(()=>Math.random()-.5),dead=new Set(q.slice(0,Math.floor(q.length*.4)));a=a.filter(p=>!dead.has(p));msg.textContent="🦠 Salgın: en kalabalık türün %40'ı silindi."});
+ulis.onclick=()=>once("ulis",()=>{for(let i=0;i<2;i++)u.push({x:300+(i?35:-35),y:300,vx:(i?1:-1)*.35,vy:.15});msg.textContent="⭐ İki Ulis doğdu. Dokundukları herkes insana dönüşüyor."});
+revolt.onclick=()=>once("revolt",()=>{for(let i=0;i<18;i++)add("human",300+(Math.random()-.5)*80,300+(Math.random()-.5)*80);msg.textContent="⚔️ İsyan: 18 insan ortaya çıktı."});
+famine.onclick=()=>once("famine",()=>{let n={};a.forEach(p=>n[p.t]=(n[p.t]||0)+1);let t=Object.keys(n).sort((i,j)=>n[i]-n[j])[0],q=a.filter(p=>p.t===t).sort(()=>Math.random()-.5),dead=new Set(q.slice(0,Math.floor(q.length*.35)));a=a.filter(p=>!dead.has(p));msg.textContent="🌵 Kıtlık: en az sayıdaki türün %35'i silindi."});
+document.getElementById("speed").onclick=()=>{
+ speed=speed===1?2:speed===2?4:1;
+ document.getElementById("speed").textContent="⏩ Hız: "+speed+"×";
+};
+init();
+</script></body></html>

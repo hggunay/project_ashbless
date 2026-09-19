@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Kumda Ritim</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#21170f;color:#f0d9a4;font-family:system-ui,sans-serif}
+.app{width:min(96vw,760px);margin:auto;padding:10px;text-align:center}
+h1{margin:2px 0;font-size:22px}.sub{font-size:13px;margin:0 0 8px;color:#c9b384}
+.top{display:flex;justify-content:space-between;font-size:13px;margin:6px}
+canvas{display:block;width:100%;max-width:600px;aspect-ratio:1;margin:auto;background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-action:none}
+.controls{display:grid;grid-template-columns:repeat(3,64px);gap:6px;justify-content:center;margin:10px 0}
+button{width:64px;height:48px;background:#3b2a1b;color:#f0d9a4;border:1px solid #80603a;border-radius:8px;font-size:21px}
+button:active{background:#62482a}.new{width:auto;padding:0 18px;font-size:14px;height:38px}
+#msg{min-height:22px;font-size:13px}
+#sequence{font-size:13px;min-height:20px;color:#d9bd84}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>KUMDA RİTİM 🪱</h1>
+<div class="sub">Ritmini gizle, solucanı şaşırt, baharatı topla.</div>
+<div class="top">
+<span>Baharat: <b id="score">0</b></span>
+<span>Mesafe: <b id="dist">0</b></span>
+<span>Ritim: <b id="rhythm">YOK</b></span>
+</div>
+<canvas id="game" width="600" height="600"></canvas>
+<div class="controls">
+<span></span><button data-d="up">▲</button><span></span>
+<button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
+</div>
+<div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
+<div id="sequence"></div>
+<button class="new" id="restart">YENİ OYUN</button>
+</div>
+
+<script>
+const N=12,S=50,canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
+let player,worm,spice,trail,playerTrail,score,dist,history,over,lastRhythm;
+let flashUntil=0;
+
+const arrows={up:"↑",down:"↓",left:"←",right:"→"};
+
+function reset(){
+ player={x:1,y:10}; worm={x:10,y:1};
+ spice=[];trail=[];playerTrail=[];score=0;dist=0;history=[];over=false;lastRhythm="";
+ flashUntil=0;
+ for(let i=0;i<5;i++)dropSpice();
+ updateUI("YOK");
+ message("2, 3 veya 4 hareketlik bir tekrar oluştur.");
+ updateSequence();
+ draw();
+}
+
+function occupied(x,y){
+ return (x===player.x&&y===player.y)||(x===worm.x&&y===worm.y)||
+ spice.some(s=>s.x===x&&s.y===y);
+}
+
+function dropSpice(){
+ let x,y,tries=0;
+ do{
+  x=Math.floor(Math.random()*N);y=Math.floor(Math.random()*N);tries++;
+ }while(occupied(x,y)&&tries<100);
+ if(tries<100)spice.push({x,y});
+}
+
+function addTrail(){
+ trail.push({x:worm.x,y:worm.y});
+ if(trail.length>5)trail.shift();
+}
+function addPlayerTrail(){
+ playerTrail.push({x:player.x,y:player.y});
+ if(playerTrail.length>5)playerTrail.shift();
+}
+
+function detectRhythm(){
+ for(let len=4;len>=2;len--){
+  if(history.length<len*2)continue;
+  const a=history.slice(-len),b=history.slice(-len*2,-len);
+  let same=true;
+  for(let i=0;i<len;i++)if(a[i]!==b[i]){same=false;break;}
+  if(same)return len;
+ }
+ return 0;
+}
+
+function move(d){
+ if(over)return;
+
+ const dirs={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
+ const [dx,dy]=dirs[d];
+ const nx=player.x+dx,ny=player.y+dy;
+ if(nx<0||nx>=N||ny<0||ny>=N)return;
+
+ // Oyuncu solucanın bulunduğu kareye girerse, solucan hareket etmeden
+ // önce yakalanır.
+ if(nx===worm.x&&ny===worm.y){
+  player.x=nx;player.y=ny;
+  dist++;
+  over=true;
+  message("🪱 Solucana yakalandın! Baharat: "+score);
+  document.getElementById("score").textContent=score;
+  document.getElementById("dist").textContent=dist;
+  draw();
+  return;
+ }
+
+ player.x=nx;player.y=ny;dist++;
+ history.push(d);
+ if(history.length>12)history.shift();
+ addPlayerTrail();
+ updateSequence();
+
+ const i=spice.findIndex(s=>s.x===player.x&&s.y===player.y);
+ if(i>=0){spice.splice(i,1);score++;}
+
+ const rhythm=detectRhythm();
+
+ if(rhythm){
+  lastRhythm=rhythm;
+  updateUI(rhythm+"'LÜ RİTİM");
+  message(rhythm+"'LÜ RİTİM — SOLUCAN DUYDU!");
+  flashUntil=Date.now()+220;
+
+  for(let k=0;k<rhythm;k++){
+   const oldX=worm.x,oldY=worm.y;
+   addTrail();
+   chase();
+
+   // Yeni baharat yalnızca solucanın gerçekten geçtiği eski kareye,
+   // düşük olasılıkla bırakılır. Mevcut baharatların yeri değişmez.
+   if(Math.random()<0.32 &&
+      !(oldX===player.x&&oldY===player.y) &&
+      !spice.some(s=>s.x===oldX&&s.y===oldY)){
+    spice.push({x:oldX,y:oldY});
+   }
+
+   // Solucan hareket ederken oyuncunun bulunduğu kareye gelirse yakalar.
+   if(worm.x===player.x&&worm.y===player.y){
+    over=true;
+    message("🪱 Solucan seni yakaladı! Baharat: "+score);
+    break;
+   }
+  }
+ }else{
+  lastRhythm="";
+  updateUI("YOK");
+  message("Ritim yok — solucan yönünü kestiremiyor.");
+
+  const oldX=worm.x,oldY=worm.y;
+  addTrail();
+  wander();
+
+  // Düzensiz harekette de sadece solucanın geride bıraktığı kareye
+  // düşük olasılıkla yeni baharat bırakılır.
+  if(Math.random()<0.32 &&
+     !(oldX===player.x&&oldY===player.y) &&
+     !spice.some(s=>s.x===oldX&&s.y===oldY)){
+   spice.push({x:oldX,y:oldY});
+  }
+
+  if(worm.x===player.x&&worm.y===player.y){
+   over=true;
+   message("🪱 Solucan seni yakaladı! Baharat: "+score);
+  }
+ }
+
+ if(!over && Math.abs(worm.x-player.x)+Math.abs(worm.y-player.y)<=3)
+  message("⚠️ SOLUCAN YAKIN!");
+
+ document.getElementById("score").textContent=score;
+ document.getElementById("dist").textContent=dist;
+ draw();
+}
+function chase(){
+ const choices=[];
+ if(worm.x<player.x)choices.push([1,0]);
+ if(worm.x>player.x)choices.push([-1,0]);
+ if(worm.y<player.y)choices.push([0,1]);
+ if(worm.y>player.y)choices.push([0,-1]);
+ if(!choices.length)return;
+ const q=choices[Math.floor(Math.random()*choices.length)];
+ worm.x=Math.max(0,Math.min(N-1,worm.x+q[0]));
+ worm.y=Math.max(0,Math.min(N-1,worm.y+q[1]));
+}
+
+function wander(){
+ const ds=[[1,0],[-1,0],[0,1],[0,-1]];
+ let choices=ds;
+ // Hafif oyuncu yönelimi; yol bulma veya ağır hesaplama yok.
+ if(Math.random()<0.22){
+  choices=[];
+  if(worm.x<player.x)choices.push([1,0]);
+  if(worm.x>player.x)choices.push([-1,0]);
+  if(worm.y<player.y)choices.push([0,1]);
+  if(worm.y>player.y)choices.push([0,-1]);
+  if(!choices.length)choices=ds;
+ }
+ const q=choices[Math.floor(Math.random()*choices.length)];
+ worm.x=Math.max(0,Math.min(N-1,worm.x+q[0]));
+ worm.y=Math.max(0,Math.min(N-1,worm.y+q[1]));
+}
+
+function updateUI(r){document.getElementById("rhythm").textContent=r}
+function message(t){document.getElementById("msg").textContent=t}
+function updateSequence(){
+ const s=history.slice(-8).map(x=>arrows[x]).join(" ");
+ document.getElementById("sequence").textContent=s?"Hareketlerin: "+s:"";
+}
+
+function draw(){
+ // Canvas durumunu her seferinde temiz ve opak başlat.
+ ctx.setTransform(1,0,0,1,0,0);
+ ctx.globalAlpha=1;
+ ctx.globalCompositeOperation="source-over";
+ ctx.clearRect(0,0,600,600);
+
+ // GRID
+ for(let y=0;y<N;y++){
+  for(let x=0;x<N;x++){
+   ctx.globalAlpha=1;
+   ctx.fillStyle=(x+y)%2===0?"#b28f56":"#bc9a61";
+   ctx.fillRect(x*S,y*S,S,S);
+   ctx.strokeStyle="rgba(60,40,15,.15)";
+   ctx.lineWidth=1;
+   ctx.strokeRect(x*S+.5,y*S+.5,S-1,S-1);
+  }
+ }
+
+ // Oyuncunun kısa izi
+ playerTrail.forEach((t,i)=>{
+  ctx.globalAlpha=.08+.035*i;
+  ctx.fillStyle="#6f512d";
+  ctx.beginPath();
+  ctx.arc(t.x*S+25,t.y*S+25,4,0,Math.PI*2);
+  ctx.fill();
+ });
+
+ // Solucanın izi
+ trail.forEach((t,i)=>{
+  ctx.globalAlpha=.10+.065*i;
+  ctx.fillStyle="#5c3e1c";
+  ctx.beginPath();
+  ctx.arc(t.x*S+25,t.y*S+25,13,0,Math.PI*2);
+  ctx.fill();
+ });
+
+ // Baharat
+ ctx.globalAlpha=1;
+ spice.forEach((s,i)=>{
+  ctx.font="25px sans-serif";
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  ctx.fillText(i%2===0?"✨":"✦",s.x*S+25,s.y*S+25);
+ });
+
+ // Oyuncu
+ ctx.globalAlpha=1;
+ ctx.font="30px sans-serif";
+ ctx.textAlign="center";ctx.textBaseline="middle";
+ ctx.fillText("🧕🏽",player.x*S+25,player.y*S+25);
+
+ // Solucan
+ ctx.font="31px sans-serif";
+ ctx.fillText("🪱",worm.x*S+25,worm.y*S+25);
+
+ // Çok kısa, tek seferlik ritim algılama halkası.
+ if(Date.now()<flashUntil){
+  ctx.globalAlpha=.55;
+  ctx.strokeStyle="#f0d9a4";
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.arc(worm.x*S+25,worm.y*S+25,22,0,Math.PI*2);
+  ctx.stroke();
+ }
+
+ // Game over
+ if(over){
+  ctx.globalAlpha=1;
+  ctx.fillStyle="rgba(25,14,7,.72)";
+  ctx.fillRect(0,0,600,600);
+  ctx.fillStyle="#f0d9a4";
+  ctx.font="bold 30px system-ui";
+  ctx.textAlign="center";
+  ctx.fillText("GAME OVER",300,280);
+  ctx.font="18px system-ui";
+  ctx.fillText("Baharat: "+score,300,315);
+ }
+
+ ctx.globalAlpha=1;
+}
+
+document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>move(b.dataset.d));
+window.addEventListener("keydown",e=>{
+ const m={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"};
+ if(m[e.key]){e.preventDefault();move(m[e.key]);}
+});
+document.getElementById("restart").onclick=reset;
+reset();
+</script>
+</body>
+</html>
