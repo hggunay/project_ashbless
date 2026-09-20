@@ -28,7 +28,8 @@ h1{margin:0;font-size:17px;letter-spacing:.5px;flex:1;text-align:left}
 
 /* Tahta: esneyen alan. Tuval JS ile buraya sığacak kadar büyütülüyor. */
 .tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
-canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-action:none;display:block}
+canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-action:none;display:block;
+       transition:box-shadow .18s ease, border-color .18s ease}
 
 .alt{width:100%;max-width:620px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 .controls{display:grid;grid-template-columns:repeat(3,54px);grid-auto-rows:42px;gap:5px;flex:none}
@@ -95,6 +96,9 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
        (<b>2, 3 veya 4 adım</b>) arka arkaya tekrarlarsan ritim oluşur: solucan yerini
        tam kestirir ve <b>tekrar uzunluğu kadar adım</b> birden sana doğru gelir.</p>
     <p>Ritmini bozarsan yönünü kestiremez, kumda rastgele dolaşır.</p>
+    <p>Ritim sürdükçe <b>tahtanın çerçevesi parlar</b>: sarı 2'li, turuncu 3'lü,
+       kırmızı 4'lü. Renk ne kadar kızarırsa solucan o kadar çok adım atıyor
+       demektir. Ritmi bozduğun hamlede ışık söner.</p>
     <p>Her ritimde solucan <b>bir boğum uzar</b> (en fazla 7). Yalnız başı değil,
        <b>gövdesi de yakalar</b>.</p>
     <p>Solucanın altından geçtiği kumda <b>%32 ihtimalle baharat</b> açığa çıkar —
@@ -149,6 +153,7 @@ function reset(){
   flashUntil=0;
   for(let i=0;i<5;i++) baharatDus();
   updateUI("YOK");
+  ritimIsigi(0);
   message("2, 3 veya 4 hareketlik bir tekrar oluştur.");
   updateSequence(); sayaclar(); draw();
 }
@@ -256,6 +261,7 @@ function move(d){
   if(rhythm){
     updateUI(rhythm+"'Lİ");
     document.getElementById("ritimKutu").className="ritim-var";
+    ritimIsigi(rhythm);
     message(rhythm+"'li ritim — SOLUCAN DUYDU! "+rhythm+" adım birden geliyor.");
     flashUntil=Date.now()+260;
     if(worm.length<MAKS_BOGUM) buyume++;          // her ritimde bir boğum uzar
@@ -267,6 +273,7 @@ function move(d){
   }else{
     updateUI("YOK");
     document.getElementById("ritimKutu").className="";
+    ritimIsigi(0);                                 // ritmi bozdun, ışık sönüyor
     message("Ritim yok — solucan yönünü kestiremiyor.");
     izeBaharat(solucanAdim(false));
     if(yakalandiMi()){ bitir("Rastgele dolaşırken üstüne denk geldi."); return; }
@@ -280,6 +287,7 @@ function move(d){
 
 function bitir(neden){
   over=true;
+  ritimIsigi(0);                                   // bitiş ekranı sade kalsın
   message("Yakalandın. "+neden+" Baharat: "+score);
   sayaclar(); draw();
 }
@@ -290,6 +298,24 @@ function sayaclar(){
   document.getElementById("boyut").textContent=worm.length;
 }
 function updateUI(r){ document.getElementById("rhythm").textContent=r; }
+
+/* Tahtanın çerçevesi ritim sürdükçe parlıyor; renk ritmin uzunluğuna göre,
+   çünkü solucanın kaç adım atacağını da o belirliyor. Göz ucuyla görülsün
+   diye kenarda — tahtanın üstüne yazı koymuyoruz, oyun alanını kapatır. */
+const RITIM_RENK = { 2:"#ffc14d", 3:"#ff8a2b", 4:"#ff3d2e" };
+function ritimIsigi(uzunluk){
+  const renk = RITIM_RENK[uzunluk];
+  const sayac = document.getElementById("rhythm");
+  if(!renk){
+    canvas.style.boxShadow = "none";
+    canvas.style.borderColor = "#76532c";
+    sayac.style.color = "";
+    return;
+  }
+  canvas.style.boxShadow = `0 0 0 3px ${renk}, 0 0 26px 7px ${renk}66`;
+  canvas.style.borderColor = renk;
+  sayac.style.color = renk;
+}
 function message(t){ document.getElementById("msg").textContent=t; }
 function updateSequence(){
   const s=history.slice(-8).map(x=>arrows[x]).join(" ");
@@ -415,7 +441,8 @@ function cizSolucan(){
 /* ── Tuvali kalan boşluğa sığdır ────────────────────────────────────── */
 function tuvaliBoyutla(){
   const kutu=document.querySelector(".tahta").getBoundingClientRect();
-  const boy=Math.max(160,Math.floor(Math.min(kutu.width,kutu.height,620)));
+  /* 12 px pay: ritim parlaması çerçevenin dışına taşıyor, kırpılmasın. */
+  const boy=Math.max(160,Math.floor(Math.min(kutu.width,kutu.height,620))-12);
   canvas.style.width=boy+"px"; canvas.style.height=boy+"px";
 }
 window.addEventListener("resize",tuvaliBoyutla);
