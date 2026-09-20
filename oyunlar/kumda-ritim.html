@@ -2,303 +2,453 @@
 <html lang="tr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
 <title>Kumda Ritim</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;background:#21170f;color:#f0d9a4;font-family:system-ui,sans-serif}
-.app{width:min(96vw,760px);margin:auto;padding:10px;text-align:center}
-h1{margin:2px 0;font-size:22px}.sub{font-size:13px;margin:0 0 8px;color:#c9b384}
-.top{display:flex;justify-content:space-between;font-size:13px;margin:6px}
-canvas{display:block;width:100%;max-width:600px;aspect-ratio:1;margin:auto;background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-action:none}
-.controls{display:grid;grid-template-columns:repeat(3,64px);gap:6px;justify-content:center;margin:10px 0}
-button{width:64px;height:48px;background:#3b2a1b;color:#f0d9a4;border:1px solid #80603a;border-radius:8px;font-size:21px}
-button:active{background:#62482a}.new{width:auto;padding:0 18px;font-size:14px;height:38px}
-#msg{min-height:22px;font-size:13px}
-#sequence{font-size:13px;min-height:20px;color:#d9bd84}
+html,body{height:100%}
+body{margin:0;background:#21170f;color:#f0d9a4;
+     font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+     -webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overflow:hidden}
+
+/* Dikey akış: başlık ve kontroller sabit, tahta kalan boşluğu doldurur.
+   Böylece yön düğmeleri hiçbir ekranda alta taşmıyor. */
+.app{height:100%;display:flex;flex-direction:column;align-items:center;
+     padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+
+.ust{width:100%;max-width:620px;display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:17px;letter-spacing:.5px;flex:1;text-align:left}
+.yardim{width:30px;height:30px;flex:none;border-radius:50%;font-size:15px;font-weight:700;
+        background:#3b2a1b;color:#f0d9a4;border:1px solid #80603a}
+
+.sayac{width:100%;max-width:620px;display:flex;justify-content:space-between;
+       font-size:12px;background:#2c1f14;border:1px solid #4d3720;border-radius:7px;padding:5px 9px}
+.sayac b{color:#ffd98a;font-size:13px}
+.sayac .ritim-var b{color:#ff9a4d}
+
+/* Tahta: esneyen alan. Tuval JS ile buraya sığacak kadar büyütülüyor. */
+.tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-action:none;display:block}
+
+.alt{width:100%;max-width:620px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.controls{display:grid;grid-template-columns:repeat(3,54px);grid-auto-rows:42px;gap:5px;flex:none}
+.controls button{background:#3b2a1b;color:#f0d9a4;border:1px solid #80603a;border-radius:8px;font-size:19px;padding:0}
+.controls button:active{background:#6d5030}
+.bilgi{flex:1;min-width:0;text-align:left}
+#msg{font-size:12px;line-height:1.35;color:#e8d3a2;min-height:32px}
+#sequence{font-size:14px;color:#c0a375;letter-spacing:2px;min-height:18px;white-space:nowrap;overflow:hidden}
+.new{margin-top:4px;padding:0 14px;height:30px;font-size:12px;background:#3b2a1b;color:#f0d9a4;
+     border:1px solid #80603a;border-radius:7px}
+
+/* Yardım katmanı */
+#yardimKat{position:fixed;inset:0;background:rgba(16,10,5,.9);display:none;
+           overflow:auto;padding:18px;z-index:9}
+#yardimKat.acik{display:block}
+.yk{max-width:520px;margin:auto;background:#2c1f14;border:1px solid #6b4d2c;
+    border-radius:12px;padding:16px 18px}
+.yk h2{margin:0 0 10px;font-size:17px;color:#ffd98a}
+.yk p{margin:0 0 9px;font-size:13.5px;line-height:1.55}
+.yk b{color:#ffc978}
+.yk .kapat{width:100%;margin-top:6px;height:38px;background:#6b4d2c;color:#f5e3bb;
+           border:none;border-radius:8px;font-size:14px}
+
+@media (max-height:560px){
+  h1{font-size:15px} #msg{min-height:26px}
+  .controls{grid-template-columns:repeat(3,48px);grid-auto-rows:36px}
+}
 </style>
 </head>
 <body>
 <div class="app">
-<h1>KUMDA RİTİM 🪱</h1>
-<div class="sub">Ritmini gizle, solucanı şaşırt, baharatı topla.</div>
-<div class="top">
-<span>Baharat: <b id="score">0</b></span>
-<span>Mesafe: <b id="dist">0</b></span>
-<span>Ritim: <b id="rhythm">YOK</b></span>
+  <div class="ust">
+    <h1>KUMDA RİTİM</h1>
+    <button class="yardim" id="yardimAc" aria-label="Nasıl oynanır">?</button>
+  </div>
+
+  <div class="sayac">
+    <span>Baharat <b id="score">0</b></span>
+    <span>Adım <b id="dist">0</b></span>
+    <span>Boğum <b id="boyut">3</b></span>
+    <span id="ritimKutu">Ritim <b id="rhythm">YOK</b></span>
+  </div>
+
+  <div class="tahta"><canvas id="game" width="600" height="600"></canvas></div>
+
+  <div class="alt">
+    <div class="controls">
+      <span></span><button data-d="up">▲</button><span></span>
+      <button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
+    </div>
+    <div class="bilgi">
+      <div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
+      <div id="sequence"></div>
+      <button class="new" id="restart">YENİ OYUN</button>
+    </div>
+  </div>
 </div>
-<canvas id="game" width="600" height="600"></canvas>
-<div class="controls">
-<span></span><button data-d="up">▲</button><span></span>
-<button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
-</div>
-<div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
-<div id="sequence"></div>
-<button class="new" id="restart">YENİ OYUN</button>
+
+<div id="yardimKat">
+  <div class="yk">
+    <h2>Nasıl oynanır</h2>
+    <p>Kumda yürüyorsun. Amacın <b>baharat toplamak</b> ve <b>solucana yakalanmamak</b>.</p>
+    <p>Solucan kör; seni <b>ritminden</b> duyuyor. Aynı hareket dizisini
+       (<b>2, 3 veya 4 adım</b>) arka arkaya tekrarlarsan ritim oluşur: solucan yerini
+       tam kestirir ve <b>tekrar uzunluğu kadar adım</b> birden sana doğru gelir.</p>
+    <p>Ritmini bozarsan yönünü kestiremez, kumda rastgele dolaşır.</p>
+    <p>Her ritimde solucan <b>bir boğum uzar</b> (en fazla 7). Yalnız başı değil,
+       <b>gövdesi de yakalar</b>.</p>
+    <p>Solucanın altından geçtiği kumda <b>%32 ihtimalle baharat</b> açığa çıkar —
+       kuyruğunun terk ettiği kareye bakın. Yani ritim tutturmak tehlikeli ama kazançlı.</p>
+    <p>Parlayan iri baharat <b>3 puan</b>, normali 1 puan.</p>
+    <p>Yön tuşları, klavye okları ya da tahtada parmağını kaydırarak oynayabilirsin.</p>
+    <button class="kapat" id="yardimKapat">Anladım</button>
+  </div>
 </div>
 
 <script>
-const N=12,S=50,canvas=document.getElementById("game"),ctx=canvas.getContext("2d");
-let player,worm,spice,trail,playerTrail,score,dist,history,over,lastRhythm;
-let flashUntil=0;
+/* ═══════════════════════════════════════════════════════════════════════
+   KUMDA RİTİM — Dune. Solucan ritmi duyar; düzenli yürürsen seni bulur.
+   Görseller `gorseller/` klasöründen yükleniyor; biri eksik olursa oyun
+   çalışmaya devam eder, o parça kodla çizilir (aşağıdaki yedek çizimler).
+   ═══════════════════════════════════════════════════════════════════════ */
+const N=12, S=50, TUVAL=N*S;
+const canvas=document.getElementById("game"), ctx=canvas.getContext("2d");
 
+/* ── Görseller ──────────────────────────────────────────────────────── */
+const GORSEL={};
+function gorselYukle(ad,yol){
+  const im=new Image();
+  im.onload =()=>{ GORSEL[ad]=im; draw(); };
+  im.onerror=()=>{ GORSEL[ad]=null; };      // yedek çizime düşer
+  im.src=yol;
+}
+gorselYukle("baharat","gorseller/baharat.png");
+gorselYukle("fremen","gorseller/fremen.png");
+gorselYukle("solucanBas","gorseller/solucan-bas.png");
+
+function ciz(ad,cx,cy,boy){
+  const im=GORSEL[ad];
+  if(!im) return false;
+  const k=boy/Math.max(im.width,im.height);
+  const w=im.width*k, h=im.height*k;
+  ctx.drawImage(im,cx-w/2,cy-h/2,w,h);
+  return true;
+}
+
+/* ── Durum ──────────────────────────────────────────────────────────── */
+const BAS_BOGUM=3, MAKS_BOGUM=7;
+let player, worm, spice, kumIzi, score, dist, history, over, buyume;
+let flashUntil=0;
 const arrows={up:"↑",down:"↓",left:"←",right:"→"};
+const DIRS={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
 
 function reset(){
- player={x:1,y:10}; worm={x:10,y:1};
- spice=[];trail=[];playerTrail=[];score=0;dist=0;history=[];over=false;lastRhythm="";
- flashUntil=0;
- for(let i=0;i<5;i++)dropSpice();
- updateUI("YOK");
- message("2, 3 veya 4 hareketlik bir tekrar oluştur.");
- updateSequence();
- draw();
+  player={x:1,y:10};
+  worm=[{x:10,y:1},{x:11,y:1},{x:11,y:2}];   // [0] = baş
+  spice=[]; kumIzi=[]; score=0; dist=0; history=[]; over=false; buyume=0;
+  flashUntil=0;
+  for(let i=0;i<5;i++) baharatDus();
+  updateUI("YOK");
+  message("2, 3 veya 4 hareketlik bir tekrar oluştur.");
+  updateSequence(); sayaclar(); draw();
 }
 
+const wormDa=(x,y)=>worm.some(s=>s.x===x&&s.y===y);
 function occupied(x,y){
- return (x===player.x&&y===player.y)||(x===worm.x&&y===worm.y)||
- spice.some(s=>s.x===x&&s.y===y);
+  return (x===player.x&&y===player.y)||wormDa(x,y)||spice.some(s=>s.x===x&&s.y===y);
 }
 
-function dropSpice(){
- let x,y,tries=0;
- do{
-  x=Math.floor(Math.random()*N);y=Math.floor(Math.random()*N);tries++;
- }while(occupied(x,y)&&tries<100);
- if(tries<100)spice.push({x,y});
+function baharatDus(x,y){
+  if(x===undefined){
+    let tries=0;
+    do{ x=Math.floor(Math.random()*N); y=Math.floor(Math.random()*N); tries++; }
+    while(occupied(x,y)&&tries<100);
+    if(tries>=100) return;
+  }
+  spice.push({x,y,nadir:Math.random()<0.12});
 }
 
-function addTrail(){
- trail.push({x:worm.x,y:worm.y});
- if(trail.length>5)trail.shift();
-}
-function addPlayerTrail(){
- playerTrail.push({x:player.x,y:player.y});
- if(playerTrail.length>5)playerTrail.shift();
+/* Kuyruğun terk ettiği kare: solucanın altından geçtiği kum. */
+function izeBaharat(bosalan){
+  if(!bosalan) return;
+  if(bosalan.x===player.x&&bosalan.y===player.y) return;
+  if(spice.some(s=>s.x===bosalan.x&&s.y===bosalan.y)) return;
+  if(wormDa(bosalan.x,bosalan.y)) return;
+  if(Math.random()<0.32) baharatDus(bosalan.x,bosalan.y);
 }
 
 function detectRhythm(){
- for(let len=4;len>=2;len--){
-  if(history.length<len*2)continue;
-  const a=history.slice(-len),b=history.slice(-len*2,-len);
-  let same=true;
-  for(let i=0;i<len;i++)if(a[i]!==b[i]){same=false;break;}
-  if(same)return len;
- }
- return 0;
+  for(let len=4;len>=2;len--){
+    if(history.length<len*2) continue;
+    const a=history.slice(-len), b=history.slice(-len*2,-len);
+    let same=true;
+    for(let i=0;i<len;i++) if(a[i]!==b[i]){ same=false; break; }
+    if(same) return len;
+  }
+  return 0;
 }
 
+/* ── Solucanın hareketi: yılan gibi, boğumlar başı takip eder ────────── */
+function solucanAdim(kovala){
+  const bas=worm[0], kuyruk=worm[worm.length-1];
+  const hepsi=[[1,0],[-1,0],[0,1],[0,-1]];
+  const gecerli=q=>{
+    const nx=bas.x+q[0], ny=bas.y+q[1];
+    if(nx<0||nx>=N||ny<0||ny>=N) return false;
+    // Kuyruk zaten boşalacağı için oraya girmek serbest.
+    return !worm.some((s,i)=>i<worm.length-1&&s.x===nx&&s.y===ny);
+  };
+  const yakinlastiran=()=>{
+    const c=[];
+    if(bas.x<player.x)c.push([1,0]); if(bas.x>player.x)c.push([-1,0]);
+    if(bas.y<player.y)c.push([0,1]); if(bas.y>player.y)c.push([0,-1]);
+    return c.filter(gecerli);
+  };
+
+  let secenek;
+  if(kovala){
+    secenek=yakinlastiran();
+    if(!secenek.length) secenek=hepsi.filter(gecerli);
+  }else{
+    secenek = (Math.random()<0.22 ? yakinlastiran() : []);
+    if(!secenek.length) secenek=hepsi.filter(gecerli);
+  }
+  if(!secenek.length) return null;              // sıkıştı, bu adımı geç
+
+  const q=secenek[Math.floor(Math.random()*secenek.length)];
+  worm.unshift({x:bas.x+q[0], y:bas.y+q[1]});
+
+  let bosalan=null;
+  if(buyume>0 && worm.length<=MAKS_BOGUM){ buyume--; }   // uzuyor, kuyruk kalıyor
+  else{ bosalan=worm.pop(); buyume=0;
+        kumIzi.push(bosalan); if(kumIzi.length>6) kumIzi.shift(); }
+  return bosalan;
+}
+
+function yakalandiMi(){ return wormDa(player.x,player.y); }
+
+/* ── Oyuncunun hareketi ─────────────────────────────────────────────── */
 function move(d){
- if(over)return;
+  if(over) return;
+  const [dx,dy]=DIRS[d];
+  const nx=player.x+dx, ny=player.y+dy;
+  if(nx<0||nx>=N||ny<0||ny>=N) return;
 
- const dirs={up:[0,-1],down:[0,1],left:[-1,0],right:[1,0]};
- const [dx,dy]=dirs[d];
- const nx=player.x+dx,ny=player.y+dy;
- if(nx<0||nx>=N||ny<0||ny>=N)return;
+  // Solucanın üstüne basmak: solucan daha kıpırdamadan yakalanırsın.
+  if(wormDa(nx,ny)){
+    player.x=nx; player.y=ny; dist++;
+    bitir(nx===worm[0].x&&ny===worm[0].y
+      ? "Doğruca ağzına yürüdün."
+      : "Gövdesine çarptın — o da yakalar.");
+    return;
+  }
 
- // Oyuncu solucanın bulunduğu kareye girerse, solucan hareket etmeden
- // önce yakalanır.
- if(nx===worm.x&&ny===worm.y){
-  player.x=nx;player.y=ny;
-  dist++;
+  player.x=nx; player.y=ny; dist++;
+  history.push(d);
+  if(history.length>12) history.shift();
+  updateSequence();
+
+  const i=spice.findIndex(s=>s.x===player.x&&s.y===player.y);
+  if(i>=0){ score+=spice[i].nadir?3:1; spice.splice(i,1); }
+
+  const rhythm=detectRhythm();
+
+  if(rhythm){
+    updateUI(rhythm+"'Lİ");
+    document.getElementById("ritimKutu").className="ritim-var";
+    message(rhythm+"'li ritim — SOLUCAN DUYDU! "+rhythm+" adım birden geliyor.");
+    flashUntil=Date.now()+260;
+    if(worm.length<MAKS_BOGUM) buyume++;          // her ritimde bir boğum uzar
+
+    for(let k=0;k<rhythm;k++){
+      izeBaharat(solucanAdim(true));
+      if(yakalandiMi()){ bitir("Ritmini duydu ve üstüne geldi."); return; }
+    }
+  }else{
+    updateUI("YOK");
+    document.getElementById("ritimKutu").className="";
+    message("Ritim yok — solucan yönünü kestiremiyor.");
+    izeBaharat(solucanAdim(false));
+    if(yakalandiMi()){ bitir("Rastgele dolaşırken üstüne denk geldi."); return; }
+  }
+
+  const uzaklik=Math.abs(worm[0].x-player.x)+Math.abs(worm[0].y-player.y);
+  if(uzaklik<=3) message("⚠️ SOLUCAN ÇOK YAKIN — ritmini boz!");
+
+  sayaclar(); draw();
+}
+
+function bitir(neden){
   over=true;
-  message("🪱 Solucana yakalandın! Baharat: "+score);
+  message("Yakalandın. "+neden+" Baharat: "+score);
+  sayaclar(); draw();
+}
+
+function sayaclar(){
   document.getElementById("score").textContent=score;
   document.getElementById("dist").textContent=dist;
-  draw();
-  return;
- }
-
- player.x=nx;player.y=ny;dist++;
- history.push(d);
- if(history.length>12)history.shift();
- addPlayerTrail();
- updateSequence();
-
- const i=spice.findIndex(s=>s.x===player.x&&s.y===player.y);
- if(i>=0){spice.splice(i,1);score++;}
-
- const rhythm=detectRhythm();
-
- if(rhythm){
-  lastRhythm=rhythm;
-  updateUI(rhythm+"'LÜ RİTİM");
-  message(rhythm+"'LÜ RİTİM — SOLUCAN DUYDU!");
-  flashUntil=Date.now()+220;
-
-  for(let k=0;k<rhythm;k++){
-   const oldX=worm.x,oldY=worm.y;
-   addTrail();
-   chase();
-
-   // Yeni baharat yalnızca solucanın gerçekten geçtiği eski kareye,
-   // düşük olasılıkla bırakılır. Mevcut baharatların yeri değişmez.
-   if(Math.random()<0.32 &&
-      !(oldX===player.x&&oldY===player.y) &&
-      !spice.some(s=>s.x===oldX&&s.y===oldY)){
-    spice.push({x:oldX,y:oldY});
-   }
-
-   // Solucan hareket ederken oyuncunun bulunduğu kareye gelirse yakalar.
-   if(worm.x===player.x&&worm.y===player.y){
-    over=true;
-    message("🪱 Solucan seni yakaladı! Baharat: "+score);
-    break;
-   }
-  }
- }else{
-  lastRhythm="";
-  updateUI("YOK");
-  message("Ritim yok — solucan yönünü kestiremiyor.");
-
-  const oldX=worm.x,oldY=worm.y;
-  addTrail();
-  wander();
-
-  // Düzensiz harekette de sadece solucanın geride bıraktığı kareye
-  // düşük olasılıkla yeni baharat bırakılır.
-  if(Math.random()<0.32 &&
-     !(oldX===player.x&&oldY===player.y) &&
-     !spice.some(s=>s.x===oldX&&s.y===oldY)){
-   spice.push({x:oldX,y:oldY});
-  }
-
-  if(worm.x===player.x&&worm.y===player.y){
-   over=true;
-   message("🪱 Solucan seni yakaladı! Baharat: "+score);
-  }
- }
-
- if(!over && Math.abs(worm.x-player.x)+Math.abs(worm.y-player.y)<=3)
-  message("⚠️ SOLUCAN YAKIN!");
-
- document.getElementById("score").textContent=score;
- document.getElementById("dist").textContent=dist;
- draw();
+  document.getElementById("boyut").textContent=worm.length;
 }
-function chase(){
- const choices=[];
- if(worm.x<player.x)choices.push([1,0]);
- if(worm.x>player.x)choices.push([-1,0]);
- if(worm.y<player.y)choices.push([0,1]);
- if(worm.y>player.y)choices.push([0,-1]);
- if(!choices.length)return;
- const q=choices[Math.floor(Math.random()*choices.length)];
- worm.x=Math.max(0,Math.min(N-1,worm.x+q[0]));
- worm.y=Math.max(0,Math.min(N-1,worm.y+q[1]));
-}
-
-function wander(){
- const ds=[[1,0],[-1,0],[0,1],[0,-1]];
- let choices=ds;
- // Hafif oyuncu yönelimi; yol bulma veya ağır hesaplama yok.
- if(Math.random()<0.22){
-  choices=[];
-  if(worm.x<player.x)choices.push([1,0]);
-  if(worm.x>player.x)choices.push([-1,0]);
-  if(worm.y<player.y)choices.push([0,1]);
-  if(worm.y>player.y)choices.push([0,-1]);
-  if(!choices.length)choices=ds;
- }
- const q=choices[Math.floor(Math.random()*choices.length)];
- worm.x=Math.max(0,Math.min(N-1,worm.x+q[0]));
- worm.y=Math.max(0,Math.min(N-1,worm.y+q[1]));
-}
-
-function updateUI(r){document.getElementById("rhythm").textContent=r}
-function message(t){document.getElementById("msg").textContent=t}
+function updateUI(r){ document.getElementById("rhythm").textContent=r; }
+function message(t){ document.getElementById("msg").textContent=t; }
 function updateSequence(){
- const s=history.slice(-8).map(x=>arrows[x]).join(" ");
- document.getElementById("sequence").textContent=s?"Hareketlerin: "+s:"";
+  const s=history.slice(-8).map(x=>arrows[x]).join(" ");
+  document.getElementById("sequence").textContent=s;
 }
 
+/* ── Çizim ──────────────────────────────────────────────────────────── */
 function draw(){
- // Canvas durumunu her seferinde temiz ve opak başlat.
- ctx.setTransform(1,0,0,1,0,0);
- ctx.globalAlpha=1;
- ctx.globalCompositeOperation="source-over";
- ctx.clearRect(0,0,600,600);
+  if(!player) return;                 // görsel, oyun kurulmadan yüklenmiş olabilir
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.globalAlpha=1; ctx.globalCompositeOperation="source-over";
+  ctx.clearRect(0,0,TUVAL,TUVAL);
 
- // GRID
- for(let y=0;y<N;y++){
-  for(let x=0;x<N;x++){
-   ctx.globalAlpha=1;
-   ctx.fillStyle=(x+y)%2===0?"#b28f56":"#bc9a61";
-   ctx.fillRect(x*S,y*S,S,S);
-   ctx.strokeStyle="rgba(60,40,15,.15)";
-   ctx.lineWidth=1;
-   ctx.strokeRect(x*S+.5,y*S+.5,S-1,S-1);
+  // Kum zemini
+  for(let y=0;y<N;y++) for(let x=0;x<N;x++){
+    // Kum, figürlerden belirgin biçimde koyu: solucan da Fremen de kum renginde,
+    // zemin açık olursa hiçbiri seçilmiyor.
+    ctx.fillStyle=(x+y)%2===0?"#9d7844":"#a6814c";
+    ctx.fillRect(x*S,y*S,S,S);
+    ctx.strokeStyle="rgba(60,40,15,.15)"; ctx.lineWidth=1;
+    ctx.strokeRect(x*S+.5,y*S+.5,S-1,S-1);
   }
- }
 
- // Oyuncunun kısa izi
- playerTrail.forEach((t,i)=>{
-  ctx.globalAlpha=.08+.035*i;
-  ctx.fillStyle="#6f512d";
-  ctx.beginPath();
-  ctx.arc(t.x*S+25,t.y*S+25,4,0,Math.PI*2);
-  ctx.fill();
- });
-
- // Solucanın izi
- trail.forEach((t,i)=>{
-  ctx.globalAlpha=.10+.065*i;
-  ctx.fillStyle="#5c3e1c";
-  ctx.beginPath();
-  ctx.arc(t.x*S+25,t.y*S+25,13,0,Math.PI*2);
-  ctx.fill();
- });
-
- // Baharat
- ctx.globalAlpha=1;
- spice.forEach((s,i)=>{
-  ctx.font="25px sans-serif";
-  ctx.textAlign="center";ctx.textBaseline="middle";
-  ctx.fillText(i%2===0?"✨":"✦",s.x*S+25,s.y*S+25);
- });
-
- // Oyuncu
- ctx.globalAlpha=1;
- ctx.font="30px sans-serif";
- ctx.textAlign="center";ctx.textBaseline="middle";
- ctx.fillText("🧕🏽",player.x*S+25,player.y*S+25);
-
- // Solucan
- ctx.font="31px sans-serif";
- ctx.fillText("🪱",worm.x*S+25,worm.y*S+25);
-
- // Çok kısa, tek seferlik ritim algılama halkası.
- if(Date.now()<flashUntil){
-  ctx.globalAlpha=.55;
-  ctx.strokeStyle="#f0d9a4";
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.arc(worm.x*S+25,worm.y*S+25,22,0,Math.PI*2);
-  ctx.stroke();
- }
-
- // Game over
- if(over){
+  // Solucanın arkasında kalan gevşek kum (baharat buralarda çıkar)
+  kumIzi.forEach((t,i)=>{
+    ctx.globalAlpha=.035+.018*i;
+    ctx.fillStyle="#3b2409";
+    ctx.beginPath(); ctx.arc(t.x*S+S/2,t.y*S+S/2,S*0.3,0,Math.PI*2); ctx.fill();
+  });
   ctx.globalAlpha=1;
-  ctx.fillStyle="rgba(25,14,7,.72)";
-  ctx.fillRect(0,0,600,600);
-  ctx.fillStyle="#f0d9a4";
-  ctx.font="bold 30px system-ui";
-  ctx.textAlign="center";
-  ctx.fillText("GAME OVER",300,280);
-  ctx.font="18px system-ui";
-  ctx.fillText("Baharat: "+score,300,315);
- }
 
- ctx.globalAlpha=1;
+  // Baharat — solucandan ÖNCE çiziliyor: üstünden geçerken baharatı örtsün,
+  // baharat solucanın üstünde yüzüyormuş gibi durmasın.
+  spice.forEach(s=>{
+    const cx=s.x*S+S/2, cy=s.y*S+S/2;
+    if(s.nadir){
+      const gr=ctx.createRadialGradient(cx,cy,2,cx,cy,S*0.52);
+      gr.addColorStop(0,"rgba(255,190,90,.55)"); gr.addColorStop(1,"rgba(255,190,90,0)");
+      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(cx,cy,S*0.52,0,Math.PI*2); ctx.fill();
+    }
+    const boy=s.nadir?S*0.82:S*0.6;
+    if(!ciz("baharat",cx,cy,boy)){
+      ctx.fillStyle=s.nadir?"#ff8c26":"#e2701a";
+      ctx.strokeStyle="#5c3a17"; ctx.lineWidth=2;
+      ctx.beginPath(); ctx.arc(cx,cy,boy/2.4,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    }
+  });
+
+  cizSolucan();
+
+  // Oyuncu — kumdan ayrışsın diye altına gölge
+  const px=player.x*S+S/2, py=player.y*S+S/2;
+  ctx.fillStyle="rgba(40,22,4,.35)";
+  ctx.beginPath(); ctx.ellipse(px,py+S*0.32,S*0.32,S*0.13,0,0,Math.PI*2); ctx.fill();
+  if(!ciz("fremen",px,py,S*1.16)){
+    ctx.fillStyle="#d9c08c"; ctx.strokeStyle="#5c3a17"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.arc(px,py,S*0.28,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle="#4fd2ff";
+    ctx.beginPath(); ctx.arc(px-4,py-2,2.6,0,Math.PI*2); ctx.arc(px+4,py-2,2.6,0,Math.PI*2); ctx.fill();
+  }
+
+  if(over){
+    ctx.fillStyle="rgba(25,14,7,.74)"; ctx.fillRect(0,0,TUVAL,TUVAL);
+    ctx.fillStyle="#f0d9a4"; ctx.textAlign="center";
+    ctx.font="bold 30px system-ui"; ctx.fillText("YAKALANDIN",TUVAL/2,TUVAL/2-10);
+    ctx.font="18px system-ui"; ctx.fillText("Baharat: "+score+"  ·  Adım: "+dist,TUVAL/2,TUVAL/2+24);
+  }
+  ctx.globalAlpha=1;
 }
 
-document.querySelectorAll("[data-d]").forEach(b=>b.onclick=()=>move(b.dataset.d));
-window.addEventListener("keydown",e=>{
- const m={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"};
- if(m[e.key]){e.preventDefault();move(m[e.key]);}
+/* Gövde ve kuyruk kodla çiziliyor (görsel üretilemedi): boğum merkezlerinden
+   geçen, başa doğru kalınlaşan bir zincir. Önce koyu dış hat, sonra kum rengi. */
+function cizSolucan(){
+  const merkez=worm.map(s=>({x:s.x*S+S/2, y:s.y*S+S/2}));
+  const kalinlik=i=>{
+    const t=worm.length>1 ? i/(worm.length-1) : 0;       // 0 = baş, 1 = kuyruk
+    return S*(0.42-0.26*t);                              // kuyruğa doğru incelir
+  };
+  ctx.lineCap="round"; ctx.lineJoin="round";
+
+  // Üç geçiş: koyu dış hat → gövde → üstten ışık. Yuvarlak bir boru izlenimi verir.
+  const gecis=[["#331e06",7],["#c99548",0],["rgba(255,228,175,.22)",-0.62]];
+  for(const [renk,fark] of gecis){
+    ctx.strokeStyle=renk; ctx.fillStyle=renk;
+    for(let i=0;i<merkez.length-1;i++){
+      const w=kalinlik(i)+kalinlik(i+1);
+      ctx.lineWidth = fark<0 ? w*(1+fark) : w+fark;
+      ctx.beginPath();
+      ctx.moveTo(merkez[i].x,merkez[i].y);
+      ctx.lineTo(merkez[i+1].x,merkez[i+1].y);
+      ctx.stroke();
+    }
+    const son=merkez.length-1, r=kalinlik(son);
+    ctx.beginPath();
+    ctx.arc(merkez[son].x,merkez[son].y, fark<0 ? r*(1+fark) : r+fark/2, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Boğum halkaları
+  ctx.strokeStyle="rgba(51,30,6,.55)"; ctx.lineWidth=2.5;
+  for(let i=1;i<merkez.length;i++){
+    ctx.beginPath(); ctx.arc(merkez[i].x,merkez[i].y,kalinlik(i)*0.92,0,Math.PI*2); ctx.stroke();
+  }
+
+  // Baş
+  const b=merkez[0];
+  // Baş gövdeden kalın görünmeli; görselin kendi boşluğu olduğu için kareyi taşıyor.
+  if(!ciz("solucanBas",b.x,b.y,S*1.3)){
+    ctx.fillStyle="#c7a367"; ctx.strokeStyle="#4a2e0f"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(b.x,b.y,S*0.42,0,Math.PI*2); ctx.fill(); ctx.stroke();
+    ctx.fillStyle="#d8420f";
+    ctx.beginPath(); ctx.arc(b.x,b.y,S*0.2,0,Math.PI*2); ctx.fill();
+  }
+
+  // Ritim duyulduğunda kısa halka
+  if(Date.now()<flashUntil){
+    ctx.globalAlpha=.6; ctx.strokeStyle="#ffd98a"; ctx.lineWidth=3;
+    ctx.beginPath(); ctx.arc(b.x,b.y,S*0.8,0,Math.PI*2); ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+}
+
+/* ── Tuvali kalan boşluğa sığdır ────────────────────────────────────── */
+function tuvaliBoyutla(){
+  const kutu=document.querySelector(".tahta").getBoundingClientRect();
+  const boy=Math.max(160,Math.floor(Math.min(kutu.width,kutu.height,620)));
+  canvas.style.width=boy+"px"; canvas.style.height=boy+"px";
+}
+window.addEventListener("resize",tuvaliBoyutla);
+if(window.visualViewport) window.visualViewport.addEventListener("resize",tuvaliBoyutla);
+
+/* ── Girdi ──────────────────────────────────────────────────────────── */
+document.querySelectorAll("[data-d]").forEach(b=>{
+  b.addEventListener("pointerdown",e=>{ e.preventDefault(); move(b.dataset.d); });
 });
+window.addEventListener("keydown",e=>{
+  const m={ArrowUp:"up",ArrowDown:"down",ArrowLeft:"left",ArrowRight:"right"};
+  if(m[e.key]){ e.preventDefault(); move(m[e.key]); }
+  if(e.key==="Escape") yardimKapat();
+});
+let dokunus=null;
+canvas.addEventListener("pointerdown",e=>{ dokunus={x:e.clientX,y:e.clientY}; });
+canvas.addEventListener("pointerup",e=>{
+  if(!dokunus) return;
+  const dx=e.clientX-dokunus.x, dy=e.clientY-dokunus.y;
+  dokunus=null;
+  if(Math.abs(dx)<18&&Math.abs(dy)<18) return;      // kaydırma değil, sadece dokunuş
+  move(Math.abs(dx)>Math.abs(dy) ? (dx>0?"right":"left") : (dy>0?"down":"up"));
+});
+document.addEventListener("contextmenu",e=>e.preventDefault());
 document.getElementById("restart").onclick=reset;
+
+const kat=document.getElementById("yardimKat");
+function yardimKapat(){ kat.classList.remove("acik"); }
+document.getElementById("yardimAc").onclick=()=>kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick=yardimKapat;
+kat.addEventListener("click",e=>{ if(e.target===kat) yardimKapat(); });
+
+tuvaliBoyutla();
 reset();
 </script>
 </body>
