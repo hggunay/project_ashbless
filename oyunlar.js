@@ -29,6 +29,11 @@ function oyunModu(){
 /* Oyun listesini katalog olarak veriyoruz; diyarBul aynı alanlara bakıyor. */
 function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LISTESI : []; }
 
+/* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
+   kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
+   dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
+const OYUN_SURUM = '20260920';
+
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
   const hedef = kisi || (typeof viewing !== 'undefined' && viewing) || me;
@@ -126,7 +131,7 @@ function oyunAc(id){
     </div>
     <div class="oyun-govde">
       <div class="oyun-yukleniyor">Yükleniyor…</div>
-      <iframe class="oyun-cerceve" src="${oyun.dosya}" title="${escapeHtml(oyun.ad)}"
+      <iframe class="oyun-cerceve" src="${oyun.dosya}?s=${OYUN_SURUM}" title="${escapeHtml(oyun.ad)}"
               allow="fullscreen" referrerpolicy="no-referrer"></iframe>
     </div>`;
   document.body.appendChild(pencere);
