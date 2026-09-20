@@ -1,4 +1,4 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="tr">
 <head>
 <meta charset="utf-8">
@@ -13,13 +13,12 @@ body{margin:0;background:#18120e;color:#ead9b5;font-family:system-ui,-apple-syst
      padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
 .ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px}
 h1{margin:0;font-size:17px;flex:1;text-align:left}
-.sub{font-size:11px;color:#c8b58f;flex:none}
+.mini{flex:none;height:28px;padding:0 10px;font-size:11.5px}
 
 #stats{width:100%;max-width:640px;font-size:13px;background:#241a12;border:1px solid #4d3a26;
        border-radius:7px;padding:5px 9px;display:flex;justify-content:space-between}
 #stats b{color:#ffd98a}
 
-/* Kim kimi dönüştürür — halka */
 .kurallar{width:100%;max-width:640px;background:#241a12;border:1px solid #4d3a26;
           border-radius:7px;padding:6px 9px}
 .halka{font-size:13px;line-height:1.5;color:#f2e2be}
@@ -31,16 +30,19 @@ h1{margin:0;font-size:17px;flex:1;text-align:left}
 canvas{background:#d0b17a;border:2px solid #765a35;border-radius:8px;display:block}
 
 .alt{width:100%;max-width:640px;display:flex;flex-direction:column;gap:5px}
+/* "Düzen kuruldu" şeridi yalnız kilitlendiğinde görünür; kapalıyken yer kaplamaz. */
+#durum{display:none;font-size:12px;line-height:1.4;text-align:center;padding:5px 8px;
+       background:#3a2a13;border:1px solid #a97c33;border-radius:7px;color:#ffd98a}
+#durum.acik{display:block}
 #msg{font-size:11.5px;min-height:16px;color:#e4d2ac;text-align:center}
-.buttons{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 button{min-height:40px;background:#34271b;color:#ead9b5;border:1px solid #765a35;
        border-radius:8px;font-size:12px;padding:2px}
 button:disabled{opacity:.32}
-#speed{min-height:30px;font-size:11.5px}
+#goc:not(:disabled){background:#2f4324;border-color:#6f9a52;color:#dcf0c6}
 
-@media (max-height:600px){
-  h1{font-size:15px} .kurallar .not{display:none}
-  .buttons{grid-template-columns:repeat(4,1fr)} button{min-height:34px}
+@media (max-height:620px){
+  h1{font-size:15px} .kurallar .not{display:none} button{min-height:34px}
 }
 </style>
 </head>
@@ -48,7 +50,7 @@ button:disabled{opacity:.32}
 <div class="app">
   <div class="ust">
     <h1>MAYMUNLAR GEZEGENİ</h1>
-    <span class="sub">Popülasyonu izle, gerekirse müdahale et.</span>
+    <button class="mini" id="speed">⏩ 1×</button>
   </div>
 
   <div id="stats"></div>
@@ -70,13 +72,15 @@ button:disabled{opacity:.32}
   <div class="tahta"><canvas id="game" width="600" height="600"></canvas></div>
 
   <div class="alt">
-    <button id="speed">⏩ Hız: 1×</button>
+    <div id="durum"></div>
     <div id="msg">Türler karşılaştıkça birbirlerine dönüşür.</div>
     <div class="buttons">
       <button id="plague">🦠 Salgın</button>
       <button id="ulis">⭐ Ulis doğdu</button>
       <button id="revolt">⚔️ İsyan</button>
       <button id="famine">🌵 Kıtlık</button>
+      <button id="goc" disabled>🌿 Göç</button>
+      <button id="restart">↻ Yeniden</button>
     </div>
   </div>
 </div>
@@ -84,57 +88,57 @@ button:disabled{opacity:.32}
 <script>
 /* ══════════════════════════════════════════════════════════════════════
    MAYMUNLAR GEZEGENİ — Pierre Boulle. Dört tür, kapalı bir dönüşüm halkası.
-   Kitapta türler birbirine dönüşmez; dönüşüm mekaniği bizim. Halkanın YÖNÜ
-   ise romandaki düzeni izliyor: goril avlar, insan (Ulis) orangutanın resmî
-   doğrularını yıkar, orangutan (Zaïus) şempanzelerin araştırmasını bastırır,
-   şempanze aklıyla gorilin kaba gücünü aşar.
+   Kitapta türler birbirine dönüşmez; mekanik bizim. Halkanın YÖNÜ romandaki
+   düzeni izliyor: goril avlar, insan (Ulis) orangutanın resmî doğrularını
+   yıkar, orangutan (Zaïus) şempanzenin araştırmasını bastırır, şempanze
+   aklıyla gorilin kaba gücünü aşar.
 
-   ⚠️ 2026-09-20'de iki şey düzeltildi (ölçümle):
-   1) İnsan→Orangutan dönüşümü eskiden "yakında en az 2 insan olsun" şartına
-      bağlıydı. 600x600'de 10 insan için bu neredeyse hiç tutmuyordu, yani
-      halka üç oklu kalıyor ve ORANGUTAN 100 denemenin 100'ünde kazanıyordu.
-      Şart kaldırıldı; artık dört türün de kazanma şansı var (çeşitlilik 0,96).
-   2) Halkada şempanze ile gorilin yeri değişti — eski sıralama kitaba tersti
-      (insanı avlayan goril, şempanzeyi bastıran orangutan).
-   Halkadaki iki türün yerini değiştirmek matematiği değiştirmez, yalnız
-   isimleri değiştirir; ölçülen denge aynen korunur.
+   HALKANIN KAÇINILMAZ SONUCU (2026-09-20'de Gökşin üç oynayışta buldu):
+   her türün TEK avı ve TEK avcısı var. Bir tür sıfırlanınca ONUN AVI avcısız
+   kalır — dokunulmaz olur ve er geç baskın türe dönüşür. Yani
+   **kazanan, ilk tükenen türün AVIDIR** (15/15 denemede doğrulandı; avcısı
+   değil — ilk yazımda ters yazılmıştı). Geriye hep halkada komşu olmayan iki
+   tür kalıyor (🦍+🦧 ya da 🧑+🐒); o noktada hiçbir dönüşüm mümkün değil,
+   tablo taş kesiliyor. Sonuç da genelde ilk dakikada fiilen belli oluyor.
+
+   BUNUN ÇÖZÜMÜ (A+B): kilit oluşunca
+     A) ekranda "Düzen kuruldu" şeridi çıkıyor — isteyen orada bırakır,
+     B) 🌿 Göç açılıyor — tükenmiş türlerden biri haritaya geri geliyor,
+        halka yeniden dörtleniyor ve çekişme baştan başlıyor.
+   Kilit süreyle değil, KESİN kuralla tespit ediliyor: hayatta kalanlar
+   arasında birbirine dönüşebilen çift kalmadıysa sistem zaten donmuştur.
    ══════════════════════════════════════════════════════════════════════ */
 const c=document.getElementById("game"), x=c.getContext("2d"), W=600, H=600;
-let a=[], u=[], used={plague:0,ulis:0,revolt:0,famine:0}, last=0, speed=1;
+const TUR_SIRA=["gorilla","human","orang","chimp"];
 const emoji={chimp:"🐒",human:"🧑",orang:"🦧",gorilla:"🦍"};
+const ADI={chimp:"Şempanze",human:"İnsan",orang:"Orangutan",gorilla:"Goril"};
+
+let a=[], u=[], used={}, last=0, speed=1, kilitli=false;
 
 function add(t,X,Y){
   a.push({t, x:X??Math.random()*560+20, y:Y??Math.random()*560+20,
           vx:(Math.random()-.5)*.4, vy:(Math.random()-.5)*.4});
   return a[a.length-1];
 }
-/* Bir noktada doğup dışa doğru yayılan topluluk. Hem açılıştaki orman hem
-   de İsyan düğmesi bunu kullanıyor. */
-function toplulukDogur(sayi, mx, my, dagilma, hiz){
+/* Bir noktada doğup dışa doğru yayılan topluluk — açılıştaki orman,
+   İsyan ve Göç bunu kullanıyor. */
+function toplulukDogur(tur, sayi, mx, my, dagilma, hiz){
   for(let i=0;i<sayi;i++){
     const ac=Math.random()*Math.PI*2, r=Math.random()*dagilma;
-    const p=add("human", mx+Math.cos(ac)*r, my+Math.sin(ac)*r);
+    const p=add(tur, mx+Math.cos(ac)*r, my+Math.sin(ac)*r);
     if(hiz){ p.vx=Math.cos(ac)*hiz; p.vy=Math.sin(ac)*hiz; }
   }
 }
-function init(){
-  for(const t of ["chimp","orang","gorilla"]) for(let i=0;i<10;i++) add(t);
-  /* İnsanlar ormanda, bir arada doğar — Soror'da da gruplar hâlinde
-     yaşıyorlar. Sonra kendiliklerinden dağılıyorlar. */
-  toplulukDogur(10, 150+Math.random()*300, 150+Math.random()*300, 65, 0);
-  requestAnimationFrame(loop);
-}
 function dist(p,q){ return Math.hypot(p.x-q.x, p.y-q.y); }
-
 /* Halka: her tür, kendinden sonra geleni kendine dönüştürür. */
 function win(t){ return {gorilla:"human", human:"orang", orang:"chimp", chimp:"gorilla"}[t]; }
+function sayim(){ const n={chimp:0,human:0,orang:0,gorilla:0}; a.forEach(p=>n[p.t]++); return n; }
 
 function encounter(p,q){
   if(p.t===q.t) return;
   if(win(p.t)===q.t) q.t=p.t;
   else if(win(q.t)===p.t) p.t=q.t;
-  /* Halkada komşu olmayan çiftler (goril-orangutan, insan-şempanze)
-     birbirinden etkilenmez. */
+  /* Komşu olmayan çiftler (goril-orangutan, insan-şempanze) etkilenmez. */
 }
 
 function step(dt){
@@ -154,6 +158,39 @@ function step(dt){
       if(dist(a[i],a[j])<18) encounter(a[i],a[j]);
 }
 
+/* ── Kilit: hiçbir dönüşümün mümkün olmadığı durum ──────────────────── */
+function canliTurler(){ const n=sayim(); return TUR_SIRA.filter(t=>n[t]>0); }
+function kilitliMi(){
+  const canli=canliTurler();
+  if(!canli.length) return true;
+  /* Ulis dolaştığı sürece insan olmayan herkesi dönüştürebilir. */
+  if(u.length && canli.some(t=>t!=="human")) return false;
+  if(canli.length===1) return true;
+  for(const p of canli) for(const q of canli) if(p!==q && win(p)===q) return false;
+  return true;
+}
+function durumuTazele(){
+  const simdi=kilitliMi();
+  if(simdi===kilitli) return;
+  kilitli=simdi;
+  const kutu=document.getElementById("durum");
+  if(kilitli){
+    const canli=canliTurler();
+    kutu.innerHTML = canli.length<=1
+      ? `<b>Düzen kuruldu.</b> Geriye yalnız ${emoji[canli[0]]} ${ADI[canli[0]]} kaldı.`
+      : `<b>Düzen kuruldu:</b> ${canli.map(t=>emoji[t]+' '+ADI[t]).join(' + ')} — ` +
+        `birbirlerine dokunmuyorlar, artık hiçbir şey değişmez.<br>` +
+        `İstersen burada bırak; merak ediyorsan 🌿 <b>Göç</b> ile halkayı yeniden kur.`;
+    kutu.classList.add("acik");
+    dugmeleriAc();                       // müdahale hakkı yenilendi
+    document.getElementById("goc").disabled=false;
+  }else{
+    kutu.classList.remove("acik");
+    document.getElementById("goc").disabled=true;
+  }
+  tuvaliBoyutla();                       // şerit açılıp kapandıkça tuval uysun
+}
+
 function draw(){
   x.clearRect(0,0,W,H); x.fillStyle="#d0b17a"; x.fillRect(0,0,W,H);
   x.textAlign="center"; x.textBaseline="middle";
@@ -161,57 +198,87 @@ function draw(){
   for(const p of a) x.fillText(emoji[p.t], p.x, p.y);
   x.font="26px sans-serif";
   for(const z of u) x.fillText("🟣", z.x, z.y);
-  const n={chimp:0,human:0,orang:0,gorilla:0};
-  a.forEach(p=>n[p.t]++);
+  const n=sayim();
   document.getElementById("stats").innerHTML =
-    `<span>🦍 <b>${n.gorilla}</b></span><span>🧑 <b>${n.human}</b></span>` +
-    `<span>🦧 <b>${n.orang}</b></span><span>🐒 <b>${n.chimp}</b></span>` +
+    TUR_SIRA.map(t=>`<span>${emoji[t]} <b>${n[t]}</b></span>`).join('') +
     `<span>🟣 <b>${u.length}</b></span>`;
 }
 function loop(t){
   const dt=Math.min(.03,(t-last)/1000); last=t;
-  step(dt*speed); draw(); requestAnimationFrame(loop);
+  step(dt*speed);
+  durumuTazele();        // kesin kural; değişiklik yoksa hemen çıkıyor
+  draw();
+  requestAnimationFrame(loop);
 }
 
-/* ── Müdahaleler: her biri oyun başına bir kez ──────────────────────── */
+/* ── Müdahaleler ────────────────────────────────────────────────────── */
+const msg = t => document.getElementById("msg").textContent = t;
+const DUGMELER = ["plague","ulis","revolt","famine"];
+function dugmeleriAc(){
+  used={};
+  for(const id of DUGMELER) document.getElementById(id).disabled=false;
+}
 function once(id, fn){
   if(used[id]) return;
   used[id]=1;
   document.getElementById(id).disabled=true;
   fn();
 }
-const msg = t => document.getElementById("msg").textContent = t;
-function sayim(){ const n={}; a.forEach(p=>n[p.t]=(n[p.t]||0)+1); return n; }
-
-document.getElementById("plague").onclick = () => once("plague", () => {
-  const n=sayim(), t=Object.keys(n).sort((i,j)=>n[j]-n[i])[0];
-  const q=a.filter(p=>p.t===t).sort(()=>Math.random()-.5);
-  const olen=new Set(q.slice(0, Math.floor(q.length*.4)));
+function kir(tur, oran){                 // bir türün bir kısmını sil
+  const q=a.filter(p=>p.t===tur).sort(()=>Math.random()-.5);
+  const olen=new Set(q.slice(0, Math.floor(q.length*oran)));
   a=a.filter(p=>!olen.has(p));
-  msg("🦠 Salgın: en kalabalık türün %40'ı silindi.");
+}
+document.getElementById("plague").onclick = () => once("plague", () => {
+  const n=sayim(), t=TUR_SIRA.filter(k=>n[k]).sort((i,j)=>n[j]-n[i])[0];
+  if(!t) return;
+  kir(t,.4); msg("🦠 Salgın: en kalabalık türün (" + ADI[t] + ") %40'ı silindi.");
 });
 document.getElementById("famine").onclick = () => once("famine", () => {
-  const n=sayim(), t=Object.keys(n).sort((i,j)=>n[i]-n[j])[0];
-  const q=a.filter(p=>p.t===t).sort(()=>Math.random()-.5);
-  const olen=new Set(q.slice(0, Math.floor(q.length*.35)));
-  a=a.filter(p=>!olen.has(p));
-  msg("🌵 Kıtlık: en az sayıdaki türün %35'i silindi.");
+  const n=sayim(), t=TUR_SIRA.filter(k=>n[k]).sort((i,j)=>n[i]-n[j])[0];
+  if(!t) return;
+  kir(t,.35); msg("🌵 Kıtlık: en az sayıdaki türün (" + ADI[t] + ") %35'i silindi.");
 });
 document.getElementById("revolt").onclick = () => once("revolt", () => {
-  /* İsyan da bir yerde patlar: tek bir noktada doğup dışa doğru yayılıyorlar. */
-  toplulukDogur(18, 110+Math.random()*380, 110+Math.random()*380, 26, 0.18);
+  toplulukDogur("human", 18, 110+Math.random()*380, 110+Math.random()*380, 26, 0.18);
   msg("⚔️ İsyan: bir noktada 18 insan doğdu, dağılıyorlar.");
 });
 document.getElementById("ulis").onclick = () => once("ulis", () => {
   for(let i=0;i<2;i++) u.push({x:300+(i?35:-35), y:300, vx:(i?1:-1)*.35, vy:.15});
   msg("⭐ İki Ulis doğdu. Dokundukları herkes insana dönüşüyor.");
 });
-document.getElementById("speed").onclick = () => {
-  speed = speed===1 ? 2 : speed===2 ? 4 : 1;
-  document.getElementById("speed").textContent = "⏩ Hız: " + speed + "×";
+
+/* 🌿 GÖÇ — yalnız düzen donduğunda açılır. Tükenmiş türlerden biri
+   ormandan geri gelir; halka yeniden dörtlenir ve çekişme baştan başlar. */
+document.getElementById("goc").onclick = () => {
+  if(document.getElementById("goc").disabled) return;
+  const n=sayim();
+  const yok=TUR_SIRA.filter(t=>!n[t]);
+  const gelen = yok.length ? yok[Math.floor(Math.random()*yok.length)]
+                           : TUR_SIRA.slice().sort((i,j)=>n[i]-n[j])[0];
+  toplulukDogur(gelen, 6, 110+Math.random()*380, 110+Math.random()*380, 34, 0.14);
+  msg("🌿 Ormandan yeni bir " + ADI[gelen] + " topluluğu geldi.");
+  durumuTazele();                        // kilit yeniden değerlendirilsin
 };
 
-/* ── Tuvali kalan boşluğa sığdır (düğmeler alta taşmasın) ───────────── */
+document.getElementById("restart").onclick = () => { yeniDunya(); msg("Yeni bir gezegen."); };
+document.getElementById("speed").onclick = () => {
+  speed = speed===1 ? 2 : speed===2 ? 4 : 1;
+  document.getElementById("speed").textContent = "⏩ " + speed + "×";
+};
+
+/* ── Kuruluş ────────────────────────────────────────────────────────── */
+function yeniDunya(){
+  a=[]; u=[]; kilitli=false;
+  for(const t of ["chimp","orang","gorilla"]) for(let i=0;i<10;i++) add(t);
+  /* İnsanlar ormanda, bir arada doğar — Soror'da da gruplar hâlinde
+     yaşıyorlar. Sonra kendiliklerinden dağılıyorlar. */
+  toplulukDogur("human", 10, 150+Math.random()*300, 150+Math.random()*300, 65, 0);
+  dugmeleriAc();
+  document.getElementById("goc").disabled=true;
+  document.getElementById("durum").classList.remove("acik");
+  tuvaliBoyutla(); draw();
+}
 function tuvaliBoyutla(){
   const kutu=document.querySelector(".tahta").getBoundingClientRect();
   const boy=Math.max(150, Math.floor(Math.min(kutu.width, kutu.height, 620)));
@@ -221,8 +288,8 @@ window.addEventListener("resize", tuvaliBoyutla);
 if(window.visualViewport) window.visualViewport.addEventListener("resize", tuvaliBoyutla);
 document.addEventListener("contextmenu", e=>e.preventDefault());
 
-tuvaliBoyutla();
-init();
+yeniDunya();
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
