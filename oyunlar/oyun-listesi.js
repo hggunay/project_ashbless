@@ -30,8 +30,8 @@ const OYUN_LISTESI = [
     id: 'kumda-ritim',
     ad: 'Kumda Ritim',
     kitap: 'Dune — Frank Herbert',
-    aciklama: 'Çölde baharat topla. Düz yürürsen kum altındakiler ritmini duyar; ' +
-              'adımlarını bozarak ilerle.',
+    aciklama: 'Çölde baharat topla. Aynı adımları tekrarlarsan kumun altındaki seni ' +
+              'duyar — ritmini boz, yakalanma.',
     ikon: '🏜️',
     tur: 'oyun',
     dosya: 'oyunlar/kumda-ritim.html',
@@ -50,8 +50,8 @@ const OYUN_LISTESI = [
     id: 'maymunlar-gezegeni',
     ad: 'Tür Dönüşümü',
     kitap: 'Maymunlar Gezegeni — Pierre Boulle',
-    aciklama: 'Dört tür birbirini dönüştürüyor. Salgın, kıtlık ve isyan düğmeleriyle ' +
-              'dengeyi boz, ne olacağını izle.',
+    aciklama: 'Dört tür bir arada yaşıyor ve birbirine dönüşüyor. Salgın, kıtlık, ' +
+              'isyan… dengeyi boz ve ne olacağını izle.',
     ikon: '🦧',
     tur: 'simulasyon',
     dosya: 'oyunlar/maymunlar-gezegeni.html',
