@@ -34,7 +34,10 @@ canvas{background:#d0b17a;border:2px solid #765a35;border-radius:8px;display:blo
 #durum{display:none;font-size:12px;line-height:1.4;text-align:center;padding:5px 8px;
        background:#3a2a13;border:1px solid #a97c33;border-radius:7px;color:#ffd98a}
 #durum.acik{display:block}
-#msg{font-size:11.5px;min-height:16px;color:#e4d2ac;text-align:center}
+/* SABİT yükseklik: değişken olsaydı yazı bir satırdan ikiye çıktığında
+   aşağısı büyür, tuval küçülür ve ekran zıplardı (Kumda Ritim'de yaşandı). */
+#msg{font-size:11.5px;height:2.7em;line-height:1.35;overflow:hidden;
+     color:#e4d2ac;text-align:center}
 .buttons{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 button{min-height:40px;background:#34271b;color:#ead9b5;border:1px solid #765a35;
        border-radius:8px;font-size:12px;padding:2px}
@@ -95,11 +98,15 @@ button:disabled{opacity:.32}
 
    HALKANIN KAÇINILMAZ SONUCU (2026-09-20'de Gökşin üç oynayışta buldu):
    her türün TEK avı ve TEK avcısı var. Bir tür sıfırlanınca ONUN AVI avcısız
-   kalır — dokunulmaz olur ve er geç baskın türe dönüşür. Yani
-   **kazanan, ilk tükenen türün AVIDIR** (15/15 denemede doğrulandı; avcısı
-   değil — ilk yazımda ters yazılmıştı). Geriye hep halkada komşu olmayan iki
-   tür kalıyor (🦍+🦧 ya da 🧑+🐒); o noktada hiçbir dönüşüm mümkün değil,
-   tablo taş kesiliyor. Sonuç da genelde ilk dakikada fiilen belli oluyor.
+   kalır — artık hiçbir şey onu azaltamaz.
+     • KESİN kural: ilk tükenen türün AVI bir daha asla tükenemez (17/17).
+     • EĞİLİM (kanun değil): kazanan de genelde odur — ölçümde %85-88.
+       İstisna, dokunulmaz tür tükeniş anında çok azsa ve izleme kısaysa:
+       kenarda kalmış kalabalık bir tür sayıca önde bitebiliyor.
+   (İlk yazımda "avcısı" demiştim, ters; sonra "her zaman kazanır" demiştim,
+   o da fazla kesindi.)
+   Geriye hep halkada komşu olmayan iki tür kalıyor (🦍+🦧 ya da 🧑+🐒);
+   o noktada hiçbir dönüşüm mümkün değil, tablo taş kesiliyor.
 
    BUNUN ÇÖZÜMÜ (A+B): kilit oluşunca
      A) ekranda "Düzen kuruldu" şeridi çıkıyor — isteyen orada bırakır,

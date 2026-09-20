@@ -36,7 +36,12 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
 .controls button{background:#3b2a1b;color:#f0d9a4;border:1px solid #80603a;border-radius:8px;font-size:19px;padding:0}
 .controls button:active{background:#6d5030}
 .bilgi{flex:1;min-width:0;text-align:left}
-#msg{font-size:12px;line-height:1.35;color:#e8d3a2;min-height:32px}
+/* Mesaj tam genişlikte ve SABİT yükseklikte. Daha önce düğmelerin yanında,
+   dar bir sütunda ve değişken yükseklikteydi: yazı bir satırdan ikiye çıkınca
+   aşağısı büyüyor, tuval onu dengelemek için küçülüyor ve ekran zıplıyordu
+   (Gökşin bildirdi). Tam genişlikte iki satır her ekranda yetiyor. */
+#msg{width:100%;max-width:620px;height:2.8em;line-height:1.35;font-size:12px;
+     color:#e8d3a2;overflow:hidden;text-align:left}
 #sequence{font-size:14px;color:#c0a375;letter-spacing:2px;min-height:18px;white-space:nowrap;overflow:hidden}
 .new{padding:0 12px;height:30px;font-size:11.5px;background:#3b2a1b;color:#f0d9a4;
      border:1px solid #80603a;border-radius:7px;white-space:nowrap}
@@ -77,11 +82,12 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
     <span id="ritimKutu">Ritim <b id="rhythm">YOK</b></span>
   </div>
 
+  <div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
+
   <div class="tahta"><canvas id="game" width="600" height="600"></canvas></div>
 
   <div class="alt">
     <div class="bilgi">
-      <div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
       <div id="sequence"></div>
       <div class="bilgi-dugmeler">
         <button class="new" id="gumleyici" disabled>🥁 Gümleyici (0)</button>

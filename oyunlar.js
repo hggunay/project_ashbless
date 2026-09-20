@@ -22,8 +22,10 @@
    2026-09-20: skor kaydı ve akış kartı tamamlandı. Geriye OYUN-EKLEME.md kaldı
    (Claude Free'ye verilecek sözleşme) ve oyun sayısının artması.
    AÇMAK İÇİN: listeyi boşaltmak yeterli, `oyunModu()` herkese true döner.
-   ⚠️ Kapı aynı anda akış kartlarını da gizliyor (feed.js, oyun_rekor) — ikisi
-   birlikte açılmalı, yoksa sekmesi olmayan üyeler rekor kartı görür. */
+   ⚠️ 2026-09-20: AKIŞ KARTLARI KAPININ DIŞINDA BIRAKILDI — Gökşin'in kararı,
+   "önden spoiler gösterimi". Rekor kartını herkes görüyor, sekmeyi görmüyor.
+   Kartın "oyna" bağlantısı ve `oyunAc()` bu kapıya bağlı, yani kartın üstünden
+   oyuna ulaşmak mümkün değil; sekmesi olmayan üyeye "🎮 Oyunlar yakında" yazıyor. */
 const OYUN_TEST_HESAPLARI = ['hggunay', 'deneme'];
 function oyunModu(){
   return !OYUN_TEST_HESAPLARI.length || OYUN_TEST_HESAPLARI.includes(me);
@@ -35,7 +37,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260920h';
+const OYUN_SURUM = '20260920j';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -197,6 +199,9 @@ function renderOyunlar(){
 /* ── OYUN PENCERESİ ───────────────────────────────────────────────────── */
 let _acikOyun = null;
 function oyunAc(id){
+  /* Kapı burada da duruyor: akış kartları herkese açık, sekme değil.
+     Bir bağlantı yanlışlıkla görünse bile oyun açılmasın. */
+  if (typeof oyunModu === 'function' && !oyunModu()) return;
   const oyun = oyunKatalogu().find(o => o.id === id);
   if (!oyun) return;
   if (!acikOyunlar().has(id)){
