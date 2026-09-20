@@ -112,6 +112,29 @@ function getFeedCards(){
         });
       });
     }
+    /* Oyun rekorları. Ayrı bir olay listesi YOK — kart doğrudan skor kaydından
+       üretiliyor (users/<kişi>/oyunlar/skor/<oyun>). Böylece bir oyunun her
+       rekoru akışta AYNI kartı yeniliyor, arka arkaya beş rekor kıran biri
+       akışı doldurmuyor; kart kimliğine rekorTs girdiği için de yeni rekor
+       yeni bir duyuru sayılıyor (rozet kartıyla aynı yaklaşım).
+       İlk skor kart üretmez: o bir rekor değil, ölçünün kendisi.
+       oyunModu() kapısı duruyor — özellik hâlâ test hesaplarında. */
+    if(typeof oyunModu!=='function'||oyunModu()){
+      const oyunSkorlari=(user.oyunlar&&user.oyunlar.skor)||{};
+      Object.keys(oyunSkorlari).forEach(oyunId=>{
+        const s=oyunSkorlari[oyunId];
+        if(!s||typeof s.enIyi!=='number'||typeof s.onceki!=='number'||!s.rekorTs) return;
+        const oyun=(typeof OYUN_LISTESI!=='undefined'?OYUN_LISTESI:[]).find(o=>o.id===oyunId);
+        if(!oyun) return;                          // listeden kalkmış oyun: kart üretme
+        cards.push({
+          type:'oyun_rekor', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+          oyunId, oyunAd:oyun.ad, oyunIkon:oyun.ikon||'🎮',
+          bookTitle:oyun.kitap||'', skor:s.enIyi, onceki:s.onceki,
+          skorAdi:(typeof oyunSkorAdi==='function'?oyunSkorAdi(oyun):(oyun.skorAdi||'puan')),
+          ts:s.rekorTs, reactions:{},
+        });
+      });
+    }
     const streakEvs=(db.streakEvents&&db.streakEvents[u])||[];
     streakEvs.forEach(ev=>{
       cards.push({
@@ -504,6 +527,8 @@ ${(()=>{
         ?`countryev_${card.u}_${card.countryEventId}`
         :card.type==='realm_event'
         ?`realmev_${card.u}_${card.realmEventId}`
+        :card.type==='oyun_rekor'
+        ?`oyunrekor_${card.u}_${card.oyunId}_${card.ts}`
         :card.type==='streak_milestone'
           ?`streakm_${card.u}_${card.months}_${card.ts}`
           :card.type==='quote'
@@ -511,12 +536,14 @@ ${(()=>{
             :card.type==='reading_event'
               ?`readingev_${card.u}_${card.readingEventId}`
               :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='oyun_rekor'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='oyun_rekor'?'🎮 oyun rekoru':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='realm_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.diyarAd)||'—'}</span>`
+      :card.type==='oyun_rekor'
+      ?`<span class="journal-entry-book">${escapeHtml(card.oyunAd)||'—'}</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBookFromFeed('${card.u}',${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
@@ -572,6 +599,22 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
             🗺️ <strong>${escapeHtml(card.userName)}</strong> yeni bir diyar keşfetti: <strong>${escapeHtml(card.diyarAd)}</strong>
             ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em>${card.author?' — '+escapeHtml(card.author):''} ile yeni bir diyara açıldı</div>`:''}
             ${card.u===me?`<div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem">🗺️ haritada göster →</div>`:''}
+          </div>
+        </div>
+      `:card.type==='oyun_rekor'?`
+        ${''/* ⚠️ SİLME (✕) DÜĞMESİ YOK. Bu kart bir olay kaydından değil,
+              skorun KENDİSİNDEN üretiliyor; silmek en iyi skoru silmek olurdu.
+              Diyar kartındaki gerekçenin aynısı. */}
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+          <span style="font-size:2rem">${card.oyunIkon}</span>
+          <div>
+            🏆 <strong>${escapeHtml(card.userName)}</strong>, <strong>${escapeHtml(card.oyunAd)}</strong> oyununda rekorunu kırdı:
+            <strong>${card.skor} ${escapeHtml(card.skorAdi)}</strong>
+            <span style="opacity:.65">(önceki ${card.onceki})</span>
+            ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em></div>`:''}
+            ${(typeof acikOyunlar==='function'&&acikOyunlar(me).has(card.oyunId))
+              ?`<div onclick="oyunAc('${card.oyunId}')" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem;cursor:pointer">🎮 sen de dene →</div>`
+              :''}
           </div>
         </div>
       `:card.type==='streak_milestone'?`
@@ -802,6 +845,9 @@ function feedCardKey(card){
     case 'series_event':     return `seriesev_${card.u}_${card.seriesEventId}`;
     case 'country_event':    return `countryev_${card.u}_${card.countryEventId}`;
     case 'realm_event':      return `realmev_${card.u}_${card.realmEventId}`;
+    // Rozet kartıyla aynı kalıp: her yeni rekor yeni bir kimlik, yani yeni bir
+    // duyuru. Eski rekorun reaksiyonları yeni rekora taşınmıyor.
+    case 'oyun_rekor':       return `oyunrekor_${card.u}_${card.oyunId}_${card.ts}`;
     case 'badge':            return `badge_${card.u}_${card.badgeId}_${card.ts}`;
     // Yığın kartları eskiden bu listede hiç yoktu ve sondaki review dalına düşüyordu —
     // yani bir üyenin TÜM yığın kartları `review_<üye>_undefined` kimliğini paylaşıyordu.

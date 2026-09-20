@@ -16,11 +16,14 @@
    açılıyor. Hatası uygulamaya bulaşmaz, kapanınca zamanlayıcıları ölür.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ⚠️ GEÇİCİ KAPI (2026-09-19). Özellik yarım: akış kartları, skor kaydı ve
-   oyun ekleme kılavuzu henüz yok. O yüzden sekme yalnızca aşağıdaki hesaplarda
-   görünüyor — diğer üyeler yarım bir özellik görmesin. Hayali Diyarlar'da da
-   aynı yöntem kullanılmıştı (bkz. diyarTestModu).
-   BİTİNCE: listeyi boşaltmak yeterli, `oyunModu()` herkese true döner. */
+/* ⚠️ GEÇİCİ KAPI (2026-09-19). Sekme yalnızca aşağıdaki hesaplarda görünüyor —
+   diğer üyeler yarım bir özellik görmesin. Hayali Diyarlar'da da aynı yöntem
+   kullanılmıştı (bkz. diyarTestModu).
+   2026-09-20: skor kaydı ve akış kartı tamamlandı. Geriye OYUN-EKLEME.md kaldı
+   (Claude Free'ye verilecek sözleşme) ve oyun sayısının artması.
+   AÇMAK İÇİN: listeyi boşaltmak yeterli, `oyunModu()` herkese true döner.
+   ⚠️ Kapı aynı anda akış kartlarını da gizliyor (feed.js, oyun_rekor) — ikisi
+   birlikte açılmalı, yoksa sekmesi olmayan üyeler rekor kartı görür. */
 const OYUN_TEST_HESAPLARI = ['hggunay', 'deneme'];
 function oyunModu(){
   return !OYUN_TEST_HESAPLARI.length || OYUN_TEST_HESAPLARI.includes(me);
@@ -32,7 +35,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260920d';
+const OYUN_SURUM = '20260920e';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -71,6 +74,73 @@ function enIyiSkor(oyunId, kisi){
   const s = oyunVerisi(kisi).skor[oyunId];
   return s && typeof s.enIyi === 'number' ? s.enIyi : null;
 }
+function oyunSkorAdi(oyun){ return (oyun && oyun.skorAdi) || 'puan'; }
+
+/* ── SKOR KAYDI ───────────────────────────────────────────────────────
+   Oyun bir iframe içinde çalışıyor ve veritabanını hiç bilmiyor; bitince
+   yalnızca postMessage ile puanını söylüyor. Kaydı burası yapıyor.
+
+   SÖZLEŞME (OYUN-EKLEME.md'ye girecek):
+     { ashbless:'oyun-skor', oyun:'<id>', skor:<tam sayı> }
+
+   ⚠️ Gelen mesaja GÜVENİLMİYOR: başka bir sekme veya oyunun içindeki bir
+   reklam/çerçeve de postMessage atabilir. Üç şart aranıyor: mesaj AÇIK OLAN
+   oyunun penceresinden gelmeli, oyunun kimliği tutmalı, puan makul bir
+   tam sayı olmalı. Ayrıca ZİYARETTE hiçbir şey yazılmıyor — başkasının
+   sayfasını gezerken oynanan oyun onun skorunu bozmasın. */
+const OYUN_SKOR_UST = 1000000;
+function _oyunSkorMesaji(e){
+  const d = e && e.data;
+  if (!d || d.ashbless !== 'oyun-skor') return;
+  if (!_acikOyun || d.oyun !== _acikOyun.id) return;
+  const p = document.getElementById('oyunPencere');
+  const cerceve = p && p.querySelector('.oyun-cerceve');
+  if (!cerceve || e.source !== cerceve.contentWindow) return;      // başka pencere
+  if (typeof viewing !== 'undefined' && viewing) return;           // ziyarette yazma yok
+  const skor = d.skor;
+  if (typeof skor !== 'number' || !isFinite(skor) || skor < 0 || skor > OYUN_SKOR_UST) return;
+  oyunSkoruIsle(_acikOyun, Math.round(skor));
+}
+window.addEventListener('message', _oyunSkorMesaji);
+
+async function oyunSkoruIsle(oyun, skor){
+  if (oyun.tur !== 'oyun') return;                  // simülasyonda skor yok
+  const eski = oyunVerisi(me).skor[oyun.id] || {};
+  const oncekiEnIyi = typeof eski.enIyi === 'number' ? eski.enIyi : null;
+  const rekor = oncekiEnIyi === null ? false : skor > oncekiEnIyi;
+
+  const kayit = {
+    enIyi: oncekiEnIyi === null ? skor : Math.max(oncekiEnIyi, skor),
+    oynama: (typeof eski.oynama === 'number' ? eski.oynama : 0) + 1,
+    sonTs: Date.now()
+  };
+  /* Akış kartı YALNIZCA rekor kırıldığında çıkıyor; ilk skor bir rekor değil,
+     yalnızca ölçünün kendisi. Kart, kaydın içindeki bu iki alandan üretiliyor —
+     ayrı bir olay listesi tutulmuyor ki akış aynı oyunla dolup taşmasın. */
+  if (rekor){ kayit.onceki = oncekiEnIyi; kayit.rekorTs = Date.now(); }
+  else if (typeof eski.onceki === 'number'){ kayit.onceki = eski.onceki; kayit.rekorTs = eski.rekorTs || 0; }
+
+  // Bellekte güncelle (kart listesi ve akış hemen doğru görünsün)
+  if (!db.users[me]) db.users[me] = {};
+  if (!db.users[me].oyunlar) db.users[me].oyunlar = {};
+  if (!db.users[me].oyunlar.skor) db.users[me].oyunlar.skor = {};
+  db.users[me].oyunlar.skor[oyun.id] = kayit;
+
+  const birim = oyunSkorAdi(oyun);
+  if (rekor) mesajGoster('🏆 Yeni rekor: ' + skor + ' ' + birim + ' (önceki ' + oncekiEnIyi + ')');
+  else if (oncekiEnIyi === null) mesajGoster('İlk skorun kaydedildi: ' + skor + ' ' + birim + '.');
+
+  /* Granüler yazma: users/<kişi>/oyunlar/skor/<oyun> — tek yaprak.
+     Üye kaydının tamamını geri yazmıyoruz; başka bir cihazın araya girmesi
+     hâlinde (102 kitap olayının kalıbı) burada kaybolacak bir şey olmasın. */
+  const ok = await fbSet('aa-v4/users/' + me + '/oyunlar/skor/' + oyun.id, kayit);
+  if (!ok) return;                                  // fbSet kendi uyarısını gösterdi
+  if (typeof renderOyunlar === 'function') renderOyunlar();
+  if (rekor){
+    if (typeof renderFeed === 'function' && document.getElementById('feedContainer')) renderFeed();
+    if (typeof updateFeedBadge === 'function') updateFeedBadge();
+  }
+}
 
 /* ── KART LİSTESİ ─────────────────────────────────────────────────────── */
 function renderOyunlar(){
@@ -95,7 +165,7 @@ function renderOyunlar(){
       const skor = o.tur === 'oyun' ? enIyiSkor(o.id) : null;
       const alt = aciktir
         ? (o.tur === 'simulasyon' ? '▶ İzle'
-           : (skor !== null ? '🏆 En iyin: ' + skor : '▶ Oyna'))
+           : (skor !== null ? '🏆 En iyin: ' + skor + ' ' + oyunSkorAdi(o) : '▶ Oyna'))
         : '🔒 Oynamak için: ' + escapeHtml(oyunKilitMetni(o));
       return `<button class="oyun-kart${aciktir ? '' : ' kilitli'}"
             ${aciktir ? `onclick="oyunAc('${o.id}')"` : 'disabled'}
