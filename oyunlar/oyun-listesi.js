@@ -19,6 +19,7 @@
      aciklama    ⚠️ SPOILER YOK — kitabı okumamış biri de görecek
      ikon        tek emoji
      tur         'oyun' (skor tutulur) | 'simulasyon' (izlenir, skor yok)
+     skorAdi     'oyun' türünde puanın birimi ("23 baharat"). Yoksa "puan".
      dosya       oyunlar/ altındaki dosya adı
      tetikleyiciler  kilidi açan kitaplar — Hayali Diyarlar kataloğuyla
                  AYNI biçim (kitaplar / seriler / yazarlar / baslikIcerir /
@@ -34,6 +35,7 @@ const OYUN_LISTESI = [
               'duyar — ritmini boz, yakalanma.',
     ikon: '🏜️',
     tur: 'oyun',
+    skorAdi: 'baharat',
     dosya: 'oyunlar/kumda-ritim.html',
     tetikleyiciler: {
       seriler: ['Dune'],

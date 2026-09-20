@@ -76,14 +76,14 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
   <div class="tahta"><canvas id="game" width="600" height="600"></canvas></div>
 
   <div class="alt">
-    <div class="controls">
-      <span></span><button data-d="up">▲</button><span></span>
-      <button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
-    </div>
     <div class="bilgi">
       <div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
       <div id="sequence"></div>
       <button class="new" id="restart">YENİ OYUN</button>
+    </div>
+    <div class="controls">
+      <span></span><button data-d="up">▲</button><span></span>
+      <button data-d="left">◀</button><button data-d="down">▼</button><button data-d="right">▶</button>
     </div>
   </div>
 </div>
@@ -290,6 +290,20 @@ function bitir(neden){
   ritimIsigi(0);                                   // bitiş ekranı sade kalsın
   message("Yakalandın. "+neden+" Baharat: "+score);
   sayaclar(); draw();
+  skoruBildir(score);
+}
+
+/* Skoru uygulamaya bildir. Oyun bir <iframe> içinde çalışıyor; kaydı
+   uygulama yapıyor, oyun veritabanını hiç bilmiyor.
+   ⚠️ SÖZLEŞME — yeni oyunlar da AYNISINI göndermeli (OYUN-EKLEME.md):
+     { ashbless:'oyun-skor', oyun:'<oyun-listesi.js'teki id>', skor:<tam sayı> }
+   Oyun tek başına bir sekmede açılırsa (parent yok) hiçbir şey olmaz. */
+function skoruBildir(puan){
+  if(window.parent===window) return;
+  try{
+    window.parent.postMessage({ ashbless:'oyun-skor', oyun:'kumda-ritim',
+                               skor:Math.max(0, Math.round(puan)) }, '*');
+  }catch(e){}
 }
 
 function sayaclar(){
