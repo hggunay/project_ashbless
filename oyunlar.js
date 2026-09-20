@@ -35,7 +35,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260920e';
+const OYUN_SURUM = '20260920g';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -155,20 +155,35 @@ function renderOyunlar(){
   const acik = acikOyunlar();
   const acikSayi = liste.filter(o => acik.has(o.id)).length;
 
+  /* ⚠️ ZİYARET (2026-09-20, Gökşin sordu: "ziyaretçi olarak gittiğimde de
+     oyun sekmesi görüyorum"). Sekmenin görünmesi DOĞRU — kapı `me`'ye bakıyor,
+     yani sekmeyi gören kişi sensin, ziyaret ettiğin üye değil. Ama kartların
+     yazıları ziyarette yanlış konuşuyordu: başkasının skoru için "En iyin",
+     onun kilidi için "Oynamak için sen şunu oku" diyordu. Ayrıca ziyarette
+     oynamak boşa gidiyor — skor yalnız kendi sayfanda kaydediliyor
+     (bkz. _oyunSkorMesaji). Bu yüzden ziyarette kartlar BİLGİ amaçlı ve
+     tıklanamaz. */
+  const kimlik = isMe ? '' : escapeHtml(((db.users && db.users[viewing] && db.users[viewing].displayName) || 'Bu üye'));
+
   kap.innerHTML =
-    `<div class="oyun-ustyazi">
-       Kitaplardan açılan oyunlar. Bir kitabı okuduğunda ona ait oyun kendiliğinden açılır.
-       <b>${acikSayi} / ${liste.length}</b> açık.
-     </div>` +
+    `<div class="oyun-ustyazi">` +
+      (isMe
+        ? `Kitaplardan açılan oyunlar. Bir kitabı okuduğunda ona ait oyun kendiliğinden açılır.
+           <b>${acikSayi} / ${liste.length}</b> açık.`
+        : `${kimlik} için <b>${acikSayi} / ${liste.length}</b> oyun açık.
+           Kilitler bu üyenin okuduklarına göre gösteriliyor.`) +
+    `</div>` +
     '<div class="oyun-izgara">' + liste.map(o => {
       const aciktir = acik.has(o.id);
       const skor = o.tur === 'oyun' ? enIyiSkor(o.id) : null;
-      const alt = aciktir
-        ? (o.tur === 'simulasyon' ? '▶ İzle'
-           : (skor !== null ? '🏆 En iyin: ' + skor + ' ' + oyunSkorAdi(o) : '▶ Oyna'))
-        : '🔒 Oynamak için: ' + escapeHtml(oyunKilitMetni(o));
+      let alt;
+      if (!aciktir)                 alt = isMe ? '🔒 Oynamak için: ' + escapeHtml(oyunKilitMetni(o)) : '🔒 Kilitli';
+      else if (o.tur === 'simulasyon') alt = isMe ? '▶ İzle' : '✓ Açık';
+      else if (skor !== null)       alt = (isMe ? '🏆 En iyin: ' : '🏆 En iyisi: ') + skor + ' ' + oyunSkorAdi(o);
+      else                          alt = isMe ? '▶ Oyna' : '✓ Açık — henüz oynamamış';
+      const tiklanabilir = aciktir && isMe;
       return `<button class="oyun-kart${aciktir ? '' : ' kilitli'}"
-            ${aciktir ? `onclick="oyunAc('${o.id}')"` : 'disabled'}
+            ${tiklanabilir ? `onclick="oyunAc('${o.id}')"` : 'disabled'}
             title="${escapeHtml(o.kitap || '')}">
           <span class="oyun-ikon">${o.ikon || '🎮'}</span>
           <span class="oyun-ad">${escapeHtml(o.ad)}</span>
@@ -176,8 +191,7 @@ function renderOyunlar(){
           <span class="oyun-aciklama">${escapeHtml(o.aciklama || '')}</span>
           <span class="oyun-durum">${alt}</span>
         </button>`;
-    }).join('') + '</div>' +
-    (isMe ? '' : '<div class="oyun-bos">Kilitler bu üyenin okuduklarına göre gösteriliyor.</div>');
+    }).join('') + '</div>';
 }
 
 /* ── OYUN PENCERESİ ───────────────────────────────────────────────────── */

@@ -634,8 +634,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .oyun-kart{ display:flex; flex-direction:column; align-items:flex-start; gap:.25rem; text-align:left;
   padding:.85rem .9rem; border-radius:6px; cursor:pointer; font:inherit;
   background:rgba(201,162,39,.08); border:1px solid rgba(201,162,39,.35); transition:transform .15s, background .15s; }
-.oyun-kart:hover:not(.kilitli){ background:rgba(201,162,39,.16); transform:translateY(-2px); }
+.oyun-kart:hover:not(.kilitli):not(:disabled){ background:rgba(201,162,39,.16); transform:translateY(-2px); }
 .oyun-kart.kilitli{ cursor:default; opacity:.72; border-style:dashed; }
+/* Ziyarette açık oyunlar da tıklanamaz (skor yalnız kendi sayfanda kaydedilir),
+   o yüzden imleç ve vurgu oynamasın — tıklanabilirmiş gibi durmasın. */
+.oyun-kart:disabled{ cursor:default; }
 .oyun-ikon{ font-size:1.7rem; line-height:1; }
 .oyun-ad{ font-family:'Playfair Display',serif; font-size:1.05rem; color:var(--gold-light); font-weight:700; }
 .oyun-kitap{ font-family:'Space Mono',monospace; font-size:.6rem; color:var(--gold); opacity:.8; letter-spacing:.03em; }
@@ -2031,7 +2034,7 @@ try{
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
 <script src="oyunlar/oyun-listesi.js?s=20260920e"></script>
-<script src="oyunlar.js?s=20260920e"></script>
+<script src="oyunlar.js?s=20260920g"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════

@@ -104,6 +104,9 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
     <p>Solucanın altından geçtiği kumda <b>%32 ihtimalle baharat</b> açığa çıkar —
        kuyruğunun terk ettiği kareye bakın. Yani ritim tutturmak tehlikeli ama kazançlı.</p>
     <p>Parlayan iri baharat <b>3 puan</b>, normali 1 puan.</p>
+    <p>Solucan uzayınca bazen <b>kendi halkasına sıkışır</b>. Birkaç hamle
+       kıpırdayamaz — etrafında dolaşıp yağmalamak sana kalmış — sonra
+       yeraltında dönüp kuyruğundan çıkar.</p>
     <p>Yön tuşları, klavye okları ya da tahtada parmağını kaydırarak oynayabilirsin.</p>
     <button class="kapat" id="yardimKapat">Anladım</button>
   </div>
@@ -150,7 +153,7 @@ function reset(){
   player={x:1,y:10};
   worm=[{x:10,y:1},{x:11,y:1},{x:11,y:2}];   // [0] = baş
   spice=[]; kumIzi=[]; score=0; dist=0; history=[]; over=false; buyume=0;
-  flashUntil=0;
+  flashUntil=0; sikisik=0;
   for(let i=0;i<5;i++) baharatDus();
   updateUI("YOK");
   ritimIsigi(0);
@@ -257,6 +260,7 @@ function move(d){
   if(i>=0){ score+=spice[i].nadir?3:1; spice.splice(i,1); }
 
   const rhythm=detectRhythm();
+  const solucanOnce=solucanIzi();              // bu hamlede gerçekten kıpırdadı mı
 
   if(rhythm){
     updateUI(rhythm+"'Lİ");
@@ -279,10 +283,41 @@ function move(d){
     if(yakalandiMi()){ bitir("Rastgele dolaşırken üstüne denk geldi."); return; }
   }
 
-  const uzaklik=Math.abs(worm[0].x-player.x)+Math.abs(worm[0].y-player.y);
-  if(uzaklik<=3) message("⚠️ SOLUCAN ÇOK YAKIN — ritmini boz!");
+  const sikismaYazisi=sikismayiIsle(solucanOnce);
+
+  if(sikismaYazisi) message(sikismaYazisi);
+  else{
+    const uzaklik=Math.abs(worm[0].x-player.x)+Math.abs(worm[0].y-player.y);
+    if(uzaklik<=3) message("⚠️ SOLUCAN ÇOK YAKIN — ritmini boz!");
+  }
 
   sayaclar(); draw();
+}
+
+/* ── SOLUCAN KENDİ HALKASINA SIKIŞIRSA ───────────────────────────────────
+   Solucan yalnız kendi gövdesinin olmadığı bir kareye gidebiliyor. Yeterince
+   uzayınca (genelde 6-7 boğum) başı kendi halkasının içinde kalabiliyor ve
+   gidecek yeri kalmıyor. Kımıldamadığı için kuyruğu da hiç boşalmıyor: kendi
+   kendini KALICI olarak kilitliyor. 3000 rastgele oyunda %0,7 — nadir ama
+   olduğunda oyun ölüyor: yeni baharat yalnız solucanın geçtiği yerde çıktığı
+   için ne tehlike ne kazanç kalıyor (Gökşin 2026-09-20'de canlıda yakaladı).
+
+   Çözüm sıkışmayı ENGELLEMEK değil, süreli kılmak: birkaç hamle sıkışık kalır
+   — bu arada etrafında dolaşıp yağmalayabilirsin — sonra başıyla kuyruğu yer
+   değiştirip kurtulur. Kum solucanı yeraltında dönmüş olur; kuyruk ucu
+   halkanın dışında kaldığı için çıkışı da garanti. */
+const SIKISMA_SURESI=5;
+let sikisik=0;
+function solucanIzi(){ return worm.map(s=>s.x+","+s.y).join("|"); }
+function sikismayiIsle(oncekiIz){
+  if(solucanIzi()!==oncekiIz){ sikisik=0; return ""; }
+  sikisik++;
+  if(sikisik>=SIKISMA_SURESI){
+    worm.reverse();                            // baş ile kuyruk yer değiştirir
+    sikisik=0;
+    return "🪱 Solucan geri dönüp kurtuldu!";
+  }
+  return "🪱 Solucan kendi halkasına sıkıştı! ("+(SIKISMA_SURESI-sikisik)+" hamle)";
 }
 
 function bitir(neden){
