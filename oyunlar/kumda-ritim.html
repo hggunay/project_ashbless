@@ -38,8 +38,12 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
 .bilgi{flex:1;min-width:0;text-align:left}
 #msg{font-size:12px;line-height:1.35;color:#e8d3a2;min-height:32px}
 #sequence{font-size:14px;color:#c0a375;letter-spacing:2px;min-height:18px;white-space:nowrap;overflow:hidden}
-.new{margin-top:4px;padding:0 14px;height:30px;font-size:12px;background:#3b2a1b;color:#f0d9a4;
-     border:1px solid #80603a;border-radius:7px}
+.new{padding:0 12px;height:30px;font-size:11.5px;background:#3b2a1b;color:#f0d9a4;
+     border:1px solid #80603a;border-radius:7px;white-space:nowrap}
+.new:disabled{opacity:.4}
+.bilgi-dugmeler{display:flex;flex-wrap:wrap;gap:5px;margin-top:4px}
+/* Kurulu gümleyici çalıştırılmaya hazır: düğme renk değiştirsin, gözden kaçmasın */
+#gumleyici.hazir{background:#7a3418;border-color:#e0743a;color:#ffe2c4}
 
 /* Yardım katmanı */
 #yardimKat{position:fixed;inset:0;background:rgba(16,10,5,.9);display:none;
@@ -79,7 +83,10 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
     <div class="bilgi">
       <div id="msg">2, 3 veya 4 hareketlik bir tekrar oluştur.</div>
       <div id="sequence"></div>
-      <button class="new" id="restart">YENİ OYUN</button>
+      <div class="bilgi-dugmeler">
+        <button class="new" id="gumleyici" disabled>🥁 Gümleyici (0)</button>
+        <button class="new" id="restart">YENİ OYUN</button>
+      </div>
     </div>
     <div class="controls">
       <span></span><button data-d="up">▲</button><span></span>
@@ -104,6 +111,13 @@ canvas{background:#b9955b;border:2px solid #76532c;border-radius:8px;touch-actio
     <p>Solucanın altından geçtiği kumda <b>%32 ihtimalle baharat</b> açığa çıkar —
        kuyruğunun terk ettiği kareye bakın. Yani ritim tutturmak tehlikeli ama kazançlı.</p>
     <p>Parlayan iri baharat <b>3 puan</b>, normali 1 puan.</p>
+    <p><b>🥁 Gümleyici.</b> Her <b>8 baharatta</b> bir kazanırsın, elinde en çok
+       <b>2</b> tane durur. Düğmeye basınca <b>bulunduğun kareye</b> bırakılır ve
+       sessizce bekler. Sıkıştığında <b>💥 Çalıştır</b>'a bas: solucan ritmi
+       duymayı bırakır ve <b>4 kare</b> gümleyiciye doğru koşar. Bırakmak ve
+       çalıştırmak hamle harcamaz.<br>
+       ⚠️ Solucanla gümleyicinin arasında kalırsan <b>üstünden geçer</b> —
+       nereye bıraktığın önemli.</p>
     <p>Solucan uzayınca bazen <b>kendi halkasına sıkışır</b>. Birkaç hamle
        kıpırdayamaz — etrafında dolaşıp yağmalamak sana kalmış — sonra
        yeraltında dönüp kuyruğundan çıkar.</p>
@@ -154,11 +168,12 @@ function reset(){
   worm=[{x:10,y:1},{x:11,y:1},{x:11,y:2}];   // [0] = baş
   spice=[]; kumIzi=[]; score=0; dist=0; history=[]; over=false; buyume=0;
   flashUntil=0; sikisik=0;
+  gumleyici=0; konmus=null; gumEsik=0; gumAnim=null; kazanimYazisi="";
   for(let i=0;i<5;i++) baharatDus();
   updateUI("YOK");
   ritimIsigi(0);
   message("2, 3 veya 4 hareketlik bir tekrar oluştur.");
-  updateSequence(); sayaclar(); draw();
+  updateSequence(); sayaclar(); gumleyiciTazele(); draw();
 }
 
 const wormDa=(x,y)=>worm.some(s=>s.x===x&&s.y===y);
@@ -197,28 +212,35 @@ function detectRhythm(){
 }
 
 /* ── Solucanın hareketi: yılan gibi, boğumlar başı takip eder ────────── */
-function solucanAdim(kovala){
-  const bas=worm[0], kuyruk=worm[worm.length-1];
+/* hedef: gidilecek nokta ({x,y}) — oyuncu ya da gümleyici. null verilirse
+   başıboş dolaşır (yalnız %22 ihtimalle oyuncuya doğru meyleder). */
+function solucanAdim(hedef){
+  const bas=worm[0];
   const hepsi=[[1,0],[-1,0],[0,1],[0,-1]];
+  /* Bu adımda uzuyor muyuz? Aşağıdaki büyüme koşuluyla AYNI olmak zorunda. */
+  const buyuyecek = buyume>0 && (worm.length+1)<=MAKS_BOGUM;
   const gecerli=q=>{
     const nx=bas.x+q[0], ny=bas.y+q[1];
     if(nx<0||nx>=N||ny<0||ny>=N) return false;
-    // Kuyruk zaten boşalacağı için oraya girmek serbest.
-    return !worm.some((s,i)=>i<worm.length-1&&s.x===nx&&s.y===ny);
+    /* Kuyruk normalde boşalacağı için oraya girmek serbest. AMA bu adımda
+       uzuyorsak kuyruk yerinde kalıyor — o zaman orası da dolu sayılmalı.
+       Yoksa baş ile kuyruk aynı kareye biniyordu (2026-09-20'de ölçümle
+       yakalandı: 800 oyunda birkaç kez, hep kıvrılmış solucanda). */
+    return !worm.some((s,i)=>(buyuyecek || i<worm.length-1)&&s.x===nx&&s.y===ny);
   };
-  const yakinlastiran=()=>{
+  const yakinlastiran=h=>{
     const c=[];
-    if(bas.x<player.x)c.push([1,0]); if(bas.x>player.x)c.push([-1,0]);
-    if(bas.y<player.y)c.push([0,1]); if(bas.y>player.y)c.push([0,-1]);
+    if(bas.x<h.x)c.push([1,0]); if(bas.x>h.x)c.push([-1,0]);
+    if(bas.y<h.y)c.push([0,1]); if(bas.y>h.y)c.push([0,-1]);
     return c.filter(gecerli);
   };
 
   let secenek;
-  if(kovala){
-    secenek=yakinlastiran();
+  if(hedef){
+    secenek=yakinlastiran(hedef);
     if(!secenek.length) secenek=hepsi.filter(gecerli);
   }else{
-    secenek = (Math.random()<0.22 ? yakinlastiran() : []);
+    secenek = (Math.random()<0.22 ? yakinlastiran(player) : []);
     if(!secenek.length) secenek=hepsi.filter(gecerli);
   }
   if(!secenek.length) return null;              // sıkıştı, bu adımı geç
@@ -257,7 +279,7 @@ function move(d){
   updateSequence();
 
   const i=spice.findIndex(s=>s.x===player.x&&s.y===player.y);
-  if(i>=0){ score+=spice[i].nadir?3:1; spice.splice(i,1); }
+  if(i>=0){ score+=spice[i].nadir?3:1; spice.splice(i,1); gumleyiciKazan(); }
 
   const rhythm=detectRhythm();
   const solucanOnce=solucanIzi();              // bu hamlede gerçekten kıpırdadı mı
@@ -271,7 +293,7 @@ function move(d){
     if(worm.length<MAKS_BOGUM) buyume++;          // her ritimde bir boğum uzar
 
     for(let k=0;k<rhythm;k++){
-      izeBaharat(solucanAdim(true));
+      izeBaharat(solucanAdim(player));
       if(yakalandiMi()){ bitir("Ritmini duydu ve üstüne geldi."); return; }
     }
   }else{
@@ -279,7 +301,7 @@ function move(d){
     document.getElementById("ritimKutu").className="";
     ritimIsigi(0);                                 // ritmi bozdun, ışık sönüyor
     message("Ritim yok — solucan yönünü kestiremiyor.");
-    izeBaharat(solucanAdim(false));
+    izeBaharat(solucanAdim(null));
     if(yakalandiMi()){ bitir("Rastgele dolaşırken üstüne denk geldi."); return; }
   }
 
@@ -290,8 +312,12 @@ function move(d){
     const uzaklik=Math.abs(worm[0].x-player.x)+Math.abs(worm[0].y-player.y);
     if(uzaklik<=3) message("⚠️ SOLUCAN ÇOK YAKIN — ritmini boz!");
   }
+  if(kazanimYazisi){
+    message(document.getElementById("msg").textContent+"  •  "+kazanimYazisi);
+    kazanimYazisi="";
+  }
 
-  sayaclar(); draw();
+  sayaclar(); gumleyiciTazele(); draw();
 }
 
 /* ── SOLUCAN KENDİ HALKASINA SIKIŞIRSA ───────────────────────────────────
@@ -308,6 +334,82 @@ function move(d){
    halkanın dışında kaldığı için çıkışı da garanti. */
 const SIKISMA_SURESI=5;
 let sikisik=0;
+
+/* ── GÜMLEYİCİ ───────────────────────────────────────────────────────────
+   Fremenlerin kuma saplayıp solucanı kendine çeken aleti. Oyunun tek fiili
+   "yürümek"ti; bu ikinci bir karar ekliyor: elindeki tek kaçışı ne zaman
+   harcayacaksın? Baharat da böylece ikinci bir iş yapıyor — yalnız puan
+   değil, kaçış hakkı satın alan şey.
+
+   Akış: kazan → bulunduğun kareye BIRAK (sessiz durur) → sıkıştığında
+   ÇALIŞTIR. Solucan ritmi duymayı bırakıp gümleyiciye koşar.
+   ⚠️ Yanlış yere bırakırsan üstünden geçer; yerleştirmeyi karar yapan bu. */
+const GUM_BAHARAT=8;      // kaç baharatta bir kazanılır
+const GUM_ELDE_MAKS=2;    // aynı anda en fazla kaç tane taşınır
+const GUM_ADIM=4;         // çalışınca solucan kaç kare koşar
+let gumleyici=0, konmus=null, gumEsik=0, gumAnim=null, kazanimYazisi="";
+
+function gumleyiciTazele(){
+  const d=document.getElementById("gumleyici");
+  if(konmus){
+    d.textContent="💥 Çalıştır";
+    d.disabled=over; d.classList.add("hazir");
+  }else{
+    d.textContent="🥁 Gümleyici ("+gumleyici+")";
+    d.disabled=over||gumleyici<1; d.classList.remove("hazir");
+  }
+}
+/* Baharat topladıkça kazanılır. Elde en fazla ikisi durur; fazlası birikmez,
+   yani gümleyiciyi saklamanın bir noktadan sonra anlamı yok — harca. */
+function gumleyiciKazan(){
+  while(score>=gumEsik+GUM_BAHARAT){
+    gumEsik+=GUM_BAHARAT;
+    if(gumleyici<GUM_ELDE_MAKS){
+      gumleyici++;
+      kazanimYazisi="🥁 Gümleyici kazandın!";
+    }
+  }
+}
+function gumleyiciBirak(){
+  if(over||konmus||gumleyici<1) return;
+  gumleyici--; konmus={x:player.x,y:player.y};
+  message("🥁 Gümleyici kuruldu. Sıkıştığında çalıştır — solucan buraya koşar.");
+  gumleyiciTazele(); draw();
+}
+function gumleyiciCalistir(){
+  if(over||!konmus) return;
+  const hedef=konmus, oncekiIz=solucanIzi();
+  for(let k=0;k<GUM_ADIM;k++){
+    izeBaharat(solucanAdim(hedef));
+    if(yakalandiMi()){
+      konmus=null; gumleyiciTazele();
+      bitir("Gümleyiciye koşarken üstünden geçti.");
+      return;
+    }
+  }
+  if(solucanIzi()===oncekiIz){
+    // Solucan kendi halkasına sıkışmış: duyuyor ama gelemiyor. Hakkı yanmasın.
+    message("🥁 Solucan sıkışmış, yerinden kımıldayamıyor. Gümleyici duruyor.");
+    gumleyiciTazele(); draw();
+    return;
+  }
+  konmus=null;
+  message("💥 GÜM! GÜM! GÜM! — solucan sesin peşine düştü.");
+  gumAnimasyonu(hedef.x,hedef.y);
+  sayaclar(); gumleyiciTazele(); draw();
+}
+/* Oyunun sürekli çalışan bir animasyon döngüsü yok (her hamlede bir çiziliyor).
+   Bu yüzden "GÜM" yazısının yükselip sönmesi için kısa, kendi kendini
+   durduran bir zamanlayıcı kullanılıyor. */
+function gumAnimasyonu(x,y){
+  gumAnim={x,y,bas:Date.now()};
+  const tik=()=>{
+    if(!gumAnim) return;
+    if(Date.now()-gumAnim.bas>900){ gumAnim=null; draw(); return; }
+    draw(); setTimeout(tik,80);
+  };
+  tik();
+}
 function solucanIzi(){ return worm.map(s=>s.x+","+s.y).join("|"); }
 function sikismayiIsle(oncekiIz){
   if(solucanIzi()!==oncekiIz){ sikisik=0; return ""; }
@@ -324,7 +426,7 @@ function bitir(neden){
   over=true;
   ritimIsigi(0);                                   // bitiş ekranı sade kalsın
   message("Yakalandın. "+neden+" Baharat: "+score);
-  sayaclar(); draw();
+  sayaclar(); gumleyiciTazele(); draw();
   skoruBildir(score);
 }
 
@@ -413,6 +515,26 @@ function draw(){
     }
   });
 
+  /* Kurulu gümleyici — kuma saplanmış kazık. Oyuncunun TAM ALTINA kuruluyor,
+     o yüzden kazık karenin soluna kaydırıldı ve kareye kesikli bir çerçeve
+     çizildi: oyuncu üstünde dursa bile hangi karenin kurulu olduğu görünüyor. */
+  if(konmus){
+    const kx=konmus.x*S, ky=konmus.y*S;
+    ctx.fillStyle="rgba(224,116,58,.22)";
+    ctx.fillRect(kx+3,ky+3,S-6,S-6);
+    ctx.strokeStyle="#ff8b42"; ctx.lineWidth=3; ctx.setLineDash([7,4]);
+    ctx.strokeRect(kx+3.5,ky+3.5,S-7,S-7);
+    ctx.setLineDash([]);
+    const gx=kx+S*0.22, gy=ky+S*0.62;
+    ctx.fillStyle="rgba(40,22,4,.3)";
+    ctx.beginPath(); ctx.ellipse(gx,gy+S*0.1,S*0.17,S*0.07,0,0,Math.PI*2); ctx.fill();
+    ctx.strokeStyle="#3b2409"; ctx.lineWidth=4; ctx.lineCap="round";
+    ctx.beginPath(); ctx.moveTo(gx,gy+S*0.08); ctx.lineTo(gx,gy-S*0.24); ctx.stroke();
+    ctx.fillStyle="#d8762c"; ctx.strokeStyle="#3b2409"; ctx.lineWidth=2.5;
+    ctx.beginPath(); ctx.ellipse(gx,gy-S*0.28,S*0.16,S*0.09,0,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  }
+
   cizSolucan();
 
   // Oyuncu — kumdan ayrışsın diye altına gölge
@@ -424,6 +546,23 @@ function draw(){
     ctx.beginPath(); ctx.arc(px,py,S*0.28,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.fillStyle="#4fd2ff";
     ctx.beginPath(); ctx.arc(px-4,py-2,2.6,0,Math.PI*2); ctx.arc(px+4,py-2,2.6,0,Math.PI*2); ctx.fill();
+  }
+
+  // GÜM GÜM GÜM — yükselip sönen ses yazısı
+  if(gumAnim){
+    const t=Math.min(1,(Date.now()-gumAnim.bas)/900);
+    const gx=gumAnim.x*S+S/2, gy=gumAnim.y*S+S/2;
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ["GÜM","GÜM","GÜM"].forEach((y,k)=>{
+      const gecikme=k*0.18;
+      const p=(t-gecikme)/(1-gecikme);
+      if(p<0) return;
+      ctx.globalAlpha=Math.max(0,1-p)*0.95;
+      ctx.fillStyle="#ffdca0";
+      ctx.font="bold "+(20+k*3)+"px system-ui";
+      ctx.fillText(y, gx, gy-S*0.35-p*S*1.1-k*6);
+    });
+    ctx.globalAlpha=1;
   }
 
   if(over){
@@ -517,6 +656,7 @@ canvas.addEventListener("pointerup",e=>{
 });
 document.addEventListener("contextmenu",e=>e.preventDefault());
 document.getElementById("restart").onclick=reset;
+document.getElementById("gumleyici").onclick=()=>{ konmus?gumleyiciCalistir():gumleyiciBirak(); };
 
 const kat=document.getElementById("yardimKat");
 function yardimKapat(){ kat.classList.remove("acik"); }
