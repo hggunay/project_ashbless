@@ -1,4 +1,4 @@
-/* ══════════════════════════════════════════════════════════════════════
+﻿/* ══════════════════════════════════════════════════════════════════════
    OYUNLAR — kitap temalı mini oyunlar ve simülasyonlar (2026-09-19)
    ══════════════════════════════════════════════════════════════════════
    MODEL: Hayali Diyarlar'ın aynısı. Oyunlar önceden kurulur, listede
@@ -32,7 +32,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260920b';
+const OYUN_SURUM = '20260920c';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
