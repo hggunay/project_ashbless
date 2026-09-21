@@ -153,21 +153,29 @@ function sayaclar(){
    büyüyüp oranı düşürüyor, sonra görüş yine artıyor. Zirve 8'de ve %54.
    📌 Labirent büyüdüğünde oranın düşmesi KUSUR DEĞİL — "zekileştin, onlar
    da testi zorlaştırdı" demek, romanın kendi şekli bu. */
+/* ⚠️ ZİRVE 8'DEN 5'E ÇEKİLDİ (2026-09-21, Gökşin: "oyun ne zaman bitiyor?
+   her labirent çözüldüğünde 90sn yeniden başlıyor").
+   Haklıydı: süre her labirentte sıfırlandığı için geri iniş başlayana kadar
+   HİÇ baskı yoktu; oyun ancak oyuncu bırakınca bitiyordu. Zirve 8'de olunca
+   oraya varmak 5-8 dakika sürüyordu — çerezlik bir oyun için fazla uzun
+   ısınma. Artık zirve 5. labirent, oyun 9-11 labirentte bitiyor (~4-6 dk).
+   Yan fayda: eski tablo testere dişi gibi inip çıkıyordu, bu düzgün bir tepe
+   (%11 → 31 → 40 → 47 → 54 zirve → 36 → 22 → 11 → 4). */
 function labirentParametreleriGetir(lNo){
-  //                    labirent:  1   2   3   4   5   6   7   8
-  const IZGARA = [0, 9,  9, 11, 11, 13, 13, 15, 15];
-  const GORUS  = [0, 1,  2,  2,  3,  3,  4,  4,  5];
+  //                    labirent:  1   2   3   4   5
+  const IZGARA = [0, 9,  9, 11, 13, 15];
+  const GORUS  = [0, 1,  2,  3,  4,  5];
   let g, r, h, s;
-  if(lNo <= 8){
+  if(lNo <= 5){
     g = IZGARA[lNo];
     r = GORUS[lNo];
     h = (lNo !== 1);                    // 1. labirentte hafıza yok
     s = 90;
   } else {
     g = 15;
-    r = Math.max(1, 5 - (lNo - 8));     // zirveden sonra her seviyede -1
+    r = Math.max(1, 5 - (lNo - 5));     // zirveden sonra her seviyede -1
     h = true;
-    s = Math.max(30, 90 - ((lNo - 8) * 10));
+    s = Math.max(30, 90 - ((lNo - 5) * 10));
   }
   return { g, r, h, s };
 }
