@@ -16,17 +16,22 @@
    açılıyor. Hatası uygulamaya bulaşmaz, kapanınca zamanlayıcıları ölür.
    ══════════════════════════════════════════════════════════════════════ */
 
-/* ⚠️ GEÇİCİ KAPI (2026-09-19). Sekme yalnızca aşağıdaki hesaplarda görünüyor —
-   diğer üyeler yarım bir özellik görmesin. Hayali Diyarlar'da da aynı yöntem
-   kullanılmıştı (bkz. diyarTestModu).
-   2026-09-20: skor kaydı ve akış kartı tamamlandı. Geriye OYUN-EKLEME.md kaldı
-   (Claude Free'ye verilecek sözleşme) ve oyun sayısının artması.
-   AÇMAK İÇİN: listeyi boşaltmak yeterli, `oyunModu()` herkese true döner.
-   ⚠️ 2026-09-20: AKIŞ KARTLARI KAPININ DIŞINDA BIRAKILDI — Gökşin'in kararı,
-   "önden spoiler gösterimi". Rekor kartını herkes görüyor, sekmeyi görmüyor.
-   Kartın "oyna" bağlantısı ve `oyunAc()` bu kapıya bağlı, yani kartın üstünden
-   oyuna ulaşmak mümkün değil; sekmesi olmayan üyeye "🎮 Oyunlar yakında" yazıyor. */
-const OYUN_TEST_HESAPLARI = ['hggunay', 'deneme'];
+/* ✅ KAPI AÇILDI — 2026-09-21. Oyunlar sekmesi artık HERKESTE görünüyor.
+   Gökşin'in kararı: "biz herkese açalım, o kitaplarını eklediği zaman
+   oyunlar açılır zaten." Koşul tutmuştu: plan 4-5 oyun diyordu, 5 oyun var
+   (Kumda Ritim · Tür Dönüşümü · Uyanış · Çift Düşün · Algernon).
+
+   ⚠️ GERİ KAPATMAK İÇİN: listeye hesap adı yaz, ör. ['hggunay','deneme'].
+   `oyunModu()` liste BOŞSA herkese true döner.
+
+   📌 Kapı iki şeyi birden yönetiyor: Oyunlar sekmesi ve `oyunAc()`.
+   Akış kartları (oyun_rekor) zaten kapının DIŞINDAYDI — 2026-09-20'de
+   Gökşin "önden spoiler gösterimi" diye öyle istemişti. Kapı açıldığı için
+   artık ikisi de görünür; kartın "oyna" bağlantısı da çalışıyor.
+
+   📌 Yeni üye için oyunların çoğu KİLİTLİ görünecek — kusur değil, model bu:
+   kitabı okuyan oyunu açar. Kartın altında hangi kitabın açacağı yazıyor. */
+const OYUN_TEST_HESAPLARI = [];
 function oyunModu(){
   return !OYUN_TEST_HESAPLARI.length || OYUN_TEST_HESAPLARI.includes(me);
 }
