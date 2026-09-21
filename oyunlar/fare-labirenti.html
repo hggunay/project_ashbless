@@ -82,9 +82,9 @@ button.yeni-btn:active{background:#434c5e}
 
 <div id="yardimKat"><div class="yk">
   <h2>Nasıl Oynanır?</h2>
-  <p><b>AMAÇ:</b> Fareyi labirentin çıkışına (yeşil nokta) ulaştırmak.
-  Çıkış her zaman <b>sağ alt köşededir</b>. Her çözdüğün labirent bir puan
-  ve bir <b>🌸</b> kazandırır.</p>
+  <p><b>AMAÇ:</b> Fareyi labirentin sonundaki <b>çiçeğe</b> ulaştırmak.
+  Çiçek her zaman <b>sağ alt köşededir</b>. Aldığın her çiçek bir puandır
+  ve oyun bitince elinde kalan tek şey o çiçeklerdir.</p>
 
   <p><b>Ama asıl mesele labirent değil.</b> Başta fare aptaldır: yalnız bir
   kare ötesini görür, nereden geldiğini bile hatırlamaz. Her labirenti
@@ -344,13 +344,24 @@ function ciz(){
     }
   }
 
-  // Çıkış Noktası
-  let cikisMesafe = Math.max(Math.abs(cikisY - fareY), Math.abs(cikisX - fareX));
+  /* ÇIKIŞ = ÇİÇEK (2026-09-21, Gökşin: "çiçek hâlâ yeşil nokta").
+     Yeşil nokta aslında çıkıştı, çiçek yalnız bitiş ekranında çıkıyordu —
+     ikisi karışıyordu. Çıkışı çiçek yapmak hem karışıklığı bitiriyor hem
+     kitaba uyuyor: her labirentin sonunda bir çiçek topluyorsun, oyun
+     bitince elinde kalan da o çiçekler oluyor. */
+  const cikisMesafe = Math.max(Math.abs(cikisY - fareY), Math.abs(cikisX - fareX));
   if(cikisMesafe <= gorusYaricap || (hafizaVar && hafizaMatris[cikisY][cikisX])){
-    ctx.fillStyle = "#a3be8c";
-    ctx.beginPath();
-    ctx.arc(cikisX*hucreBoyut + hucreBoyut/2, cikisY*hucreBoyut + hucreBoyut/2, hucreBoyut*0.3, 0, Math.PI*2);
-    ctx.fill();
+    const cx = cikisX*hucreBoyut + hucreBoyut/2;
+    const cy = cikisY*hucreBoyut + hucreBoyut/2;
+    if (GORSEL.cicek){
+      const b = hucreBoyut * 0.8;
+      ctx.drawImage(GORSEL.cicek, cx - b/2, cy - b/2, b, b);
+    } else {
+      ctx.fillStyle = "#a3be8c";
+      ctx.beginPath();
+      ctx.arc(cx, cy, hucreBoyut*0.3, 0, Math.PI*2);
+      ctx.fill();
+    }
   }
 
   // Fare — görsel varsa o, yoksa eski sarı nokta
