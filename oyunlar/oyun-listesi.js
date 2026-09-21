@@ -81,6 +81,23 @@ const OYUN_LISTESI = [
         { baslik: 'Mucize', yazar: 'Robert J. Sawyer', takmaAdlar: ['Wonder','WWW: Wonder'] }
       ]
     }
+  },
+  {
+    id: 'cift-dusun',
+    ad: 'Çift Düşün',
+    kitap: '1984 — George Orwell',
+    aciklama: 'Kutuları aç, zıt kelimeleri eşleştir. Ama bazıları zıt değil aynı — ' +
+              've bunu ancak açtığında anlarsın.',
+    ikon: '👁️',
+    tur: 'oyun',
+    skorAdi: 'çift',
+    dosya: 'oyunlar/cift-dusun.html',
+    /* ⚠️ Tetikleyici KİTAP ADINA bağlı, yazara değil: kütüphanede Orwell'in
+       "Hayvan Çiftliği"i de var, o bu oyunu açmamalı. */
+    tetikleyiciler: {
+      kitaplar: [{ baslik: '1984', yazar: 'George Orwell',
+                   takmaAdlar: ['Bin Dokuz Yüz Seksen Dört', 'Nineteen Eighty-Four'] }]
+    }
   }
 ];
 

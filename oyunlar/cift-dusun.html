@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Çift Düşün</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#141210;color:#d8caaf;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+     overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;
+     padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+.ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:16px;flex:1;text-align:left;letter-spacing:1px;color:#e3342f;text-transform:uppercase;font-weight:900}
+.yardim{width:30px;height:30px;flex:none;border-radius:4px;font-size:15px;font-weight:700;
+        background:#2a2420;color:#d8caaf;border:1px solid #5a4838;cursor:pointer}
+.sayac{width:100%;max-width:640px;display:flex;justify-content:space-between;font-size:12px;
+       background:#201b17;border:1px solid #423528;border-radius:6px;padding:6px 10px}
+.sayac b{color:#f59e0b;font-size:13px}
+.sayac span.tehlike b{color:#ef4444}
+.tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#1c1714;border:2px solid #4a3b2c;border-radius:6px;touch-action:none;display:block}
+.alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* SABİT yükseklik — zıplamayı önler */
+#msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;
+     overflow:hidden;color:#c5b597;background:#1a1512;padding:4px 8px;border-radius:4px;border-left:3px solid #f59e0b}
+button{background:#2a2420;color:#d8caaf;border:1px solid #5a4838;border-radius:6px;
+       font-size:13px;min-height:38px;padding:0 14px;cursor:pointer;font-weight:600}
+button:active{background:#4a3b2c}
+#yardimKat{position:fixed;inset:0;background:rgba(10,8,6,.94);display:none;overflow:auto;padding:18px;z-index:9}
+#yardimKat.acik{display:block}
+.yk{max-width:520px;margin:auto;background:#201b17;border:1px solid #5a4838;border-radius:8px;padding:16px 18px}
+.yk h2{margin:0 0 10px;font-size:17px;color:#ef4444;text-transform:uppercase;letter-spacing:0.5px}
+.yk p{margin:0 0 9px;font-size:13px;line-height:1.55;color:#c5b597}
+.yk b{color:#f59e0b}
+.yk ul{margin:0 0 10px 0;padding-left:18px;font-size:13px;color:#c5b597}
+.yk li{margin-bottom:4px}
+.yk .kapat{width:100%;margin-top:8px;height:38px;background:#4a3b2c;color:#f3e8d3;
+           border:none;border-radius:6px;font-size:14px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ust">
+    <h1>ÇİFT DÜŞÜN</h1>
+    <button class="yardim" id="yardimAc" aria-label="Nasıl oynanır">?</button>
+  </div>
+
+  <div class="sayac">
+    <span>Eşleşen Zıt Çift: <b id="puan">0 / 7</b></span>
+    <span class="tehlike">Düşünce Polisi İhbarı: <b id="polisSayac">0</b></span>
+  </div>
+
+  <div id="msg">Açmak istediğin kutunun üzerine dokun. Zıt anlamlı kelimeleri bul!</div>
+
+  <div class="tahta"><canvas id="tuval" width="600" height="600"></canvas></div>
+
+  <div class="alt">
+    <button id="yeni">YENİ OYUN</button>
+  </div>
+</div>
+
+<div id="yardimKat"><div class="yk">
+  <h2>Nasıl Oynanır?</h2>
+  <p>Okyanusya'da gerçek Parti'nin kontrolündedir. Tahtadaki <b>20 kapalı kutu</b> içinde kelimeler gizlidir.</p>
+  <ul>
+    <li><b>7 Zıt Çift:</b> Zıt anlamlı iki kelimeyi açarsan (Örn: <i>Savaş — Barış</i>) eşleşirler, açık kalırlar ve <b>+1 puan</b> kazanırsın.</li>
+    <li><b>3 Eş Çift:</b> Aynı/Eş anlamlı iki kelimeyi açarsan (Örn: <i>Lider — Önder</i>) bu bir Çift Düşün suçudur! Düşünce Polisi sayacın <b>+1</b> artar ve kutular kapanır.</li>
+    <li><b>Alakasız Çiftler:</b> Birbiriyle eşleşmeyen kutular cezasız kapanır.</li>
+  </ul>
+  <p><b>Kritik Kural:</b> Düşünce Polisi sayacın <b>5'e ulaştığında</b> yakalanırsın ve oyun biter. Toplam <b>7 zıt çiftin tamamını</b> bulursan kazanırsın.</p>
+  <button class="kapat" id="yardimKapat">ANLADIM</button>
+</div></div>
+
+<script>
+const OYUN_ID="cift-dusun";
+const T=600;
+const tuval=document.getElementById("tuval"), ctx=tuval.getContext("2d");
+
+let puan=0, polis=0, bitti=false;
+let kartlar = []; // 20 kart nesnesi
+let secilenler = []; // Açılan kart indexleri
+let kilit = false; // Geçiş anında tıklamayı engellemek için
+
+/* ══════════════════════════════════════════════════════════════════
+   KELİME HAVUZU — 18 zıt çift + 10 eş çift = 56 benzersiz kelime.
+   Her oyun 7 zıt + 3 eş çekiyor.
+
+   ⚠️ TASARIMIN KALBİ — BUNU BOZMA:
+   Oyuncu iki kelimenin ilgili olduğunu görmeli ama ZIT mı EŞ mi
+   olduğunu anlayamamalı. Bu yüzden EŞ havuzunun çoğu **zıt görünen**
+   çiftlerden oluşuyor (İŞKENCE–ŞİFA, YOKLUK–BOLLUK, AİLE–İHBAR).
+   Oyuncu "bunlar besbelli zıt" deyip açıyor ve ceza yiyor.
+
+   ❌ EŞ havuzuna apaçık eşanlamlı KOYMA (LİDER–ÖNDER, SİMGE–SEMBOL).
+   Oyuncu onları tanır ve risksizce kaçınır; tuzak ölür, geriye
+   sıradan bir hafıza oyunu kalır.
+
+   ⚠️ Bir kelime yalnızca TEK bir çiftte geçebilir — iki havuzda birden
+   geçerse oyun kendisiyle çelişir. (Elenen iki taslakta bu hata vardı:
+   SAVAŞ–BARIŞ hem zıt hem eş olarak yazılmıştı.)
+   ══════════════════════════════════════════════════════════════════ */
+const ZIT_HAVUZ = [
+  ["SAVAŞ", "BARIŞ"],            // ↓ üçü romanın sloganları, omurga
+  ["ÖZGÜRLÜK", "KÖLELİK"],
+  ["CAHİLLİK", "GÜÇ"],
+  ["HAFIZA", "UNUTUŞ"],
+  ["GERÇEK", "YALAN"],
+  ["DİRENİŞ", "UYUM"],
+  ["ŞÜPHE", "İNANÇ"],
+  ["GEÇMİŞ", "GELECEK"],
+  ["MAHREM", "GÖZETİM"],
+  ["BİREY", "KÜTLE"],
+  ["DÜŞÜNCE", "DİSİPLİN"],
+  ["DİL", "SUSTURMA"],
+  ["SEÇİM", "EMİR"],
+  ["BİLGİ", "SANSÜR"],
+  ["HATIRLAMA", "SİLİNME"],
+  ["AKIL", "ÇILGINLIK"],
+  ["İNSAN", "MAKİNE"],
+  ["CESARET", "TESLİMİYET"]
+];
+
+const ES_HAVUZ = [
+  ["SEVGİ", "İTAAT"],            // Sevgi Bakanlığı: sevmek = teslim olmak
+  ["ADALET", "CEZA"],            // mahkeme yok; adalet = kesilen ceza
+  ["İŞKENCE", "ŞİFA"],           // işkence "iyileştirme" sayılır
+  ["YOKLUK", "BOLLUK"],          // bolluk, Parti ilan ettiği için bolluktur
+  ["DENETİM", "KORUMA"],         // gözetim "koruma" adıyla meşrulaşır
+  ["AİLE", "İHBAR"],             // çocuklar anne babasını ihbar eder
+  ["YOLDAŞ", "AJAN"],            // her yoldaş muhtemel bir muhbir
+  ["BÜYÜME", "KAYIP"],           // azalan rasyon "artış" diye duyurulur
+  ["KORKU", "SADAKAT"],          // sadakat sevgiden değil korkudan
+  ["TARİH", "KURGU"]             // geçmiş her gün yeniden yazılır
+];
+
+function mesaj(t){ document.getElementById("msg").textContent=t; }
+function sayaclar(){ 
+  document.getElementById("puan").textContent = puan + " / 7"; 
+  document.getElementById("polisSayac").textContent = polis;
+}
+
+// Dizi karıştırma (Fisher-Yates)
+function karistir(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function yeniOyun(){
+  puan=0; polis=0; bitti=false; kilit=false; secilenler=[];
+  
+  // 7 Rastgele Zıt Çift + 3 Rastgele Eş Çift seç
+  const zitSecilen = karistir([...ZIT_HAVUZ]).slice(0, 7);
+  const esSecilen = karistir([...ES_HAVUZ]).slice(0, 3);
+  
+  kartlar = [];
+  let ciftId = 0;
+
+  // Zıt çiftleri kart haline getir
+  zitSecilen.forEach(cift => {
+    ciftId++;
+    kartlar.push({ metin: cift[0], tip: 'zit', ciftId: ciftId, acik: false, buldu: false });
+    kartlar.push({ metin: cift[1], tip: 'zit', ciftId: ciftId, acik: false, buldu: false });
+  });
+
+  // Eş çiftleri kart haline getir
+  esSecilen.forEach(cift => {
+    ciftId++;
+    kartlar.push({ metin: cift[0], tip: 'es', ciftId: ciftId, acik: false, buldu: false });
+    kartlar.push({ metin: cift[1], tip: 'es', ciftId: ciftId, acik: false, buldu: false });
+  });
+
+  // Kartları karıştır (4x5 ızgara için 20 eleman)
+  kartlar = karistir(kartlar);
+
+  sayaclar(); 
+  mesaj("Açmak istediğin kutunun üzerine dokun. Zıt anlamlı kelimeleri bul!"); 
+  boyutlandir(); 
+  ciz();
+}
+
+function ciz(){
+  ctx.setTransform(1,0,0,1,0,0); 
+  ctx.globalAlpha=1;
+  ctx.clearRect(0,0,T,T);
+
+  // Zemin Doku
+  ctx.fillStyle = "#181411";
+  ctx.fillRect(0,0,T,T);
+
+  const sutun = 4, satir = 5;
+  const marjin = 12;
+  const kw = (T - (sutun + 1) * marjin) / sutun;
+  const kh = (T - (satir + 1) * marjin) / satir;
+
+  for(let i=0; i<kartlar.length; i++){
+    const c = i % sutun;
+    const r = Math.floor(i / sutun);
+    const x = marjin + c * (kw + marjin);
+    const y = marjin + r * (kh + marjin);
+
+    const k = kartlar[i];
+
+    if(k.buldu) {
+      // Eşleşip tamamlanmış zıt çiftler (Sönük yeşilimsi/gri zemin)
+      ctx.fillStyle = "#1e2b20";
+      ctx.strokeStyle = "#385e40";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, kw, kh, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#82b38b";
+      metinYaz(k.metin, x + kw/2, y + kh/2, kw - 10, 13);
+    } else if(k.acik) {
+      // Geçici olarak açılmış kutu (Parlak amber zemin)
+      ctx.fillStyle = "#3a2d1d";
+      ctx.strokeStyle = "#d97706";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(x, y, kw, kh, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#fef3c7";
+      metinYaz(k.metin, x + kw/2, y + kh/2, kw - 10, 13);
+    } else {
+      // Kapalı kutu (Soğuk parti gri/kahve tonu)
+      ctx.fillStyle = "#28211b";
+      ctx.strokeStyle = "#4a3a2c";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(x, y, kw, kh, 6);
+      ctx.fill();
+      ctx.stroke();
+
+      // Kutu üzerindeki minimalist Parti damgası/deseni
+      ctx.fillStyle = "#3d3024";
+      ctx.beginPath();
+      ctx.arc(x + kw/2, y + kh/2, 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Oyun sonı ekranı overlay
+  if(bitti){
+    ctx.fillStyle = "rgba(10, 8, 6, 0.88)";
+    ctx.fillRect(0, 0, T, T);
+
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    if(puan >= 7) {
+      // Zafer — Winston'ın Son Direnci
+      ctx.fillStyle = "#10b981";
+      ctx.font = "900 64px system-ui, sans-serif";
+      ctx.fillText("2 + 2 = 4", T/2, T/2 - 20);
+
+      ctx.fillStyle = "#d1fae5";
+      ctx.font = "600 18px system-ui, sans-serif";
+      ctx.fillText("Bütün zıtlıkları çözdün. Zihnini korudun!", T/2, T/2 + 40);
+    } else {
+      // Yenilgi — Düşünce Polisi Yakaladı
+      ctx.fillStyle = "#ef4444";
+      ctx.font = "900 64px system-ui, sans-serif";
+      ctx.fillText("2 + 2 = 5", T/2, T/2 - 20);
+
+      ctx.fillStyle = "#fca5a5";
+      ctx.font = "600 18px system-ui, sans-serif";
+      ctx.fillText("Düşünce Polisi Seni Yakaladı!", T/2, T/2 + 40);
+    }
+  }
+}
+
+// Metni kutu boyutuna sığacak şekilde otomatik küçültüp yazma
+function metinYaz(str, x, y, maxW, baslangicFont){
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  let fontSize = baslangicFont;
+  ctx.font = "700 " + fontSize + "px system-ui, sans-serif";
+
+  while(ctx.measureText(str).width > maxW && fontSize > 8) {
+    fontSize -= 1;
+    ctx.font = "700 " + fontSize + "px system-ui, sans-serif";
+  }
+  ctx.fillText(str, x, y);
+}
+
+// Tıklama / Dokunma Algılama
+function tıkla(e){
+  if(bitti || kilit) return;
+
+  const rect = tuval.getBoundingClientRect();
+  const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+  const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+  const scale = T / rect.width;
+  const mx = (clientX - rect.left) * scale;
+  const my = (clientY - rect.top) * scale;
+
+  const sutun = 4, satir = 5;
+  const marjin = 12;
+  const kw = (T - (sutun + 1) * marjin) / sutun;
+  const kh = (T - (satir + 1) * marjin) / satir;
+
+  for(let i=0; i<kartlar.length; i++){
+    const c = i % sutun;
+    const r = Math.floor(i / sutun);
+    const x = marjin + c * (kw + marjin);
+    const y = marjin + r * (kh + marjin);
+
+    if(mx >= x && mx <= x + kw && my >= y && my <= y + kh){
+      kutuAc(i);
+      break;
+    }
+  }
+}
+
+function kutuAc(index){
+  const k = kartlar[index];
+
+  // Zaten açık veya bulunmuşsa tıklama
+  if(k.acik || k.buldu) return;
+
+  k.acik = true;
+  secilenler.push(index);
+  ciz();
+
+  if(secilenler.length === 2){
+    kilit = true;
+    const k1 = kartlar[secilenler[0]];
+    const k2 = kartlar[secilenler[1]];
+
+    if(k1.ciftId === k2.ciftId){
+      if(k1.tip === 'zit'){
+        // Başarılı Zıt Çift
+        k1.buldu = true;
+        k2.buldu = true;
+        puan++;
+        sayaclar();
+        mesaj("Doğru zıt çift bulundu: +1 Puan!");
+        secilenler = [];
+        kilit = false;
+        ciz();
+
+        if(puan >= 7){
+          oyunBitti("Tebrikler! Zıt kavramları başarıyla ayırıp zihnini korudun.");
+        }
+      } else {
+        // Hatalı Eş Çift (Çift Düşün Tuzağı!)
+        polis++;
+        sayaclar();
+        mesaj("DİKKAT: Aynı anlama gelen kelimeleri açtın! İhbar edildin.");
+        setTimeout(() => {
+          k1.acik = false;
+          k2.acik = false;
+          secilenler = [];
+          kilit = false;
+          ciz();
+
+          if(polis >= 5){
+            oyunBitti("Düşünce Polisi sınırı aştı ve seni tutukladı.");
+          }
+        }, 1200);
+      }
+    } else {
+      // Eşleşmeyen Alakasız Kartlar
+      mesaj("Bu iki kelime birbiriyle eşleşmiyor.");
+      setTimeout(() => {
+        k1.acik = false;
+        k2.acik = false;
+        secilenler = [];
+        kilit = false;
+        ciz();
+      }, 1000);
+    }
+  }
+}
+
+function oyunBitti(neden){
+  bitti=true;
+  mesaj(neden + " Toplam Zıt Çift: " + puan);
+  ciz();
+  skoruBildir(puan);
+}
+
+/* ── SKORU BİLDİR — DEĞİŞTİRME ─────────────────────────────────────── */
+function skoruBildir(p){
+  if(window.parent===window) return;
+  try{
+    window.parent.postMessage({ ashbless:'oyun-skor', oyun:OYUN_ID,
+                                skor:Math.max(0,Math.round(p)) }, '*');
+  }catch(e){}
+}
+
+/* ── TUVALİ KALAN BOŞLUĞA SIĞDIR — DEĞİŞTİRME ──────────────────────── */
+function boyutlandir(){
+  const k=document.querySelector(".tahta").getBoundingClientRect();
+  const b=Math.max(150, Math.floor(Math.min(k.width,k.height,620))-12);
+  tuval.style.width=b+"px"; tuval.style.height=b+"px";
+}
+window.addEventListener("resize",boyutlandir);
+if(window.visualViewport) window.visualViewport.addEventListener("resize",boyutlandir);
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+tuval.addEventListener("click", tıkla);
+tuval.addEventListener("touchstart", (e)=>{ e.preventDefault(); tıkla(e); }, {passive:false});
+
+const kat=document.getElementById("yardimKat");
+const yardimKapat=()=>kat.classList.remove("acik");
+document.getElementById("yardimAc").onclick=()=>kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick=yardimKapat;
+kat.addEventListener("click",e=>{ if(e.target===kat) yardimKapat(); });
+window.addEventListener("keydown",e=>{ if(e.key==="Escape") yardimKapat(); });
+document.getElementById("yeni").onclick=yeniOyun;
+
+boyutlandir(); yeniOyun();
+</script>
+</body>
+</html>
