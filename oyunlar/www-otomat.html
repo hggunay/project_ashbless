@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Uyanış</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  background:#08090d;
+  color:#c8d4e8;
+  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+  overflow:hidden;
+  -webkit-touch-callout:none;
+  -webkit-user-select:none;
+  user-select:none
+}
+.app{
+  height:100%;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  gap:6px
+}
+.ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:16px;flex:1;text-align:left;letter-spacing:.3px;color:#e2eaf8;font-weight:500}
+.yardim{
+  width:30px;height:30px;flex:none;border-radius:50%;font-size:15px;font-weight:700;
+  background:#111520;color:#8fa8cc;border:1px solid #2a3550;cursor:pointer
+}
+.sayac{
+  width:100%;max-width:640px;display:flex;justify-content:space-between;align-items:center;
+  font-size:12px;background:#0d1018;border:1px solid #1e2840;border-radius:7px;padding:5px 10px
+}
+.sayac b{color:#5b9cf6;font-size:13px}
+.hiz-grup{display:flex;gap:4px}
+.hiz-btn{
+  background:#111520;color:#8fa8cc;border:1px solid #2a3550;
+  border-radius:5px;font-size:11px;min-height:24px;padding:0 8px;cursor:pointer
+}
+.hiz-btn.aktif{background:#1a2a4a;color:#90c4ff;border-color:#3a5585}
+.tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{
+  border:1px solid #1a2240;
+  border-radius:4px;
+  touch-action:none;
+  display:block;
+  cursor:crosshair
+}
+/* SABİT yükseklik — 3 satır açıklama */
+.aciklama{
+  width:100%;max-width:640px;font-size:11px;line-height:1.5;
+  height:4.6em;overflow:hidden;color:#506a90;letter-spacing:.1px
+}
+.aciklama span{display:block}
+.aciklama .kit{color:#3d5878;font-style:italic}
+#sayacMsg{font-size:11px;color:#506a90;margin-left:6px}
+.alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+button{
+  background:#111520;color:#c8d4e8;border:1px solid #2a3550;border-radius:8px;
+  font-size:13px;min-height:38px;padding:0 12px;cursor:pointer
+}
+button:active{background:#1a2a44}
+#baslatBtn{background:#0e2a4a;border-color:#3a6aaa;color:#90c4ff;font-weight:600}
+#baslatBtn:active{background:#1a3a5a}
+#yardimKat{
+  position:fixed;inset:0;background:rgba(5,7,14,.94);
+  display:none;overflow:auto;padding:18px;z-index:9
+}
+#yardimKat.acik{display:block}
+.yk{
+  max-width:500px;margin:auto;background:#0d1018;
+  border:1px solid #253350;border-radius:12px;padding:16px 18px
+}
+.yk h2{margin:0 0 10px;font-size:16px;color:#90c4ff;font-weight:500}
+.yk p{margin:0 0 9px;font-size:13px;line-height:1.6;color:#b0c4de}
+.yk b{color:#7ab4f0}
+.yk .kapat{
+  width:100%;margin-top:6px;height:38px;background:#1a2a44;color:#c8d4e8;
+  border:1px solid #2a3550;border-radius:8px;font-size:14px;cursor:pointer
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ust">
+    <h1>Uyanış</h1>
+    <button class="yardim" id="yardimAc" aria-label="Nasıl çalışır">?</button>
+  </div>
+
+  <div class="sayac">
+    <span>Adım <b id="adim">0</b></span>
+    <span>Canlı <b id="canli">0</b></span>
+    <span id="sayacMsg">Desenini çiz…</span>
+    <div class="hiz-grup">
+      <button class="hiz-btn aktif" data-hiz="1">1×</button>
+      <button class="hiz-btn" data-hiz="2">2×</button>
+      <button class="hiz-btn" data-hiz="4">4×</button>
+    </div>
+  </div>
+
+  <div class="aciklama">
+    <span>Her hücre komşu sayısına göre her adımda canlanır ya da ölür — tek kural bu.</span>
+    <span>Kareye dokun → aç/kapat · Rastgele → desen yükle · Başlat → çalıştır</span>
+    <span class="kit">Başlangıçta yalnızca kurallar vardı. Sonra bir şeyler uyanmaya başladı.</span>
+  </div>
+
+  <div class="tahta"><canvas id="tuval"></canvas></div>
+
+  <div class="alt">
+    <button id="temizleBtn">TEMİZLE</button>
+    <button id="rastgeleBtn">RASTGELE</button>
+    <button id="baslatBtn">▶ BAŞLAT</button>
+  </div>
+</div>
+
+<div id="yardimKat"><div class="yk">
+  <h2>Nasıl çalışır</h2>
+  <p>Bu bir <b>Conway'in Yaşam Oyunu</b> simülasyonu. 30×30 kareden oluşan bir ızgara var. Her kare <b>canlı</b> ya da <b>ölü</b>.</p>
+  <p><b>Kurallar (her adımda):</b><br>
+  • Canlı bir kare, 2 veya 3 canlı komşusuyla <b>yaşamaya devam eder</b>.<br>
+  • Canlı bir kare, 2'den az komşusuyla <b>yalnızlıktan ölür</b>.<br>
+  • Canlı bir kare, 3'ten fazla komşusuyla <b>kalabalıktan ölür</b>.<br>
+  • Ölü bir kare, tam 3 canlı komşusuyla <b>doğar</b>.<br>
+  Komşu: 8 yön (çaprazlar dahil).</p>
+  <p><b>Ve bu önemli:</b> bütün kareler <b>aynı anda</b> bir sonraki nesle
+  geçer — tek tek güncellenmezler. Yani bir karenin kaderi, komşularının
+  <i>bu adımdaki</i> hâline bakılarak belirlenir; az önce değişmiş hâline
+  değil. Desenlerin canlı gibi davranması bundan.</p>
+  <p><b>Sen ne yapabilirsin?</b><br>
+  Herhangi bir kareye tıkla veya dokun — canlıysa öldürür, ölüyse canlandırır. Fareyle sürükleyerek de çizebilirsin. Simülasyon çalışırken de dokunabilirsin.</p>
+  <p><b>Düğmeler:</b><br>
+  <b>Başlat</b> — çizdiğin deseni çalıştırır; çalışırken ⏸ Durdur olur.<br>
+  <b>Rastgele</b> — yaklaşık %25 dolu rastgele bir desen yükler, durur; beğenirsen Başlat'a bas.<br>
+  <b>Temizle</b> — ızgarayı sıfırlar.</p>
+  <p><b>Ne zaman biter?</b><br>
+  Ardışık <b>5 adımda hiçbir kare değişmezse</b> ya da <b>tüm kareler ölürse</b> simülasyon durur.</p>
+  <p><b>Hız:</b> 1× ≈ 2.5 adım/sn · 2× ≈ 5 adım/sn · 4× ≈ 10 adım/sn</p>
+  <button class="kapat" id="yardimKapat">Anladım</button>
+</div></div>
+
+<script>
+const BOYUT = 30;
+const DOLULUK = 0.25;
+const DURMA_ESIGI = 5;
+
+const tuval = document.getElementById("tuval");
+const ctx   = tuval.getContext("2d");
+const baslatBtn   = document.getElementById("baslatBtn");
+const temizleBtn  = document.getElementById("temizleBtn");
+const rastgeleBtn = document.getElementById("rastgeleBtn");
+
+let izgara = [];
+let adim   = 0;
+let canliSayisi = 0;
+let hiz    = 1;
+let calisiyor = false;
+let bitti  = false;
+let zamanlamaId = null;
+let degismeyenAdim = 0;
+let oncekiOzet = "";
+
+/* ── IZGARA ──────────────────────────────────────────────────── */
+function bosIzgara() {
+  const g = [];
+  for (let r = 0; r < BOYUT; r++) { g[r] = []; for (let s = 0; s < BOYUT; s++) g[r][s] = 0; }
+  return { g, c: 0 };
+}
+
+function rastgeleIzgara() {
+  const g = [];
+  let c = 0;
+  for (let r = 0; r < BOYUT; r++) {
+    g[r] = [];
+    for (let s = 0; s < BOYUT; s++) {
+      const v = Math.random() < DOLULUK ? 1 : 0;
+      g[r][s] = v; c += v;
+    }
+  }
+  return { g, c };
+}
+
+function izgaraOzeti(g) {
+  return g.map(r => r.join("")).join("|");
+}
+
+function adimAt(g) {
+  const ng = [];
+  let c = 0;
+  for (let r = 0; r < BOYUT; r++) {
+    ng[r] = [];
+    for (let s = 0; s < BOYUT; s++) {
+      let kom = 0;
+      for (let dr = -1; dr <= 1; dr++)
+        for (let ds = -1; ds <= 1; ds++) {
+          if (dr === 0 && ds === 0) continue;
+          const nr = r + dr, ns = s + ds;
+          if (nr >= 0 && nr < BOYUT && ns >= 0 && ns < BOYUT)
+            kom += g[nr][ns];
+        }
+      let v;
+      if (g[r][s] === 1) v = (kom === 2 || kom === 3) ? 1 : 0;
+      else               v = (kom === 3) ? 1 : 0;
+      ng[r][s] = v; c += v;
+    }
+  }
+  return { g: ng, c };
+}
+
+/* ── ÇİZİM ───────────────────────────────────────────────────── */
+const RENK_ZEMIN  = "#08090d";
+const RENK_CANLI  = "#4d9fff";
+const RENK_CANLI2 = "#1a4a8a";
+const RENK_IZGARA = "#12182a";
+
+function ciz() {
+  const B = tuval.width;
+  const hcre = B / BOYUT;
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = RENK_ZEMIN;
+  ctx.fillRect(0, 0, B, B);
+  ctx.strokeStyle = RENK_IZGARA;
+  ctx.lineWidth = 0.5;
+  for (let i = 1; i < BOYUT; i++) {
+    const p = Math.round(i * hcre) + 0.5;
+    ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, B); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(B, p); ctx.stroke();
+  }
+  for (let r = 0; r < BOYUT; r++) {
+    for (let s = 0; s < BOYUT; s++) {
+      if (izgara[r][s] === 1) {
+        const x = s * hcre, y = r * hcre;
+        const pad = Math.max(1, hcre * 0.12);
+        ctx.fillStyle = RENK_CANLI2;
+        ctx.fillRect(x + pad * 0.5, y + pad * 0.5, hcre - pad, hcre - pad);
+        ctx.fillStyle = RENK_CANLI;
+        ctx.fillRect(x + pad, y + pad, hcre - pad * 2, hcre - pad * 2);
+      }
+    }
+  }
+}
+
+/* ── SAYAÇLAR & MESAJ ────────────────────────────────────────── */
+function sayacGuncelle() {
+  document.getElementById("adim").textContent  = adim;
+  document.getElementById("canli").textContent = canliSayisi;
+}
+function mesaj(t) { document.getElementById("sayacMsg").textContent = t; }
+
+function butonDurum() {
+  if (bitti) {
+    baslatBtn.textContent = "▶ BAŞLAT";
+    baslatBtn.disabled = true;
+  } else if (calisiyor) {
+    baslatBtn.textContent = "⏸ DURDUR";
+    baslatBtn.disabled = false;
+  } else {
+    baslatBtn.textContent = "▶ BAŞLAT";
+    baslatBtn.disabled = false;
+  }
+}
+
+/* ── BOYUTLANDIRMA ───────────────────────────────────────────── */
+function boyutlandir() {
+  const k = document.querySelector(".tahta").getBoundingClientRect();
+  const b = Math.max(120, Math.floor(Math.min(k.width, k.height, 560)) - 8);
+  tuval.width  = b;
+  tuval.height = b;
+  tuval.style.width  = b + "px";
+  tuval.style.height = b + "px";
+  ciz();
+}
+window.addEventListener("resize", boyutlandir);
+if (window.visualViewport)
+  window.visualViewport.addEventListener("resize", boyutlandir);
+
+/* ── SİMÜLASYON DÖNGÜSÜ ─────────────────────────────────────── */
+const HIZLAR = { 1: 400, 2: 200, 4: 100 };
+
+function tick() {
+  if (bitti || !calisiyor) return;
+  const { g: ng, c } = adimAt(izgara);
+  const ozet = izgaraOzeti(ng);
+  if (c === 0) {
+    izgara = ng; canliSayisi = 0; adim++;
+    sayacGuncelle(); ciz();
+    bitir("Tüm hücreler yok oldu.");
+    return;
+  }
+  if (ozet === oncekiOzet) { degismeyenAdim++; }
+  else { degismeyenAdim = 0; oncekiOzet = ozet; }
+  izgara = ng; canliSayisi = c; adim++;
+  sayacGuncelle(); ciz();
+  if (degismeyenAdim >= DURMA_ESIGI) bitir("Desen dondu.");
+}
+
+function bitir(neden) {
+  bitti = true; calisiyor = false;
+  temizleZamanla();
+  mesaj(neden + " — " + adim + " adımda durdu.");
+  butonDurum();
+}
+
+function zamanla() {
+  temizleZamanla();
+  if (!calisiyor || bitti) return;
+  zamanlamaId = setInterval(tick, HIZLAR[hiz]);
+}
+
+function temizleZamanla() {
+  if (zamanlamaId !== null) { clearInterval(zamanlamaId); zamanlamaId = null; }
+}
+
+/* ── SIFIRLAMA YARDIMCISI ────────────────────────────────────── */
+function sifirla(g, c, mesajMetni) {
+  temizleZamanla();
+  izgara = g; canliSayisi = c; adim = 0; bitti = false; calisiyor = false;
+  degismeyenAdim = 0; oncekiOzet = izgaraOzeti(izgara);
+  sayacGuncelle(); mesaj(mesajMetni); butonDurum(); boyutlandir();
+}
+
+/* ── DÜĞMELER ────────────────────────────────────────────────── */
+temizleBtn.onclick = () => {
+  const { g, c } = bosIzgara();
+  sifirla(g, c, "Temizlendi.");
+};
+
+rastgeleBtn.onclick = () => {
+  const { g, c } = rastgeleIzgara();
+  sifirla(g, c, "Rastgele desen.");
+};
+
+baslatBtn.onclick = () => {
+  if (bitti) return;
+  if (calisiyor) {
+    // durdur
+    calisiyor = false;
+    temizleZamanla();
+    mesaj("Duraklatıldı.");
+    butonDurum();
+  } else {
+    // başlat / devam
+    bitti = false; calisiyor = true;
+    oncekiOzet = izgaraOzeti(izgara);
+    degismeyenAdim = 0;
+    mesaj("Çalışıyor…");
+    butonDurum(); zamanla();
+  }
+};
+
+/* ── HIZ ─────────────────────────────────────────────────────── */
+document.querySelectorAll(".hiz-btn").forEach(btn => {
+  btn.onclick = function () {
+    hiz = parseInt(this.dataset.hiz, 10);
+    document.querySelectorAll(".hiz-btn").forEach(b => b.classList.remove("aktif"));
+    this.classList.add("aktif");
+    if (calisiyor && !bitti) zamanla();
+  };
+});
+
+/* ── DOKUNMA / FARE ──────────────────────────────────────────── */
+function noktadenKare(cx, cy) {
+  const B = tuval.width;
+  const hcre = B / BOYUT;
+  const rect = tuval.getBoundingClientRect();
+  const rx = B / rect.width, ry = B / rect.height;
+  const s = Math.floor((cx - rect.left) * rx / hcre);
+  const r = Math.floor((cy - rect.top)  * ry / hcre);
+  if (r < 0 || r >= BOYUT || s < 0 || s >= BOYUT) return null;
+  return [r, s];
+}
+
+let surukleniyor = false;
+let sonToggle = null;
+let surukleModuCanli = null;  // sürükleme yönü: true=canlandır, false=öldür
+
+function hucreisle(r, s, ilkTiklama) {
+  if (bitti) { bitti = false; butonDurum(); }
+  if (ilkTiklama) {
+    // ilk tıklamada toggle, sürükleme yönünü belirle
+    const yeniDeger = izgara[r][s] === 1 ? 0 : 1;
+    surukleModuCanli = yeniDeger === 1;
+    izgara[r][s] = yeniDeger;
+  } else {
+    // sürüklemede tek yön
+    const hedef = surukleModuCanli ? 1 : 0;
+    if (izgara[r][s] === hedef) return false;
+    izgara[r][s] = hedef;
+  }
+  canliSayisi = izgara.flat().reduce((a, b) => a + b, 0);
+  degismeyenAdim = 0;
+  oncekiOzet = izgaraOzeti(izgara);
+  sayacGuncelle(); ciz();
+  return true;
+}
+
+tuval.addEventListener("mousedown", e => {
+  surukleniyor = true;
+  const k = noktadenKare(e.clientX, e.clientY);
+  if (!k) return;
+  sonToggle = k.join(",");
+  hucreisle(k[0], k[1], true);
+});
+tuval.addEventListener("mousemove", e => {
+  if (!surukleniyor) return;
+  const k = noktadenKare(e.clientX, e.clientY);
+  if (!k) return;
+  const anahtar = k.join(",");
+  if (anahtar === sonToggle) return;
+  sonToggle = anahtar;
+  hucreisle(k[0], k[1], false);
+});
+window.addEventListener("mouseup", () => { surukleniyor = false; sonToggle = null; surukleModuCanli = null; });
+
+tuval.addEventListener("touchstart", e => {
+  e.preventDefault();
+  surukleniyor = true;
+  const t = e.touches[0];
+  const k = noktadenKare(t.clientX, t.clientY);
+  if (!k) return;
+  sonToggle = k.join(",");
+  hucreisle(k[0], k[1], true);
+}, { passive: false });
+
+tuval.addEventListener("touchmove", e => {
+  e.preventDefault();
+  if (!surukleniyor) return;
+  const t = e.touches[0];
+  const k = noktadenKare(t.clientX, t.clientY);
+  if (!k) return;
+  const anahtar = k.join(",");
+  if (anahtar === sonToggle) return;
+  sonToggle = anahtar;
+  hucreisle(k[0], k[1], false);
+}, { passive: false });
+
+tuval.addEventListener("touchend", e => {
+  e.preventDefault();
+  surukleniyor = false; sonToggle = null; surukleModuCanli = null;
+}, { passive: false });
+
+/* ── YARDIM ──────────────────────────────────────────────────── */
+const kat = document.getElementById("yardimKat");
+const yardimKapat = () => kat.classList.remove("acik");
+document.getElementById("yardimAc").onclick    = () => kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick = yardimKapat;
+kat.addEventListener("click", e => { if (e.target === kat) yardimKapat(); });
+window.addEventListener("keydown", e => { if (e.key === "Escape") yardimKapat(); });
+
+/* ── DİĞER ───────────────────────────────────────────────────── */
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+// Boş ızgarayla başla
+const { g: ilkG, c: ilkC } = bosIzgara();
+sifirla(ilkG, ilkC, "Desenini çiz…");
+</script>
+</body>
+</html>

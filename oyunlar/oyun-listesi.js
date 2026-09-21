@@ -61,6 +61,26 @@ const OYUN_LISTESI = [
       kitaplar: [{ baslik: 'Maymunlar Gezegeni', yazar: 'Pierre Boulle',
                    takmaAdlar: ['La Planète des singes', 'Planet of the Apes'] }]
     }
+  },
+  {
+    id: 'www-otomat',
+    ad: 'Uyanış',
+    kitap: 'WWW serisi — Robert J. Sawyer',
+    aciklama: 'Kareler kendiliğinden canlanıp ölüyor. Dokun, deseni değiştir, ' +
+              'ne olacağını izle.',
+    ikon: '🧠',
+    tur: 'simulasyon',
+    dosya: 'oyunlar/www-otomat.html',
+    /* ⚠️ `seriler: ['WWW']` ancak kitabın seri alanı tam olarak "WWW" yazıyorsa
+       tutar. Üç kitabın adı tek tek yazılı, seri alanı boş olsa da oyun açılır. */
+    tetikleyiciler: {
+      seriler: ['WWW'],
+      kitaplar: [
+        { baslik: 'Uyanış', yazar: 'Robert J. Sawyer', takmaAdlar: ['Wake',  'WWW: Wake'] },
+        { baslik: 'Takip',  yazar: 'Robert J. Sawyer', takmaAdlar: ['Watch', 'WWW: Watch'] },
+        { baslik: 'Mucize', yazar: 'Robert J. Sawyer', takmaAdlar: ['Wonder','WWW: Wonder'] }
+      ]
+    }
   }
 ];
 
