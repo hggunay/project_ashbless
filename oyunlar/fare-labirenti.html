@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Algernon</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#101418;color:#d0d8e0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+     overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;
+     padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+.ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:17px;flex:1;text-align:left;letter-spacing:.5px;color:#ecefe6}
+.yardim{width:30px;height:30px;flex:none;border-radius:50%;font-size:15px;font-weight:700;
+        background:#222c36;color:#d0d8e0;border:1px solid #455668;cursor:pointer}
+.sayac{width:100%;max-width:640px;display:flex;justify-content:space-between;font-size:12px;
+       background:#182028;border:1px solid #324252;border-radius:7px;padding:5px 9px}
+.sayac b{color:#88c0d0;font-size:13px}
+.tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#0b0e11;border:2px solid #3b4252;border-radius:8px;touch-action:none;display:block}
+.alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:6px;flex-direction:column}
+.yon-paneli{display:grid;grid-template-columns:repeat(3,46px);grid-template-rows:repeat(2,38px);gap:4px;justify-content:center}
+.yon-btn{background:#2e3440;color:#eceff4;border:1px solid #4c566a;border-radius:6px;
+         font-size:16px;display:flex;align-items:center;justify-content:center;padding:0;min-height:0;cursor:pointer}
+.yon-btn:active{background:#434c5e}
+.btn-up{grid-column:2;grid-row:1}
+.btn-left{grid-column:1;grid-row:2}
+.btn-down{grid-column:2;grid-row:2}
+.btn-right{grid-column:3;grid-row:2}
+.alt-satir{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px}
+#msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;
+     overflow:hidden;color:#d8dee9;text-align:left}
+button.yeni-btn{background:#2e3440;color:#eceff4;border:1px solid #4c566a;border-radius:8px;
+       font-size:12px;min-height:36px;padding:0 10px;flex:none;cursor:pointer}
+button.yeni-btn:active{background:#434c5e}
+#yardimKat{position:fixed;inset:0;background:rgba(10,14,18,.94);display:none;overflow:auto;padding:18px;z-index:9}
+#yardimKat.acik{display:block}
+.yk{max-width:520px;margin:auto;background:#1e242c;border:1px solid #434c5e;border-radius:12px;padding:16px 18px}
+.yk h2{margin:0 0 10px;font-size:17px;color:#88c0d0}
+.yk p{margin:0 0 9px;font-size:13px;line-height:1.5}
+.yk b{color:#ebcb8b}
+.yk ul{margin:0 0 9px;padding-left:18px;font-size:12.5px;line-height:1.45}
+.yk .kapat{width:100%;margin-top:6px;height:38px;background:#434c5e;color:#eceff4;
+           border:none;border-radius:8px;font-size:14px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ust">
+    <h1>Algernon</h1>
+    <button class="yardim" id="yardimAc" aria-label="Nasıl oynanır">?</button>
+  </div>
+
+  <div class="sayac">
+    <span>Labirent <b id="labirentSayac">1</b></span>
+    <span>Çözülen <b id="puan">0</b></span>
+    <span>Süre <b id="sureSayac">90</b>s</span>
+  </div>
+
+  <div id="msg">Fareyi labirentin çıkışına ulaştır.</div>
+
+  <div class="tahta"><canvas id="tuval" width="600" height="600"></canvas></div>
+
+  <div class="alt">
+    <div class="yon-paneli">
+      <button class="yon-btn btn-up" id="btnUp" aria-label="Yukarı">▲</button>
+      <button class="yon-btn btn-left" id="btnLeft" aria-label="Sol">◀</button>
+      <button class="yon-btn btn-down" id="btnDown" aria-label="Aşağı">▼</button>
+      <button class="yon-btn btn-right" id="btnRight" aria-label="Sağ">▶</button>
+    </div>
+    <!-- ⚠️ Burada ikinci bir id="msg" vardı. Aynı id iki kez geçince
+         getElementById yalnız BİRİNCİSİNİ buluyor, bu yüzden alttaki kutu
+         hiç güncellenmiyor ve ekranda sonsuza kadar eski yazı kalıyordu.
+         Ayrıca boşuna yer kaplıyordu. Kaldırıldı. (2026-09-21) -->
+    <div class="alt-satir">
+      <button class="yeni-btn" id="yeni">YENİ OYUN</button>
+    </div>
+  </div>
+</div>
+
+<div id="yardimKat"><div class="yk">
+  <h2>Nasıl Oynanır?</h2>
+  <p><b>AMAÇ:</b> Fareyi labirentin çıkışına (yeşil nokta) ulaştırmak.
+  Çıkış her zaman <b>sağ alt köşededir</b>. Her çözdüğün labirent bir puan
+  ve bir <b>🌸</b> kazandırır.</p>
+
+  <p><b>Ama asıl mesele labirent değil.</b> Başta fare aptaldır: yalnız bir
+  kare ötesini görür, nereden geldiğini bile hatırlamaz. Her labirenti
+  çözdükçe <b>zekileşir</b> — daha uzağı görür, gezdiği yerler haritada kalır.</p>
+
+  <p><b>Sonra geri iniş başlar.</b> Görüşü yeniden daralır, hatırladığı yollar
+  kararıp silinir, süresi kısalır. Labirentler ise küçülmez.</p>
+
+  <p><b>Kazanmak yok</b> — er ya da geç süre yetişmez. Puanın, o âna kadar
+  çözdüğün labirent sayısıdır. Oyun bitince elinde kalan tek şey çiçeklerdir.</p>
+
+  <ul>
+    <li><b>Süre</b> her labirent için ayrıdır ve sıfırlanır. Biterse oyun biter.</li>
+    <li><b>Karanlık kareler</b> henüz görmediğin yerler. <b>Solgun kareler</b> hatırladıkların.</li>
+    <li>Bu kutu açıkken <b>saat durur</b>, acele etme.</li>
+  </ul>
+
+  <p><b>Kontroller:</b> Ekrandaki ok düğmeleri ya da klavyenin ok tuşları.
+  Bir basış bir kare.</p>
+  <button class="kapat" id="yardimKapat">Anladım</button>
+</div></div>
+
+<script>
+const OYUN_ID="fare-labirenti";
+const T=600;
+const tuval=document.getElementById("tuval"), ctx=tuval.getContext("2d");
+
+let puan=0, labirentNo=1, bitti=false;
+let izgaraBoyut=9, gorusYaricap=1, hafizaVar=false, kalanSure=90;
+let timer=null;
+
+let labirent=[], ziyaretEdildi=[], hafizaMatris=[];
+let fareX=1, fareY=1, cikisX=7, cikisY=7;
+
+function mesaj(t){ document.getElementById("msg").textContent=t; }
+function sayaclar(){
+  document.getElementById("puan").textContent=puan;
+  document.getElementById("labirentSayac").textContent=labirentNo;
+  document.getElementById("sureSayac").textContent=kalanSure;
+}
+
+/* ⚠️ GÖRÜŞ SAYILARI DÜZELTİLDİ (2026-09-21, ölçümle).
+   İlk tabloda 4., 5. ve 6. labirentlerde ekranın %67-72'si görünüyordu —
+   yani labirentin neredeyse tamamı. O üç seviye bedavaya geliyordu.
+   Sonra 7'de %54'e DÜŞÜYORDU, yani "zirve" olması gereken yer, ondan
+   öncesinden daha karanlıktı. Eğri hem düzdü hem tersti.
+   Yeni tablo testere dişi gibi yükseliyor: görüş artıyor, sonra labirent
+   büyüyüp oranı düşürüyor, sonra görüş yine artıyor. Zirve 8'de ve %54.
+   📌 Labirent büyüdüğünde oranın düşmesi KUSUR DEĞİL — "zekileştin, onlar
+   da testi zorlaştırdı" demek, romanın kendi şekli bu. */
+function labirentParametreleriGetir(lNo){
+  //                    labirent:  1   2   3   4   5   6   7   8
+  const IZGARA = [0, 9,  9, 11, 11, 13, 13, 15, 15];
+  const GORUS  = [0, 1,  2,  2,  3,  3,  4,  4,  5];
+  let g, r, h, s;
+  if(lNo <= 8){
+    g = IZGARA[lNo];
+    r = GORUS[lNo];
+    h = (lNo !== 1);                    // 1. labirentte hafıza yok
+    s = 90;
+  } else {
+    g = 15;
+    r = Math.max(1, 5 - (lNo - 8));     // zirveden sonra her seviyede -1
+    h = true;
+    s = Math.max(30, 90 - ((lNo - 8) * 10));
+  }
+  return { g, r, h, s };
+}
+
+function labirentUret(N){
+  labirent = Array.from({length: N}, () => Array(N).fill(1));
+  let stack = [];
+  let startX = 1, startY = 1;
+  labirent[startY][startX] = 0;
+  stack.push([startX, startY]);
+
+  while(stack.length > 0){
+    let [cx, cy] = stack[stack.length - 1];
+    let neighbors = [];
+    let dirs = [[0,-2],[0,2],[-2,0],[2,0]];
+
+    for(let [dx,dy] of dirs){
+      let nx = cx + dx, ny = cy + dy;
+      if(nx > 0 && nx < N-1 && ny > 0 && ny < N-1 && labirent[ny][nx] === 1){
+        neighbors.push([nx, ny, dx, dy]);
+      }
+    }
+
+    if(neighbors.length > 0){
+      let [nx, ny, dx, dy] = neighbors[Math.floor(Math.random() * neighbors.length)];
+      labirent[cy + dy/2][cx + dx/2] = 0;
+      labirent[ny][nx] = 0;
+      stack.push([nx, ny]);
+    } else {
+      stack.pop();
+    }
+  }
+
+  fareX = 1; fareY = 1;
+  cikisX = N - 2; cikisY = N - 2;
+  labirent[cikisY][cikisX] = 0;
+}
+
+function labirentHazirla(){
+  const p = labirentParametreleriGetir(labirentNo);
+  izgaraBoyut = p.g;
+  gorusYaricap = p.r;
+  hafizaVar = p.h;
+  kalanSure = p.s;
+
+  labirentUret(izgaraBoyut);
+
+  ziyaretEdildi = Array.from({length: izgaraBoyut}, () => Array(izgaraBoyut).fill(false));
+  hafizaMatris = Array.from({length: izgaraBoyut}, () => Array(izgaraBoyut).fill(false));
+
+  ziyaretEdildi[fareY][fareX] = true;
+  if(hafizaVar) hafizaMatris[fareY][fareX] = true;
+
+  sayaclar();            // sayaçlar hemen doğru görünsün (eskiden 1 sn gecikiyordu)
+
+  if(timer) clearInterval(timer);
+  timer = setInterval(()=>{
+    if(bitti) return;
+    /* ⚠️ Yardım açıkken saat DURUR. Kurallara bakan oyuncu ceza ödemesin —
+       yardım ilk açılışta kendiliğinden açılıyor, saat işleseydi oyun daha
+       oyuncu hiçbir şey görmeden başlamış olurdu. */
+    if(kat && kat.classList.contains("acik")) return;
+    kalanSure--;
+    
+    // Geri iniş evresinde hafıza kararması
+    if(labirentNo > 8 && hafizaVar){
+      for(let r=0; r<izgaraBoyut; r++){
+        for(let c=0; c<izgaraBoyut; c++){
+          if(hafizaMatris[r][c] && Math.random() < 0.15){
+            if(r !== fareY || c !== fareX){
+              hafizaMatris[r][c] = false;
+            }
+          }
+        }
+      }
+    }
+
+    sayaclar();
+    ciz();
+
+    if(kalanSure <= 0){
+      clearInterval(timer);
+      oyunBitti("Süre doldu.");
+    }
+  }, 1000);
+}
+
+function ciz(){
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1;
+  ctx.clearRect(0,0,T,T);
+
+  if(bitti){
+    ctx.fillStyle = "#0b0e11";
+    ctx.fillRect(0,0,T,T);
+    ctx.font = "24px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    
+    let cicekStr = "";
+    for(let i=0; i<puan; i++) cicekStr += "🌸";
+    
+    ctx.fillStyle = "#e5e9f0";
+    ctx.fillText("Algernon'un mezarına çiçek koymayı unutma.", T/2, T/2 - 30);
+    ctx.font = "20px system-ui, sans-serif";
+    ctx.fillText(cicekStr || "🌸", T/2, T/2 + 20);
+    return;
+  }
+
+  const hucreBoyut = T / izgaraBoyut;
+
+  for(let r=0; r<izgaraBoyut; r++){
+    for(let c=0; c<izgaraBoyut; c++){
+      let mesafe = Math.max(Math.abs(r - fareY), Math.abs(c - fareX));
+      let gorunur = mesafe <= gorusYaricap;
+
+      if(gorunur){
+        if(hafizaVar) hafizaMatris[r][c] = true;
+        
+        if(labirent[r][c] === 1){
+          ctx.fillStyle = "#4c566a"; // Duvar
+        } else {
+          ctx.fillStyle = "#d8dee9"; // Yol
+        }
+        ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
+
+      } else if(hafizaVar && hafizaMatris[r][c]){
+        if(labirent[r][c] === 1){
+          ctx.fillStyle = "#2e3440"; // Silik duvar
+        } else {
+          ctx.fillStyle = "#434c5e"; // Silik yol
+        }
+        ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
+
+      } else {
+        ctx.fillStyle = "#0b0e11"; // Karanlık
+        ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
+      }
+
+      ctx.strokeStyle = "#1a222a";
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
+    }
+  }
+
+  // Çıkış Noktası
+  let cikisMesafe = Math.max(Math.abs(cikisY - fareY), Math.abs(cikisX - fareX));
+  if(cikisMesafe <= gorusYaricap || (hafizaVar && hafizaMatris[cikisY][cikisX])){
+    ctx.fillStyle = "#a3be8c";
+    ctx.beginPath();
+    ctx.arc(cikisX*hucreBoyut + hucreBoyut/2, cikisY*hucreBoyut + hucreBoyut/2, hucreBoyut*0.3, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // Fare
+  ctx.fillStyle = "#ebcb8b";
+  ctx.beginPath();
+  ctx.arc(fareX*hucreBoyut + hucreBoyut/2, fareY*hucreBoyut + hucreBoyut/2, hucreBoyut*0.35, 0, Math.PI*2);
+  ctx.fill();
+  ctx.strokeStyle = "#d08f70";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+function hareketEt(dx, dy){
+  if(bitti) return;
+  let yeniX = fareX + dx;
+  let yeniY = fareY + dy;
+
+  if(yeniX >= 0 && yeniX < izgaraBoyut && yeniY >= 0 && yeniY < izgaraBoyut){
+    if(labirent[yeniY][yeniX] === 0){
+      fareX = yeniX;
+      fareY = yeniY;
+      ziyaretEdildi[fareY][fareX] = true;
+      if(hafizaVar) hafizaMatris[fareY][fareX] = true;
+
+      if(fareX === cikisX && fareY === cikisY){
+        puan++;
+        labirentNo++;
+        mesaj("Labirent çözüldü! İlerliyorsun.");
+        labirentHazirla();
+      }
+
+      ciz();
+    }
+  }
+}
+
+function yeniOyun(){
+  puan=0; labirentNo=1; bitti=false;
+  if(timer) clearInterval(timer);
+  labirentHazirla();
+  sayaclar();
+  mesaj("Fareyi çıkışa yönlendir.");
+  boyutlandir();
+  ciz();
+}
+
+function oyunBitti(neden){
+  bitti=true;
+  if(timer) clearInterval(timer);
+  mesaj(neden + " Toplam Çözülen: " + puan);
+  sayaclar();
+  ciz();
+  skoruBildir(puan);
+}
+
+function skoruBildir(p){
+  if(window.parent===window) return;
+  try{
+    window.parent.postMessage({ ashbless:'oyun-skor', oyun:OYUN_ID,
+                                skor:Math.max(0,Math.round(p)) }, '*');
+  }catch(e){}
+}
+
+function boyutlandir(){
+  const k=document.querySelector(".tahta").getBoundingClientRect();
+  const b=Math.max(150, Math.floor(Math.min(k.width,k.height,620))-12);
+  tuval.style.width=b+"px"; tuval.style.height=b+"px";
+}
+
+window.addEventListener("resize",boyutlandir);
+if(window.visualViewport) window.visualViewport.addEventListener("resize",boyutlandir);
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+window.addEventListener("keydown", e => {
+  if(e.key === "ArrowUp") { hareketEt(0, -1); e.preventDefault(); }
+  else if(e.key === "ArrowDown") { hareketEt(0, 1); e.preventDefault(); }
+  else if(e.key === "ArrowLeft") { hareketEt(-1, 0); e.preventDefault(); }
+  else if(e.key === "ArrowRight") { hareketEt(1, 0); e.preventDefault(); }
+});
+
+document.getElementById("btnUp").onclick = () => hareketEt(0, -1);
+document.getElementById("btnDown").onclick = () => hareketEt(0, 1);
+document.getElementById("btnLeft").onclick = () => hareketEt(-1, 0);
+document.getElementById("btnRight").onclick = () => hareketEt(1, 0);
+
+const kat=document.getElementById("yardimKat");
+const yardimKapat=()=>kat.classList.remove("acik");
+document.getElementById("yardimAc").onclick=()=>kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick=yardimKapat;
+kat.addEventListener("click",e=>{ if(e.target===kat) yardimKapat(); });
+window.addEventListener("keydown",e=>{ if(e.key==="Escape") yardimKapat(); });
+document.getElementById("yeni").onclick=yeniOyun;
+
+/* İlk açılışta yardım kendiliğinden açılır — 1984'teki ile aynı gerekçe:
+   oyunun kuralı (zekânın yükselip sonra DÜŞMESİ) sezilerek anlaşılmıyor.
+   Saat yardım açıkken durduğu için oyuncuya bedeli yok.
+   ⚠️ localStorage gizli sekmede hata atabilir; try/catch şart. */
+(function ilkAcilis(){
+  let gorulmus = false;
+  try { gorulmus = localStorage.getItem("fare-labirenti-yardim") === "1"; } catch(e){}
+  if (!gorulmus) {
+    kat.classList.add("acik");
+    try { localStorage.setItem("fare-labirenti-yardim", "1"); } catch(e){}
+  }
+})();
+
+boyutlandir(); yeniOyun();
+</script>
+</body>
+</html>

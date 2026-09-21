@@ -115,6 +115,27 @@ const OYUN_LISTESI = [
       kitaplar: [{ baslik: '1984', yazar: 'George Orwell',
                    takmaAdlar: ['Bin Dokuz Yüz Seksen Dört', 'Nineteen Eighty-Four'] }]
     }
+  },
+  {
+    id: 'fare-labirenti',
+    ad: 'Algernon',
+    kitap: "Algernon'a Çiçekler — Daniel Keyes",
+    aciklama: 'Fareyi labirentten çıkar. Her çözdüğünde biraz daha iyi görürsün — ' +
+              'bir yere kadar.',
+    ikon: '🐭',
+    tur: 'oyun',
+    skorAdi: 'labirent',
+    dosya: 'oyunlar/fare-labirenti.html',
+    /* Başlık tek başına yeterince ayırt edici değil (WWW dersi): hem tam
+       eşleşme hem içerik araması bırakıldı, yazar koşulu ikisinde de var. */
+    tetikleyiciler: {
+      baslikIcerir: [
+        { yazar: 'Daniel Keyes', baslikIcerir: 'algernon' },
+        { yazar: 'Daniel Keyes', baslikIcerir: 'flowers for' }
+      ],
+      kitaplar: [{ baslik: "Algernon'a Çiçekler", yazar: 'Daniel Keyes',
+                   takmaAdlar: ['Flowers for Algernon', 'Algernona Çiçekler'] }]
+    }
   }
 ];
 
