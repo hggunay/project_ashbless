@@ -75,7 +75,9 @@ const KARSILAMA_METINLERI = {
     baslik: '📊 İstatistikler',
     metin: 'Okuma alışkanlığının sayılara dökülmüş hâli: aylık seriler, türler, ülkeler. ' +
            '<b>🎲 Eğlence</b> alt sekmesinde ise ölçüm değil oyun var — falına bakabilir, ' +
-           'Şeytan ile Melek\'in ayın hesabını görüşmesini izleyebilirsin.'
+           'Şeytan ile Melek\'in ayın hesabını görüşmesini izleyebilirsin. ' +
+           '<b>🎮 Oyunlar</b>\'da ise okuduğun kitaplardan açılan mini oyunlar var: ' +
+           'bir kitabı bitirdiğinde ona ait oyun kendiliğinden açılıyor.'
   },
   members: {
     baslik: '👥 Üyeler',
