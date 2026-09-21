@@ -98,7 +98,9 @@ button.yeni-btn:active{background:#434c5e}
 
   <ul>
     <li><b>Süre</b> her labirent için ayrıdır ve sıfırlanır. Biterse oyun biter.</li>
-    <li><b>Karanlık kareler</b> henüz görmediğin yerler. <b>Solgun kareler</b> hatırladıkların.</li>
+    <li><b>Siyah kareler</b> henüz görmediğin yerler. <b>Soğuk gri kareler</b>
+    gördüğün ama gitmediğin yollar. <b>Sarımsı kareler</b> kendi ayak izin —
+    oradan geçtin.</li>
     <li>Bu kutu açıkken <b>saat durur</b>, acele etme.</li>
   </ul>
 
@@ -118,6 +120,22 @@ let timer=null;
 
 let labirent=[], ziyaretEdildi=[], hafizaMatris=[];
 let fareX=1, fareY=1, cikisX=7, cikisY=7;
+
+/* ── GÖRSELLER ────────────────────────────────────────────────────────
+   Emoji KULLANILMIYOR: her cihazda farklı çiziliyor, bazılarında hiç
+   görünmüyor (Kumda Ritim'de alınan karar, aynısı burada).
+   Görsel yüklenemezse oyun çalışmaya devam eder, o parça kodla çizilir —
+   yoksa dosya adı bir gün yanlış olduğunda fare ekrandan tamamen
+   kaybolur ve oyun oynanamaz hale gelirdi. */
+const GORSEL = {};
+function gorselYukle(ad, yol){
+  const im = new Image();
+  im.onload  = () => { GORSEL[ad] = im; ciz(); };
+  im.onerror = () => { GORSEL[ad] = null; };     // yedek çizime düşer
+  im.src = yol;
+}
+gorselYukle("fare",  "gorseller/fare.png");
+gorselYukle("cicek", "gorseller/cicek.png");
 
 function mesaj(t){ document.getElementById("msg").textContent=t; }
 function sayaclar(){
@@ -244,16 +262,31 @@ function ciz(){
   if(bitti){
     ctx.fillStyle = "#0b0e11";
     ctx.fillRect(0,0,T,T);
-    ctx.font = "24px system-ui, sans-serif";
     ctx.textAlign = "center";
-    
-    let cicekStr = "";
-    for(let i=0; i<puan; i++) cicekStr += "🌸";
-    
     ctx.fillStyle = "#e5e9f0";
-    ctx.fillText("Algernon'un mezarına çiçek koymayı unutma.", T/2, T/2 - 30);
-    ctx.font = "20px system-ui, sans-serif";
-    ctx.fillText(cicekStr || "🌸", T/2, T/2 + 20);
+    ctx.font = "22px system-ui, sans-serif";
+    ctx.fillText("Algernon'un mezarına çiçek koymayı unutma.", T/2, T/2 - 90);
+
+    /* Kazanılan çiçekler. Satır başına en çok 8, çok olursa küçülüyor —
+       15-20 çiçekte tek sıra ekrandan taşardı. */
+    if (puan > 0){
+      const satirda = Math.min(8, puan);
+      const satir   = Math.ceil(puan / satirda);
+      // Üçüncü sınır satır sayısı için: çok çiçekte alta taşmasın.
+      const b       = Math.min(56, Math.floor(480 / satirda), Math.floor(280 / satir));
+      for (let i = 0; i < puan; i++){
+        const r = Math.floor(i / satirda), s = i % satirda;
+        const buSatir = Math.min(satirda, puan - r*satirda);
+        const x = T/2 - (buSatir*b)/2 + s*b;
+        const y = T/2 - 40 + r*b;
+        if (GORSEL.cicek) ctx.drawImage(GORSEL.cicek, x, y, b, b);
+        else { ctx.fillStyle="#d3869b"; ctx.beginPath();
+               ctx.arc(x+b/2, y+b/2, b*0.3, 0, Math.PI*2); ctx.fill(); }
+      }
+      ctx.fillStyle = "#8a97a8";
+      ctx.font = "17px system-ui, sans-serif";
+      ctx.fillText(puan + " labirent, " + puan + " çiçek.", T/2, T/2 - 40 + satir*b + 34);
+    }
     return;
   }
 
@@ -264,26 +297,44 @@ function ciz(){
       let mesafe = Math.max(Math.abs(r - fareY), Math.abs(c - fareX));
       let gorunur = mesafe <= gorusYaricap;
 
+      /* ── RENKLER (2026-09-21, Gökşin bildirdi: "farenin dolaştığı yol
+         koyu değil") ─────────────────────────────────────────────────
+         İki hata vardı:
+         1) `ziyaretEdildi` — farenin GERÇEKTEN yürüdüğü kareler — hiç
+            çizilmiyordu. Ekrandaki gri bulut "gördüğün her yer"di, ayak
+            izin değil; oyuncu kendi izini takip edemiyordu.
+         2) Görünen duvar (#4c566a), hatırlanan yoldan (#434c5e) DAHA
+            AÇIKTI. Duvar yoldan parlak görünüyordu.
+         Artık üç ayrı hatıra var: yürüdüğüm yol (sıcak/altın), gördüğüm
+         ama gitmediğim yol (soğuk gri), duvar (en koyu). Her katmanda
+         yol duvardan daima açık.
+         📌 Geri inişte `hafizaMatris` siliniyor ama `ziyaretEdildi`
+         silinmiyor — yani yürüdüğün yol da kararıyor. Kasıtlı: fare
+         nereden geldiğini unutuyor. */
       if(gorunur){
         if(hafizaVar) hafizaMatris[r][c] = true;
-        
+
         if(labirent[r][c] === 1){
-          ctx.fillStyle = "#4c566a"; // Duvar
+          ctx.fillStyle = "#3f4856";               // görünen duvar
+        } else if(ziyaretEdildi[r][c]){
+          ctx.fillStyle = "#efe4c8";               // görünen + yürüdüğüm yol
         } else {
-          ctx.fillStyle = "#d8dee9"; // Yol
+          ctx.fillStyle = "#d8dee9";               // görünen yol
         }
         ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
 
       } else if(hafizaVar && hafizaMatris[r][c]){
         if(labirent[r][c] === 1){
-          ctx.fillStyle = "#2e3440"; // Silik duvar
+          ctx.fillStyle = "#212830";               // hatırlanan duvar (en koyu)
+        } else if(ziyaretEdildi[r][c]){
+          ctx.fillStyle = "#6e6042";               // ★ YÜRÜDÜĞÜM YOL — sıcak iz
         } else {
-          ctx.fillStyle = "#434c5e"; // Silik yol
+          ctx.fillStyle = "#3f4a59";               // gördüm ama gitmedim
         }
         ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
 
       } else {
-        ctx.fillStyle = "#0b0e11"; // Karanlık
+        ctx.fillStyle = "#0b0e11";                 // hiç görmedim
         ctx.fillRect(c*hucreBoyut, r*hucreBoyut, hucreBoyut, hucreBoyut);
       }
 
@@ -302,14 +353,21 @@ function ciz(){
     ctx.fill();
   }
 
-  // Fare
-  ctx.fillStyle = "#ebcb8b";
-  ctx.beginPath();
-  ctx.arc(fareX*hucreBoyut + hucreBoyut/2, fareY*hucreBoyut + hucreBoyut/2, hucreBoyut*0.35, 0, Math.PI*2);
-  ctx.fill();
-  ctx.strokeStyle = "#d08f70";
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  // Fare — görsel varsa o, yoksa eski sarı nokta
+  const fmx = fareX*hucreBoyut + hucreBoyut/2;
+  const fmy = fareY*hucreBoyut + hucreBoyut/2;
+  if (GORSEL.fare){
+    const b = hucreBoyut * 0.92;               // kareyi neredeyse dolduruyor
+    ctx.drawImage(GORSEL.fare, fmx - b/2, fmy - b/2, b, b);
+  } else {
+    ctx.fillStyle = "#ebcb8b";
+    ctx.beginPath();
+    ctx.arc(fmx, fmy, hucreBoyut*0.35, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = "#d08f70";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
 }
 
 function hareketEt(dx, dy){
