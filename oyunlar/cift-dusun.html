@@ -52,7 +52,7 @@ button:active{background:#4a3b2c}
     <span class="tehlike">Düşünce Polisi İhbarı: <b id="polisSayac">0</b></span>
   </div>
 
-  <div id="msg">Açmak istediğin kutunun üzerine dokun. Zıt anlamlı kelimeleri bul!</div>
+  <div id="msg">Amaç: 7 ZIT çift bul. Bazı kutular EŞ anlamlı — onları açarsan Düşünce Polisi seni fişler.</div>
 
   <div class="tahta"><canvas id="tuval" width="600" height="600"></canvas></div>
 
@@ -63,6 +63,11 @@ button:active{background:#4a3b2c}
 
 <div id="yardimKat"><div class="yk">
   <h2>Nasıl Oynanır?</h2>
+  <p><b>AMAÇ:</b> Kutuları ikişer ikişer açarak <b>7 zıt anlamlı çifti</b> bulmak.
+  Ama kutuların bir kısmı zıt değil <b>eş</b> anlamlıdır ve onları açmak suçtur.
+  Hangisinin hangisi olduğunu <b>ancak açtığında öğrenirsin</b> — oyun budur.</p>
+  <p>Açtığın kutular eşleşmezse kapanır. <b>Nerede ne olduğunu hatırlamak</b>
+  tek avantajın: kazanmanın yolu şansa değil hafızaya bağlı.</p>
   <p>Okyanusya'da gerçek Parti'nin kontrolündedir. Tahtadaki <b>20 kapalı kutu</b> içinde kelimeler gizlidir.</p>
   <ul>
     <li><b>7 Zıt Çift:</b> Zıt anlamlı iki kelimeyi açarsan (Örn: <i>Savaş — Barış</i>) eşleşirler, açık kalırlar ve <b>+1 puan</b> kazanırsın.</li>
@@ -418,6 +423,21 @@ document.getElementById("yardimKapat").onclick=yardimKapat;
 kat.addEventListener("click",e=>{ if(e.target===kat) yardimKapat(); });
 window.addEventListener("keydown",e=>{ if(e.key==="Escape") yardimKapat(); });
 document.getElementById("yeni").onclick=yeniOyun;
+
+/* İLK AÇILIŞTA yardım kendiliğinden açılır (2026-09-21, Gökşin: "oyunun
+   amacı ne, kurallar ne — hiçbir şey belli değil"). Bu oyunun kuralı
+   sezilerek anlaşılmıyor; eş çiftin ceza olduğunu bilmeyen oyuncu neden
+   kaybettiğini anlamıyor. Sonraki açılışlarda çıkmaz.
+   ⚠️ localStorage gizli sekmede veya site verisi kapalıyken hata atabilir;
+   try/catch şart. Okunamazsa yardım açılır — bilmemek, görmekten kötü. */
+(function ilkAcilis(){
+  let gorulmus = false;
+  try { gorulmus = localStorage.getItem("cift-dusun-yardim") === "1"; } catch(e){}
+  if (!gorulmus) {
+    kat.classList.add("acik");
+    try { localStorage.setItem("cift-dusun-yardim", "1"); } catch(e){}
+  }
+})();
 
 boyutlandir(); yeniOyun();
 </script>

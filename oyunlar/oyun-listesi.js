@@ -71,10 +71,27 @@ const OYUN_LISTESI = [
     ikon: '🧠',
     tur: 'simulasyon',
     dosya: 'oyunlar/www-otomat.html',
-    /* ⚠️ `seriler: ['WWW']` ancak kitabın seri alanı tam olarak "WWW" yazıyorsa
-       tutar. Üç kitabın adı tek tek yazılı, seri alanı boş olsa da oyun açılır. */
+    /* ⚠️ 2026-09-21: Gökşin üç kitabı da okuduğu hâlde oyun KİLİTLİ kaldı.
+       Sebep: `baslik` ve `seriler` TAM EŞLEŞME arıyor (diyar-esleme.js →
+       `baslikUyar` / `dnorm(s) === dnorm(kitap.series)`).
+         · Kitapları "Watch (Takip)" gibi iki adla kayıtlı → ne "Watch"a
+           ne "Takip"e eşit, hiçbiri tutmuyor.
+         · Seri alanı "word wide web" yazıyor → "WWW" ile eşleşmiyor.
+       Çözüm: asıl yük `baslikIcerir`e verildi — o TAM eşleşme değil
+       İÇERİK araması yapıyor, başlık nasıl yazılmış olursa olsun tutuyor.
+       `kitaplar` ve `seriler` ek ağ olarak duruyor.
+       📌 `baslikIcerir` yazar koşulunu da arar, yani Sawyer'ın WWW dışındaki
+       kitapları yanlışlıkla açamaz. */
     tetikleyiciler: {
-      seriler: ['WWW'],
+      baslikIcerir: [
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'wake' },
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'watch' },
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'wonder' },
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'uyanış' },
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'takip' },
+        { yazar: 'Robert J. Sawyer', baslikIcerir: 'mucize' }
+      ],
+      seriler: ['WWW', 'World Wide Web', 'Word Wide Web', 'WWW Üçlemesi'],
       kitaplar: [
         { baslik: 'Uyanış', yazar: 'Robert J. Sawyer', takmaAdlar: ['Wake',  'WWW: Wake'] },
         { baslik: 'Takip',  yazar: 'Robert J. Sawyer', takmaAdlar: ['Watch', 'WWW: Watch'] },
