@@ -214,7 +214,7 @@ function adimAt(g) {
 const RENK_ZEMIN  = "#08090d";
 const RENK_CANLI  = "#4d9fff";
 const RENK_CANLI2 = "#1a4a8a";
-const RENK_IZGARA = "#12182a";
+const RENK_IZGARA = "#2a3550";
 
 function ciz() {
   const B = tuval.width;
@@ -224,7 +224,7 @@ function ciz() {
   ctx.fillStyle = RENK_ZEMIN;
   ctx.fillRect(0, 0, B, B);
   ctx.strokeStyle = RENK_IZGARA;
-  ctx.lineWidth = 0.5;
+  ctx.lineWidth = 1;
   for (let i = 1; i < BOYUT; i++) {
     const p = Math.round(i * hcre) + 0.5;
     ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, B); ctx.stroke();
