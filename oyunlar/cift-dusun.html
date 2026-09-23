@@ -20,7 +20,8 @@ h1{margin:0;font-size:16px;flex:1;text-align:left;letter-spacing:1px;color:#e334
 .sayac b{color:#f59e0b;font-size:13px}
 .sayac span.tehlike b{color:#ef4444}
 .tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
-canvas{background:#1c1714;border:2px solid #4a3b2c;border-radius:6px;touch-action:none;display:block}
+canvas{background:#1c1714;border:2px solid #4a3b2c;border-radius:6px;touch-action:none;display:block;
+       transition:box-shadow .12s ease, border-color .12s ease}
 .alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:10px}
 /* SABİT yükseklik — zıplamayı önler */
 #msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;
@@ -38,6 +39,74 @@ button:active{background:#4a3b2c}
 .yk li{margin-bottom:4px}
 .yk .kapat{width:100%;margin-top:8px;height:38px;background:#4a3b2c;color:#f3e8d3;
            border:none;border-radius:6px;font-size:14px;font-weight:700}
+
+/* ── OYUN SONU SAHNESİ (B2 göz / B3 beyin) ──────────────────────────────
+   Tuvalin DIŞINDA, tüm ekranı kaplayan HTML katmanı. Tuvaldeki bitiş
+   yazısı yerinde duruyor; sahne dokununca kapanır ve altından o görünür.
+   Zamanlama tamamen CSS'te (animation-delay) — JS sadece sınıf ekliyor. */
+#son{position:fixed;inset:0;z-index:8;display:none;overflow:hidden;cursor:pointer;
+     background:rgba(0,0,0,0);align-items:center;justify-content:center}
+#son.acik{display:flex}
+#son .yazi{position:absolute;left:0;right:0;text-align:center;opacity:0;pointer-events:none;
+           font-weight:900;letter-spacing:2px;font-size:min(16vw,84px);line-height:1}
+#son .alt-yazi{display:block;margin-top:10px;font-size:min(4.4vw,19px);font-weight:600;letter-spacing:.5px}
+#son .ipucu{position:absolute;bottom:calc(18px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;
+            font-size:12px;color:#a8a29e;opacity:0;letter-spacing:1px}
+
+/* B2 — Göz: noktadan büyür, ekranı kaplar, koyulaşır, göz bebeğinde 2+2=5 */
+#son.goz{animation:sonZemin 1.4s ease-out forwards}
+#son.goz .goz{position:absolute;width:100vmax;height:100vmax;left:50%;top:50%;
+              background:url(gorseller/1984-goz.png) center/contain no-repeat;
+              transform:translate(-50%,-50%) scale(.02);
+              animation:gozBuyu 2.4s cubic-bezier(.5,0,.2,1) forwards, gozKoyulas 1.2s ease-in 2.4s forwards}
+#son.goz .yazi{top:50%;transform:translateY(-50%);color:#ef4444;
+               text-shadow:0 0 18px rgba(239,68,68,.55);animation:belir .8s ease-out 3.3s forwards}
+#son.goz .alt-yazi{color:#fca5a5}
+@keyframes sonZemin{to{background:rgba(0,0,0,.92)}}
+@keyframes gozBuyu{to{transform:translate(-50%,-50%) scale(1.9)}}
+@keyframes gozKoyulas{to{filter:brightness(.32)}}
+
+/* B3 — Beyin: parmaklık ardından büyür → parmaklık kırılıp iki yana ayrılır,
+   solar → özgür beyin + sarı aura + şimşekler → 2+2=4 */
+#son.beyin{animation:sonZemin 1s ease-out forwards}
+#son .kafes{position:relative;width:min(78vw,56vh,440px);aspect-ratio:1;
+            transform:scale(.08);opacity:0;animation:kafesGel 1.3s cubic-bezier(.3,1.3,.5,1) forwards}
+#son .kafes>div{position:absolute}
+#son .isik{inset:-35%;border-radius:50%;opacity:0;
+           background:radial-gradient(circle,rgba(253,224,71,.55) 0%,rgba(250,204,21,.22) 38%,rgba(250,204,21,0) 68%);
+           animation:belir .9s ease-out 3.3s forwards, nabiz 1.8s ease-in-out 4.2s infinite}
+#son .simsek{inset:-30%;opacity:0;transform:scale(.7);
+             background:url(gorseller/1984-simsek.png) center/contain no-repeat;
+             animation:simsekCak .5s cubic-bezier(.3,1.6,.5,1) 3.5s forwards}
+#son .beyin-img{inset:12%;background:url(gorseller/1984-beyin.png) center/contain no-repeat;
+                animation:ozgur 1.2s ease-out 3.1s forwards}
+/* Parmaklık tek görsel, iki yarım olarak gösteriliyor. Görsel siyah;
+   koyu zeminde görünsün diye çelik griye çevriliyor (invert). */
+#son .parmak{top:0;bottom:0;width:50%;
+             background-image:url(gorseller/1984-parmaklik.png);background-size:200% 100%;
+             filter:invert(.72) drop-shadow(0 0 6px rgba(0,0,0,.8))}
+#son .parmak.sol{left:0;background-position:left center;
+                 animation:titre .45s linear 1.5s, solaKir 1.2s cubic-bezier(.4,0,.6,1) 2s forwards}
+#son .parmak.sag{right:0;background-position:right center;
+                 animation:titre .45s linear 1.5s, sagaKir 1.2s cubic-bezier(.4,0,.6,1) 2s forwards}
+#son.beyin .yazi{bottom:calc(9vh + env(safe-area-inset-bottom));color:#facc15;
+                 text-shadow:0 0 20px rgba(250,204,21,.6);animation:belir .8s ease-out 3.9s forwards}
+#son.beyin .alt-yazi{color:#fef3c7}
+@keyframes kafesGel{to{transform:scale(1);opacity:1}}
+@keyframes titre{0%,100%{transform:translateX(0)}20%{transform:translateX(-4px)}40%{transform:translateX(4px)}
+                 60%{transform:translateX(-3px)}80%{transform:translateX(3px)}}
+@keyframes solaKir{to{transform:translateX(-85%) rotate(-14deg);opacity:0}}
+@keyframes sagaKir{to{transform:translateX(85%) rotate(14deg);opacity:0}}
+@keyframes ozgur{50%{transform:scale(1.1)}to{transform:scale(1.04);filter:drop-shadow(0 0 22px rgba(250,204,21,.75))}}
+@keyframes simsekCak{to{opacity:1;transform:scale(1)}}
+@keyframes nabiz{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+@keyframes belir{to{opacity:1}}
+#son.acik .ipucu{animation:belir .6s ease-out 4.6s forwards}
+
+/* Hareket azaltma açık olan cihazlarda sahne beklemeden son hâline gelir. */
+@media (prefers-reduced-motion:reduce){
+  #son *, #son{animation-duration:.01s !important;animation-delay:0s !important;animation-iteration-count:1 !important}
+}
 </style>
 </head>
 <body>
@@ -77,6 +146,8 @@ button:active{background:#4a3b2c}
   <p><b>Kritik Kural:</b> Düşünce Polisi sayacın <b>5'e ulaştığında</b> yakalanırsın ve oyun biter. Toplam <b>7 zıt çiftin tamamını</b> bulursan kazanırsın.</p>
   <button class="kapat" id="yardimKapat">ANLADIM</button>
 </div></div>
+
+<div id="son" aria-live="polite"></div>
 
 <script>
 const OYUN_ID="cift-dusun";
@@ -157,7 +228,8 @@ function karistir(arr) {
 
 function yeniOyun(){
   puan=0; polis=0; bitti=false; kilit=false; secilenler=[];
-  
+  sonKapat(); sirenSondur();
+
   // 7 Rastgele Zıt Çift + 3 Rastgele Eş Çift seç
   const zitSecilen = karistir([...ZIT_HAVUZ]).slice(0, 7);
   const esSecilen = karistir([...ES_HAVUZ]).slice(0, 3);
@@ -361,6 +433,7 @@ function kutuAc(index){
         polis++;
         sayaclar();
         mesaj("DİKKAT: Aynı anlama gelen kelimeleri açtın! İhbar edildin.");
+        siren(1200);
         setTimeout(() => {
           k1.acik = false;
           k2.acik = false;
@@ -392,7 +465,63 @@ function oyunBitti(neden){
   mesaj(neden + " Toplam Zıt Çift: " + puan);
   ciz();
   skoruBildir(puan);
+  sonSahne(puan >= 7);
 }
+
+/* ── B1: POLİS IŞIĞI ────────────────────────────────────────────────────
+   Kumda Ritim'deki çerçeve parlamasının (kumda-ritim.html ritimIsigi)
+   mavi-kırmızı çakar hâli. Her ihbarda yanar; yakalanınca da göz sahnesi
+   gelene kadar yanar (ihbar zaten son ihbar). */
+let sirenZaman = null;
+function siren(sure){
+  clearInterval(sirenZaman);
+  const renkler = ["#3b82f6", "#ef4444"];
+  let i = 0;
+  const yak = () => {
+    const r = renkler[i++ % 2];
+    tuval.style.boxShadow = `0 0 0 3px ${r}, 0 0 26px 7px ${r}88`;
+    tuval.style.borderColor = r;
+  };
+  yak();
+  sirenZaman = setInterval(yak, 170);
+  setTimeout(sirenSondur, sure);
+}
+function sirenSondur(){
+  clearInterval(sirenZaman); sirenZaman = null;
+  tuval.style.boxShadow = "none";
+  tuval.style.borderColor = "";
+}
+
+/* ── B2 / B3: OYUN SONU SAHNESİ ─────────────────────────────────────────
+   Görseller: oyunlar/gorseller/1984-*.png. Sahne tüm ekranı kaplar,
+   dokununca kapanır. Kaza ile hemen kapanmasın diye ilk 1.5 sn dokunuş
+   sayılmaz. Görsel yüklenemezse sahne yine açılır, yazı yine çıkar. */
+const son = document.getElementById("son");
+let sonAcildi = 0;
+function sonSahne(kazandi){
+  son.className = "";
+  void son.offsetWidth;               // animasyonlar her seferinde baştan başlasın
+  if (kazandi) {
+    son.innerHTML =
+      '<div class="kafes"><div class="isik"></div><div class="simsek"></div>' +
+      '<div class="beyin-img"></div><div class="parmak sol"></div><div class="parmak sag"></div></div>' +
+      '<div class="yazi">2 + 2 = 4<span class="alt-yazi">Zihnini korudun.</span></div>';
+  } else {
+    son.innerHTML =
+      '<div class="goz"></div>' +
+      '<div class="yazi">2 + 2 = 5<span class="alt-yazi">Düşünce Polisi seni yakaladı.</span></div>';
+  }
+  son.insertAdjacentHTML("beforeend", '<div class="ipucu">devam etmek için dokun</div>');
+  son.className = "acik " + (kazandi ? "beyin" : "goz");
+  sonAcildi = Date.now();
+}
+function sonKapat(){
+  son.className = ""; son.innerHTML = "";
+}
+son.addEventListener("click", () => { if (Date.now() - sonAcildi > 1500) sonKapat(); });
+
+// Göz ~550 KB; oyun sonunda takılmasın diye açılışta önden indiriliyor.
+["1984-goz","1984-beyin","1984-parmaklik","1984-simsek"].forEach(a => { new Image().src = "gorseller/" + a + ".png"; });
 
 /* ── SKORU BİLDİR — DEĞİŞTİRME ─────────────────────────────────────── */
 function skoruBildir(p){
