@@ -42,7 +42,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260924a';
+const OYUN_SURUM = '20260924b';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -449,6 +449,9 @@ function kesifAcilisGoster(oyun, id, o){
   kutu.className = 'kesif-acilis';
   kutu.innerHTML = `
     <div class="kesif-kart">
+      ${''/* Gökşin'in fikri (24 Eylül): kartın kenarına oturup kitap okuyan hayalet —
+            kendi tablosundan (tablo-hayalet-oturan.jpg). Görsel gelmezse gizlenir. */}
+      <img class="kesif-okuyan" src="oyunlar/gorseller/hayalet-okuyan.png" alt="" onerror="this.remove()">
       <div class="kesif-ust">📜 Buluntu metin</div>
       <div class="kesif-baslik">${escapeHtml(o.baslik)}</div>
       <div class="kesif-yazar">${escapeHtml(o.yazar)}</div>

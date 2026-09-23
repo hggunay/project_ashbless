@@ -51,6 +51,9 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
 .yk td{padding:4px 4px;border-top:1px solid #33271a;vertical-align:middle}
 .yk td:first-child{width:42px}
 .yk img{width:34px;height:34px;display:block}
+.yk details.ayrinti{margin:4px 0 6px;border-top:1px solid #33271a;padding-top:6px}
+.yk details.ayrinti summary{cursor:pointer;font-size:12px;color:#b8a27c;margin-bottom:6px}
+.yk details.ayrinti p{font-size:12px;color:#bfae8c}
 .yk .kapat{width:100%;margin-top:8px;height:40px;background:#4a3a24;color:#f3e8d3;border:none;border-radius:6px;
            font-size:14px;font-weight:700;cursor:pointer}
 </style>
@@ -82,40 +85,38 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
 
 <div id="yardimKat"><div class="yk">
   <h2>Buluntu Metinler</h2>
-  <p>Kitaplığın hayaleti fenerini sallayarak dolaşıyor ve kayıp bir öykünün parçalarını düşürüyor.
-  <b>Alttaki açık kitabı kaydır, düşenleri kitaba topla.</b> Yere düşen kaybolur.</p>
-  <p><b>Kitabı sürmek:</b> ekranın herhangi bir yerine dokunup parmağını sağa sola kaydır — kitap
-  parmağının <b>hizasına</b> gelir, altına değil; parmağın kitabı kapatmaz. Ya da alt köşelerdeki
-  <b>◀ ▶</b> düğmelerini basılı tut. Bilgisayarda fare ya da ← → tuşları.</p>
-  <p>Topladığın puanlar kendiliğinden <b>sayfaya</b> dönüşür: <b>20 puan = 1 sayfa</b>.
-  Öykünün bütün sayfalarını bulunca adı açılır; okuyabilir, indirebilir, Tsundoku'na ekleyebilirsin.</p>
+  <!-- Gökşin (24 Eylül): "çok fazla % anlatılmış, çok teknik... sade ve gizemli bir açıklama
+       yeter". YÜZDE YOK. OYUN-EKLEME kural 8'in özü korunuyor: oyuncuyu CEZALANDIRAN her şey
+       (−1, −4, −6, sayfa asla silinmez) yazılı; olasılıklar/süreler bilerek gizli.
+       Puan ya da ceza değişirse burayı da düzelt. -->
+  <p>Kitaplığın hayaleti fenerini sallayarak dolaşıyor ve kayıp bir öykünün sayfalarını düşürüyor.
+  <b>Alttaki kitabı kaydır, düşenleri kitaba topla.</b></p>
+  <p>Kitabı parmağınla ekranın herhangi bir yerinden sürükleyebilir ya da köşedeki <b>◀ ▶</b>
+  düğmelerini basılı tutabilirsin.</p>
   <table>
-    <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy kalem</b> — 1 puan · en sık düşen</td></tr>
+    <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy</b> — 1 puan</td></tr>
     <tr><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
     <tr><td><img src="gorseller/sayfa.png" alt=""></td><td><b>Sayfa</b> — 3 puan</td></tr>
-    <tr><td><img src="gorseller/daktilo.png" alt=""></td><td><b>Daktilo</b> — 5 puan · nadir, parlayarak düşer.
-        Yakalarsan <b>zili çalar ve zaman yavaşlar</b>: 4 saniye boyunca her şey üç kat yavaş düşer — kitabı gezdirip hepsini topla.</td></tr>
-    <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içi belli değil:
-        %40 ihtimalle 3 puan, %25 ihtimalle 6 puan, %15 ihtimalle <b>doğrudan 1 sayfa</b>, %20 ihtimalle boş</td></tr>
-    <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>SAKINCALI damgası</b> — <b>kitaba düşmesin!</b>
-        Kitaba düşerse 6 puan kaybedersin; yere düşerse bir şey olmaz.</td></tr>
-    <tr><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — <b>kitaba düşmesin!</b>
-        Sayfalara dökülürse 4 puan kaybedersin. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
+    <tr><td><img src="gorseller/daktilo.png" alt=""></td><td><b>Daktilo</b> — 5 puan, nadir. Yakalarsan zaman yavaşlar.</td></tr>
+    <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içinden ne çıkacağı belli olmaz.</td></tr>
+    <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>Sansür damgası</b> — kitaba düşmesin! (−6)</td></tr>
+    <tr><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — sayfalara dökülmesin! (−4)</td></tr>
   </table>
-  <p><b>Rüzgâr:</b> Arada bir pencereden rüzgâr girer (ilk kez yarım dakika kadar sonra, sonra
-  her 45-80 saniyede bir). 6 saniye boyunca nesneler yana savrulur ve daha hızlı düşer;
-  bazen (%35) rüzgâr <b>esmenin ortasında döner</b> ve öbür yana savurur;
-  <b>ekrandan savrulan kaybolur</b>. Fener titrer, ekranda rüzgâr çizgileri görünür.</p>
-  <p><b>Kaçırma cezası:</b> kitaba girmeden yere düşen ya da rüzgârla ekrandan savrulan her
-  iyi nesne <b>1 puan</b> siler. Kitabı bir yere koyup beklemek işe yaramaz — peşinden koş!
-  (Yasaklıların kaçması cezasız. Bulunan sayfalar yine asla silinmez.)</p>
-  <p><b>Kırmızı = dokunma.</b> Damga ve kahve bazen <b>iyi bir nesnenin hemen yanına</b> düşer
-  (%30 ihtimalle, oyun ilerledikçe %45'e kadar): yalnız iyisini almak için kitabı tam kenarından tutturmalısın.</p>
-  <p>Düşme oranları: tüy %38 · mürekkep %22 · sayfa %16 · damga %8 · kahve %6 · zarf %6 · daktilo %4
-  (yanına düşen yasaklılar bunlara ek).
-  Oyun ilerledikçe nesneler biraz daha sık ve hızlı düşer; <b>⟲</b> temposu başa alır.</p>
-  <p><b>Kaldığın yer kaydedilir.</b> Her yeni sayfa hesabına yazılır; pencereyi kapatıp
-  başka gün, başka cihazda devam edebilirsin. Bir oturumda bitirmek zorunda değilsin.</p>
+  <p>Kaçırdığın her nesne <b>1 puan</b> götürür. Puanlar birikince <b>sayfaya</b> dönüşür;
+  öykünün bütün sayfalarını bulunca adı açılır.</p>
+  <p>Kırmızılar bazen iyi bir nesnenin hemen yanına düşer. <b>Hangisini yakalayacaksın?</b></p>
+  <p>Arada bir <b>rüzgâr</b> çıkar ve düşenleri savurur.</p>
+  <p>Bulduğun sayfalar asla kaybolmaz ve kaldığın yer kaydedilir — istediğin zaman bırakıp devam edebilirsin.</p>
+  <details class="ayrinti">
+    <summary>Ayrıntılar</summary>
+    <!-- Gökşin (24 Eylül): yüzde yok, "sade ve gizemli". Burada yalnız oyuncuyu ETKİLEYEN
+         kurallar kalsın (puanlar, cezalar); olasılıklar ve süreler kodda. -->
+    <p><b>20 puan = 1 sayfa.</b> Kırmızılar yalnız biriken puanı azaltır, bulduğun sayfaları değil.
+    Kırmızıların yere düşmesi cezasızdır.</p>
+    <p>Ağır olanlar hızlı düşer, hafif olanlar süzülür. Oyun ilerledikçe her şey hızlanır; <b>⟲</b> temposu başa alır.</p>
+    <p>Zarftan puan da çıkabilir, bir sayfa da… ya da hiçbir şey.</p>
+    <p>Rüzgâr bazen esmenin ortasında yön değiştirir.</p>
+  </details>
   <button class="kapat" id="yardimKapat">ANLADIM</button>
 </div></div>
 
@@ -156,7 +157,8 @@ gorselYukle("hayalet",  "gorseller/hayalet.png");
 gorselYukle("kitap",    "gorseller/kitap.png");
 for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi", "kahve"]) gorselYukle(a, "gorseller/" + a + ".png");
 
-/* Nesne türleri. `agirlik` düşme oranı (toplam 100) — yardımdaki sayılarla AYNI tut. */
+/* Nesne türleri. `agirlik` düşme oranı (toplam 100). Oranlar yardımda YAZMIYOR (Gökşin: "sade ve
+   gizemli"); yalnız `puan` ve `ceza` yazıyor — onlar değişirse yardımı da düzelt. */
 /* YASAKLILAR (kırmızı = kitaba düşmesin): damga ve kahve (Gökşin, 2026-09-23:
    "sayfalara kahve döküldü"). Tek başlarına düşmekten başka, İYİ bir nesnenin
    HEMEN YANINA da düşerler (bkz. nesneBirak) — kaçmak kolay olmasın diye. */
@@ -314,7 +316,7 @@ function isikCiz(t){
                  Nesneler yana savrulur ve hızlanır; ekrandan çıkan KAYBOLUR.
                  %35 ihtimalle ORTASINDA döner (Gökşin: "ara sıra ters yönden esebilir").
    İkisi çakışırsa rüzgâr da ağır çekimde eser.
-   Sayılar yardım kutusunda da yazılı — değiştirirsen orayı da düzelt. */
+   Süreler/olasılıklar yardımda BİLEREK yazmıyor (Gökşin: "sade ve gizemli"). */
 const DONMA_SURE = 4, RUZGAR_SURE = 6;
 let donma = 0, ruzgar = 0, ruzgarYon = 1, ruzgarDonecek = false, sonrakiRuzgar = 30 + Math.random() * 20, ruzgarCizgileri = [];
 function olaylariSifirla(){ donma = 0; ruzgar = 0; sonrakiRuzgar = 30 + Math.random() * 20; ruzgarCizgileri = []; }
