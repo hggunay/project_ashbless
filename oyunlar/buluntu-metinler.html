@@ -182,6 +182,13 @@ function boyutlandir(){
 }
 window.addEventListener("resize", boyutlandir);
 if (window.visualViewport) window.visualViewport.addEventListener("resize", boyutlandir);
+/* Alanın boyu değişince (döndürme, adres çubuğu, sekmeye dönüş) kendiliğinden fark et. */
+if (window.ResizeObserver) new ResizeObserver(() => boyutlandir()).observe(document.querySelector(".tahta"));
+/* Tuval belleği boşaltılıp geri verilince ya da sekmeye dönülünce arka plan
+   katmanlarını YENİDEN hazırla: ekran dışı tuvallerin içi de silinmiş olabilir. */
+tuval.addEventListener("contextrestored", boyutlandir);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) boyutlandir(); });
+window.addEventListener("pageshow", boyutlandir);
 
 function yeniTuval(){ const c = document.createElement("canvas"); c.width = tuval.width; c.height = tuval.height; return c; }
 
@@ -608,7 +615,16 @@ function dongu(simdi){
     nesneGuncelle(dt);
     parlama = Math.max(0, parlama - dt * 2.5);
   }
-  ctx.clearRect(0, 0, W, H);
+  /* ⚠️ HER KAREDE ölçek baştan kurulur ve tuvalin TAMAMI silinir (2026-09-23,
+     Gökşin'in telefonunda bulundu). Android Chrome arka plandaki sekmenin tuval
+     belleğini boşaltabiliyor; dönünce bağlam sıfırlanıyor ve ölçek (DPR) kayboluyor.
+     O zaman her şey sol üstte küçük çiziliyordu ve clearRect(0,0,W,H) tuvalin yalnız
+     o köşesini siliyordu — silinmeyen sağ tarafta "lighter" fener ışığı her karede
+     üst üste binip BEMBEYAZ bir lekeye dönüşüyordu. */
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
+  ctx.clearRect(0, 0, tuval.width, tuval.height);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (zeminKaranlik) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(zeminKaranlik, 0, 0); ctx.restore(); }
   isikCiz(zaman);
   hayaletCiz();
