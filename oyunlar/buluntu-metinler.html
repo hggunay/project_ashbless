@@ -1,0 +1,590 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Buluntu Metinler</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#0b0704;color:#e6d6b8;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+     overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;
+     padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+.ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px;height:30px;flex:none}
+h1{margin:0;font-size:16px;flex:1;text-align:left;letter-spacing:.5px;color:#f1c96a;font-family:Georgia,serif;font-weight:700;
+   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kucuk{width:30px;height:30px;flex:none;border-radius:4px;font-size:15px;font-weight:700;
+       background:#221a10;color:#e6d6b8;border:1px solid #5a4630;cursor:pointer;padding:0}
+/* İlerleme: SABİT yükseklik (OYUN-EKLEME kural 4). */
+.ilerleme{width:100%;max-width:640px;height:40px;flex:none;display:flex;flex-direction:column;justify-content:center;gap:4px;
+          background:#17110a;border:1px solid #3e2f1d;border-radius:6px;padding:4px 10px;position:relative}
+.ilerleme-yazi{display:flex;justify-content:space-between;font-size:12px;height:15px;line-height:15px}
+.ilerleme-yazi b{color:#f1c96a;font-size:13px}
+.serit{height:7px;border-radius:4px;background:#2b2115;overflow:hidden;position:relative}
+.serit i{position:absolute;inset:0 auto 0 0;width:0;background:linear-gradient(90deg,#b8862f,#f1c96a);transition:width .35s ease-out}
+.puan-serit{position:absolute;left:10px;right:10px;bottom:2px;height:2px;background:transparent}
+.puan-serit i{display:block;height:100%;width:0;background:#e6d6b8;opacity:.55;transition:width .15s}
+.arti{position:absolute;right:10px;top:-2px;font-size:13px;font-weight:700;color:#ffe29a;opacity:0;pointer-events:none;
+      text-shadow:0 0 10px rgba(255,200,100,.9)}
+.arti.goster{animation:arti 1.3s ease-out}
+@keyframes arti{0%{opacity:0;transform:translateY(8px)}20%{opacity:1;transform:none}75%{opacity:1}100%{opacity:0;transform:translateY(-6px)}}
+.tahta{flex:1 1 auto;min-height:0;width:100%;max-width:640px;position:relative}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:6px;border:1px solid #3e2f1d;
+       touch-action:none;background:#0b0704}
+#msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;flex:none;overflow:hidden;color:#cbb994;
+     background:#140e08;padding:4px 8px;border-radius:4px;border-left:3px solid #c9a227}
+#yardimKat{position:fixed;inset:0;background:rgba(8,5,2,.94);display:none;overflow:auto;padding:18px;z-index:9}
+#yardimKat.acik{display:block}
+.yk{max-width:520px;margin:auto;background:#1b140c;border:1px solid #5a4630;border-radius:8px;padding:16px 18px}
+.yk h2{margin:0 0 10px;font-size:18px;color:#f1c96a;font-family:Georgia,serif}
+.yk p{margin:0 0 9px;font-size:13px;line-height:1.55;color:#d8c7a6}
+.yk b{color:#f1c96a}
+.yk table{width:100%;border-collapse:collapse;margin:4px 0 10px;font-size:13px;color:#d8c7a6}
+.yk td{padding:4px 4px;border-top:1px solid #33271a;vertical-align:middle}
+.yk td:first-child{width:42px}
+.yk img{width:34px;height:34px;display:block}
+.yk .kapat{width:100%;margin-top:8px;height:40px;background:#4a3a24;color:#f3e8d3;border:none;border-radius:6px;
+           font-size:14px;font-weight:700;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ust">
+    <h1>Buluntu Metinler</h1>
+    <button class="kucuk" id="durdur" aria-label="Duraklat" title="Duraklat">❚❚</button>
+    <button class="kucuk" id="yeni" aria-label="Yeni tur" title="Yeni tur (sayfaların kaybolmaz)">⟲</button>
+    <button class="kucuk" id="yardimAc" aria-label="Nasıl oynanır">?</button>
+  </div>
+
+  <div class="ilerleme">
+    <div class="ilerleme-yazi"><span id="oykuYazi">Öykü</span><span><b id="sayfaSayac">0 / 0</b> sayfa</span></div>
+    <div class="serit"><i id="seritDolu"></i></div>
+    <div class="puan-serit"><i id="puanDolu"></i></div>
+    <div class="arti" id="arti">+1 sayfa</div>
+  </div>
+
+  <div class="tahta"><canvas id="tuval"></canvas></div>
+
+  <div id="msg">Hayaletin düşürdüklerine dokun. Kırmızı SAKINCALI damgasına dokunma.</div>
+</div>
+
+<div id="yardimKat"><div class="yk">
+  <h2>Buluntu Metinler</h2>
+  <p>Kitaplığın hayaleti fenerini sallayarak dolaşıyor ve kayıp bir öykünün parçalarını düşürüyor.
+  <b>Düşenlere dokunarak yakala.</b> Yere düşen kaybolur.</p>
+  <p>Topladığın puanlar kendiliğinden <b>sayfaya</b> dönüşür: <b>25 puan = 1 sayfa</b>.
+  Öykünün bütün sayfalarını bulunca adı açılır; okuyabilir, indirebilir, Tsundoku'na ekleyebilirsin.</p>
+  <table>
+    <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy kalem</b> — 1 puan · en sık düşen</td></tr>
+    <tr><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
+    <tr><td><img src="gorseller/sayfa.png" alt=""></td><td><b>Sayfa</b> — 3 puan</td></tr>
+    <tr><td><img src="gorseller/daktilo.png" alt=""></td><td><b>Daktilo</b> — 5 puan · nadir, parlayarak düşer.
+        Yakalarsan <b>zili çalar ve zaman durur</b>: 4 saniye boyunca havadaki her şey donar, yeni bir şey düşmez — hepsini topla.</td></tr>
+    <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içi belli değil:
+        %40 ihtimalle 3 puan, %25 ihtimalle 6 puan, %15 ihtimalle <b>doğrudan 1 sayfa</b>, %20 ihtimalle boş</td></tr>
+    <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>SAKINCALI damgası</b> — <b>dokunma!</b>
+        Dokunursan 6 puan kaybedersin. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
+  </table>
+  <p><b>Rüzgâr:</b> Arada bir pencereden rüzgâr girer (ilk kez yarım dakika kadar sonra, sonra
+  her 45-80 saniyede bir). 6 saniye boyunca nesneler yana savrulur ve daha hızlı düşer;
+  <b>ekrandan savrulan kaybolur</b>. Fener titrer, ekranda rüzgâr çizgileri görünür.</p>
+  <p>Düşme oranları: tüy %38 · mürekkep %22 · sayfa %15 · damga %13 · zarf %7 · daktilo %5.
+  Oyun ilerledikçe nesneler biraz daha sık ve hızlı düşer; <b>⟲</b> temposu başa alır.</p>
+  <p><b>Kaldığın yer kaydedilir.</b> Her yeni sayfa hesabına yazılır; pencereyi kapatıp
+  başka gün, başka cihazda devam edebilirsin. Bir oturumda bitirmek zorunda değilsin.</p>
+  <button class="kapat" id="yardimKapat">ANLADIM</button>
+</div></div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   BULUNTU METİNLER — Ashbless keşif oyunu (2026-09-23)
+   ─────────────────────────────────────────────────────────────────────
+   Oyun hangi öykünün peşinde olduğunu BİLMEZ. Uygulama adrese iki sayı
+   yazar: ?bulunan=<şimdiye kadar>&toplam=<hedef>. Oyun sayfa buldukça
+   TOPLAMI geri bildirir (bulunan+yeni), her sayfada bir kez. Öykünün adı,
+   bağlantısı, kaydı — hepsi uygulamada (oyunlar.js → BULUNTU METİNLER).
+   toplam=0 → atanmış öykü yok (hepsi keşfedildi ya da tek başına açıldı):
+   oyun serbest oynanır, hiçbir şey bildirilmez.
+
+   Görseller gorseller/ klasöründe; biri gelmezse o parça kodla çizilir.
+   ═══════════════════════════════════════════════════════════════════════ */
+const OYUN_ID = "buluntu-metinler";
+const PUAN_SAYFA = 25;                 // ⚙ tek ayar: öyküler çabuk bitiyorsa büyüt
+const DAMGA_CEZA = 6;
+
+const q = new URLSearchParams(location.search);
+const TEK_BASINA = window.parent === window;
+let toplam  = Math.max(0, parseInt(q.get("toplam"), 10) || 0);
+let bulunan = Math.max(0, parseInt(q.get("bulunan"), 10) || 0);
+if (TEK_BASINA && !q.has("toplam")) { toplam = 20; }         // deneme için
+bulunan = toplam ? Math.min(bulunan, toplam) : bulunan;
+let puan = 0, tamamlandi = toplam > 0 && bulunan >= toplam, durdu = false;
+
+/* ── Görseller ───────────────────────────────────────────────────────── */
+const GORSEL = {};
+function gorselYukle(ad, yol){
+  const im = new Image();
+  im.onload = () => { GORSEL[ad] = im; if (ad === "kitaplik") zeminiHazirla(); };
+  im.onerror = () => { GORSEL[ad] = null; };
+  im.src = yol;
+}
+gorselYukle("kitaplik", "gorseller/kitaplik.jpg");
+gorselYukle("hayalet",  "gorseller/hayalet.png");
+for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi"]) gorselYukle(a, "gorseller/" + a + ".png");
+
+/* Nesne türleri. `agirlik` düşme oranı (toplam 100) — yardımdaki sayılarla AYNI tut. */
+const TURLER = [
+  { ad: "tuy",            agirlik: 38, puan: 1, renk: "#efe6d2", harf: "T" },
+  { ad: "murekkep",       agirlik: 22, puan: 2, renk: "#6b4a2a", harf: "M" },
+  { ad: "sayfa",          agirlik: 15, puan: 3, renk: "#e4d3a8", harf: "S" },
+  { ad: "sansur-damgasi", agirlik: 13, puan: 0, renk: "#c0282d", harf: "!", yasak: true },
+  { ad: "zarf",           agirlik:  7, puan: 0, renk: "#e8d9b5", harf: "Z", zarf: true },
+  { ad: "daktilo",        agirlik:  5, puan: 5, renk: "#d9b25a", harf: "D", parlak: true },
+];
+const AGIRLIK_TOPLAM = TURLER.reduce((s, t) => s + t.agirlik, 0);
+function turSec(){
+  let r = Math.random() * AGIRLIK_TOPLAM;
+  for (const t of TURLER) { r -= t.agirlik; if (r < 0) return t; }
+  return TURLER[0];
+}
+
+/* ── Tuval ve ölçüler ────────────────────────────────────────────────── */
+const tuval = document.getElementById("tuval"), ctx = tuval.getContext("2d");
+let W = 300, H = 400, DPR = 1, NESNE = 56;
+let zeminKaranlik = null, zeminAydinlik = null, isikKatmani = null;
+
+/* ⚠️ Esnek yerleşim: tuval .tahta'nın kalan alanını dolduruyor (OYUN-EKLEME kural 3). */
+function boyutlandir(){
+  const k = document.querySelector(".tahta").getBoundingClientRect();
+  DPR = Math.min(2, window.devicePixelRatio || 1);
+  W = Math.max(150, Math.floor(k.width)); H = Math.max(150, Math.floor(k.height));
+  tuval.width = Math.round(W * DPR); tuval.height = Math.round(H * DPR);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  NESNE = Math.max(44, Math.min(72, Math.round(Math.min(W, H) * 0.14)));
+  zeminiHazirla();
+}
+window.addEventListener("resize", boyutlandir);
+if (window.visualViewport) window.visualViewport.addEventListener("resize", boyutlandir);
+
+function yeniTuval(){ const c = document.createElement("canvas"); c.width = tuval.width; c.height = tuval.height; return c; }
+
+/* Zemin iki kez hazırlanır: KARANLIK (her zaman görünen) ve AYDINLIK (yalnız fenerin
+   ışığı düştüğü yerde görünen). Işık = aydınlık kopyanın fener çevresinden
+   görünmesi → kitaplar AYDINLANIR; üstüne gri sis serilmez (22 Eylül uyarısı). */
+function zeminiHazirla(){
+  const im = GORSEL.kitaplik;
+  zeminKaranlik = yeniTuval(); zeminAydinlik = yeniTuval(); isikKatmani = yeniTuval();
+  const cw = tuval.width, ch = tuval.height;
+  for (const [c, parlaklik] of [[zeminKaranlik, .42], [zeminAydinlik, 1]]) {
+    const x = c.getContext("2d");
+    x.fillStyle = "#120c06"; x.fillRect(0, 0, cw, ch);
+    if (im) {
+      // Genişliğe sığdır, üstten hizala (kitaplığın üstü hep görünsün)
+      const olcek = Math.max(cw / im.width, (ch * 0.75) / im.height);
+      const iw = im.width * olcek, ih = im.height * olcek;
+      x.drawImage(im, (cw - iw) / 2, 0, iw, ih);
+      /* Karartma düz bir katmanla — ctx.filter iPhone Safari'de YOK,
+         orada iki kopya aynı parlaklıkta kalır ve fener ışığı görünmezdi. */
+      if (parlaklik < 1) { x.fillStyle = `rgba(10,6,3,${1 - parlaklik})`; x.fillRect(0, 0, cw, ch); }
+    } else {
+      // Yedek çizim: raflar
+      x.fillStyle = parlaklik > 1 ? "#5a3d22" : "#2a1c10";
+      for (let y = ch * 0.08; y < ch; y += ch * 0.16) x.fillRect(0, y, cw, ch * 0.018);
+    }
+    // Aşağı doğru karanlığa gömülme (Gökşin'in sahne tasarımı: üst aydınlık, alt karanlık)
+    const g = x.createLinearGradient(0, 0, 0, ch);
+    g.addColorStop(0, "rgba(8,5,2,0)"); g.addColorStop(0.28, "rgba(8,5,2,0.05)");
+    g.addColorStop(0.62, "rgba(8,5,2,0.78)"); g.addColorStop(1, "rgba(8,5,2,0.97)");
+    x.fillStyle = g; x.fillRect(0, 0, cw, ch);
+  }
+}
+
+/* ── Hayalet ─────────────────────────────────────────────────────────── */
+/* Konum = FENERİN konumu. Görselde fener soldan %20, yukarıdan %51'de.
+   Dönerken görsel FENER merkez alınarak aynalanıyor (Gökşin'in fikri):
+   fener yerinde kalır, ışık zıplamaz; fener hep uçuş yönünün önünde. */
+const FENER_X = 0.20, FENER_Y = 0.51;
+const hayalet = { x: 0, y: 0, yon: -1, donus: -1, hiz: 0, sallanma: 0 };
+function hayaletBaslat(){
+  hayalet.x = W * 0.6; hayalet.y = H * 0.2; hayalet.yon = -1; hayalet.donus = -1;
+}
+function hayaletGuncelle(dt, t){
+  const sinirSol = W * 0.14, sinirSag = W * 0.86;
+  hayalet.hiz = W * 0.13;
+  hayalet.x += hayalet.yon * hayalet.hiz * dt;
+  if (hayalet.x < sinirSol) { hayalet.x = sinirSol; hayalet.yon = 1; }
+  if (hayalet.x > sinirSag) { hayalet.x = sinirSag; hayalet.yon = -1; }
+  if (Math.random() < dt * 0.12) hayalet.yon *= -1;                       // ara sıra kararsızlık
+  hayalet.y = H * 0.19 + Math.sin(t * 1.3) * H * 0.018;                   // süzülme
+  // Dönüş yumuşak: -1 ile +1 arasında kayar (0'dan geçerken ince görünür, "dönüyor" hissi)
+  const hedef = hayalet.yon === -1 ? -1 : 1;
+  hayalet.donus += Math.sign(hedef - hayalet.donus) * Math.min(Math.abs(hedef - hayalet.donus), dt * 5);
+}
+function hayaletCiz(){
+  const im = GORSEL.hayalet;
+  const gen = Math.min(W * 0.52, 300), yuk = im ? gen * im.height / im.width : gen * 0.68;
+  ctx.save();
+  ctx.translate(hayalet.x, hayalet.y);
+  ctx.scale(-hayalet.donus, 1);   // görsel sola uçuyor; donus=+1 (sağa) → aynala
+  if (im) ctx.drawImage(im, -gen * FENER_X, -yuk * FENER_Y, gen, yuk);
+  else {                          // yedek çizim
+    ctx.fillStyle = "rgba(240,230,210,.9)";
+    ctx.beginPath(); ctx.ellipse(gen * 0.35, -yuk * 0.1, gen * 0.25, yuk * 0.35, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#ffb347"; ctx.beginPath(); ctx.arc(0, 0, gen * 0.06, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ── Fener ışığı: ~3,4 sn'de bir yavaş nefes; nesne düşerken bir an parlar ── */
+let parlama = 0;
+function isikCiz(t){
+  if (!zeminKaranlik) return;
+  // Rüzgârda fener titrer (alevi rüzgâr yalıyor)
+  const titreme = ruzgar > 0 ? 1 + (Math.random() - 0.5) * 0.16 * ruzgarGucu() : 1;
+  const nefes = (1 + Math.sin(t * (Math.PI * 2 / 3.4)) * 0.1) * titreme;
+  const R = Math.max(W, H) * 0.34 * nefes * (1 + parlama * 0.25);
+  const fx = hayalet.x, fy = hayalet.y;
+  const x = isikKatmani.getContext("2d");
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  x.globalCompositeOperation = "source-over";
+  x.clearRect(0, 0, isikKatmani.width, isikKatmani.height);
+  x.drawImage(zeminAydinlik, 0, 0);
+  x.globalCompositeOperation = "destination-in";
+  const g = x.createRadialGradient(fx * DPR, fy * DPR, 0, fx * DPR, fy * DPR, R * DPR);
+  g.addColorStop(0, "rgba(0,0,0,1)"); g.addColorStop(0.45, "rgba(0,0,0,.75)"); g.addColorStop(1, "rgba(0,0,0,0)");
+  x.fillStyle = g; x.fillRect(0, 0, isikKatmani.width, isikKatmani.height);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.drawImage(isikKatmani, 0, 0);
+  // Sıcak katkı: TOPLAYARAK (lighter) — rengi ısıtır, grileştirmez
+  ctx.globalCompositeOperation = "lighter";
+  const s = ctx.createRadialGradient(fx * DPR, fy * DPR, 0, fx * DPR, fy * DPR, R * 0.7 * DPR);
+  s.addColorStop(0, `rgba(255,170,70,${0.22 + parlama * 0.25})`); s.addColorStop(1, "rgba(255,150,60,0)");
+  ctx.fillStyle = s; ctx.fillRect(0, 0, tuval.width, tuval.height);
+  ctx.restore();
+}
+
+/* ── Olaylar (Gökşin, 2026-09-23: "oyunu oyun yapan pek bir şey yok") ──
+   ZAMAN DURUR — daktilo yakalanınca 4 sn her nesne havada donar, düşen yok.
+                 Nadir nesneye ikinci bir ödül: donmuşken hepsi kolay toplanır.
+   RÜZGÂR      — ilk kez ~30-50 sn sonra, sonra 45-80 sn arayla, 6 sn sürer.
+                 Nesneler yana savrulur ve hızlanır; ekrandan çıkan KAYBOLUR.
+   İkisi çakışırsa donma kazanır (donmuş nesneyi rüzgâr taşımaz).
+   Sayılar yardım kutusunda da yazılı — değiştirirsen orayı da düzelt. */
+const DONMA_SURE = 4, RUZGAR_SURE = 6;
+let donma = 0, ruzgar = 0, ruzgarYon = 1, sonrakiRuzgar = 30 + Math.random() * 20, ruzgarCizgileri = [];
+function olaylariSifirla(){ donma = 0; ruzgar = 0; sonrakiRuzgar = 30 + Math.random() * 20; ruzgarCizgileri = []; }
+function ruzgarGucu(){
+  if (ruzgar <= 0) return 0;
+  const gecen = RUZGAR_SURE - ruzgar;                       // yavaş başlar, yavaş diner
+  return Math.min(1, gecen / 0.8, ruzgar / 0.8);
+}
+function olayGuncelle(dt){
+  if (donma > 0) donma = Math.max(0, donma - dt);
+  if (ruzgar > 0) {
+    ruzgar = Math.max(0, ruzgar - dt);
+    if (ruzgar === 0) mesaj("Rüzgâr dindi.");
+  } else if (!tamamlandi) {
+    sonrakiRuzgar -= dt;
+    if (sonrakiRuzgar <= 0) {
+      ruzgar = RUZGAR_SURE; ruzgarYon = Math.random() < 0.5 ? -1 : 1;
+      sonrakiRuzgar = 45 + Math.random() * 35;
+      mesaj("Pencereden rüzgâr girdi! Sayfalar savruluyor — ekrandan çıkan kaybolur.");
+    }
+  }
+  // Rüzgâr çizgileri (yalnız görüntü)
+  const g = ruzgarGucu();
+  if (g > 0 && Math.random() < dt * 40 * g)
+    ruzgarCizgileri.push({ x: ruzgarYon > 0 ? -60 : W + 60, y: Math.random() * H, boy: 40 + Math.random() * 90, omur: 1 });
+  for (const c of ruzgarCizgileri) { c.x += ruzgarYon * W * 1.6 * dt; c.omur -= dt * 0.9; }
+  ruzgarCizgileri = ruzgarCizgileri.filter(c => c.omur > 0 && c.x > -200 && c.x < W + 200);
+}
+function olayCiz(){
+  const g = ruzgarGucu();
+  if (ruzgarCizgileri.length) {
+    ctx.save(); ctx.strokeStyle = "rgba(230,220,200,1)"; ctx.lineWidth = 1.2; ctx.lineCap = "round";
+    for (const c of ruzgarCizgileri) {
+      ctx.globalAlpha = 0.28 * c.omur * Math.max(g, 0.2);
+      ctx.beginPath(); ctx.moveTo(c.x, c.y); ctx.lineTo(c.x - ruzgarYon * c.boy, c.y + 3); ctx.stroke();
+    }
+    ctx.restore();
+  }
+  if (donma > 0) {                                            // soğuk mavi örtü + geri sayım
+    const a = Math.min(1, donma / 0.4, (DONMA_SURE - donma) / 0.25);
+    ctx.save();
+    ctx.fillStyle = `rgba(120,160,230,${0.16 * a})`; ctx.fillRect(0, 0, W, H);
+    ctx.globalAlpha = a; ctx.fillStyle = "#dbe8ff"; ctx.textAlign = "center";
+    ctx.font = `700 ${Math.round(NESNE * 0.34)}px Georgia,serif`;
+    ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 6;
+    ctx.fillText("zaman durdu · " + Math.ceil(donma), W / 2, H * 0.36);
+    ctx.restore();
+  }
+}
+
+/* ── Nesneler ────────────────────────────────────────────────────────── */
+let nesneler = [], efektler = [], yazilar = [];
+let turSuresi = 0, sonrakiDusme = 1.2;
+function tempo(){ return Math.min(1, turSuresi / 150); }   // 2,5 dakikada en hızlı tempoya varır
+function nesneBirak(){
+  const t = turSec();
+  nesneler.push({
+    t, x: hayalet.x + (Math.random() - 0.5) * NESNE * 0.6, y: hayalet.y + NESNE * 0.35,
+    vy: H * (0.10 + 0.06 * tempo()) * (0.85 + Math.random() * 0.3),   // saniyede
+    salla: Math.random() * Math.PI * 2, don: (Math.random() - 0.5) * 0.6,
+    aci: (Math.random() - 0.5) * 0.4, yerde: 0, dogum: performance.now()
+  });
+  parlama = 1;
+}
+function nesneGuncelle(dt){
+  const zemin = H - NESNE * 0.55;
+  const g = ruzgarGucu();
+  for (const n of nesneler) {
+    if (n.yerde) { n.yerde += dt; continue; }
+    if (donma > 0) continue;                       // zaman durdu: havada asılı
+    n.vy += H * 0.05 * dt;                         // hafif ivme
+    n.y += n.vy * dt * (1 + 0.7 * g);              // rüzgârda daha hızlı düşer
+    n.salla += dt * 2.2;
+    n.x += Math.sin(n.salla) * NESNE * 0.35 * dt;  // yaprak gibi hafif salınım
+    if (g > 0) {
+      // her nesne biraz farklı savrulur. 0,55'te ekranı 1,5 sn'de geçiyordu → yakalanamıyordu;
+      // 0,36'da ~2,5 sn: zor ama mümkün (Gökşin: "toplamak zorlanır" — imkânsızlaşmaz)
+      n.x += ruzgarYon * W * 0.36 * g * (0.7 + (n.dogum % 7) / 10) * dt;
+      n.aci += ruzgarYon * 3 * g * dt;
+    } else {
+      n.x = Math.max(NESNE / 2, Math.min(W - NESNE / 2, n.x));   // sakinken kenardan taşmasın
+    }
+    n.aci += n.don * dt;
+    if (n.y >= zemin) { n.y = zemin; n.yerde = 0.0001; }
+  }
+  // yere düşen 0,45 sn'de söner; rüzgârın ekrandan savurduğu kaybolur
+  nesneler = nesneler.filter(n => n.yerde < 0.45 && n.x > -NESNE && n.x < W + NESNE);
+}
+function nesneCiz(n){
+  const im = GORSEL[n.t.ad], b = NESNE;
+  const saydam = n.yerde ? Math.max(0, 1 - n.yerde / 0.45) : 1;
+  ctx.save();
+  ctx.globalAlpha = saydam;
+  ctx.translate(n.x, n.y); ctx.rotate(n.aci);
+  if (n.t.parlak) {                                // daktilo: altın hale
+    const g = ctx.createRadialGradient(0, 0, b * 0.1, 0, 0, b * 0.8);
+    g.addColorStop(0, "rgba(255,215,120,.55)"); g.addColorStop(1, "rgba(255,215,120,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, b * 0.8, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.shadowColor = "rgba(0,0,0,.6)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+  if (im) ctx.drawImage(im, -b / 2, -b / 2, b, b);
+  else {
+    ctx.fillStyle = n.t.renk; ctx.beginPath(); ctx.arc(0, 0, b * 0.42, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowColor = "transparent"; ctx.fillStyle = n.t.yasak ? "#fff" : "#2a1c10";
+    ctx.font = `700 ${Math.round(b * 0.4)}px system-ui`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(n.t.harf, 0, 2);
+  }
+  ctx.restore();
+}
+
+/* ── Yakalama ────────────────────────────────────────────────────────── */
+function dokun(e){
+  e.preventDefault();
+  if (durdu || document.getElementById("yardimKat").classList.contains("acik")) return;
+  const r = tuval.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  // Dokunma alanı görselden GENİŞ (telefon) — en yakın ve en üstteki
+  let sec = null, enYakin = Infinity;
+  for (let i = nesneler.length - 1; i >= 0; i--) {
+    const n = nesneler[i]; if (n.yerde) continue;
+    const d = Math.hypot(n.x - x, n.y - y);
+    if (d < NESNE * 0.85 && d < enYakin) { enYakin = d; sec = i; }
+  }
+  if (sec === null) return;
+  const n = nesneler.splice(sec, 1)[0];
+  yakala(n);
+}
+tuval.addEventListener("pointerdown", dokun);
+
+function yakala(n){
+  let kazanc = n.t.puan, yazi = "", renk = "#ffe29a";
+  if (n.t.yasak) {
+    kazanc = -DAMGA_CEZA; yazi = "SAKINCALI! −" + DAMGA_CEZA; renk = "#ff6b6b";
+    kirmizi = 1;
+    mesaj("Sansür damgasına dokundun: " + DAMGA_CEZA + " puan gitti. Sayfaların yerinde.");
+  } else if (n.t.zarf) {
+    const r = Math.random();
+    if (r < 0.40)      { kazanc = 3; yazi = "Zarf: +3"; }
+    else if (r < 0.65) { kazanc = 6; yazi = "Zarf: +6"; }
+    else if (r < 0.80) { kazanc = PUAN_SAYFA; yazi = "Zarftan bir sayfa!"; mesaj("Mühürlü zarfın içinden kayıp bir sayfa çıktı."); }
+    else               { kazanc = 0; yazi = "Zarf boş…"; renk = "#bfae8c"; }
+  } else {
+    yazi = "+" + kazanc;
+    if (n.t.parlak) {                               // daktilo → zaman durur
+      donma = DONMA_SURE;
+      yazi = "+" + kazanc + " · zaman durdu!";
+      mesaj("Daktilonun zili çaldı — zaman durdu! " + DONMA_SURE + " saniye boyunca hiçbir şey düşmüyor, topla.");
+    }
+  }
+  efektEkle(n.x, n.y, n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4"));
+  yazilar.push({ x: n.x, y: n.y - NESNE * 0.5, yazi, renk, omur: 1 });
+  puanEkle(kazanc);
+}
+
+function puanEkle(k){
+  if (tamamlandi) return;
+  puan = Math.max(0, puan + k);                   // bulunan sayfalar ASLA azalmaz
+  while (puan >= PUAN_SAYFA) {
+    puan -= PUAN_SAYFA;
+    bulunan++;
+    artiGoster();
+    if (toplam && bulunan >= toplam) { bulunan = toplam; puan = 0; oykuTamam(); break; }
+    if (toplam) skoruBildir(bulunan);             // HER SAYFADA (pencere kapanınca son mesaj gidemiyor)
+  }
+  gostergeGuncelle();
+}
+
+function oykuTamam(){
+  tamamlandi = true;
+  gostergeGuncelle();
+  mesaj("Öykünün bütün sayfaları bulundu! Adı açılıyor…");
+  for (let i = 0; i < 26; i++) efektEkle(hayalet.x, hayalet.y, i % 2 ? "#ffd56a" : "#fff3d0", 2.2);
+  skoruBildir(bulunan);                           // hedef sayı → uygulama öyküyü açıklar
+}
+
+/* ── Efektler ────────────────────────────────────────────────────────── */
+let kirmizi = 0;
+function efektEkle(x, y, renk, guc){
+  const k = guc || 1;
+  for (let i = 0; i < 9 * k; i++) {
+    const a = Math.random() * Math.PI * 2, v = NESNE * (1 + Math.random() * 2) * k;
+    efektler.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, omur: 0.6 + Math.random() * 0.3, renk });
+  }
+}
+function efektGuncelleCiz(dt){
+  ctx.save(); ctx.globalCompositeOperation = "lighter";
+  for (const p of efektler) {
+    p.omur -= dt; p.x += p.vx * dt; p.y += p.vy * dt; p.vx *= 0.92; p.vy *= 0.92;
+    ctx.globalAlpha = Math.max(0, p.omur); ctx.fillStyle = p.renk;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+  efektler = efektler.filter(p => p.omur > 0);
+  ctx.save(); ctx.textAlign = "center"; ctx.font = `700 ${Math.round(NESNE * 0.3)}px Georgia,serif`;
+  for (const y of yazilar) {
+    y.omur -= dt * 0.9; y.y -= NESNE * 0.7 * dt;
+    ctx.globalAlpha = Math.max(0, y.omur); ctx.fillStyle = y.renk;
+    ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 6;
+    ctx.fillText(y.yazi, y.x, y.y);
+  }
+  ctx.restore();
+  yazilar = yazilar.filter(y => y.omur > 0);
+  if (kirmizi > 0) {                              // damga: kenarlarda kısa kırmızı parıltı
+    ctx.save();
+    const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.75);
+    g.addColorStop(0, "rgba(200,30,30,0)"); g.addColorStop(1, `rgba(200,30,30,${0.45 * kirmizi})`);
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H); ctx.restore();
+    kirmizi = Math.max(0, kirmizi - dt * 2);
+  }
+}
+
+/* ── Göstergeler ─────────────────────────────────────────────────────── */
+function gostergeGuncelle(){
+  document.getElementById("sayfaSayac").textContent = toplam ? `${bulunan} / ${toplam}` : String(bulunan);
+  document.getElementById("oykuYazi").textContent =
+    tamamlandi ? "Öykü tamamlandı" : (toplam ? "Kayıp öykü" : "Serbest oyun");
+  document.getElementById("seritDolu").style.width = (toplam ? Math.min(100, bulunan / toplam * 100) : 0) + "%";
+  document.getElementById("puanDolu").style.width = (tamamlandi ? 0 : puan / PUAN_SAYFA * 100) + "%";
+}
+function artiGoster(){
+  const a = document.getElementById("arti");
+  a.classList.remove("goster"); void a.offsetWidth; a.classList.add("goster");
+}
+function mesaj(t){ document.getElementById("msg").textContent = t; }
+
+/* ── SKORU BİLDİR — DEĞİŞTİRME (OYUN-EKLEME.md sözleşmesi) ──────────────
+   Bu oyunda skor = BU ÖYKÜDE ŞİMDİYE KADAR bulunan sayfa (toplam, oturum değil). */
+function skoruBildir(p){
+  if (window.parent === window) return;
+  try{
+    window.parent.postMessage({ ashbless:'oyun-skor', oyun:OYUN_ID,
+                                skor:Math.max(0,Math.round(p)) }, '*');
+  }catch(e){}
+}
+
+/* ── Döngü ───────────────────────────────────────────────────────────── */
+let onceki = performance.now(), zaman = 0;
+function dongu(simdi){
+  const dt = Math.min(0.05, (simdi - onceki) / 1000);   // arka planda duran sekme sıçramasın
+  onceki = simdi;
+  if (!durdu && !document.getElementById("yardimKat").classList.contains("acik")) {
+    zaman += dt; turSuresi += dt;
+    hayaletGuncelle(dt, zaman);
+    olayGuncelle(dt);
+    if (!tamamlandi && donma <= 0) {               // zaman dururken hayalet bir şey düşürmez
+      sonrakiDusme -= dt;
+      if (sonrakiDusme <= 0) {
+        nesneBirak();
+        const ara = 1.05 - 0.45 * tempo();                // 1,05 sn → 0,6 sn
+        sonrakiDusme = ara * (0.7 + Math.random() * 0.6);
+      }
+    }
+    nesneGuncelle(dt);
+    parlama = Math.max(0, parlama - dt * 2.5);
+  }
+  ctx.clearRect(0, 0, W, H);
+  if (zeminKaranlik) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(zeminKaranlik, 0, 0); ctx.restore(); }
+  isikCiz(zaman);
+  hayaletCiz();
+  for (const n of nesneler) nesneCiz(n);
+  olayCiz();
+  efektGuncelleCiz(durdu ? 0 : dt);
+  if (durdu) {
+    ctx.fillStyle = "rgba(8,5,2,.55)"; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = "#f1c96a"; ctx.textAlign = "center"; ctx.font = "700 20px Georgia,serif";
+    ctx.fillText("Duraklatıldı", W / 2, H / 2);
+  }
+  requestAnimationFrame(dongu);
+}
+
+/* ── Düğmeler ────────────────────────────────────────────────────────── */
+const durdurDugme = document.getElementById("durdur");
+durdurDugme.onclick = () => {
+  durdu = !durdu;
+  durdurDugme.textContent = durdu ? "▶" : "❚❚";
+  durdurDugme.title = durdu ? "Devam" : "Duraklat";
+};
+/* Yeni tur: tempoyu başa alır. Bulunan sayfalar ve biriken puan KALIR —
+   ilerleme hesapta; bu düğme yalnız zorluğu sıfırlar (OYUN-EKLEME kural 10). */
+document.getElementById("yeni").onclick = () => {
+  nesneler = []; turSuresi = 0; sonrakiDusme = 1.0; durdu = false; durdurDugme.textContent = "❚❚";
+  hayaletBaslat(); olaylariSifirla();
+  mesaj(tamamlandi ? "Bu öykü tamamlandı. Yeni öykü için uygulamadaki düğmeyi kullan."
+                   : "Yeni tur: tempo başa alındı. Bulduğun sayfalar yerinde.");
+};
+/* Sekme arka plana geçince kendiliğinden duraklat — dönünce oyuncu karar versin. */
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden && !durdu) durdurDugme.click();
+});
+
+const kat = document.getElementById("yardimKat");
+const yardimKapat = () => kat.classList.remove("acik");
+document.getElementById("yardimAc").onclick = () => kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick = yardimKapat;
+kat.addEventListener("click", e => { if (e.target === kat) yardimKapat(); });
+window.addEventListener("keydown", e => { if (e.key === "Escape") yardimKapat(); });
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+/* İlk açılışta yardım kendiliğinden açılır (cift-dusun'daki kalıp).
+   ⚠️ localStorage gizli sekmede hata atabilir → try/catch; okunamazsa açılır. */
+(function ilkAcilis(){
+  let gorulmus = false;
+  try { gorulmus = localStorage.getItem("buluntu-metinler-yardim") === "1"; } catch(e){}
+  if (!gorulmus) {
+    kat.classList.add("acik");
+    try { localStorage.setItem("buluntu-metinler-yardim", "1"); } catch(e){}
+  }
+})();
+
+boyutlandir(); hayaletBaslat(); gostergeGuncelle();
+if (tamamlandi) mesaj("Bu öykü tamamlandı. Yeni öykü için uygulamadaki düğmeyi kullan.");
+else if (toplam && bulunan) mesaj(`Kaldığın yerden devam: ${bulunan} / ${toplam} sayfa. Hayaletin düşürdüklerine dokun.`);
+else if (!toplam && !TEK_BASINA) mesaj("Havuzdaki bütün öyküleri keşfettin! Serbest oynayabilirsin; yeni öyküler eklenince burada belirecek.");
+requestAnimationFrame(t => { onceki = t; requestAnimationFrame(dongu); });
+</script>
+</body>
+</html>

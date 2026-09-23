@@ -118,23 +118,40 @@ function getFeedCards(){
        akışı doldurmuyor; kart kimliğine rekorTs girdiği için de yeni rekor
        yeni bir duyuru sayılıyor (rozet kartıyla aynı yaklaşım).
        İlk skor kart üretmez: o bir rekor değil, ölçünün kendisi.
-       oyunModu() kapısı duruyor — özellik hâlâ test hesaplarında. */
-    if(typeof oyunModu!=='function'||oyunModu()){
-      const oyunSkorlari=(user.oyunlar&&user.oyunlar.skor)||{};
-      Object.keys(oyunSkorlari).forEach(oyunId=>{
-        const s=oyunSkorlari[oyunId];
-        if(!s||typeof s.enIyi!=='number'||typeof s.onceki!=='number'||!s.rekorTs) return;
-        const oyun=(typeof OYUN_LISTESI!=='undefined'?OYUN_LISTESI:[]).find(o=>o.id===oyunId);
-        if(!oyun) return;                          // listeden kalkmış oyun: kart üretme
-        cards.push({
-          type:'oyun_rekor', u, userName:user.displayName, userAvatar:user.avatar||'📚',
-          oyunId, oyunAd:oyun.ad, oyunIkon:oyun.ikon||'🎮',
-          bookTitle:oyun.kitap||'', skor:s.enIyi, onceki:s.onceki,
-          skorAdi:(typeof oyunSkorAdi==='function'?oyunSkorAdi(oyun):(oyun.skorAdi||'puan')),
-          ts:s.rekorTs, reactions:{},
-        });
+
+       ⚠️ KART HERKESE AÇIK, SEKME DEĞİL (2026-09-20, Gökşin'in kararı:
+       "önden spoiler gösterimi yapalım"). Yani oyunlar sekmesi hâlâ test
+       hesaplarında ama rekor kartını bütün üyeler görüyor — özellik
+       geldiğinde merak uyansın diye. Kartın "oyna" bağlantısı ise
+       oyunModu()'na bağlı (aşağıda), yoksa kapıyı kartın üstünden
+       dolaşmak mümkün olurdu. */
+    const oyunSkorlari=(user.oyunlar&&user.oyunlar.skor)||{};
+    Object.keys(oyunSkorlari).forEach(oyunId=>{
+      const s=oyunSkorlari[oyunId];
+      if(!s||typeof s.enIyi!=='number'||typeof s.onceki!=='number'||!s.rekorTs) return;
+      const oyun=(typeof OYUN_LISTESI!=='undefined'?OYUN_LISTESI:[]).find(o=>o.id===oyunId);
+      if(!oyun) return;                          // listeden kalkmış oyun: kart üretme
+      cards.push({
+        type:'oyun_rekor', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        oyunId, oyunAd:oyun.ad, oyunIkon:oyun.ikon||'🎮',
+        bookTitle:oyun.kitap||'', skor:s.enIyi, onceki:s.onceki,
+        skorAdi:(typeof oyunSkorAdi==='function'?oyunSkorAdi(oyun):(oyun.skorAdi||'puan')),
+        ts:s.rekorTs, reactions:{},
       });
-    }
+    });
+    /* Buluntu Metinler keşifleri (2026-09-23). Rekor kartı gibi AYRI olay
+       listesi yok — kart keşif kaydından üretiliyor (users/<kişi>/oyunlar/kesif).
+       Gökşin: "başlıkları saklamayalım ama linkler mutlaka gizli olsun" →
+       kartta başlık + yazar var, BAĞLANTI YOK. */
+    const kesifler=(user.oyunlar&&user.oyunlar.kesif)||{};
+    Object.keys(kesifler).forEach(oykuId=>{
+      const k=kesifler[oykuId];
+      if(!k||!k.baslik||!k.ts) return;
+      cards.push({
+        type:'oyku_kesif', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        oykuId, bookTitle:k.baslik, author:k.yazar||'', ts:k.ts, reactions:{},
+      });
+    });
     const streakEvs=(db.streakEvents&&db.streakEvents[u])||[];
     streakEvs.forEach(ev=>{
       cards.push({
@@ -383,6 +400,17 @@ function renderFeed(append=false){
           ${r}${cnt>0?` · ${cnt}${names}`:''}
         </button>`;
       }
+      /* Oyun kartları kitap kaydına bağlı değil → kimliğe göre tepki.
+         ⚠️ 2026-09-23'e kadar oyun_rekor aşağıdaki kitap dalına düşüyordu;
+         toggleCardReaction kitap bulamayıp sessizce çıkıyordu — tepki çalışmıyordu. */
+      if(card.type==='oyun_rekor'||card.type==='oyku_kesif'){
+        const etiket=card.type==='oyku_kesif'?(card.bookTitle||'buluntu metin'):(card.oyunAd||'oyun');
+        const etEsc=String(etiket).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+        const ctx=thumbCtx?thumbCtx('toggleKimlikReaction',`'${cardKey}','${card.u}','${etEsc}'`):'';
+        return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleKimlikReaction('${cardKey}','${card.u}','${etEsc}','${rEsc}',this)">
+          ${r}${cnt>0?` · ${cnt}${names}`:''}
+        </button>`;
+      }
       if(card.type==='reading_event'){
         const ctx=thumbCtx?thumbCtx('toggleReadingEventReaction',`'${card.u}','${card.readingEventId}'`):'';
         return`<button class="journal-reaction-btn ${active}" data-cardkey="${cardKey}" data-r="${rEsc}"${ctx} onclick="toggleReadingEventReaction('${card.u}','${card.readingEventId}','${rEsc}',this)">
@@ -529,6 +557,8 @@ ${(()=>{
         ?`realmev_${card.u}_${card.realmEventId}`
         :card.type==='oyun_rekor'
         ?`oyunrekor_${card.u}_${card.oyunId}_${card.ts}`
+        :card.type==='oyku_kesif'
+        ?`oykukesif_${card.u}_${card.oykuId}`
         :card.type==='streak_milestone'
           ?`streakm_${card.u}_${card.months}_${card.ts}`
           :card.type==='quote'
@@ -536,14 +566,16 @@ ${(()=>{
             :card.type==='reading_event'
               ?`readingev_${card.u}_${card.readingEventId}`
               :`review_${card.u}_${card.bookId}`;
-    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='oyun_rekor'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='oyun_rekor'?'🎮 oyun rekoru':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
+    const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='oyun_rekor'||card.type==='oyku_kesif'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='oyun_rekor'?'🎮 oyun rekoru':card.type==='oyku_kesif'?'📜 buluntu metin':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='realm_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.diyarAd)||'—'}</span>`
       :card.type==='oyun_rekor'
       ?`<span class="journal-entry-book">${escapeHtml(card.oyunAd)||'—'}</span>`
+      :card.type==='oyku_kesif'
+      ?`<span class="journal-entry-book">Buluntu Metinler</span>`
       :card.type==='badge'
       ?`<span class="journal-entry-book">—</span>`
       :`<span class="journal-entry-book" onclick="${card.type==='story'?`openStoryDetail('${card.u}',${card.storyId})`:`openBookFromFeed('${card.u}',${card.bookId})`}">${escapeHtml(card.bookTitle)||'—'}</span>`;
@@ -568,7 +600,7 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
         ${card.sourceBook?`<div style="font-size:.82rem;color:var(--moss);font-style:italic;margin-top:.15rem">📚 ${escapeHtml(card.sourceBook)}</div>`:''}
         <div class="book-tags-row" style="margin-top:.3rem">
           <span class="tag format-tag">${{kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'}[card.source]||card.source}</span>
-          ${card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
+          ${(typeof oykuLinkHtml==='function')?oykuLinkHtml(card.link,card.u===me,"font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace"):(card.link?`<a href="${card.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:'')}
         </div>
       `:card.type==='series_event'?`
         ${card.u===me?`<div class="feed-del-wrap"><button class="feed-del-x" onclick="startFeedEventDelete(this,'series_event','${card.seriesEventId}')" title="Sil">✕</button></div>`:''}
@@ -612,8 +644,25 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
             <strong>${card.skor} ${escapeHtml(card.skorAdi)}</strong>
             <span style="opacity:.65">(önceki ${card.onceki})</span>
             ${card.bookTitle?`<div style="font-size:.85rem;margin-top:.35rem;color:var(--rust);opacity:.9">📖 <em>${escapeHtml(card.bookTitle)}</em></div>`:''}
-            ${(typeof acikOyunlar==='function'&&acikOyunlar(me).has(card.oyunId))
+            ${(typeof oyunModu!=='function'||!oyunModu())
+              /* Sekmesi olmayan üye: kart bir duyuru, bağlantı yok. Oyna
+                 bağlantısı konsaydı kapı kartın üstünden delinirdi. */
+              ?`<div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem;opacity:.8">🎮 Oyunlar yakında</div>`
+              :(typeof acikOyunlar==='function'&&acikOyunlar(me).has(card.oyunId))
               ?`<div onclick="oyunAc('${card.oyunId}')" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem;cursor:pointer">🎮 sen de dene →</div>`
+              :''}
+          </div>
+        </div>
+      `:card.type==='oyku_kesif'?`
+        ${''/* Silme (✕) YOK: kart keşif kaydının kendisinden üretiliyor (rekor kartıyla aynı).
+              BAĞLANTI YOK: başlık görünür, öykünün kendisi oyunla kazanılır. */}
+        <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
+          <span style="font-size:2rem">📜</span>
+          <div>
+            ${oykuKesifCumlesi(card)}
+            <div style="margin-top:.25rem"><strong><em>${escapeHtml(card.bookTitle)}</em></strong>${card.author?' — '+escapeHtml(card.author):''}</div>
+            ${(typeof oyunModu==='function'&&oyunModu())
+              ?`<div onclick="oyunAc('buluntu-metinler')" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem;cursor:pointer">📜 sen de ara →</div>`
               :''}
           </div>
         </div>
@@ -848,6 +897,7 @@ function feedCardKey(card){
     // Rozet kartıyla aynı kalıp: her yeni rekor yeni bir kimlik, yani yeni bir
     // duyuru. Eski rekorun reaksiyonları yeni rekora taşınmıyor.
     case 'oyun_rekor':       return `oyunrekor_${card.u}_${card.oyunId}_${card.ts}`;
+    case 'oyku_kesif':       return `oykukesif_${card.u}_${card.oykuId}`;
     case 'badge':            return `badge_${card.u}_${card.badgeId}_${card.ts}`;
     // Yığın kartları eskiden bu listede hiç yoktu ve sondaki review dalına düşüyordu —
     // yani bir üyenin TÜM yığın kartları `review_<üye>_undefined` kimliğini paylaşıyordu.
@@ -936,6 +986,36 @@ function toggleRealmEventReaction(owner,eventId,reaction,btnEl){
   const diyar=(typeof DIYAR_KATALOG!=='undefined'?DIYAR_KATALOG:[]).find(d=>d.id===ev.diyarId);
   const added=applyReactionToggle(`realmev_${owner}_${eventId}`,ev.reactions,reaction);
   if(added&&owner!==me) pushReactionNotif(owner,me,reaction,(diyar&&diyar.ad)||'yeni diyar');
+  renderFeed();flashReactionPop(btnEl);
+}
+
+/* Buluntu metin kartının cümlesi — Gökşin: "bir kaç farklı şekilde ifade
+   edilse". Seçim KART KİMLİĞİNDEN hesaplanıyor (rastgele değil): sayfa
+   yenilenince aynı kartın cümlesi değişmez, farklı kartlar farklı cümle alır.
+   ⚠️ İsme ek getiren cümle YOK ("Gökşin'in", "Nimet'in"): Türkçe ek her isme
+   kuralla doğru getirilemiyor. {ad} yalnız yalın hâlde kullanılır.
+   Yeni cümle eklemek/çıkarmak serbest; eskiler başka cümleye kayabilir, o kadar. */
+const OYKU_KESIF_CUMLELERI = [
+  '{ad} kayıp bir öykünün bütün sayfalarını buldu:',
+  '{ad} yeni bir buluntu metni gün ışığına çıkardı:',
+  'Hayaletin feneri bir buluntu metni aydınlattı. Bulan: {ad}',
+  '{ad} dağılmış sayfaları bir araya getirdi. Ortaya çıkan buluntu metin:',
+  'Tozlu rafların arasından bir buluntu metin çıktı. Bulan: {ad}',
+  '{ad} bir buluntu metnin izini sürdü ve sonunda buldu:',
+  'Bir öykü daha kayıp olmaktan kurtuldu. {ad} buldu:',
+];
+function oykuKesifCumlesi(card){
+  const anahtar = `${card.u}_${card.oykuId}`;
+  let h = 0; for (const ch of anahtar) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+  const kalip = OYKU_KESIF_CUMLELERI[h % OYKU_KESIF_CUMLELERI.length];
+  return escapeHtml(kalip).replace('{ad}', `<strong>${escapeHtml(card.userName || '')}</strong>`);
+}
+
+/* Kayda gömülü tepkisi olmayan kartlar (oyun rekoru, buluntu metin):
+   tepki yalnız aa-v4/reactions/<kart kimliği> altında tutuluyor. */
+function toggleKimlikReaction(cardKey,owner,etiket,reaction,btnEl){
+  const added=applyReactionToggle(cardKey,undefined,reaction);
+  if(added&&owner!==me) pushReactionNotif(owner,me,reaction,etiket||'oyun');
   renderFeed();flashReactionPop(btnEl);
 }
 

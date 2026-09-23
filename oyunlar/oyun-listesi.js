@@ -19,6 +19,10 @@
      aciklama    ⚠️ SPOILER YOK — kitabı okumamış biri de görecek
      ikon        tek emoji
      tur         'oyun' (skor tutulur) | 'simulasyon' (izlenir, skor yok)
+                 | 'kesif' (Buluntu Metinler: sayfa toplanır, öykü açılır —
+                 oyunlar.js'teki BULUNTU METİNLER bölümüne bak)
+     kilitsiz    true ise hiçbir kitaba bağlı değil, herkese baştan açık
+                 (tetikleyiciler gerekmez)
      skorAdi     'oyun' türünde puanın birimi ("23 baharat"). Yoksa "puan".
      dosya       oyunlar/ altındaki dosya adı
      tetikleyiciler  kilidi açan kitaplar — Hayali Diyarlar kataloğuyla
@@ -136,6 +140,21 @@ const OYUN_LISTESI = [
       kitaplar: [{ baslik: "Algernon'a Çiçekler", yazar: 'Daniel Keyes',
                    takmaAdlar: ['Flowers for Algernon', 'Algernona Çiçekler'] }]
     }
+  },
+  {
+    /* Bir kitaba bağlı DEĞİL: kitapları açan oyun bu. Hikâyeyi uygulama atar,
+       oyun yalnızca sayfa sayısını bilir (oyunlar.js → BULUNTU METİNLER).
+       Ad kaynağı: Ashbless özel rozetindeki "William Ashbless (buluntu metin)". */
+    id: 'buluntu-metinler',
+    ad: 'Buluntu Metinler',
+    kitap: 'Kayıp öyküler',
+    aciklama: 'Fenerli hayaletin düşürdüklerini yakala, sayfaları topla. ' +
+              'Öykü tamamlanınca adı açılır — okuman için.',
+    ikon: '📜',
+    tur: 'kesif',
+    kilitsiz: true,
+    skorAdi: 'sayfa',
+    dosya: 'oyunlar/buluntu-metinler.html'
   }
 ];
 

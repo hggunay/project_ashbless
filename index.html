@@ -660,6 +660,51 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 #oyunPencere .oyun-yukleniyor{ position:absolute; inset:0; display:grid; place-items:center; padding:1rem;
   text-align:center; color:var(--parchment); font-family:'Crimson Pro',serif; opacity:.8; }
 
+/* ── BULUNTU METİNLER (2026-09-23) ────────────────────────────────────
+   Öykü tamamlanınca oyunun ÜSTÜNE açılan kart ve kartların altındaki
+   açılır "Keşfettiğin öyküler" listesi. Zemin KOYU → her yazıya renk ver
+   (reference_ashbless_arayuz_kaliplari: rengi atlamak = görünmez yazı). */
+#oyunPencere .kesif-acilis{ position:absolute; inset:0; z-index:5; display:grid; place-items:center; padding:1rem;
+  background:rgba(10,6,2,.82); animation:kesifBelir .5s ease-out; overflow:auto; }
+@keyframes kesifBelir{ from{ opacity:0 } to{ opacity:1 } }
+.kesif-kart{ max-width:360px; width:100%; text-align:center; padding:1.4rem 1.2rem 1.1rem; border-radius:10px;
+  background:linear-gradient(180deg,#2a1c0c,#1a1006); border:1px solid rgba(201,162,39,.55);
+  box-shadow:0 0 40px rgba(255,190,90,.18); animation:kesifKalk .6s cubic-bezier(.2,1.3,.4,1); }
+@keyframes kesifKalk{ from{ transform:translateY(20px) scale(.96); opacity:0 } to{ transform:none; opacity:1 } }
+.kesif-ust{ font-family:'Space Mono',monospace; font-size:.65rem; letter-spacing:.12em; text-transform:uppercase; color:var(--gold); }
+.kesif-baslik{ margin-top:.6rem; font-family:'Playfair Display',serif; font-size:1.45rem; line-height:1.2; color:var(--gold-light); font-weight:700; }
+.kesif-yazar{ margin-top:.35rem; font-family:'Crimson Pro',serif; font-size:1.05rem; color:var(--parchment); }
+.kesif-kitap{ margin-top:.15rem; font-family:'Crimson Pro',serif; font-size:.85rem; font-style:italic; color:var(--parchment); opacity:.7; }
+.kesif-dugmeler{ display:flex; gap:.5rem; justify-content:center; margin-top:1.1rem; }
+.kesif-dugme{ display:inline-block; padding:.55rem .9rem; border-radius:6px; font:inherit; font-family:'Space Mono',monospace;
+  font-size:.75rem; text-decoration:none; cursor:pointer; color:var(--gold-light);
+  background:rgba(201,162,39,.12); border:1px solid rgba(201,162,39,.45); }
+.kesif-dugme.ana{ background:rgba(201,162,39,.85); color:#1a1006; font-weight:700; }
+.kesif-dugme.tsundoku{ margin-top:.55rem; }
+.kesif-dugme:disabled{ opacity:.6; cursor:default; }
+.kesif-devam{ display:block; width:100%; margin-top:1rem; padding:.6rem; border-radius:6px; cursor:pointer; font:inherit;
+  font-family:'Crimson Pro',serif; font-size:1rem; color:var(--parchment); background:transparent;
+  border:1px dashed rgba(201,162,39,.4); }
+.kesif-not{ margin-top:.7rem; font-family:'Crimson Pro',serif; font-size:.8rem; color:var(--parchment); opacity:.6; }
+.kesif-liste{ margin-top:1rem; border:1px solid rgba(201,162,39,.35); border-radius:6px; background:rgba(201,162,39,.05); }
+.kesif-liste summary{ cursor:pointer; padding:.7rem .9rem; font-family:'Playfair Display',serif; color:var(--gold-light); font-size:1rem; }
+.kesif-liste ul{ list-style:none; margin:0; padding:0 .9rem .4rem; }
+.kesif-satir{ display:flex; align-items:center; gap:.6rem; justify-content:space-between; padding:.5rem 0;
+  border-top:1px solid rgba(201,162,39,.15); }
+.kesif-satir-ad{ font-family:'Crimson Pro',serif; font-size:.95rem; color:var(--parchment); min-width:0; }
+.kesif-satir-ad b{ color:var(--gold-light); font-weight:600; }
+.kesif-satir-ad span{ opacity:.7; font-size:.85rem; }
+.kesif-satir-dugmeler{ display:flex; gap:.35rem; flex:none; }
+.kesif-satir-dugmeler a, .kesif-satir-dugmeler button{ font-family:'Space Mono',monospace; font-size:.62rem; padding:.3rem .45rem;
+  border-radius:4px; text-decoration:none; cursor:pointer; color:var(--gold-light);
+  background:rgba(201,162,39,.12); border:1px solid rgba(201,162,39,.35); }
+.kesif-yonetim{ margin-top:1.2rem; display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; opacity:.85; }
+.kesif-yonetim .kesif-daha{ margin:0; }
+.kesif-yonetim-durum{ font-family:'Space Mono',monospace; font-size:.62rem; color:var(--parchment); }
+.kesif-daha{ display:block; margin:.2rem .9rem .8rem; padding:.4rem .7rem; border-radius:4px; cursor:pointer;
+  font-family:'Space Mono',monospace; font-size:.65rem; color:var(--gold-light); background:transparent;
+  border:1px solid rgba(201,162,39,.35); }
+
 #sPanel-fun .stats-section{ color:var(--parchment); }
 #sPanel-fun .stats-section [style*="var(--ink)"]{ color:var(--parchment)!important; }
 #sPanel-fun .stats-section strong{ color:var(--gold-light); }
@@ -2008,7 +2053,7 @@ try{
 <script src="map.js?s=20260919b"></script>
 <script src="coreading.js?s=20260919b"></script>
 <script src="series.js?s=20260919b"></script>
-<script src="feed.js?s=20260920i"></script>
+<script src="feed.js?s=20260923a"></script>
 <script src="badges.js?s=20260919b"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
 <script src="sezonluk.js?s=20260919b"></script>
@@ -2033,8 +2078,8 @@ try{
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
-<script src="oyunlar/oyun-listesi.js?s=20260921b"></script>
-<script src="oyunlar.js?s=20260923a"></script>
+<script src="oyunlar/oyun-listesi.js?s=20260923a"></script>
+<script src="oyunlar.js?s=20260923b"></script>
 
 <script>
 // ══════════════════════════════════════════════════════════════
@@ -4292,7 +4337,7 @@ async function kisiselYedekAl(){
    aynı şekli kurmak. Dosyanın biçimi eski yedeklerle BİREBİR aynı kalıyor —
    masaüstündeki betiğin ürettiği dosyalarla karşılaştırılabilsin diye.
    ⚠️ Yeni bir ana düğüm eklenirse bu listeye de eklenmeli, yoksa yedeğe girmez. */
-const TAM_YEDEK_DUGUMLERI=['aa-v4','aa-shelf','aa-shelf-ts','aa-books-ts','aa-avatars'];
+const TAM_YEDEK_DUGUMLERI=['aa-v4','aa-shelf','aa-shelf-ts','aa-books-ts','aa-avatars','aa-oykuler'];
 async function tamYedekAl(){
   const durum=document.getElementById('tamYedekStatus');
   const yaz=t=>{if(durum)durum.textContent=t;};
@@ -4300,6 +4345,10 @@ async function tamYedekAl(){
   for(const d of TAM_YEDEK_DUGUMLERI){
     yaz(`⏳ ${d} indiriliyor…`);
     const {ok,durum:kod,veri}=await fbGetDurum(d);
+    /* aa-oykuler (Buluntu Metinler öykü listesi, 2026-09-23) yedeğin olmazsa
+       olmazı değil — Masaüstü\kısa hikayeler\_liste.json'dan yeniden üretilir.
+       Kuralı henüz yayında değilse bütün yedeği düşürmesin. */
+    if(!ok && d==='aa-oykuler') continue;
     if(!ok && kod===401){
       yaz('⚠️ Veritabanı izin vermedi. Giriş yapmış ve onaylı bir hesapla açık olmalısın.');
       return;
@@ -7604,7 +7653,9 @@ function openStoryDetail(ownerId, storyId){
       <div style="margin-top:.5rem">
         <div class="detail-field-label" style="margin-bottom:.3rem">🔗 Link</div>
         ${isMe?`<input class="detail-input" style="width:100%" value="${story.link||''}" placeholder="https://..." onchange="saveStoryField(${storyId},'link',this.value||null)"/>`
-        :story.link?`<a href="${story.link}" target="_blank" rel="noopener" style="color:var(--gold);font-size:.9rem;word-break:break-all">${story.link}</a>`:'—'}
+        :story.link?((typeof oykuBaglantisiMi==='function'&&oykuBaglantisiMi(story.link))
+            ?`<span style="color:var(--gold);font-size:.9rem" title="Buluntu Metinler oyununda bulundu">📜 Buluntu Metinler'de bulundu</span>`
+            :`<a href="${story.link}" target="_blank" rel="noopener" style="color:var(--gold);font-size:.9rem;word-break:break-all">${story.link}</a>`):'—'}
       </div>`:''}
     </div>
     <div class="detail-section">
@@ -7792,7 +7843,7 @@ function renderStories(){
               const e=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(me,s.id):'';
               return e?`<span class="book-meta" style="color:#4f3470">📄 ara öykü · ${e}</span>`:'';
             })()}
-            ${s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
+            ${(typeof oykuLinkHtml==='function')?oykuLinkHtml(s.link,true):(s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:'')}
           </div>
           <div class="wishlist-actions" onclick="event.stopPropagation()">
             <button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);font-size:.6rem" onclick="oykuyuOkunduYap(${s.id})">✔ Okudum</button>
@@ -7872,7 +7923,7 @@ function storyItemHtml(s, ownerId, srcMap){
         <span class="tag format-tag">${srcMap[s.source]||s.source}</span>
         <span class="story-status-badge ${s.status==='read'?'story-read':'story-toread'}">${s.status==='read'?'✔ Okundu':'⏳ Okunacak'}</span>
         ${stars?`<span style="font-size:.72rem;color:var(--gold)">${stars}</span>`:''}
-        ${s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:''}
+        ${(typeof oykuLinkHtml==='function')?oykuLinkHtml(s.link,ownerId===me):(s.link?`<a href="${s.link}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:.65rem;color:var(--gold);font-family:'Space Mono',monospace">🔗 link</a>`:'')}
       </div>
     </div>
   </div>`;
