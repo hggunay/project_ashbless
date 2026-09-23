@@ -85,14 +85,19 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
 
 <div id="yardimKat"><div class="yk">
   <h2>Buluntu Metinler</h2>
-  <!-- Gökşin (24 Eylül): "çok fazla % anlatılmış, çok teknik... sade ve gizemli bir açıklama
-       yeter". YÜZDE YOK. OYUN-EKLEME kural 8'in özü korunuyor: oyuncuyu CEZALANDIRAN her şey
-       (−1, −4, −6, sayfa asla silinmez) yazılı; olasılıklar/süreler bilerek gizli.
-       Puan ya da ceza değişirse burayı da düzelt. -->
-  <p>Kitaplığın hayaleti fenerini sallayarak dolaşıyor ve kayıp bir öykünün sayfalarını düşürüyor.
-  <b>Alttaki kitabı kaydır, düşenleri kitaba topla.</b></p>
-  <p>Kitabı parmağınla ekranın herhangi bir yerinden sürükleyebilir ya da köşedeki <b>◀ ▶</b>
-  düğmelerini basılı tutabilirsin.</p>
+  <!-- METİN GÖKŞİN'İN (24 Eylül) — birebir; hayaletin adı MAGNUS. Değiştirme, önce sor.
+       Puan listesi araya giriyor. Cezalar (−1, −4, −6) listede ve son paragrafta yazılı;
+       olasılıklar/süreler bilerek gizli ("sade ve gizemli"). Puan/ceza değişirse listeyi düzelt. -->
+  <p>Kitaplığın hayaleti Magnus geceleri ortaya çıkıyor. Fenerini sallayarak rafların arasında dolaşıyor
+  ve ortalığı birbirine katıyor. Tüyler, mürekkep, sayfalar ve türlü tuhaf şeyler havada uçuşuyor.</p>
+  <p><b>Alttaki kitabı sürükle ve düşenleri topla.</b></p>
+  <p>Bazı sayfalar kayıp bir metne ait. Puanların biriktikçe sayfalara dönüşecek. Bütün sayfaları
+  bulduğunda, ne olduğunu bilmediğin metnin adı ve yazarı ortaya çıkacak.</p>
+  <p>Ama dikkat et. Hayalet bazen sansür damgası, kahve fincanı gibi daha tehlikeli şeyler de fırlatıyor.
+  Arada bir rüzgâr çıkıp ortalığı daha da karıştırıyor.</p>
+  <p>Ve bütün sayfaları bulduğunda... Hayalet Magnus da merakına yenik düşüp bulduğun metni senden
+  önce okumaya başlayabilir.</p>
+  <p><i>Ne bulacağını sen de bilmiyorsun.</i></p>
   <table>
     <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy</b> — 1 puan</td></tr>
     <tr><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
@@ -102,21 +107,8 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>Sansür damgası</b> — kitaba düşmesin! (−6)</td></tr>
     <tr><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — sayfalara dökülmesin! (−4)</td></tr>
   </table>
-  <p>Kaçırdığın her nesne <b>1 puan</b> götürür. Puanlar birikince <b>sayfaya</b> dönüşür;
-  öykünün bütün sayfalarını bulunca adı açılır.</p>
-  <p>Kırmızılar bazen iyi bir nesnenin hemen yanına düşer. <b>Hangisini yakalayacaksın?</b></p>
-  <p>Arada bir <b>rüzgâr</b> çıkar ve düşenleri savurur.</p>
-  <p>Bulduğun sayfalar asla kaybolmaz ve kaldığın yer kaydedilir — istediğin zaman bırakıp devam edebilirsin.</p>
-  <details class="ayrinti">
-    <summary>Ayrıntılar</summary>
-    <!-- Gökşin (24 Eylül): yüzde yok, "sade ve gizemli". Burada yalnız oyuncuyu ETKİLEYEN
-         kurallar kalsın (puanlar, cezalar); olasılıklar ve süreler kodda. -->
-    <p><b>20 puan = 1 sayfa.</b> Kırmızılar yalnız biriken puanı azaltır, bulduğun sayfaları değil.
-    Kırmızıların yere düşmesi cezasızdır.</p>
-    <p>Ağır olanlar hızlı düşer, hafif olanlar süzülür. Oyun ilerledikçe her şey hızlanır; <b>⟲</b> temposu başa alır.</p>
-    <p>Zarftan puan da çıkabilir, bir sayfa da… ya da hiçbir şey.</p>
-    <p>Rüzgâr bazen esmenin ortasında yön değiştirir.</p>
-  </details>
+  <p>Kaçırdığın nesneler de puanına mal olur. Kırmızılar bazen iyi bir nesnenin hemen yanına düşer.
+  <b>Hangisini yakalayacaksın?</b></p>
   <button class="kapat" id="yardimKapat">ANLADIM</button>
 </div></div>
 
