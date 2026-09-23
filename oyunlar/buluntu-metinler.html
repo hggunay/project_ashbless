@@ -32,6 +32,13 @@ h1{margin:0;font-size:16px;flex:1;text-align:left;letter-spacing:.5px;color:#f1c
 .tahta{flex:1 1 auto;min-height:0;width:100%;max-width:640px;position:relative}
 canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-radius:6px;border:1px solid #3e2f1d;
        touch-action:none;background:#0b0704}
+/* Kitabı süren köşe düğmeleri (Gökşin: "parmak kitabın üstündeyken yakalama
+   animasyonu görünmüyor"). Yarı saydam: kitap altından geçince de görünsün. */
+.yon{position:absolute;bottom:8px;width:54px;height:54px;border-radius:50%;z-index:2;
+     background:rgba(34,26,16,.55);border:1px solid rgba(241,201,106,.45);color:#f1c96a;font-size:22px;
+     display:grid;place-items:center;cursor:pointer;touch-action:none;-webkit-tap-highlight-color:transparent;padding:0}
+.yon:active,.yon.basili{background:rgba(201,162,39,.45)}
+#solDugme{left:8px} #sagDugme{right:8px}
 #msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;flex:none;overflow:hidden;color:#cbb994;
      background:#140e08;padding:4px 8px;border-radius:4px;border-left:3px solid #c9a227}
 #yardimKat{position:fixed;inset:0;background:rgba(8,5,2,.94);display:none;overflow:auto;padding:18px;z-index:9}
@@ -64,15 +71,22 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <div class="arti" id="arti">+1 sayfa</div>
   </div>
 
-  <div class="tahta"><canvas id="tuval"></canvas></div>
+  <div class="tahta">
+    <canvas id="tuval"></canvas>
+    <button class="yon" id="solDugme" aria-label="Kitabı sola kaydır">◀</button>
+    <button class="yon" id="sagDugme" aria-label="Kitabı sağa kaydır">▶</button>
+  </div>
 
-  <div id="msg">Hayaletin düşürdüklerine dokun. Kırmızı SAKINCALI damgasına dokunma.</div>
+  <div id="msg">Kitabı kaydır, düşenleri kitaba topla. Kırmızı SAKINCALI damgası kitaba düşmesin.</div>
 </div>
 
 <div id="yardimKat"><div class="yk">
   <h2>Buluntu Metinler</h2>
   <p>Kitaplığın hayaleti fenerini sallayarak dolaşıyor ve kayıp bir öykünün parçalarını düşürüyor.
-  <b>Düşenlere dokunarak yakala.</b> Yere düşen kaybolur.</p>
+  <b>Alttaki açık kitabı kaydır, düşenleri kitaba topla.</b> Yere düşen kaybolur.</p>
+  <p><b>Kitabı sürmek:</b> ekranın herhangi bir yerine dokunup parmağını sağa sola kaydır — kitap
+  parmağının <b>hizasına</b> gelir, altına değil; parmağın kitabı kapatmaz. Ya da alt köşelerdeki
+  <b>◀ ▶</b> düğmelerini basılı tut. Bilgisayarda fare ya da ← → tuşları.</p>
   <p>Topladığın puanlar kendiliğinden <b>sayfaya</b> dönüşür: <b>25 puan = 1 sayfa</b>.
   Öykünün bütün sayfalarını bulunca adı açılır; okuyabilir, indirebilir, Tsundoku'na ekleyebilirsin.</p>
   <table>
@@ -80,14 +94,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <tr><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
     <tr><td><img src="gorseller/sayfa.png" alt=""></td><td><b>Sayfa</b> — 3 puan</td></tr>
     <tr><td><img src="gorseller/daktilo.png" alt=""></td><td><b>Daktilo</b> — 5 puan · nadir, parlayarak düşer.
-        Yakalarsan <b>zili çalar ve zaman durur</b>: 4 saniye boyunca havadaki her şey donar, yeni bir şey düşmez — hepsini topla.</td></tr>
+        Yakalarsan <b>zili çalar ve zaman yavaşlar</b>: 4 saniye boyunca her şey üç kat yavaş düşer — kitabı gezdirip hepsini topla.</td></tr>
     <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içi belli değil:
         %40 ihtimalle 3 puan, %25 ihtimalle 6 puan, %15 ihtimalle <b>doğrudan 1 sayfa</b>, %20 ihtimalle boş</td></tr>
-    <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>SAKINCALI damgası</b> — <b>dokunma!</b>
-        Dokunursan 6 puan kaybedersin. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
+    <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>SAKINCALI damgası</b> — <b>kitaba düşmesin!</b>
+        Kitaba düşerse 6 puan kaybedersin; yere düşerse bir şey olmaz. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
   </table>
   <p><b>Rüzgâr:</b> Arada bir pencereden rüzgâr girer (ilk kez yarım dakika kadar sonra, sonra
   her 45-80 saniyede bir). 6 saniye boyunca nesneler yana savrulur ve daha hızlı düşer;
+  bazen (%35) rüzgâr <b>esmenin ortasında döner</b> ve öbür yana savurur;
   <b>ekrandan savrulan kaybolur</b>. Fener titrer, ekranda rüzgâr çizgileri görünür.</p>
   <p>Düşme oranları: tüy %38 · mürekkep %22 · sayfa %15 · damga %13 · zarf %7 · daktilo %5.
   Oyun ilerledikçe nesneler biraz daha sık ve hızlı düşer; <b>⟲</b> temposu başa alır.</p>
@@ -131,6 +146,7 @@ function gorselYukle(ad, yol){
 }
 gorselYukle("kitaplik", "gorseller/kitaplik.jpg");
 gorselYukle("hayalet",  "gorseller/hayalet.png");
+gorselYukle("kitap",    "gorseller/kitap.png");
 for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi"]) gorselYukle(a, "gorseller/" + a + ".png");
 
 /* Nesne türleri. `agirlik` düşme oranı (toplam 100) — yardımdaki sayılarla AYNI tut. */
@@ -265,14 +281,17 @@ function isikCiz(t){
 }
 
 /* ── Olaylar (Gökşin, 2026-09-23: "oyunu oyun yapan pek bir şey yok") ──
-   ZAMAN DURUR — daktilo yakalanınca 4 sn her nesne havada donar, düşen yok.
-                 Nadir nesneye ikinci bir ödül: donmuşken hepsi kolay toplanır.
+   AĞIR ÇEKİM  — daktilo kitaba düşünce 4 sn her şey üç kat yavaş düşer
+                 (kitap yavaşlamaz). İlk sürümde "zaman durur"du: nesne havada
+                 donuyordu — alttan yakalamada donan nesne kitaba hiç düşmez, o yüzden
+                 ağır çekime çevrildi. Değişken adı (`donma`) o günden kaldı.
    RÜZGÂR      — ilk kez ~30-50 sn sonra, sonra 45-80 sn arayla, 6 sn sürer.
                  Nesneler yana savrulur ve hızlanır; ekrandan çıkan KAYBOLUR.
-   İkisi çakışırsa donma kazanır (donmuş nesneyi rüzgâr taşımaz).
+                 %35 ihtimalle ORTASINDA döner (Gökşin: "ara sıra ters yönden esebilir").
+   İkisi çakışırsa rüzgâr da ağır çekimde eser.
    Sayılar yardım kutusunda da yazılı — değiştirirsen orayı da düzelt. */
 const DONMA_SURE = 4, RUZGAR_SURE = 6;
-let donma = 0, ruzgar = 0, ruzgarYon = 1, sonrakiRuzgar = 30 + Math.random() * 20, ruzgarCizgileri = [];
+let donma = 0, ruzgar = 0, ruzgarYon = 1, ruzgarDonecek = false, sonrakiRuzgar = 30 + Math.random() * 20, ruzgarCizgileri = [];
 function olaylariSifirla(){ donma = 0; ruzgar = 0; sonrakiRuzgar = 30 + Math.random() * 20; ruzgarCizgileri = []; }
 function ruzgarGucu(){
   if (ruzgar <= 0) return 0;
@@ -282,12 +301,19 @@ function ruzgarGucu(){
 function olayGuncelle(dt){
   if (donma > 0) donma = Math.max(0, donma - dt);
   if (ruzgar > 0) {
+    const once = ruzgar;
     ruzgar = Math.max(0, ruzgar - dt);
+    // Gökşin: "ara sıra rüzgâr ters yönden esebilir" → bazı rüzgârlar ORTASINDA döner
+    if (ruzgarDonecek && once > RUZGAR_SURE / 2 && ruzgar <= RUZGAR_SURE / 2) {
+      ruzgarYon *= -1; ruzgarDonecek = false;
+      mesaj("Rüzgâr döndü! Sayfalar şimdi öbür yana savruluyor.");
+    }
     if (ruzgar === 0) mesaj("Rüzgâr dindi.");
   } else if (!tamamlandi) {
     sonrakiRuzgar -= dt;
     if (sonrakiRuzgar <= 0) {
       ruzgar = RUZGAR_SURE; ruzgarYon = Math.random() < 0.5 ? -1 : 1;
+      ruzgarDonecek = Math.random() < 0.35;
       sonrakiRuzgar = 45 + Math.random() * 35;
       mesaj("Pencereden rüzgâr girdi! Sayfalar savruluyor — ekrandan çıkan kaybolur.");
     }
@@ -316,7 +342,7 @@ function olayCiz(){
     ctx.globalAlpha = a; ctx.fillStyle = "#dbe8ff"; ctx.textAlign = "center";
     ctx.font = `700 ${Math.round(NESNE * 0.34)}px Georgia,serif`;
     ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 6;
-    ctx.fillText("zaman durdu · " + Math.ceil(donma), W / 2, H * 0.36);
+    ctx.fillText("ağır çekim · " + Math.ceil(donma), W / 2, H * 0.36);
     ctx.restore();
   }
 }
@@ -329,18 +355,19 @@ function nesneBirak(){
   const t = turSec();
   nesneler.push({
     t, x: hayalet.x + (Math.random() - 0.5) * NESNE * 0.6, y: hayalet.y + NESNE * 0.35,
-    vy: H * (0.10 + 0.06 * tempo()) * (0.85 + Math.random() * 0.3),   // saniyede
+    vy: H * (0.11 + 0.11 * tempo()) * (0.85 + Math.random() * 0.3),   // saniyede; 2,5 dk'da ~2 katı
     salla: Math.random() * Math.PI * 2, don: (Math.random() - 0.5) * 0.6,
     aci: (Math.random() - 0.5) * 0.4, yerde: 0, dogum: performance.now()
   });
   parlama = 1;
 }
-function nesneGuncelle(dt){
-  const zemin = H - NESNE * 0.55;
+function nesneGuncelle(dt0){
+  const zemin = H - NESNE * 0.3;
   const g = ruzgarGucu();
+  const dt = dt0 * (donma > 0 ? 1 / 3 : 1);        // ağır çekim: üç kat yavaş (kitap YAVAŞLAMAZ)
   for (const n of nesneler) {
-    if (n.yerde) { n.yerde += dt; continue; }
-    if (donma > 0) continue;                       // zaman durdu: havada asılı
+    if (n.yerde) { n.yerde += dt0; continue; }
+    if (kitabaDustuMu(n)) { n.yakalandi = true; continue; }
     n.vy += H * 0.05 * dt;                         // hafif ivme
     n.y += n.vy * dt * (1 + 0.7 * g);              // rüzgârda daha hızlı düşer
     n.salla += dt * 2.2;
@@ -356,8 +383,9 @@ function nesneGuncelle(dt){
     n.aci += n.don * dt;
     if (n.y >= zemin) { n.y = zemin; n.yerde = 0.0001; }
   }
-  // yere düşen 0,45 sn'de söner; rüzgârın ekrandan savurduğu kaybolur
-  nesneler = nesneler.filter(n => n.yerde < 0.45 && n.x > -NESNE && n.x < W + NESNE);
+  // kitaba düşenler toplanır; yere düşen 0,45 sn'de söner; rüzgârın ekrandan savurduğu kaybolur
+  for (const n of nesneler) if (n.yakalandi) yakala(n);
+  nesneler = nesneler.filter(n => !n.yakalandi && n.yerde < 0.45 && n.x > -NESNE && n.x < W + NESNE);
 }
 function nesneCiz(n){
   const im = GORSEL[n.t.ad], b = NESNE;
@@ -381,31 +409,84 @@ function nesneCiz(n){
   ctx.restore();
 }
 
-/* ── Yakalama ────────────────────────────────────────────────────────── */
-function dokun(e){
-  e.preventDefault();
-  if (durdu || document.getElementById("yardimKat").classList.contains("acik")) return;
-  const r = tuval.getBoundingClientRect();
-  const x = e.clientX - r.left, y = e.clientY - r.top;
-  // Dokunma alanı görselden GENİŞ (telefon) — en yakın ve en üstteki
-  let sec = null, enYakin = Infinity;
-  for (let i = nesneler.length - 1; i >= 0; i--) {
-    const n = nesneler[i]; if (n.yerde) continue;
-    const d = Math.hypot(n.x - x, n.y - y);
-    if (d < NESNE * 0.85 && d < enYakin) { enYakin = d; sec = i; }
-  }
-  if (sec === null) return;
-  const n = nesneler.splice(sec, 1)[0];
-  yakala(n);
+/* ── Kitap: alttan yakalama (Gökşin, 2026-09-23, Kaboom! modeli) ─────────
+   İlk sürümde nesnelere DOKUNULUYORDU → ortaya çıktığı anda yakalanıyordu,
+   hız/karanlık/seri hiçbiri zorluk yaratmıyordu. Artık nesne AŞAĞI İNMELİ ve
+   kitabın içine düşmeli: beklemek ve iki nesneden birini SEÇMEK zorunlu.
+   Sürme: ekranda parmak/fare → kitap parmağın HİZASINA gelir (altına değil:
+   parmak kitabı kapatmasın). Ya da ◀ ▶ düğmeleri, ya da ← → tuşları.
+   Kitabın bir azami hızı var — ışınlanmaz; uzaktaki iki nesneye birden yetişilmez. */
+const KITAP_X0 = 0.047, KITAP_X1 = 0.95, KITAP_UST = 0.35;   // görseldeki kitap sınırları (ölçüldü)
+const kitap = { x: 0, hedef: null, yon: 0 };
+function kitapBoy(){ const gen = Math.max(96, Math.min(160, W * 0.3)); return { gen, yuk: gen }; }
+function kitapBaslat(){ kitap.x = W / 2; kitap.hedef = null; kitap.yon = 0; }
+function kitapGuncelle(dt){
+  const hiz = W * 1.25;                                   // azami hız: ekranı ~0,8 sn'de geçer
+  let hedef = kitap.hedef;
+  if (kitap.yon) hedef = kitap.x + kitap.yon * hiz;       // düğme / tuş basılı
+  if (hedef === null) return;
+  const fark = hedef - kitap.x, adim = hiz * dt;
+  kitap.x += Math.abs(fark) <= adim ? fark : Math.sign(fark) * adim;
+  const { gen } = kitapBoy();
+  kitap.x = Math.max(gen * 0.45, Math.min(W - gen * 0.45, kitap.x));
 }
-tuval.addEventListener("pointerdown", dokun);
+function kitapCiz(){
+  const { gen, yuk } = kitapBoy(), im = GORSEL.kitap;
+  const x = kitap.x - gen / 2, y = H - yuk * 0.86;       // görselin alt boşluğu ekran dışına taşar
+  ctx.save();
+  ctx.shadowColor = "rgba(0,0,0,.7)"; ctx.shadowBlur = 14; ctx.shadowOffsetY = 4;
+  if (im) ctx.drawImage(im, x, y, gen, yuk);
+  else {                                                  // yedek çizim: açık kitap
+    ctx.fillStyle = "#6b3a1e"; ctx.fillRect(x + gen * 0.05, y + yuk * 0.3, gen * 0.9, yuk * 0.45);
+    ctx.fillStyle = "#f1e3bf";
+    ctx.fillRect(x + gen * 0.08, y + yuk * 0.25, gen * 0.41, yuk * 0.45);
+    ctx.fillRect(x + gen * 0.51, y + yuk * 0.25, gen * 0.41, yuk * 0.45);
+  }
+  ctx.restore();
+}
+/* Nesnenin merkezi kitabın sayfa çizgisini (KITAP_UST) geçerken yatayda kitabın
+   içindeyse kitaba düşer. Kenarları biraz hoşgörülü: nesnenin yarısı yeter. */
+function kitabaDustuMu(n){
+  const { gen, yuk } = kitapBoy();
+  const ust = H - yuk * 0.86 + yuk * KITAP_UST;
+  if (n.y < ust || n.y > ust + NESNE * 0.6) return false;
+  const sol = kitap.x - gen / 2 + gen * KITAP_X0, sag = kitap.x - gen / 2 + gen * KITAP_X1;
+  return n.x > sol - NESNE * 0.25 && n.x < sag + NESNE * 0.25;
+}
+
+/* Parmak / fare: ekranın her yerinde. Basılıyken sürüklemek kitabı götürür. */
+let parmak = false;
+function parmakKonumu(e){ const r = tuval.getBoundingClientRect(); return e.clientX - r.left; }
+tuval.addEventListener("pointerdown", e => { e.preventDefault(); parmak = true; kitap.hedef = parmakKonumu(e);
+  try { tuval.setPointerCapture(e.pointerId); } catch(_){} });
+tuval.addEventListener("pointermove", e => {
+  if (parmak || e.pointerType === "mouse") kitap.hedef = parmakKonumu(e);   // farede basmadan da izler
+});
+const parmakBirak = () => { parmak = false; };
+tuval.addEventListener("pointerup", parmakBirak); tuval.addEventListener("pointercancel", parmakBirak);
+
+/* ◀ ▶ düğmeleri: basılı tutulduğu sürece o yöne. */
+for (const [id, yon] of [["solDugme", -1], ["sagDugme", 1]]) {
+  const b = document.getElementById(id);
+  const bas = e => { e.preventDefault(); kitap.yon = yon; kitap.hedef = null; b.classList.add("basili"); };
+  const birak = () => { if (kitap.yon === yon) kitap.yon = 0; b.classList.remove("basili"); };
+  b.addEventListener("pointerdown", bas);
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) b.addEventListener(ev, birak);
+}
+window.addEventListener("keydown", e => {
+  if (e.key === "ArrowLeft")  { kitap.yon = -1; kitap.hedef = null; }
+  if (e.key === "ArrowRight") { kitap.yon = 1;  kitap.hedef = null; }
+});
+window.addEventListener("keyup", e => {
+  if ((e.key === "ArrowLeft" && kitap.yon === -1) || (e.key === "ArrowRight" && kitap.yon === 1)) kitap.yon = 0;
+});
 
 function yakala(n){
   let kazanc = n.t.puan, yazi = "", renk = "#ffe29a";
   if (n.t.yasak) {
     kazanc = -DAMGA_CEZA; yazi = "SAKINCALI! −" + DAMGA_CEZA; renk = "#ff6b6b";
     kirmizi = 1;
-    mesaj("Sansür damgasına dokundun: " + DAMGA_CEZA + " puan gitti. Sayfaların yerinde.");
+    mesaj("Sansür damgası kitaba düştü: " + DAMGA_CEZA + " puan gitti. Sayfaların yerinde.");
   } else if (n.t.zarf) {
     const r = Math.random();
     if (r < 0.40)      { kazanc = 3; yazi = "Zarf: +3"; }
@@ -414,10 +495,10 @@ function yakala(n){
     else               { kazanc = 0; yazi = "Zarf boş…"; renk = "#bfae8c"; }
   } else {
     yazi = "+" + kazanc;
-    if (n.t.parlak) {                               // daktilo → zaman durur
+    if (n.t.parlak) {                               // daktilo → ağır çekim
       donma = DONMA_SURE;
-      yazi = "+" + kazanc + " · zaman durdu!";
-      mesaj("Daktilonun zili çaldı — zaman durdu! " + DONMA_SURE + " saniye boyunca hiçbir şey düşmüyor, topla.");
+      yazi = "+" + kazanc + " · zaman yavaşladı!";
+      mesaj("Daktilonun zili çaldı — zaman yavaşladı! " + DONMA_SURE + " saniye boyunca her şey üç kat yavaş düşüyor.");
     }
   }
   efektEkle(n.x, n.y, n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4"));
@@ -515,8 +596,9 @@ function dongu(simdi){
     zaman += dt; turSuresi += dt;
     hayaletGuncelle(dt, zaman);
     olayGuncelle(dt);
-    if (!tamamlandi && donma <= 0) {               // zaman dururken hayalet bir şey düşürmez
-      sonrakiDusme -= dt;
+    kitapGuncelle(dt);
+    if (!tamamlandi) {
+      sonrakiDusme -= dt * (donma > 0 ? 1 / 3 : 1);  // ağır çekimde düşürme de yavaşlar
       if (sonrakiDusme <= 0) {
         nesneBirak();
         const ara = 1.05 - 0.45 * tempo();                // 1,05 sn → 0,6 sn
@@ -531,6 +613,7 @@ function dongu(simdi){
   isikCiz(zaman);
   hayaletCiz();
   for (const n of nesneler) nesneCiz(n);
+  kitapCiz();                                     // nesnelerin ÖNÜNDE: içine düşüyor gibi
   olayCiz();
   efektGuncelleCiz(durdu ? 0 : dt);
   if (durdu) {
@@ -552,7 +635,7 @@ durdurDugme.onclick = () => {
    ilerleme hesapta; bu düğme yalnız zorluğu sıfırlar (OYUN-EKLEME kural 10). */
 document.getElementById("yeni").onclick = () => {
   nesneler = []; turSuresi = 0; sonrakiDusme = 1.0; durdu = false; durdurDugme.textContent = "❚❚";
-  hayaletBaslat(); olaylariSifirla();
+  hayaletBaslat(); olaylariSifirla(); kitapBaslat();
   mesaj(tamamlandi ? "Bu öykü tamamlandı. Yeni öykü için uygulamadaki düğmeyi kullan."
                    : "Yeni tur: tempo başa alındı. Bulduğun sayfalar yerinde.");
 };
@@ -580,9 +663,9 @@ document.addEventListener("contextmenu", e => e.preventDefault());
   }
 })();
 
-boyutlandir(); hayaletBaslat(); gostergeGuncelle();
+boyutlandir(); hayaletBaslat(); kitapBaslat(); gostergeGuncelle();
 if (tamamlandi) mesaj("Bu öykü tamamlandı. Yeni öykü için uygulamadaki düğmeyi kullan.");
-else if (toplam && bulunan) mesaj(`Kaldığın yerden devam: ${bulunan} / ${toplam} sayfa. Hayaletin düşürdüklerine dokun.`);
+else if (toplam && bulunan) mesaj(`Kaldığın yerden devam: ${bulunan} / ${toplam} sayfa. Kitabı kaydır, düşenleri topla.`);
 else if (!toplam && !TEK_BASINA) mesaj("Havuzdaki bütün öyküleri keşfettin! Serbest oynayabilirsin; yeni öyküler eklenince burada belirecek.");
 requestAnimationFrame(t => { onceki = t; requestAnimationFrame(dongu); });
 </script>
