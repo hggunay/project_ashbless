@@ -160,17 +160,21 @@ for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi"
 /* YASAKLILAR (kırmızı = kitaba düşmesin): damga ve kahve (Gökşin, 2026-09-23:
    "sayfalara kahve döküldü"). Tek başlarına düşmekten başka, İYİ bir nesnenin
    HEMEN YANINA da düşerler (bkz. nesneBirak) — kaçmak kolay olmasın diye. */
+/* `hiz`: AĞIRLIĞA göre düşüş (Gökşin: "objeler aynı hızda düşüyor, bazısı
+   hızlı insin"). Hafif olan süzülür ve çok salınır (`salinim`), ağır olan
+   dümdüz iner. En değerli nesne (daktilo) en hızlısı → en zor yakalanan. */
 const TURLER = [
-  { ad: "tuy",            agirlik: 38, puan: 1, renk: "#efe6d2", harf: "T" },
-  { ad: "murekkep",       agirlik: 22, puan: 2, renk: "#6b4a2a", harf: "M" },
-  { ad: "sayfa",          agirlik: 16, puan: 3, renk: "#e4d3a8", harf: "S" },
-  { ad: "sansur-damgasi", agirlik:  8, puan: 0, renk: "#c0282d", harf: "!", yasak: true, ceza: 6,
+  { ad: "tuy",            agirlik: 38, puan: 1, hiz: 0.70, salinim: 1.8, renk: "#efe6d2", harf: "T" },
+  { ad: "murekkep",       agirlik: 22, puan: 2, hiz: 1.35, salinim: 0.4, renk: "#6b4a2a", harf: "M" },
+  { ad: "sayfa",          agirlik: 16, puan: 3, hiz: 0.85, salinim: 1.4, renk: "#e4d3a8", harf: "S" },
+  { ad: "sansur-damgasi", agirlik:  8, puan: 0, hiz: 1.00, salinim: 0.8, renk: "#c0282d", harf: "!", yasak: true, ceza: 6,
     yazi: "SAKINCALI!", mesaj: "Sansür damgası kitaba düştü" },
-  { ad: "kahve",          agirlik:  6, puan: 0, renk: "#c8432b", harf: "K", yasak: true, ceza: 4,
+  { ad: "kahve",          agirlik:  6, puan: 0, hiz: 1.25, salinim: 0.5, renk: "#c8432b", harf: "K", yasak: true, ceza: 4,
     yazi: "Kahve döküldü!", mesaj: "Sayfalara kahve döküldü" },
-  { ad: "zarf",           agirlik:  6, puan: 0, renk: "#e8d9b5", harf: "Z", zarf: true },
-  { ad: "daktilo",        agirlik:  4, puan: 5, renk: "#d9b25a", harf: "D", parlak: true },
+  { ad: "zarf",           agirlik:  6, puan: 0, hiz: 1.00, salinim: 1.0, renk: "#e8d9b5", harf: "Z", zarf: true },
+  { ad: "daktilo",        agirlik:  4, puan: 5, hiz: 1.60, salinim: 0.2, renk: "#d9b25a", harf: "D", parlak: true },
 ];
+const FIRLATMA_OLASILIK = 0.15, FIRLATMA_KAT = 1.5;   // bazen hayalet fırlatır gibi
 const YASAKLILAR = TURLER.filter(t => t.yasak);
 const AGIRLIK_TOPLAM = TURLER.reduce((s, t) => s + t.agirlik, 0);
 function turSec(){
@@ -376,7 +380,8 @@ function nesneBirak(){
   const t = turSec();
   const n = {
     t, x: hayalet.x + (Math.random() - 0.5) * NESNE * 0.6, y: hayalet.y + NESNE * 0.35,
-    vy: H * (0.11 + 0.11 * tempo()) * (0.85 + Math.random() * 0.3),   // saniyede; 2,5 dk'da ~2 katı
+    vy: H * (0.11 + 0.11 * tempo()) * (0.85 + Math.random() * 0.3)    // saniyede; 2,5 dk'da ~2 katı
+        * (t.hiz || 1) * (Math.random() < FIRLATMA_OLASILIK ? FIRLATMA_KAT : 1),
     salla: Math.random() * Math.PI * 2, don: (Math.random() - 0.5) * 0.6,
     aci: (Math.random() - 0.5) * 0.4, yerde: 0, dogum: performance.now()
   };
@@ -404,7 +409,7 @@ function nesneGuncelle(dt0){
     n.vy += H * 0.05 * dt;                         // hafif ivme
     n.y += n.vy * dt * (1 + 0.7 * g);              // rüzgârda daha hızlı düşer
     n.salla += dt * 2.2;
-    n.x += Math.sin(n.salla) * NESNE * 0.35 * dt;  // yaprak gibi hafif salınım
+    n.x += Math.sin(n.salla) * NESNE * 0.35 * (n.t.salinim || 1) * dt;  // hafif olan çok salınır
     if (g > 0) {
       // her nesne biraz farklı savrulur. 0,55'te ekranı 1,5 sn'de geçiyordu → yakalanamıyordu;
       // 0,36'da ~2,5 sn: zor ama mümkün (Gökşin: "toplamak zorlanır" — imkânsızlaşmaz)
