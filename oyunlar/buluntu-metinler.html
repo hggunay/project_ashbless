@@ -77,7 +77,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <button class="yon" id="sagDugme" aria-label="Kitabı sağa kaydır">▶</button>
   </div>
 
-  <div id="msg">Kitabı kaydır, düşenleri kitaba topla. Kırmızı SAKINCALI damgası kitaba düşmesin.</div>
+  <div id="msg">Kitabı kaydır, düşenleri kitaba topla. Kırmızılar (damga, kahve) kitaba düşmesin; kaçan her nesne 1 puan siler.</div>
 </div>
 
 <div id="yardimKat"><div class="yk">
@@ -87,7 +87,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
   <p><b>Kitabı sürmek:</b> ekranın herhangi bir yerine dokunup parmağını sağa sola kaydır — kitap
   parmağının <b>hizasına</b> gelir, altına değil; parmağın kitabı kapatmaz. Ya da alt köşelerdeki
   <b>◀ ▶</b> düğmelerini basılı tut. Bilgisayarda fare ya da ← → tuşları.</p>
-  <p>Topladığın puanlar kendiliğinden <b>sayfaya</b> dönüşür: <b>25 puan = 1 sayfa</b>.
+  <p>Topladığın puanlar kendiliğinden <b>sayfaya</b> dönüşür: <b>20 puan = 1 sayfa</b>.
   Öykünün bütün sayfalarını bulunca adı açılır; okuyabilir, indirebilir, Tsundoku'na ekleyebilirsin.</p>
   <table>
     <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy kalem</b> — 1 puan · en sık düşen</td></tr>
@@ -98,13 +98,21 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içi belli değil:
         %40 ihtimalle 3 puan, %25 ihtimalle 6 puan, %15 ihtimalle <b>doğrudan 1 sayfa</b>, %20 ihtimalle boş</td></tr>
     <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>SAKINCALI damgası</b> — <b>kitaba düşmesin!</b>
-        Kitaba düşerse 6 puan kaybedersin; yere düşerse bir şey olmaz. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
+        Kitaba düşerse 6 puan kaybedersin; yere düşerse bir şey olmaz.</td></tr>
+    <tr><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — <b>kitaba düşmesin!</b>
+        Sayfalara dökülürse 4 puan kaybedersin. (Bulduğun sayfalar asla kaybolmaz; yalnız bir sonraki sayfaya biriken puan azalır.)</td></tr>
   </table>
   <p><b>Rüzgâr:</b> Arada bir pencereden rüzgâr girer (ilk kez yarım dakika kadar sonra, sonra
   her 45-80 saniyede bir). 6 saniye boyunca nesneler yana savrulur ve daha hızlı düşer;
   bazen (%35) rüzgâr <b>esmenin ortasında döner</b> ve öbür yana savurur;
   <b>ekrandan savrulan kaybolur</b>. Fener titrer, ekranda rüzgâr çizgileri görünür.</p>
-  <p>Düşme oranları: tüy %38 · mürekkep %22 · sayfa %15 · damga %13 · zarf %7 · daktilo %5.
+  <p><b>Kaçırma cezası:</b> kitaba girmeden yere düşen ya da rüzgârla ekrandan savrulan her
+  iyi nesne <b>1 puan</b> siler. Kitabı bir yere koyup beklemek işe yaramaz — peşinden koş!
+  (Yasaklıların kaçması cezasız. Bulunan sayfalar yine asla silinmez.)</p>
+  <p><b>Kırmızı = dokunma.</b> Damga ve kahve bazen <b>iyi bir nesnenin hemen yanına</b> düşer
+  (%30 ihtimalle, oyun ilerledikçe %45'e kadar): yalnız iyisini almak için kitabı tam kenarından tutturmalısın.</p>
+  <p>Düşme oranları: tüy %38 · mürekkep %22 · sayfa %16 · damga %8 · kahve %6 · zarf %6 · daktilo %4
+  (yanına düşen yasaklılar bunlara ek).
   Oyun ilerledikçe nesneler biraz daha sık ve hızlı düşer; <b>⟲</b> temposu başa alır.</p>
   <p><b>Kaldığın yer kaydedilir.</b> Her yeni sayfa hesabına yazılır; pencereyi kapatıp
   başka gün, başka cihazda devam edebilirsin. Bir oturumda bitirmek zorunda değilsin.</p>
@@ -125,8 +133,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
    Görseller gorseller/ klasöründe; biri gelmezse o parça kodla çizilir.
    ═══════════════════════════════════════════════════════════════════════ */
 const OYUN_ID = "buluntu-metinler";
-const PUAN_SAYFA = 25;                 // ⚙ tek ayar: öyküler çabuk bitiyorsa büyüt
-const DAMGA_CEZA = 6;
+const PUAN_SAYFA = 20;                 // ⚙ tek ayar (Gökşin: "hızlı kazandırsın istemiyorum" → 25/15 arası 20)
 
 const q = new URLSearchParams(location.search);
 const TEK_BASINA = window.parent === window;
@@ -147,17 +154,24 @@ function gorselYukle(ad, yol){
 gorselYukle("kitaplik", "gorseller/kitaplik.jpg");
 gorselYukle("hayalet",  "gorseller/hayalet.png");
 gorselYukle("kitap",    "gorseller/kitap.png");
-for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi"]) gorselYukle(a, "gorseller/" + a + ".png");
+for (const a of ["tuy", "murekkep", "daktilo", "sayfa", "zarf", "sansur-damgasi", "kahve"]) gorselYukle(a, "gorseller/" + a + ".png");
 
 /* Nesne türleri. `agirlik` düşme oranı (toplam 100) — yardımdaki sayılarla AYNI tut. */
+/* YASAKLILAR (kırmızı = kitaba düşmesin): damga ve kahve (Gökşin, 2026-09-23:
+   "sayfalara kahve döküldü"). Tek başlarına düşmekten başka, İYİ bir nesnenin
+   HEMEN YANINA da düşerler (bkz. nesneBirak) — kaçmak kolay olmasın diye. */
 const TURLER = [
   { ad: "tuy",            agirlik: 38, puan: 1, renk: "#efe6d2", harf: "T" },
   { ad: "murekkep",       agirlik: 22, puan: 2, renk: "#6b4a2a", harf: "M" },
-  { ad: "sayfa",          agirlik: 15, puan: 3, renk: "#e4d3a8", harf: "S" },
-  { ad: "sansur-damgasi", agirlik: 13, puan: 0, renk: "#c0282d", harf: "!", yasak: true },
-  { ad: "zarf",           agirlik:  7, puan: 0, renk: "#e8d9b5", harf: "Z", zarf: true },
-  { ad: "daktilo",        agirlik:  5, puan: 5, renk: "#d9b25a", harf: "D", parlak: true },
+  { ad: "sayfa",          agirlik: 16, puan: 3, renk: "#e4d3a8", harf: "S" },
+  { ad: "sansur-damgasi", agirlik:  8, puan: 0, renk: "#c0282d", harf: "!", yasak: true, ceza: 6,
+    yazi: "SAKINCALI!", mesaj: "Sansür damgası kitaba düştü" },
+  { ad: "kahve",          agirlik:  6, puan: 0, renk: "#c8432b", harf: "K", yasak: true, ceza: 4,
+    yazi: "Kahve döküldü!", mesaj: "Sayfalara kahve döküldü" },
+  { ad: "zarf",           agirlik:  6, puan: 0, renk: "#e8d9b5", harf: "Z", zarf: true },
+  { ad: "daktilo",        agirlik:  4, puan: 5, renk: "#d9b25a", harf: "D", parlak: true },
 ];
+const YASAKLILAR = TURLER.filter(t => t.yasak);
 const AGIRLIK_TOPLAM = TURLER.reduce((s, t) => s + t.agirlik, 0);
 function turSec(){
   let r = Math.random() * AGIRLIK_TOPLAM;
@@ -360,12 +374,24 @@ let turSuresi = 0, sonrakiDusme = 1.2;
 function tempo(){ return Math.min(1, turSuresi / 150); }   // 2,5 dakikada en hızlı tempoya varır
 function nesneBirak(){
   const t = turSec();
-  nesneler.push({
+  const n = {
     t, x: hayalet.x + (Math.random() - 0.5) * NESNE * 0.6, y: hayalet.y + NESNE * 0.35,
     vy: H * (0.11 + 0.11 * tempo()) * (0.85 + Math.random() * 0.3),   // saniyede; 2,5 dk'da ~2 katı
     salla: Math.random() * Math.PI * 2, don: (Math.random() - 0.5) * 0.6,
     aci: (Math.random() - 0.5) * 0.4, yerde: 0, dogum: performance.now()
-  });
+  };
+  nesneler.push(n);
+  /* YANINA YASAKLI (Gökşin: "yasaklı objeleri diğer objelerle çok yakın düşürsek"):
+     iyi bir nesnenin yanına, %30'dan (tempo arttıkça) %45'e varan ihtimalle, bir
+     damga ya da kahve. Mesafe 1-1,4 nesne boyu: kitap ikisini birden kapsayabilir —
+     yalnız iyisini almak için kitabı kenarından tutturmak gerekir. Aynı hızda
+     düşerler ve salınımları aynıdır ki yan yana kalsınlar. */
+  if (!t.yasak && Math.random() < 0.30 + 0.15 * tempo()) {
+    const yon = Math.random() < 0.5 ? -1 : 1;
+    nesneler.push({ ...n, t: YASAKLILAR[Math.floor(Math.random() * YASAKLILAR.length)],
+      x: n.x + yon * NESNE * (1 + Math.random() * 0.4), y: n.y - NESNE * (Math.random() * 0.4),
+      aci: (Math.random() - 0.5) * 0.4, dogum: n.dogum + 1 });
+  }
   parlama = 1;
 }
 function nesneGuncelle(dt0){
@@ -388,7 +414,8 @@ function nesneGuncelle(dt0){
       n.x = Math.max(NESNE / 2, Math.min(W - NESNE / 2, n.x));   // sakinken kenardan taşmasın
     }
     n.aci += n.don * dt;
-    if (n.y >= zemin) { n.y = zemin; n.yerde = 0.0001; }
+    if (n.y >= zemin) { n.y = zemin; n.yerde = 0.0001; kacti(n); }
+    else if (n.x <= -NESNE || n.x >= W + NESNE) kacti(n);        // rüzgâr ekrandan savurdu
   }
   // kitaba düşenler toplanır; yere düşen 0,45 sn'de söner; rüzgârın ekrandan savurduğu kaybolur
   for (const n of nesneler) if (n.yakalandi) yakala(n);
@@ -491,9 +518,9 @@ window.addEventListener("keyup", e => {
 function yakala(n){
   let kazanc = n.t.puan, yazi = "", renk = "#ffe29a";
   if (n.t.yasak) {
-    kazanc = -DAMGA_CEZA; yazi = "SAKINCALI! −" + DAMGA_CEZA; renk = "#ff6b6b";
+    kazanc = -n.t.ceza; yazi = n.t.yazi + " −" + n.t.ceza; renk = "#ff6b6b";
     kirmizi = 1;
-    mesaj("Sansür damgası kitaba düştü: " + DAMGA_CEZA + " puan gitti. Sayfaların yerinde.");
+    mesaj(n.t.mesaj + ": " + n.t.ceza + " puan gitti. Sayfaların yerinde.");
   } else if (n.t.zarf) {
     const r = Math.random();
     if (r < 0.40)      { kazanc = 3; yazi = "Zarf: +3"; }
@@ -508,9 +535,22 @@ function yakala(n){
       mesaj("Daktilonun zili çaldı — zaman yavaşladı! " + DONMA_SURE + " saniye boyunca her şey üç kat yavaş düşüyor.");
     }
   }
-  efektEkle(n.x, n.y, n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4"));
+  efektEkle(n.x, n.y, n.t.ad === "kahve" ? "#8a4b22" : n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4"));
   yazilar.push({ x: n.x, y: n.y - NESNE * 0.5, yazi, renk, omur: 1 });
   puanEkle(kazanc);
+}
+
+/* KAÇIRMA CEZASI (Gökşin, 2026-09-23): "kitabı bir noktaya yerleştirip hiç
+   oynatmadan beklesen bile bir noktada öyküyü kazanıyorsun." Kaçan her İYİ
+   nesne 1 puan siler (yere düşen ya da rüzgârın savurduğu). Yasaklının kaçması
+   cezasız — kaçması gereken o. Sayfalar yine ASLA silinmez (puanEkle alt sınırı). */
+const KACIRMA_CEZA = 1;
+function kacti(n){
+  if (n.kacti || n.t.yasak || tamamlandi) return;
+  n.kacti = true;
+  yazilar.push({ x: Math.max(20, Math.min(W - 20, n.x)), y: Math.min(n.y, H - NESNE * 0.4) - NESNE * 0.3,
+                 yazi: "−" + KACIRMA_CEZA, renk: "#b88a7a", omur: 0.8 });
+  puanEkle(-KACIRMA_CEZA);
 }
 
 function puanEkle(k){
