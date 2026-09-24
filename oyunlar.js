@@ -294,7 +294,7 @@ function oyunTamEkran(){
      yok (kaydında `onceki`/`rekorTs` olmadığı için feed.js onu atlıyor).
 
    VERİ:
-   · Öykü havuzu  → `aa-oykuler/liste/<id>` = {baslik,yazar,kitap,sayfa,oku,indir}
+   · Öykü havuzu  → `aa-oykuler/liste/<id>` = {baslik,yazar,kitap,sayfa,kelime,oku,indir}
      aa-v4'ün İÇİNDE DEĞİL, yanında (aa-avatars gibi). Okuma: onaylı üye.
      Yazma: yalnız hggunay. Kaynağı Masaüstü\kısa hikayeler\_liste.json →
      firebase-oykuler-uret.py → Firebase panelinde "Import JSON".
@@ -325,11 +325,15 @@ function oykuLinkHtml(link, sahipMi, stil){
     : `<span style="${st}" title="Buluntu Metinler oyununda bulundu">📜 buluntu</span>`;
 }
 
-/* Hedef her öyküde 15-25 sayfa: öykünün gerçek uzunluğundan KOPUK (22 Eylül
-   kararı) — 5 sayfalık öykü de 150 sayfalık da benzer emekle kazanılıyor.
-   Uzun öykü biraz daha uzun sürsün diye 60 sayfaya kadar kademeli artıyor. */
-function kesifHedefi(sayfa){
-  const s = Math.max(0, Number(sayfa) || 0);
+/* Hedef = öykünün KİTAP SAYFASI uzunluğu (kelime ÷ 250), en az 15 (24 Eylül,
+   Gökşin: "90 sayfalık öykü 15-20 dk sürsün"). Eski kural 15-25'te kesiyordu →
+   en uzun öykü de 5 dk'da açılıyordu. Ölçüm: sayfa başına ~11 sn → 15 ≈ 3 dk,
+   92 (en uzun) ≈ 17 dk. Sayfa sayısı değil KELİME: telefon boyu PDF'lerle kitap
+   sayfaları karşılaştırılamıyor. `kelime` yoksa (eski liste) eski kural. */
+function kesifHedefi(oyku){
+  const kelime = Number(oyku && oyku.kelime) || 0;
+  if (kelime > 0) return Math.max(15, Math.round(kelime / 250));
+  const s = Math.max(0, Number(oyku && oyku.sayfa) || 0);
   return 15 + Math.round(10 * Math.min(1, s / 60));
 }
 
@@ -390,7 +394,7 @@ async function kesifAc(oyun){
   if (!k.hikaye || !havuz[k.hikaye]) {
     const id = oykuSec(havuz, kesifListesi());
     k = await kesifKaydiYaz(oyun, {
-      bulunan: 0, hedef: id ? kesifHedefi(havuz[id].sayfa) : 0, hikaye: id || null,
+      bulunan: 0, hedef: id ? kesifHedefi(havuz[id]) : 0, hikaye: id || null,
       oynama: k.oynama || 0, tamamlanan: k.tamamlanan || 0
     });
     if (!k) { _acikOyun = null; return; }                    // yazılamadı, fbSet uyardı
@@ -488,7 +492,7 @@ async function kesifDevam(oyunId){
   if (!havuz) { mesajGoster('Öykü listesi okunamadı.', 'uyari'); return; }
   const k0 = kesifKaydi(oyun.id);
   const id = oykuSec(havuz, kesifListesi());
-  const k = await kesifKaydiYaz(oyun, { ...k0, bulunan: 0, hedef: id ? kesifHedefi(havuz[id].sayfa) : 0, hikaye: id || null });
+  const k = await kesifKaydiYaz(oyun, { ...k0, bulunan: 0, hedef: id ? kesifHedefi(havuz[id]) : 0, hikaye: id || null });
   if (!k) return;
   if (!id) mesajGoster('Tüm öyküler keşfedildi 🎉');
   const a = p.querySelector('.kesif-acilis'); if (a) a.remove();
