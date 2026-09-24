@@ -80,7 +80,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
     <button class="yon" id="sagDugme" aria-label="Kitabı sağa kaydır">▶</button>
   </div>
 
-  <div id="msg">Kitabı kaydır, düşenleri kitaba topla. Kırmızılar (damga, kahve) kitaba düşmesin; kaçan her nesne 1 puan siler.</div>
+  <div id="msg">Kitabı kaydır, düşenleri kitaba topla. Kırmızılar (damga, <span class="yasak-kisa">kahve</span>) kitaba düşmesin; kaçan her nesne 1 puan siler.</div>
 </div>
 
 <div id="yardimKat"><div class="yk">
@@ -93,19 +93,20 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
   <p><b>Alttaki kitabı sürükle ve düşenleri topla.</b></p>
   <p>Bazı sayfalar kayıp bir metne ait. Puanların biriktikçe sayfalara dönüşecek. Bütün sayfaları
   bulduğunda, ne olduğunu bilmediğin metnin adı ve yazarı ortaya çıkacak.</p>
-  <p>Ama dikkat et. Hayalet bazen sansür damgası, kahve fincanı gibi daha tehlikeli şeyler de fırlatıyor.
+  <p>Ama dikkat et. Hayalet bazen sansür damgası, <span class="yasak-uzun">kahve fincanı</span> gibi daha tehlikeli şeyler de fırlatıyor.
   Arada bir rüzgâr çıkıp ortalığı daha da karıştırıyor.</p>
   <p>Ve bütün sayfaları bulduğunda... Hayalet Magnus da merakına yenik düşüp bulduğun metni senden
   önce okumaya başlayabilir.</p>
   <p><i>Ne bulacağını sen de bilmiyorsun.</i></p>
   <table>
-    <tr><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy</b> — 1 puan</td></tr>
-    <tr><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
+    <!-- data-tur'lu satırlar mevsimde değişir (mevsimYardimi) -->
+    <tr data-tur="tuy"><td><img src="gorseller/tuy.png" alt=""></td><td><b>Tüy</b> — 1 puan</td></tr>
+    <tr data-tur="murekkep"><td><img src="gorseller/murekkep.png" alt=""></td><td><b>Mürekkep</b> — 2 puan</td></tr>
     <tr><td><img src="gorseller/sayfa.png" alt=""></td><td><b>Sayfa</b> — 3 puan</td></tr>
     <tr><td><img src="gorseller/daktilo.png" alt=""></td><td><b>Daktilo</b> — 5 puan, nadir. Yakalarsan zaman yavaşlar.</td></tr>
-    <tr><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içinden ne çıkacağı belli olmaz.</td></tr>
+    <tr data-tur="zarf"><td><img src="gorseller/zarf.png" alt=""></td><td><b>Mühürlü zarf</b> — içinden ne çıkacağı belli olmaz.</td></tr>
     <tr><td><img src="gorseller/sansur-damgasi.png" alt=""></td><td><b>Sansür damgası</b> — kitaba düşmesin! (−6)</td></tr>
-    <tr><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — sayfalara dökülmesin! (−4)</td></tr>
+    <tr data-tur="kahve"><td><img src="gorseller/kahve.png" alt=""></td><td><b>Kahve</b> — sayfalara dökülmesin! (−4)</td></tr>
   </table>
   <p>Kaçırdığın nesneler de puanına mal olur. Kırmızılar bazen iyi bir nesnenin hemen yanına düşer.
   <b>Hangisini yakalayacaksın?</b></p>
@@ -271,11 +272,19 @@ function hayaletCiz(){
   if (im) {
     ctx.drawImage(im, -gen * FENER_X, -yuk * FENER_Y, gen, yuk);
     // Süsler GÖRSEL koordinatında (900×610) çiziliyor → Magnus'la birlikte ölçeklenir, döner
-    if (kova || SUS === "noel") {
+    if (SUS) {
       ctx.save();
       ctx.translate(-gen * FENER_X, -yuk * FENER_Y); ctx.scale(gen / im.width, yuk / im.height);
-      if (kova) { ctx.translate(196, 238); kovaCiz(ctx, zaman); }           // elin kıvrımı
-      else      { ctx.translate(345, 38); ctx.rotate(0.22); sapkaCiz(ctx, zaman); }   // başın tepesi
+      if (kova) { ctx.save(); ctx.translate(196, 238); kovaCiz(ctx, zaman); ctx.restore(); }   // elin kıvrımı
+      ctx.translate(345, 38); ctx.rotate(0.22);                                                // başın tepesi
+      // Cadı şapkası daha büyük ve daha aşağıda: kenarı başın tepesini TAMAMEN örtsün (Gökşin)
+      if (SUS === "cadilar") {
+        ctx.translate(12, -6); ctx.scale(1.47, 1.47);
+        const sp = GORSEL["cadi-sapkasi"];     // Gökşin'in görseli; kenarın ortası (%50, %78) başın tepesine
+        if (sp) ctx.drawImage(sp, -SAPKA_GEN * 0.5 + 4, -SAPKA_GEN * 0.78 + 16, SAPKA_GEN, SAPKA_GEN);
+        else cadiSapkasiCiz(ctx, zaman);
+      }
+      else sapkaCiz(ctx, zaman);
       ctx.restore();
     }
   }
@@ -308,6 +317,157 @@ const RAF_ISIKLARI = {                                     // ampul renkleri (r,
   cadilar: ["255,140,40", "150,80,220", "255,180,70"],
   noel:    ["255,220,150", "255,90,80", "120,220,140", "255,210,90"]
 };
+
+/* MEVSİM NESNELERİ (Gökşin, 24 Eylül). Yalnız GÖRÜNÜŞ ve yazı değişir; puan, hız,
+   salınım, oran AYNI (yerine geçtiği nesnenin rolünü alır). `gorsel` = gorseller/
+   dosyası (Gökşin'in çizimleri, saydamlaştırıldı), `ciz` = kodla çizim (görseli yok).
+   Sayfa, daktilo ve damga her mevsim aynı: oyunun kendisi, özel nesne ve oyuncunun
+   hep tanıdığı bir yasaklı. `zarfYazi` = sürpriz nesnenin açılış yazıları. */
+const ZARF_YAZI = { ad: "Zarf", sayfa: "Zarftan bir sayfa!", bos: "Zarf boş…",
+                    mesaj: "Mühürlü zarfın içinden kayıp bir sayfa çıktı." };
+const MEVSIM_NESNE = {
+  cadilar: {
+    tuy:      { gorsel: "yaprak",    ad: "Sonbahar yaprağı" },
+    murekkep: { gorsel: "lolipop",   ad: "Şeker" },   // Gökşin: iksir yerine şeker (görsel yoksa kodla çizilen şeker)
+    kahve:    { gorsel: "zehirli-iksir", ad: "Zehirli iksir", uzun: "zehirli iksir", kisa: "iksir",
+                aciklama: "sayfalara dökülmesin!", yazi: "Zehirli iksir!", mesaj: "Zehirli iksir sayfalara döküldü", efekt: "#d0306a" },
+    zarf:     { gorsel: "balkabagi", ad: "Balkabağı", aciklama: "şeker mi, şaka mı? İçinden ne çıkacağı belli olmaz.",
+                zarfYazi: { ad: "Şeker!", sayfa: "Şeker! Bir sayfa!", bos: "Şaka! Boş…",
+                            mesaj: "Balkabağının içinden kayıp bir sayfa çıktı." } }
+  },
+  noel: {
+    tuy:      { ciz: "kar",    ad: "Kar tanesi" },
+    murekkep: { gorsel: "kozalak", ad: "Kozalak" },
+    zarf:     { gorsel: "hediye", ad: "Hediye kutusu", aciklama: "içinden ne çıkacağı belli olmaz.",
+                zarfYazi: { ad: "Hediye", sayfa: "Hediyeden bir sayfa!", bos: "Kutu boş…",
+                            mesaj: "Hediye kutusunun içinden kayıp bir sayfa çıktı." } },
+    // Kömür: Gökşin'in görseli; çatlaklar ayrı katman (komur-kor.png) → nefes alarak parlar
+    kahve:    { gorsel: "komur", kor: "komur-kor", ad: "Közlü kömür", uzun: "közlü kömür", kisa: "kömür",
+                aciklama: "sayfalar isle kaplanmasın!", yazi: "Kömür!", mesaj: "Kömür sayfaları isle kapladı", efekt: "#ff7a3a" }
+  }
+};
+if (SUS) {
+  for (const t of TURLER) {
+    const m = MEVSIM_NESNE[SUS][t.ad];
+    if (!m) continue;
+    t.kilik = m;
+    if (m.yazi) t.yazi = m.yazi;
+    if (m.mesaj) t.mesaj = m.mesaj;
+    if (m.gorsel) gorselYukle(m.gorsel, "gorseller/" + m.gorsel + ".png");
+    if (m.kor) gorselYukle(m.kor, "gorseller/" + m.kor + ".png");
+  }
+  if (SUS === "cadilar") gorselYukle("cadi-sapkasi", "gorseller/cadi-sapkasi.png");
+}
+/* Görsel gelmezse kodla çizilen yedek (her görselin yedeği olsun kuralı). */
+const MEVSIM_YEDEK = { lolipop: "seker", hediye: "hediye", komur: "komur" };
+const SAPKA_GEN = 206;   // cadı şapkası görselinin genişliği (şapka birimi; kenarı kodla çizilenle aynı boy)
+
+/* Kodla çizilen mevsim nesneleri — b×b kutuda, merkez (0,0). */
+function karCiz(c, b){
+  c.save();
+  c.shadowColor = "rgba(190,225,255,.9)"; c.shadowBlur = b * 0.25;
+  c.strokeStyle = "#f4fbff"; c.lineCap = "round"; c.lineWidth = b * 0.06;
+  for (let i = 0; i < 6; i++) {
+    c.save(); c.rotate(i * Math.PI / 3);
+    c.beginPath(); c.moveTo(0, 0); c.lineTo(0, -b * 0.42); c.stroke();
+    for (const [y, u] of [[0.2, 0.11], [0.31, 0.08]]) {             // dallar
+      c.beginPath(); c.moveTo(0, -b * y); c.lineTo(-b * u, -b * (y + u)); c.moveTo(0, -b * y); c.lineTo(b * u, -b * (y + u)); c.stroke();
+    }
+    c.restore();
+  }
+  c.fillStyle = "#ffffff"; c.beginPath(); c.arc(0, 0, b * 0.07, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+function komurCiz(c, b, t){
+  c.save();
+  const kor = 0.7 + 0.3 * Math.sin(t * 5.3);                          // kor nefes alır
+  const g = c.createRadialGradient(0, 0, b * 0.1, 0, 0, b * 0.6);     // kırmızı hale: yasak olduğu belli
+  g.addColorStop(0, `rgba(255,90,30,${0.45 * kor})`); g.addColorStop(1, "rgba(255,60,20,0)");
+  c.fillStyle = g; c.beginPath(); c.arc(0, 0, b * 0.6, 0, Math.PI * 2); c.fill();
+  c.fillStyle = "#1d1714"; c.beginPath();                             // topaklı kömür
+  const nk = [[-.36, -.05], [-.22, -.3], [.05, -.36], [.3, -.22], [.38, .06], [.22, .32], [-.08, .36], [-.32, .22]];
+  nk.forEach(([x, y], i) => i ? c.lineTo(x * b, y * b) : c.moveTo(x * b, y * b)); c.closePath(); c.fill();
+  c.fillStyle = "rgba(90,80,75,.5)"; c.beginPath();                   // parlak yüz
+  c.moveTo(-.22 * b, -.28 * b); c.lineTo(.05 * b, -.34 * b); c.lineTo(-.02 * b, -.08 * b); c.closePath(); c.fill();
+  c.strokeStyle = `rgba(255,${Math.round(120 + 70 * kor)},40,${0.75 + 0.25 * kor})`;   // kor çatlakları
+  c.shadowColor = "rgba(255,110,30,1)"; c.shadowBlur = b * 0.18 * kor; c.lineWidth = b * 0.035; c.lineCap = "round";
+  c.beginPath(); c.moveTo(-.25 * b, .02 * b); c.lineTo(-.05 * b, .08 * b); c.lineTo(.1 * b, -.05 * b); c.lineTo(.28 * b, .02 * b);
+  c.moveTo(-.05 * b, .08 * b); c.lineTo(-.02 * b, .27 * b); c.moveTo(.1 * b, -.05 * b); c.lineTo(.12 * b, -.25 * b); c.stroke();
+  c.restore();
+}
+function hediyeCiz(c, b){
+  c.save();
+  const w = b * 0.66, h = b * 0.5, y0 = -b * 0.12;
+  c.fillStyle = "#b8232b"; c.fillRect(-w / 2, y0, w, h);                                     // kutu
+  c.fillStyle = "#d63a3f"; c.fillRect(-w / 2 - b * 0.04, y0 - b * 0.14, w + b * 0.08, b * 0.15);   // kapak
+  c.fillStyle = "rgba(0,0,0,.18)"; c.fillRect(-w / 2, y0, w, b * 0.04);                   // kapak gölgesi
+  c.fillStyle = "#f0c64a";                                                                   // kurdele
+  c.fillRect(-b * 0.05, y0 - b * 0.14, b * 0.1, h + b * 0.14);
+  c.fillRect(-w / 2 - b * 0.04, y0 - b * 0.09, w + b * 0.08, b * 0.06);
+  c.strokeStyle = "#f0c64a"; c.lineWidth = b * 0.06; c.lineJoin = "round";                 // fiyonk
+  for (const s of [-1, 1]) {
+    c.beginPath(); c.moveTo(0, y0 - b * 0.15);
+    c.bezierCurveTo(s * b * 0.08, y0 - b * 0.38, s * b * 0.3, y0 - b * 0.3, s * b * 0.05, y0 - b * 0.15); c.stroke();
+  }
+  c.restore();
+}
+/* 🍬 Ambalajlı şeker: iki ucu burgulu, turuncu-mor çizgili. */
+function sekerCiz(c, b){
+  c.save();
+  c.rotate(-0.35); c.scale(1.4, 1.4);                               // öbür nesneler kadar yer kaplasın
+  for (const s of [-1, 1]) {                                        // burgulu uçlar
+    c.fillStyle = "#8a4fc9"; c.beginPath();
+    c.moveTo(s * b * 0.2, 0); c.lineTo(s * b * 0.46, -b * 0.17); c.lineTo(s * b * 0.4, 0); c.lineTo(s * b * 0.46, b * 0.17); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = b * 0.02;
+    c.beginPath(); c.moveTo(s * b * 0.24, -b * 0.02); c.lineTo(s * b * 0.42, -b * 0.12); c.stroke();
+  }
+  c.save();                                                          // gövde
+  c.beginPath(); c.ellipse(0, 0, b * 0.24, b * 0.18, 0, 0, Math.PI * 2); c.clip();
+  c.fillStyle = "#f08a24"; c.fillRect(-b * 0.3, -b * 0.2, b * 0.6, b * 0.4);
+  c.fillStyle = "#6b3fa0";
+  for (let i = -3; i <= 3; i++) {                                    // eğik çizgiler
+    c.beginPath(); c.moveTo(i * b * 0.1 - b * 0.03, -b * 0.2); c.lineTo(i * b * 0.1 + b * 0.03, -b * 0.2);
+    c.lineTo(i * b * 0.1 - b * 0.07, b * 0.2); c.lineTo(i * b * 0.1 - b * 0.13, b * 0.2); c.closePath(); c.fill();
+  }
+  c.fillStyle = "rgba(255,255,255,.35)";                             // parlaklık
+  c.beginPath(); c.ellipse(-b * 0.07, -b * 0.08, b * 0.09, b * 0.04, -0.3, 0, Math.PI * 2); c.fill();
+  c.restore();
+  c.restore();
+}
+const MEVSIM_CIZ = { kar: karCiz, komur: komurCiz, hediye: hediyeCiz, seker: sekerCiz };
+
+/* Yardım kutusu mevsime uysun: satırın resmi/adı/açıklaması + metindeki yasaklı adı.
+   Kodla çizilenlerin resmi küçük bir tuvalden üretilir. */
+(function mevsimYardimi(){
+  if (!SUS) return;
+  for (const t of TURLER) {
+    const m = t.kilik, tr = document.querySelector(`tr[data-tur="${t.ad}"]`);
+    if (!m || !tr) continue;
+    const img = tr.querySelector("img"), td = tr.children[1];
+    if (m.gorsel && m.kor) {                     // kömür: listede de korlu hâli görünsün
+      const k = document.createElement("canvas"); k.width = k.height = 96;
+      const c = k.getContext("2d"), a = new Image(), b = new Image(); let n = 0;
+      a.onload = b.onload = () => {
+        if (++n < 2) return;
+        c.drawImage(a, 8, 8, 80, 80); c.globalCompositeOperation = "lighter"; c.drawImage(b, 8, 8, 80, 80);
+        img.src = k.toDataURL();
+      };
+      img.src = a.src = "gorseller/" + m.gorsel + ".png"; b.src = "gorseller/" + m.kor + ".png";
+    }
+    else if (m.gorsel) img.src = "gorseller/" + m.gorsel + ".png";
+    else {
+      const k = document.createElement("canvas"); k.width = k.height = 96;
+      const c = k.getContext("2d"); c.translate(48, 48); MEVSIM_CIZ[m.ciz](c, 80, 0);
+      img.src = k.toDataURL();
+    }
+    const eski = td.innerHTML.split("</b>")[1];                                  // " — 1 puan" gibi
+    td.innerHTML = `<b>${m.ad}</b>` + (m.aciklama ? " — " + m.aciklama + (t.yasak ? ` (−${t.ceza})` : "") : eski);
+    if (t.yasak) {
+      document.querySelectorAll(".yasak-uzun").forEach(e => e.textContent = m.uzun || m.ad);
+      document.querySelectorAll(".yasak-kisa").forEach(e => e.textContent = m.kisa || m.ad);
+    }
+  }
+})();
 
 /* Tohumlu rastgele: fırça izleri her karede aynı kalsın (titremesin). */
 function tohum(s){ return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -376,6 +536,35 @@ function sapkaCiz(c, t){
   const pg = c.createRadialGradient(114, 12 + salin, 2, 120, 18 + salin, 19);          // ponpon
   pg.addColorStop(0, "#ffffff"); pg.addColorStop(.7, "#eee6d6"); pg.addColorStop(1, "rgba(220,208,186,0)");
   c.fillStyle = pg; c.beginPath(); c.arc(120, 18 + salin, 19, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+
+/* 🧙 Cadı şapkası, mor-siyah (Gökşin, 24 Eylül). (0,0) = başın tepesi; geniş kenar,
+   sivri uç arkaya kıvrılır ve süzülürken sallanır. Mor bant + altın toka. */
+function cadiSapkasiCiz(c, t){
+  const r = tohum(19), salin = Math.sin(t * 1.4) * 5;
+  c.save();
+  // Kenar (arkası): başın arkasında kalan yarım
+  boyaLeke(c, x => x.ellipse(4, 16, 92, 20, -0.04, Math.PI, Math.PI * 2), "#1c1424", 6, r);
+  // Külah: yukarı çıkıp arkaya kıvrılan sivri uç
+  boyaLeke(c, x => {
+    x.moveTo(-46, 14);
+    x.bezierCurveTo(-34, -40, -10, -92, 22, -118);
+    x.bezierCurveTo(44, -134, 78, -126 + salin, 96, -104 + salin);   // kıvrık uç
+    x.bezierCurveTo(70, -112 + salin, 46, -108, 40, -80);
+    x.bezierCurveTo(34, -40, 44, -8, 52, 14); x.closePath();
+  }, "#231a2e", 8, r);
+  boyaLeke(c, x => { x.moveTo(-34, 8); x.bezierCurveTo(-24, -40, -6, -80, 18, -104); x.bezierCurveTo(8, -70, 0, -30, -8, 8); x.closePath(); },
+    "#5b3a86", 4, r);                                                   // ışık alan mor yüz
+  // Mor bant + altın toka
+  boyaLeke(c, x => { x.moveTo(-44, 4); x.quadraticCurveTo(4, -8, 50, 4); x.lineTo(52, 16); x.quadraticCurveTo(4, 4, -46, 16); x.closePath(); },
+    "#7b3fc0", 7, r);
+  c.strokeStyle = "rgba(232,190,90,.95)"; c.lineWidth = 3.5;
+  c.strokeRect(-4, -2, 16, 14);
+  // Kenar (önü): başın önüne düşen yarım, geniş ve hafif dalgalı
+  boyaLeke(c, x => x.ellipse(4, 16, 92, 20, -0.04, 0, Math.PI), "#2a1f36", 7, r);
+  c.strokeStyle = "rgba(120,80,170,.45)"; c.lineWidth = 2;
+  c.beginPath(); c.ellipse(4, 16, 90, 18, -0.04, 0.15, Math.PI - 0.15); c.stroke();
   c.restore();
 }
 
@@ -556,7 +745,33 @@ function nesneGuncelle(dt0){
   nesneler = nesneler.filter(n => !n.yakalandi && n.yerde < 0.45 && n.x > -NESNE && n.x < W + NESNE);
 }
 function nesneCiz(n){
-  const im = GORSEL[n.t.ad], b = NESNE;
+  const m = n.t.kilik, b = NESNE;                  // mevsim kılığı (yoksa asıl görsel)
+  const im = m ? (m.gorsel ? GORSEL[m.gorsel] : null) : GORSEL[n.t.ad];
+  const ciz = m && (m.ciz || (!im && MEVSIM_YEDEK[m.gorsel]));
+  if (ciz) {                                       // kodla çizilen mevsim nesnesi (ya da görselin yedeği)
+    ctx.save();
+    ctx.globalAlpha = n.yerde ? Math.max(0, 1 - n.yerde / 0.45) : 1;
+    ctx.translate(n.x, n.y); ctx.rotate(n.aci);
+    MEVSIM_CIZ[ciz](ctx, b, zaman);
+    ctx.restore();
+    return;
+  }
+  if (m && m.kor && im && GORSEL[m.kor]) {         // közlü kömür: görsel + nefes alan kor katmanı
+    const kor = 0.55 + 0.45 * Math.sin(zaman * 5.3 + n.x * 0.05);
+    ctx.save();
+    ctx.globalAlpha = n.yerde ? Math.max(0, 1 - n.yerde / 0.45) : 1;
+    ctx.translate(n.x, n.y); ctx.rotate(n.aci);
+    const g = ctx.createRadialGradient(0, 0, b * 0.1, 0, 0, b * 0.62);   // kırmızı hale: yasak olduğu belli
+    g.addColorStop(0, `rgba(255,80,30,${0.35 * kor})`); g.addColorStop(1, "rgba(255,60,20,0)");
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(0, 0, b * 0.62, 0, Math.PI * 2); ctx.fill();
+    ctx.drawImage(im, -b / 2, -b / 2, b, b);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.globalAlpha *= kor;
+    ctx.shadowColor = "rgba(255,120,30,1)"; ctx.shadowBlur = b * 0.15;
+    ctx.drawImage(GORSEL[m.kor], -b / 2, -b / 2, b, b);
+    ctx.restore();
+    return;
+  }
   const saydam = n.yerde ? Math.max(0, 1 - n.yerde / 0.45) : 1;
   ctx.save();
   ctx.globalAlpha = saydam;
@@ -655,12 +870,12 @@ function yakala(n){
     kazanc = -n.t.ceza; yazi = n.t.yazi + " −" + n.t.ceza; renk = "#ff6b6b";
     kirmizi = 1;
     mesaj(n.t.mesaj + ": " + n.t.ceza + " puan gitti. Sayfaların yerinde.");
-  } else if (n.t.zarf) {
-    const r = Math.random();
-    if (r < 0.40)      { kazanc = 3; yazi = "Zarf: +3"; }
-    else if (r < 0.65) { kazanc = 6; yazi = "Zarf: +6"; }
-    else if (r < 0.80) { kazanc = PUAN_SAYFA; yazi = "Zarftan bir sayfa!"; mesaj("Mühürlü zarfın içinden kayıp bir sayfa çıktı."); }
-    else               { kazanc = 0; yazi = "Zarf boş…"; renk = "#bfae8c"; }
+  } else if (n.t.zarf) {                            // sürpriz: zarf / balkabağı / hediye kutusu
+    const r = Math.random(), z = (n.t.kilik && n.t.kilik.zarfYazi) || ZARF_YAZI;
+    if (r < 0.40)      { kazanc = 3; yazi = z.ad + " +3"; }
+    else if (r < 0.65) { kazanc = 6; yazi = z.ad + " +6"; }
+    else if (r < 0.80) { kazanc = PUAN_SAYFA; yazi = z.sayfa; mesaj(z.mesaj); }
+    else               { kazanc = 0; yazi = z.bos; renk = "#bfae8c"; }
   } else {
     yazi = "+" + kazanc;
     if (n.t.parlak) {                               // daktilo → ağır çekim
@@ -669,7 +884,7 @@ function yakala(n){
       mesaj("Daktilonun zili çaldı — zaman yavaşladı! " + DONMA_SURE + " saniye boyunca her şey üç kat yavaş düşüyor.");
     }
   }
-  efektEkle(n.x, n.y, n.t.ad === "kahve" ? "#8a4b22" : n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4"));
+  efektEkle(n.x, n.y, (n.t.kilik && n.t.kilik.efekt) || (n.t.ad === "kahve" ? "#8a4b22" : n.t.yasak ? "#ff5a4a" : (n.t.parlak ? "#ffd56a" : "#f5e7c4")));
   yazilar.push({ x: n.x, y: n.y - NESNE * 0.5, yazi, renk, omur: 1 });
   puanEkle(kazanc);
 }
