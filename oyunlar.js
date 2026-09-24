@@ -358,10 +358,21 @@ async function oykuHavuzu(){
   return veri;
 }
 
-/* Keşfedilmemiş öykülerden rastgele biri. Hepsi keşfedildiyse null. */
-function oykuSec(havuz, haric){
+/* Keşfedilmemiş öykülerden rastgele biri. Hepsi keşfedildiyse null.
+   MEVSİM AĞIRLIĞI (21-22 Eylül kararı, 24 Eylül'de kodlandı): açık bir sezon varsa
+   (sezonluk.js → sezonBul) %70 ihtimalle o sezonun öykülerinden seçilir, %30 bütün
+   havuzdan. %100 DEĞİL: sezon havuzu tükenince sert bir geçiş olmasın, "artık Poe
+   çıkmıyor" diye fark edilmesin. Sezonun keşfedilmemiş öyküsü kalmadıysa genel havuz.
+   Öykünün sezonu listede (`sezon` alanı; firebase-oykuler-uret.py yazar/kitaba göre verir). */
+const SEZON_AGIRLIK = 0.7;
+function oykuSec(havuz, haric, tarih){
   const adaylar = Object.keys(havuz).filter(id => !haric[id]);
   if (!adaylar.length) return null;
+  const sezon = (typeof sezonBul === 'function') ? sezonBul(tarih) : null;
+  if (sezon && Math.random() < SEZON_AGIRLIK) {
+    const mevsimlik = adaylar.filter(id => havuz[id].sezon === sezon.id);
+    if (mevsimlik.length) return mevsimlik[Math.floor(Math.random() * mevsimlik.length)];
+  }
   return adaylar[Math.floor(Math.random() * adaylar.length)];
 }
 
