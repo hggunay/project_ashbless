@@ -117,7 +117,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
    BULUNTU METİNLER — Ashbless keşif oyunu (2026-09-23)
    ─────────────────────────────────────────────────────────────────────
    Oyun hangi öykünün peşinde olduğunu BİLMEZ. Uygulama adrese iki sayı
-   yazar: ?bulunan=<şimdiye kadar>&toplam=<hedef>. Oyun sayfa buldukça
+   yazar: ?bulunan=<şimdiye kadar>&toplam=<hedef>&puan=<sayfa başına>. Oyun sayfa buldukça
    TOPLAMI geri bildirir (bulunan+yeni), her sayfada bir kez. Öykünün adı,
    bağlantısı, kaydı — hepsi uygulamada (oyunlar.js → BULUNTU METİNLER).
    toplam=0 → atanmış öykü yok (hepsi keşfedildi ya da tek başına açıldı):
@@ -126,9 +126,12 @@ canvas{position:absolute;inset:0;width:100%;height:100%;display:block;border-rad
    Görseller gorseller/ klasöründe; biri gelmezse o parça kodla çizilir.
    ═══════════════════════════════════════════════════════════════════════ */
 const OYUN_ID = "buluntu-metinler";
-const PUAN_SAYFA = 20;                 // ⚙ tek ayar (Gökşin: "hızlı kazandırsın istemiyorum" → 25/15 arası 20)
-
 const q = new URLSearchParams(location.search);
+/* Bir sayfa kaç puan: UYGULAMA söyler (?puan=, 24 Eylül). Toplanan sayfa = öykünün
+   PDF sayfası (Gökşin: "pdf'in sayfa sayısıyla aynı olmazsa gerçekten o sayfaları
+   toplamış gibi hissettirmez"); süre öykünün uzunluğuna göre kalsın diye sayfanın
+   puanı öyküye göre değişir (oyunlar.js kesifPlani). Gelmezse 20 (eski davranış). */
+const PUAN_SAYFA = Math.max(5, Math.min(400, parseInt(q.get("puan"), 10) || 20));
 const TEK_BASINA = window.parent === window;
 let toplam  = Math.max(0, parseInt(q.get("toplam"), 10) || 0);
 let bulunan = Math.max(0, parseInt(q.get("bulunan"), 10) || 0);

@@ -42,7 +42,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260924c';
+const OYUN_SURUM = '20260924d';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -298,8 +298,10 @@ function oyunTamEkran(){
      aa-v4'ün İÇİNDE DEĞİL, yanında (aa-avatars gibi). Okuma: onaylı üye.
      Yazma: yalnız hggunay. Kaynağı Masaüstü\kısa hikayeler\_liste.json →
      firebase-oykuler-uret.py → Firebase panelinde "Import JSON".
-   · İlerleme     → users/<kişi>/oyunlar/skor/<oyun> = {bulunan,hedef,hikaye,oynama,sonTs,tamamlanan}
-   · Keşfedilenler → users/<kişi>/oyunlar/kesif/<öykü> = {baslik,yazar,kitap,oku,indir,ts}
+   · İlerleme     → users/<kişi>/oyunlar/skor/<oyun> = {bulunan,hedef,hikaye,deste[],puan,oynama,sonTs,tamamlanan}
+     (hedef = PDF sayfaları toplamı, puan = bir sayfanın puanı — bkz. kesifPlani)
+   · Keşfedilenler → users/<kişi>/oyunlar/kesif/<öykü> = {baslik,yazar,kitap,oku,indir,ts,deste?}
+     (deste = ana öykünün kimliği; aynı destedekiler akışta TEK kart)
    ══════════════════════════════════════════════════════════════════════ */
 
 /* ── BAĞLANTI GİZLEME (Gökşin, 2026-09-23) ──────────────────────────────
@@ -325,16 +327,55 @@ function oykuLinkHtml(link, sahipMi, stil){
     : `<span style="${st}" title="Buluntu Metinler oyununda bulundu">📜 buluntu</span>`;
 }
 
-/* Hedef = öykünün KİTAP SAYFASI uzunluğu (kelime ÷ 250), en az 15 (24 Eylül,
-   Gökşin: "90 sayfalık öykü 15-20 dk sürsün"). Eski kural 15-25'te kesiyordu →
-   en uzun öykü de 5 dk'da açılıyordu. Ölçüm: sayfa başına ~11 sn → 15 ≈ 3 dk,
-   92 (en uzun) ≈ 17 dk. Sayfa sayısı değil KELİME: telefon boyu PDF'lerle kitap
-   sayfaları karşılaştırılamıyor. `kelime` yoksa (eski liste) eski kural. */
-function kesifHedefi(oyku){
-  const kelime = Number(oyku && oyku.kelime) || 0;
-  if (kelime > 0) return Math.max(15, Math.round(kelime / 250));
-  const s = Math.max(0, Number(oyku && oyku.sayfa) || 0);
+/* ── HEDEF VE SÜRE (24 Eylül, Gökşin'le üç adımda) ────────────────────────
+   1) TOPLANAN SAYFA = PDF'İN SAYFASI. Gökşin: "oyunda topladığı sayfa ve pdf'in
+      sayfa sayısı aynı olmazsa gerçekten o kitabın sayfalarını toplamış gibi
+      hissettirmez." Oyuncu 94 sayfalık PDF için "0 / 94" görür.
+   2) SÜRE = ÖYKÜNÜN UZUNLUĞU. "90 sayfalık öykü 15-20 dk sürsün." Süre birimi
+      kitap sayfası = kelime ÷ 250 (telefon boyu PDF'lerle kitap sayfaları
+      karşılaştırılamadığı için KELİME), en az 15. Ölçüm (Gökşin, deneme sayfası):
+      20 puan ≈ 11 sn → 15 birim ≈ 3 dk, en uzun (92) ≈ 17 dk.
+      → Sayfanın puanı = süre birimi × 20 ÷ PDF sayfası (Mutfak 16, "Kazık" 300).
+   3) DESTE: 5 sayfadan kısa öykü aynı yazarın başka kısa öyküleriyle birlikte
+      atanır, toplam ~10 sayfa (22 Eylül'de Gökşin'in önerdiği, o gün gerek
+      kalmayıp kodlanmayan çözüm). Her öykü AYRI keşif kaydı, AYRI Tsundoku
+      kaydı — birleştirilmiş PDF YOK (uydurma kitap olurdu, REDDEDİLDİ).
+      Eşi bulunmayan kısa öykü tek kalır; en az 8 birim (~1,5 dk) sürer.
+   Eski kayıtlar (`puan` alanı yok) eski hedefiyle ve 20 puanla biter. */
+const KESIF_BIRIM_PUAN = 20;
+const DESTE_ESIK = 5, DESTE_HEDEF = 10, DESTE_EN_COK = 6;
+function kesifSureBirimi(oykuler, enAz){
+  const kelime = oykuler.reduce((t, o) => t + (Number(o.kelime) || 0), 0);
+  if (kelime > 0) return Math.max(enAz, Math.round(kelime / 250));
+  const s = oykuler.reduce((t, o) => t + (Number(o.sayfa) || 0), 0);   // kelimesiz eski liste
   return 15 + Math.round(10 * Math.min(1, s / 60));
+}
+/* Seçilen öyküden oyunun planı: {hikaye, deste[], hedef, puan}. */
+function kesifPlani(havuz, id, haric){
+  if (!id || !havuz[id]) return { hikaye: null, deste: [], hedef: 0, puan: KESIF_BIRIM_PUAN };
+  const ana = havuz[id], sayfa = o => Math.max(1, Number(o.sayfa) || 1);
+  const deste = [];
+  let toplam = sayfa(ana);
+  if (toplam < DESTE_ESIK) {
+    const adaylar = Object.keys(havuz).filter(x => x !== id && !haric[x] &&
+      havuz[x].yazar === ana.yazar && sayfa(havuz[x]) < DESTE_ESIK);
+    for (let i = adaylar.length - 1; i > 0; i--) {             // karıştır
+      const j = Math.floor(Math.random() * (i + 1)); [adaylar[i], adaylar[j]] = [adaylar[j], adaylar[i]];
+    }
+    for (const x of adaylar) {
+      if (toplam >= DESTE_HEDEF - 1 || deste.length + 1 >= DESTE_EN_COK) break;
+      if (toplam + sayfa(havuz[x]) > DESTE_HEDEF + 2) continue;
+      deste.push(x); toplam += sayfa(havuz[x]);
+    }
+  }
+  const tek = !deste.length && sayfa(ana) < DESTE_ESIK;
+  const birim = kesifSureBirimi([ana, ...deste.map(x => havuz[x])], tek ? 8 : 15);
+  const puan = Math.max(5, Math.min(400, Math.round(birim * KESIF_BIRIM_PUAN / toplam)));
+  return { hikaye: id, deste, hedef: toplam, puan };
+}
+/* Atanmış öykü + destesi (havuzdan kalkanlar atlanır). */
+function kesifOykuleri(k){
+  return [k.hikaye, ...(Array.isArray(k.deste) ? k.deste : [])].filter(Boolean);
 }
 
 function kesifKaydi(oyunId, kisi){
@@ -392,10 +433,11 @@ async function kesifAc(oyun){
   }
   // Atanmış öykü havuzdan kalkmışsa (liste güncellendi) yenisi seçilir; toplanan sayfa sıfırlanır.
   if (!k.hikaye || !havuz[k.hikaye]) {
-    const id = oykuSec(havuz, kesifListesi());
+    const haric = kesifListesi();
+    const plan = kesifPlani(havuz, oykuSec(havuz, haric), haric);
+    const id = plan.hikaye;
     k = await kesifKaydiYaz(oyun, {
-      bulunan: 0, hedef: id ? kesifHedefi(havuz[id]) : 0, hikaye: id || null,
-      oynama: k.oynama || 0, tamamlanan: k.tamamlanan || 0
+      bulunan: 0, ...plan, oynama: k.oynama || 0, tamamlanan: k.tamamlanan || 0
     });
     if (!k) { _acikOyun = null; return; }                    // yazılamadı, fbSet uyardı
     if (!id) mesajGoster('Tüm öyküler keşfedildi 🎉 Oyun yine oynanır, yenileri eklenince haber verir.');
@@ -403,7 +445,8 @@ async function kesifAc(oyun){
   _oyunPenceresiKur(oyun, kesifAdres(oyun, k));
 }
 function kesifAdres(oyun, k){
-  return `${oyun.dosya}?s=${OYUN_SURUM}&bulunan=${k.hikaye ? (k.bulunan || 0) : 0}&toplam=${k.hikaye ? k.hedef : 0}`;
+  return `${oyun.dosya}?s=${OYUN_SURUM}&bulunan=${k.hikaye ? (k.bulunan || 0) : 0}&toplam=${k.hikaye ? k.hedef : 0}` +
+         `&puan=${k.hikaye && k.puan ? k.puan : KESIF_BIRIM_PUAN}`;
 }
 
 /* Bellek + tek yaprak yazma (oyunSkoruIsle'deki kalıbın aynısı). */
@@ -436,37 +479,45 @@ async function kesifTamamla(oyun, k){
   _kesifTamamlaniyor = true;
   try {
     const havuz = await oykuHavuzu();
-    const o = havuz && havuz[k.hikaye];
-    if (!o){ mesajGoster('Öykü tamamlandı ama bilgisi okunamadı. Tekrar açınca görünecek.', 'uyari'); return; }
-    const kayit = { baslik: o.baslik, yazar: o.yazar, kitap: o.kitap || '', oku: o.oku, indir: o.indir, ts: Date.now() };
-    // Önce keşif listesine yaz; yazılamazsa ilerleme sıfırlanmasın (öykü kaybolmasın).
-    const ok = await fbSet('aa-v4/users/' + me + '/oyunlar/kesif/' + k.hikaye, kayit);
-    if (!ok) return;
-    // Bellek YALNIZ yazma başarılıysa: yoksa öykü burada "keşfedildi" görünür, sunucuda olmazdı.
-    if (!db.users[me]) db.users[me] = {};
-    if (!db.users[me].oyunlar) db.users[me].oyunlar = {};
-    if (!db.users[me].oyunlar.kesif) db.users[me].oyunlar.kesif = {};
-    db.users[me].oyunlar.kesif[k.hikaye] = kayit;
+    const idler = havuz ? kesifOykuleri(k).filter(id => havuz[id]) : [];
+    if (!idler.length){ mesajGoster('Öykü tamamlandı ama bilgisi okunamadı. Tekrar açınca görünecek.', 'uyari'); return; }
+    // DESTE: her öykü ayrı kayıt; `deste` = ana öykünün kimliği (akış tek kart yapsın diye).
+    const ts = Date.now(), bulunanlar = [];
+    for (const id of idler) {
+      const o = havuz[id];
+      const kayit = { baslik: o.baslik, yazar: o.yazar, kitap: o.kitap || '', oku: o.oku, indir: o.indir, ts };
+      if (idler.length > 1) kayit.deste = k.hikaye;
+      // Önce keşif listesine yaz; yazılamazsa ilerleme sıfırlanmasın (öykü kaybolmasın).
+      // Yarıda kesilirse sorun yok: tekrar tamamlanınca aynı kayıtlar üzerine yazılır.
+      const ok = await fbSet('aa-v4/users/' + me + '/oyunlar/kesif/' + id, kayit);
+      if (!ok) return;
+      // Bellek YALNIZ yazma başarılıysa: yoksa öykü burada "keşfedildi" görünür, sunucuda olmazdı.
+      if (!db.users[me]) db.users[me] = {};
+      if (!db.users[me].oyunlar) db.users[me].oyunlar = {};
+      if (!db.users[me].oyunlar.kesif) db.users[me].oyunlar.kesif = {};
+      db.users[me].oyunlar.kesif[id] = kayit;
+      bulunanlar.push([id, kayit]);
+    }
     await kesifKaydiYaz(oyun, { bulunan: 0, hedef: 0, hikaye: null,
       oynama: (k.oynama || 0) + 1, tamamlanan: (k.tamamlanan || 0) + 1 });
-    kesifAcilisGoster(oyun, k.hikaye, kayit);
+    kesifAcilisGoster(oyun, bulunanlar);
     renderOyunlar();
   } finally { _kesifTamamlaniyor = false; }
 }
 
 /* Öykünün adı oyun penceresinin ÜSTÜNDE açıklanıyor (oyunun içinde değil:
    bağlantı uygulamada kalıcı dursun, tekrar ulaşmak için oyunu oynamak gerekmesin). */
-function kesifAcilisGoster(oyun, id, o){
+/* `bulunanlar` = [[id, kayit], ...] — tek öykü ya da deste. */
+function kesifAcilisGoster(oyun, bulunanlar){
+  const [id, o] = bulunanlar[0];
   const govde = document.querySelector('#oyunPencere .oyun-govde');
-  if (!govde) { mesajGoster(`📜 Öykü bulundu: ${o.baslik} — ${o.yazar}`); return; }
+  if (!govde) { mesajGoster(`📜 ${bulunanlar.length > 1 ? bulunanlar.length + ' öykü' : 'Öykü'} bulundu: ${o.baslik} — ${o.yazar}`); return; }
   const eski = govde.querySelector('.kesif-acilis'); if (eski) eski.remove();
   const kutu = document.createElement('div');
   kutu.className = 'kesif-acilis';
-  kutu.innerHTML = `
-    <div class="kesif-kart">
-      ${''/* Gökşin'in fikri (24 Eylül): kartın kenarına oturup kitap okuyan hayalet —
-            kendi tablosundan (tablo-hayalet-oturan.jpg). Görsel gelmezse gizlenir. */}
-      <img class="kesif-okuyan" src="oyunlar/gorseller/hayalet-okuyan.png" alt="" onerror="this.remove()">
+  const deste = bulunanlar.length > 1;
+  const idler = bulunanlar.map(([x]) => x).join(',');
+  const govdeHtml = !deste ? `
       <div class="kesif-ust">📜 Buluntu metin</div>
       <div class="kesif-baslik">${escapeHtml(o.baslik)}</div>
       <div class="kesif-yazar">${escapeHtml(o.yazar)}</div>
@@ -475,9 +526,27 @@ function kesifAcilisGoster(oyun, id, o){
         <a class="kesif-dugme ana" href="${escapeHtml(o.oku)}" target="_blank" rel="noopener">📖 Oku</a>
         <a class="kesif-dugme" href="${escapeHtml(o.indir)}" target="_blank" rel="noopener">⬇ İndir</a>
       </div>
-      <button class="kesif-dugme tsundoku" onclick="kesifTsundokuEkle('${id}', this)">📥 Tsundoku'ya ekle</button>
+      <button class="kesif-dugme tsundoku" onclick="kesifTsundokuEkle('${id}', this)">📥 Tsundoku'ya ekle</button>` : `
+      <div class="kesif-ust">📜 ${bulunanlar.length} buluntu metin</div>
+      <div class="kesif-yazar">${escapeHtml(o.yazar)}</div>
+      <ul class="kesif-deste">${bulunanlar.map(([, b]) => `
+        <li class="kesif-satir">
+          <span class="kesif-satir-ad"><b>${escapeHtml(b.baslik)}</b></span>
+          <span class="kesif-satir-dugmeler">
+            <a href="${escapeHtml(b.oku)}" target="_blank" rel="noopener">Oku</a>
+            <a href="${escapeHtml(b.indir)}" target="_blank" rel="noopener">İndir</a>
+          </span>
+        </li>`).join('')}
+      </ul>
+      <button class="kesif-dugme tsundoku" onclick="kesifTsundokuEkle('${idler}', this)">📥 Hepsini Tsundoku'ya ekle</button>`;
+  kutu.innerHTML = `
+    <div class="kesif-kart">
+      ${''/* Gökşin'in fikri (24 Eylül): kartın kenarına oturup kitap okuyan hayalet —
+            kendi tablosundan (tablo-hayalet-oturan.jpg). Görsel gelmezse gizlenir. */}
+      <img class="kesif-okuyan" src="oyunlar/gorseller/hayalet-okuyan.png" alt="" onerror="this.remove()">
+      ${govdeHtml}
       <button class="kesif-devam" onclick="kesifDevam('${oyun.id}')">Yeni öyküyle devam et →</button>
-      <div class="kesif-not">Bu öykü "Keşfettiğin öyküler" listesinde kalıcı olarak duruyor.</div>
+      <div class="kesif-not">${deste ? 'Bu öyküler' : 'Bu öykü'} "Keşfettiğin öyküler" listesinde kalıcı olarak duruyor.</div>
     </div>`;
   govde.appendChild(kutu);
 }
@@ -491,8 +560,10 @@ async function kesifDevam(oyunId){
   const havuz = await oykuHavuzu();
   if (!havuz) { mesajGoster('Öykü listesi okunamadı.', 'uyari'); return; }
   const k0 = kesifKaydi(oyun.id);
-  const id = oykuSec(havuz, kesifListesi());
-  const k = await kesifKaydiYaz(oyun, { ...k0, bulunan: 0, hedef: id ? kesifHedefi(havuz[id]) : 0, hikaye: id || null });
+  const haric = kesifListesi();
+  const plan = kesifPlani(havuz, oykuSec(havuz, haric), haric);
+  const id = plan.hikaye;
+  const k = await kesifKaydiYaz(oyun, { ...k0, bulunan: 0, ...plan });
   if (!k) return;
   if (!id) mesajGoster('Tüm öyküler keşfedildi 🎉');
   const a = p.querySelector('.kesif-acilis'); if (a) a.remove();
@@ -502,26 +573,36 @@ async function kesifDevam(oyunId){
 /* Tsundoku = "Okunacak" öykü. addStory() formdan okuduğu için doğrudan
    kayıt kuruluyor; alanlar addStory'deki nesneyle aynı. "Zaten var mı"
    sorusu burada SORULMUYOR, sadece söyleniyor (oyun akışında soru anlamsız). */
-function kesifTsundokuEkle(id, btn){
-  const o = kesifListesi()[id];
-  if (!o) return;
+/* `idler`: tek kimlik ya da virgüllü liste (deste → her öykü AYRI kayıt, Gökşin 22 Eylül). */
+function kesifTsundokuEkle(idler, btn){
+  const liste = kesifListesi();
+  const oykuler = String(idler).split(',').map(id => liste[id]).filter(Boolean);
+  if (!oykuler.length) return;
   if (!db.stories) db.stories = {};
   if (!db.stories[me]) db.stories[me] = [];
   const norm = (typeof oykuNormal === 'function') ? oykuNormal : (s => String(s || '').toLocaleLowerCase('tr').trim());
-  if (db.stories[me].some(s => norm(s.title) === norm(o.baslik))) {
-    mesajGoster(`"${o.baslik}" zaten öykü listende.`);
-    if (btn) { btn.disabled = true; btn.textContent = '✓ Listende'; }
-    return;
+  const eklenen = [], vardi = [];
+  let kimlik = Date.now();
+  for (const o of oykuler) {
+    if (db.stories[me].some(s => norm(s.title) === norm(o.baslik))) { vardi.push(o.baslik); continue; }
+    db.stories[me].push({
+      id: kimlik++, title: o.baslik, author: o.yazar, source: 'ekitap', status: 'toread',
+      link: o.oku || null, sourceBook: o.kitap || null, readDate: null, readYearOnly: null,
+      rating: 0, note: '🎮 Buluntu Metinler ödülü', retroactive: false, addedAt: new Date().toISOString()
+    });
+    eklenen.push(o.baslik);
   }
-  db.stories[me].push({
-    id: Date.now(), title: o.baslik, author: o.yazar, source: 'ekitap', status: 'toread',
-    link: o.oku || null, sourceBook: o.kitap || null, readDate: null, readYearOnly: null,
-    rating: 0, note: '🎮 Buluntu Metinler ödülü', retroactive: false, addedAt: new Date().toISOString()
-  });
-  saveDb();
-  if (typeof renderStories === 'function') renderStories();
-  mesajGoster(`📥 "${o.baslik}" Tsundoku'ya eklendi.`);
-  if (btn) { btn.disabled = true; btn.textContent = '✓ Eklendi'; }
+  if (eklenen.length) {
+    saveDb();
+    if (typeof renderStories === 'function') renderStories();
+  }
+  if (oykuler.length === 1)
+    mesajGoster(eklenen.length ? `📥 "${eklenen[0]}" Tsundoku'ya eklendi.` : `"${vardi[0]}" zaten öykü listende.`);
+  else if (!eklenen.length)
+    mesajGoster('Bu öykülerin hepsi zaten öykü listende.');
+  else
+    mesajGoster(`📥 ${eklenen.length} öykü Tsundoku'ya eklendi` + (vardi.length ? ` (${vardi.length} tanesi zaten listendeydi).` : '.'));
+  if (btn) { btn.disabled = true; btn.textContent = eklenen.length ? '✓ Eklendi' : '✓ Listende'; }
 }
 
 /* Keşfettiğin öyküler — AÇILIR başlık (Gökşin'in fikri): açılınca son 5,

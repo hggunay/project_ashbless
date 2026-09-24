@@ -143,13 +143,26 @@ function getFeedCards(){
        listesi yok — kart keşif kaydından üretiliyor (users/<kişi>/oyunlar/kesif).
        Gökşin: "başlıkları saklamayalım ama linkler mutlaka gizli olsun" →
        kartta başlık + yazar var, BAĞLANTI YOK. */
+    /* DESTE (2026-09-24): birlikte bulunan kısa öyküler (`deste` = ana öykünün
+       kimliği) TEK kart; kart kimliği ana öykününki → tepki anahtarı tek öyküyle aynı kalıp. */
     const kesifler=(user.oyunlar&&user.oyunlar.kesif)||{};
+    const desteler={};
     Object.keys(kesifler).forEach(oykuId=>{
       const k=kesifler[oykuId];
       if(!k||!k.baslik||!k.ts) return;
+      if(k.deste){ (desteler[k.deste]=desteler[k.deste]||[]).push(k); return; }
       cards.push({
         type:'oyku_kesif', u, userName:user.displayName, userAvatar:user.avatar||'📚',
         oykuId, bookTitle:k.baslik, author:k.yazar||'', ts:k.ts, reactions:{},
+      });
+    });
+    Object.keys(desteler).forEach(anaId=>{
+      const d=desteler[anaId];
+      const ana=d.find(k=>kesifler[anaId]===k)||d[0];
+      cards.push({
+        type:'oyku_kesif', u, userName:user.displayName, userAvatar:user.avatar||'📚',
+        oykuId:anaId, bookTitle:ana.baslik, author:ana.yazar||'', ts:ana.ts, reactions:{},
+        basliklar:[ana.baslik,...d.filter(k=>k!==ana).map(k=>k.baslik)],
       });
     });
     const streakEvs=(db.streakEvents&&db.streakEvents[u])||[];
@@ -659,8 +672,10 @@ const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='sto
         <div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);line-height:1.5;display:flex;align-items:center;gap:.75rem">
           <span style="font-size:2rem">📜</span>
           <div>
-            ${oykuKesifCumlesi(card)}
-            <div style="margin-top:.25rem"><strong><em>${escapeHtml(card.bookTitle)}</em></strong>${card.author?' — '+escapeHtml(card.author):''}</div>
+            ${card.basliklar
+              ?`<strong>${escapeHtml(card.userName||'')}</strong> bir arada ${card.basliklar.length} kısa öykü buldu:`
+              :oykuKesifCumlesi(card)}
+            <div style="margin-top:.25rem"><strong><em>${(card.basliklar||[card.bookTitle]).map(b=>escapeHtml(b)).join('</em> · <em>')}</em></strong>${card.author?' — '+escapeHtml(card.author):''}</div>
             ${(typeof oyunModu==='function'&&oyunModu())
               ?`<div onclick="oyunAc('buluntu-metinler')" style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);margin-top:.4rem;cursor:pointer">📜 sen de ara →</div>`
               :''}
