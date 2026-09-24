@@ -222,6 +222,7 @@ function zeminiHazirla(){
       const olcek = Math.max(cw / im.width, (ch * 0.75) / im.height);
       const iw = im.width * olcek, ih = im.height * olcek;
       x.drawImage(im, (cw - iw) / 2, 0, iw, ih);
+      rafIsikY = ih * 0.055 / DPR;                        // en üst rafın altı (ışık dizisi buraya asılır)
       /* Karartma düz bir katmanla — ctx.filter iPhone Safari'de YOK,
          orada iki kopya aynı parlaklıkta kalır ve fener ışığı görünmezdi. */
       if (parlaklik < 1) { x.fillStyle = `rgba(10,6,3,${1 - parlaklik})`; x.fillRect(0, 0, cw, ch); }
@@ -260,16 +261,147 @@ function hayaletGuncelle(dt, t){
   hayalet.donus += Math.sign(hedef - hayalet.donus) * Math.min(Math.abs(hedef - hayalet.donus), dt * 5);
 }
 function hayaletCiz(){
-  const im = GORSEL.hayalet;
+  // Cadılar'da fener yerine balkabağı kovası: fenersiz görsel (gelmezse fenerli + kovasız)
+  const kova = SUS === "cadilar" && GORSEL.fenersiz;
+  const im = kova ? GORSEL.fenersiz : GORSEL.hayalet;
   const gen = Math.min(W * 0.52, 300), yuk = im ? gen * im.height / im.width : gen * 0.68;
   ctx.save();
   ctx.translate(hayalet.x, hayalet.y);
   ctx.scale(-hayalet.donus, 1);   // görsel sola uçuyor; donus=+1 (sağa) → aynala
-  if (im) ctx.drawImage(im, -gen * FENER_X, -yuk * FENER_Y, gen, yuk);
+  if (im) {
+    ctx.drawImage(im, -gen * FENER_X, -yuk * FENER_Y, gen, yuk);
+    // Süsler GÖRSEL koordinatında (900×610) çiziliyor → Magnus'la birlikte ölçeklenir, döner
+    if (kova || SUS === "noel") {
+      ctx.save();
+      ctx.translate(-gen * FENER_X, -yuk * FENER_Y); ctx.scale(gen / im.width, yuk / im.height);
+      if (kova) { ctx.translate(196, 238); kovaCiz(ctx, zaman); }           // elin kıvrımı
+      else      { ctx.translate(345, 38); ctx.rotate(0.22); sapkaCiz(ctx, zaman); }   // başın tepesi
+      ctx.restore();
+    }
+  }
   else {                          // yedek çizim
     ctx.fillStyle = "rgba(240,230,210,.9)";
     ctx.beginPath(); ctx.ellipse(gen * 0.35, -yuk * 0.1, gen * 0.25, yuk * 0.35, 0, 0, Math.PI * 2); ctx.fill();
     ctx.fillStyle = "#ffb347"; ctx.beginPath(); ctx.arc(0, 0, gen * 0.06, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.restore();
+}
+
+/* ── MEVSİM SÜSLERİ (Gökşin, 2026-09-24) ─────────────────────────────────
+   "Pro bittikten sonra aradan yıllar geçse bile örümcek ağı tutmuş, terk
+   edilmiş bir yer gibi görünmesin." Tarihe oyun KENDİSİ bakar (uygulamadan
+   bağımsız). Tarihler Gökşin'in: 🎃 1–31 Ekim · 🎅 24 Kasım – 6 Ocak
+   ("görmek için biraz süremiz olsun" → Noel bir hafta erken).
+   Hepsi KODLA çiziliyor (görsel dosyası yok → gelmeme riski yok); tek görsel
+   Magnus'un fenersiz hâli (fener silindi, el yerinde). Deneme: adrese
+   ?sus=cadilar | noel | yok. */
+function susBul(t){
+  const ay = t.getMonth() + 1, gun = t.getDate();
+  if (ay === 10) return "cadilar";
+  if ((ay === 11 && gun >= 24) || ay === 12 || (ay === 1 && gun <= 6)) return "noel";
+  return null;
+}
+const SUS = ["cadilar", "noel"].includes(q.get("sus")) ? q.get("sus")
+          : q.get("sus") === "yok" ? null : susBul(new Date());
+if (SUS === "cadilar") gorselYukle("fenersiz", "gorseller/hayalet-fenersiz.png");
+const RAF_ISIKLARI = {                                     // ampul renkleri (r,g,b)
+  cadilar: ["255,140,40", "150,80,220", "255,180,70"],
+  noel:    ["255,220,150", "255,90,80", "120,220,140", "255,210,90"]
+};
+
+/* Tohumlu rastgele: fırça izleri her karede aynı kalsın (titremesin). */
+function tohum(s){ return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+/* Suluboya lekesi: aynı şekli hafif kaydırarak düşük opaklıkla üst üste basar
+   (Magnus bir suluboya tablo; düz renk yanında yapıştırılmış gibi dururdu). */
+function boyaLeke(c, sekil, renk, kat, r){
+  for (let i = 0; i < kat; i++) {
+    c.save(); c.translate((r() - .5) * 3, (r() - .5) * 3);
+    c.globalAlpha = 0.22 + r() * 0.12; c.fillStyle = renk; c.beginPath(); sekil(c); c.fill(); c.restore();
+  }
+}
+
+/* 🎃 Balkabağı şeker kovası. (0,0) = sapın tepesi = elin kıvrımı. İçindeki mum titrer. */
+function kovaCiz(c, t){
+  const r = tohum(7);
+  c.save();
+  c.strokeStyle = "rgba(40,30,22,.9)"; c.lineWidth = 4; c.lineCap = "round";          // sap
+  c.beginPath(); c.moveTo(-50, 62); c.bezierCurveTo(-56, -26, 56, -26, 50, 62); c.stroke();
+  const cy = 104, ry = 56;
+  for (const [dx, w, renk] of [[-48, 30, "#c24f16"], [48, 30, "#c24f16"], [-23, 38, "#dd6a1d"], [23, 38, "#dd6a1d"], [0, 42, "#ec862c"]])
+    boyaLeke(c, x => x.ellipse(dx, cy, w, ry, 0, 0, Math.PI * 2), renk, 6, r);
+  c.strokeStyle = "rgba(110,40,8,.4)"; c.lineWidth = 2;                               // dilimler
+  for (const dx of [-44, -18, 18, 44]) {
+    c.beginPath(); c.moveTo(dx * 0.45, cy - ry + 10); c.quadraticCurveTo(dx * 1.25, cy, dx * 0.45, cy + ry - 6); c.stroke();
+  }
+  boyaLeke(c, x => x.ellipse(0, cy - ry + 12, 46, 11, 0, 0, Math.PI * 2), "#3a1a08", 4, r);   // ağız + şekerler
+  for (const [renk, dx] of [["#b23a8f", -22], ["#3f8f4a", -4], ["#e8c547", 14], ["#6b3fa0", 28]])
+    boyaLeke(c, x => x.ellipse(dx, cy - ry + 6, 9, 6, dx * .02, 0, Math.PI * 2), renk, 3, r);
+  const alev = 0.78 + Math.sin(t * 9.1) * 0.08 + Math.sin(t * 23.7) * 0.06;
+  c.fillStyle = `rgba(255,${Math.round(190 + 40 * alev)},90,${alev})`;
+  c.shadowColor = "rgba(255,170,60,.95)"; c.shadowBlur = 22 * alev;
+  c.beginPath();
+  c.moveTo(-34, 96); c.lineTo(-12, 96); c.lineTo(-24, 76); c.closePath();             // gözler
+  c.moveTo(34, 96); c.lineTo(12, 96); c.lineTo(24, 76); c.closePath();
+  c.moveTo(-6, 108); c.lineTo(6, 108); c.lineTo(0, 98); c.closePath();                 // burun
+  c.moveTo(-40, 118); c.lineTo(-28, 128); c.lineTo(-18, 120); c.lineTo(-8, 132); c.lineTo(2, 122);
+  c.lineTo(12, 132); c.lineTo(22, 120); c.lineTo(32, 128); c.lineTo(42, 116);
+  c.quadraticCurveTo(0, 156, -40, 118); c.closePath();                                 // ağız
+  c.fill(); c.fill();                                                                   // iki kat: parıltı
+  c.restore();
+}
+
+/* 🎅 Noel Baba şapkası. (0,0) = başın tepesi; uç arkaya sarkar, süzülürken sallanır. */
+function sapkaCiz(c, t){
+  const r = tohum(11), salin = Math.sin(t * 1.6) * 6;
+  c.save();
+  boyaLeke(c, x => {
+    x.moveTo(-58, 18); x.bezierCurveTo(-40, -70, 40, -95, 95, -60 + salin);
+    x.bezierCurveTo(115, -40 + salin, 120, -10 + salin, 118, 8 + salin);
+    x.bezierCurveTo(90, -30, 40, -30, 62, 22); x.closePath();
+  }, "#b8232b", 7, r);
+  boyaLeke(c, x => { x.moveTo(-40, 6); x.bezierCurveTo(-20, -55, 30, -70, 70, -52 + salin); x.bezierCurveTo(30, -40, 0, -20, -20, 14); x.closePath(); },
+    "#e0474a", 4, r);                                                                   // ışık alan yüz
+  c.strokeStyle = "rgba(90,10,18,.35)"; c.lineWidth = 3; c.lineCap = "round";          // kıvrımlar
+  c.beginPath(); c.moveTo(10, 0); c.quadraticCurveTo(40, -40, 88, -44 + salin); c.stroke();
+  c.beginPath(); c.moveTo(40, 4); c.quadraticCurveTo(70, -20, 104, -18 + salin); c.stroke();
+  c.strokeStyle = "#e9e0cf"; c.lineWidth = 30;                                         // kürk bant
+  c.beginPath(); c.moveTo(-58, 20); c.quadraticCurveTo(2, 8, 62, 18); c.stroke();
+  c.strokeStyle = "#f7f2e8"; c.lineWidth = 22;
+  c.beginPath(); c.moveTo(-56, 16); c.quadraticCurveTo(2, 4, 60, 14); c.stroke();
+  for (let i = 0; i < 26; i++) {                                                        // tüy dokusu
+    const u = r(), bx = -60 + u * 122, by = 14 + (r() - .5) * 26 - Math.sin(u * Math.PI) * 8;
+    c.fillStyle = r() < .5 ? "rgba(255,255,255,.35)" : "rgba(226,216,196,.35)";
+    c.beginPath(); c.arc(bx, by, 2 + r() * 4, 0, Math.PI * 2); c.fill();
+  }
+  const pg = c.createRadialGradient(114, 12 + salin, 2, 120, 18 + salin, 19);          // ponpon
+  pg.addColorStop(0, "#ffffff"); pg.addColorStop(.7, "#eee6d6"); pg.addColorStop(1, "rgba(220,208,186,0)");
+  c.fillStyle = pg; c.beginPath(); c.arc(120, 18 + salin, 19, 0, Math.PI * 2); c.fill();
+  c.restore();
+}
+
+/* 💡 Rafa asılı ışık dizisi: sarkık kavisler, her ampul kendi temposunda nefes alır.
+   Fenerin ışığından bağımsız parlar (karanlıkta da görünür). */
+let rafIsikY = 0;                                          // zeminiHazirla ölçer
+function isikDizisiCiz(t){
+  if (!SUS || !rafIsikY) return;
+  const renkler = RAF_ISIKLARI[SUS], r = tohum(3), kavis = W < 500 ? 3 : 4, sarkma = Math.min(28, H * 0.035);
+  const yer = u => rafIsikY + Math.sin(u * kavis * Math.PI) ** 2 * sarkma;
+  ctx.save();
+  ctx.strokeStyle = "rgba(30,24,16,.9)"; ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  for (let i = 0; i <= kavis * 20; i++) { const u = i / (kavis * 20); i ? ctx.lineTo(u * W, yer(u)) : ctx.moveTo(0, yer(0)); }
+  ctx.stroke();
+  const n = kavis * 7;
+  for (let i = 0; i < n; i++) {
+    const u = (i + 0.5) / n, x = u * W, y = yer(u) + 5;
+    const renk = renkler[i % renkler.length], p = 0.65 + 0.35 * Math.sin(t * (0.6 + r() * 1.4) + r() * 6.3);
+    ctx.globalCompositeOperation = "lighter";
+    const g = ctx.createRadialGradient(x, y, 0, x, y, 16);
+    g.addColorStop(0, `rgba(${renk},${0.55 * p})`); g.addColorStop(1, `rgba(${renk},0)`);
+    ctx.fillStyle = g; ctx.fillRect(x - 16, y - 16, 32, 32);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = `rgba(${renk},${0.75 + 0.25 * p})`;
+    ctx.beginPath(); ctx.ellipse(x, y, 3.2, 4.6, 0, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
@@ -669,6 +801,7 @@ function dongu(simdi){
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (zeminKaranlik) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(zeminKaranlik, 0, 0); ctx.restore(); }
   isikCiz(zaman);
+  isikDizisiCiz(zaman);
   hayaletCiz();
   for (const n of nesneler) nesneCiz(n);
   kitapCiz();                                     // nesnelerin ÖNÜNDE: içine düşüyor gibi
