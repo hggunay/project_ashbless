@@ -57,7 +57,11 @@ canvas{
 }
 .aciklama span{display:block}
 .aciklama .kit{color:#3d5878;font-style:italic}
-#sayacMsg{font-size:11px;color:#506a90;margin-left:6px}
+/* HEP İKİ SATIRLIK yer (Gökşin, 25 Eylül): uzun cümle gelince satır büyümesin, ekran sabit dursun. */
+#sayacMsg{
+  font-size:11px;color:#506a90;margin:0 6px;flex:1;min-width:0;
+  line-height:1.35;min-height:2.7em;display:flex;align-items:center   /* min: çok dar ekranda kesilmesin */
+}
 .alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:6px}
 button{
   background:#111520;color:#c8d4e8;border:1px solid #2a3550;border-radius:8px;
@@ -341,7 +345,7 @@ function ritmiSifirla() { ikiOncekiOzet = ""; ritimAdim = 0; }
 function bitir(neden) {
   bitti = true; calisiyor = false;
   temizleZamanla();
-  mesaj(neden + " — " + adim + " adımda durdu.");
+  mesaj(neden + " (" + adim + ". adım)");      // kısa: iki satıra sığsın
   butonDurum();
 }
 
