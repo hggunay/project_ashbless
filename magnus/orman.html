@@ -226,6 +226,7 @@ function katmanCiz(k){
 }
 
 function boyutlandir(){
+  if (innerWidth < 50 || innerHeight < 50) return;       // arka plandayken gelen sıfır boyut: sahneyi bozmasın
   const d = Math.min(window.devicePixelRatio || 1, 2);
   W = c.width = Math.round(innerWidth * d); H = c.height = Math.round(innerHeight * d);
   ch = H / SATIR; cw = ch * 0.6; SUTUN = Math.ceil(W / cw);
@@ -489,9 +490,16 @@ function isikRengi(x, m, t){
 let bas = null;
 function dongu(ms){
   if (bas === null) bas = ms;
-  ciz(((ms - bas) / 1000) % T);
+  // tek karede hata olsa bile döngü ölmesin (Gökşin: başka uygulamadan dönünce "sadece mum uçuyordu")
+  try { ciz(((ms - bas) / 1000) % T); } catch (e) {}
   requestAnimationFrame(dongu);
 }
+// Arka plandan dönünce boyut değişmişse sahneyi yeniden kur (gizliyken gelen 0 boyutlar yok sayılıyor)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  if (c.width !== Math.round(innerWidth * d) || c.height !== Math.round(innerHeight * d)) boyutlandir();
+});
 boyutlandir();
 addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);

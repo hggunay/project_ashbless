@@ -56,6 +56,8 @@ css.textContent = `
   display:grid;place-items:center;cursor:pointer;padding:0;flex:none}
 #mSerit button:hover{background:rgba(255,220,170,.1)}
 #mSerit button.acik{color:#ffc46b}
+#mSerit button.yukleniyor{animation:mYukle 1s ease-in-out infinite}
+@keyframes mYukle{50%{opacity:.35}}
 #mSerit .ayrac{width:1px;height:22px;background:rgba(255,220,170,.16);margin:0 2px;flex:none}
 #mParca{display:flex;align-items:center;gap:8px;min-width:0;max-width:210px}
 #mParca img{width:30px;height:30px;border-radius:6px;object-fit:cover;flex:none}
@@ -139,15 +141,27 @@ const muzik = new Audio(); muzik.preload = "auto";
    kendi `loop`u sondan başa küt diye atlıyor ve dosyaların uçları birbirine uymuyor →
    İKİ kopya: bitişe CAPRAZ saniye kala ikincisi baştan girer, ilki çekilir. Dışarıya tek
    bir Audio gibi görünür (volume/play/pause/paused/src) → rampa() ve sus() aynen çalışır. */
+/* KESİTLER (ölçüldü, 25 Eylül): dosyaların uçlarında açılma/sönme var — yağmur.mp3'ün
+   başında ~4 sn açılma, sonunda ~6 sn sönme (son 2 sn tamamen sessiz); döngü sessiz
+   kuyruğa denk gelip "kesilip birkaç saniye sonra başlıyordu". [baştan atla, sondan atla] sn. */
+const KESIT = { "yagmur": [4, 6], "yagmur-kedi": [0.3, 1.2] };
 function donguSes(CAPRAZ = 3){
   const a = [new Audio(), new Audio()]; a.forEach(x => x.preload = "auto");
-  let akt = 0, usta = 0, karisim = [1, 0], caprazda = false, zaman = null;
+  let akt = 0, usta = 0, karisim = [1, 0], caprazda = false, zaman = null, kes = [0, 0];
   const uygula = () => a.forEach((x, i) => x.volume = Math.max(0, Math.min(1, usta * karisim[i])));
   a.forEach((x, i) => x.addEventListener("timeupdate", () => {
-    if (i !== akt || caprazda || x.paused || !x.duration || x.duration - x.currentTime > CAPRAZ) return;
-    caprazda = true;
+    if (i !== akt || caprazda || x.paused || !x.duration) return;
+    if (x.currentTime < kes[0] - 0.5) { x.currentTime = kes[0]; return; }   // baştaki açılmayı atla
+    if (x.duration - kes[1] - x.currentTime > CAPRAZ) return;
     const d = 1 - akt, y = a[d];
-    y.currentTime = 0; karisim[d] = 0; uygula(); y.play().catch(() => {});
+    if (document.hidden){
+      // ARKA PLAN: telefon zamanlayıcıları donduruyor → yumuşak geçiş yarıda kalıp yağmur
+      // susardı. Doğrudan geçiş (ses olayları arka planda da çalışıyor).
+      y.currentTime = kes[0]; karisim[d] = 1; karisim[akt] = 0; uygula();
+      y.play().catch(() => {}); x.pause(); akt = d; return;
+    }
+    caprazda = true;
+    y.currentTime = kes[0]; karisim[d] = 0; uygula(); y.play().catch(() => {});
     const t0 = performance.now();
     clearInterval(zaman);
     zaman = setInterval(() => {
@@ -161,6 +175,8 @@ function donguSes(CAPRAZ = 3){
     get paused(){ return a[akt].paused; },
     get volume(){ return usta; }, set volume(v){ usta = v; uygula(); },
     set src(s){ clearInterval(zaman); caprazda = false; akt = 0; karisim = [1, 0];
+                const ad = (s.split("/").pop() || "").replace(/\.mp3$/, "");
+                kes = KESIT[ad] || [0, 0];
                 a.forEach(x => { x.pause(); x.src = s; }); uygula(); },
     play(){ return a[akt].play(); },
     pause(){ clearInterval(zaman); caprazda = false; karisim[1 - akt] = 0; karisim[akt] = 1;
@@ -187,7 +203,19 @@ function parcaYukle(i, zaman){
   if (zaman) muzik.currentTime = zaman;
   $("mKapak").src = `muzik/${ad}-kapak.jpg`;
   $("mAd").textContent = ad.replace(/_/g, " ");
+  // Kilit ekranı / bildirim alanı: parça adı, kapak (telefon arka planda daha güvenilir çalar)
+  if ("mediaSession" in navigator) try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: ad.replace(/_/g, " "), artist: "Magnus · Okuma Odası",
+      artwork: [{ src: `muzik/${ad}-kapak.jpg`, sizes: "512x512", type: "image/jpeg" }]
+    });
+  } catch (e) {}
 }
+if ("mediaSession" in navigator) try {
+  navigator.mediaSession.setActionHandler("play", () => { if (!(muzikIstek && !muzik.paused)) $("mOynat").click(); });
+  navigator.mediaSession.setActionHandler("pause", () => { if (muzikIstek && !muzik.paused) $("mOynat").click(); });
+  navigator.mediaSession.setActionHandler("nexttrack", () => $("mSonraki").click());
+} catch (e) {}
 async function cal(ses, hedef){
   try { ses.volume = 0; await ses.play(); rampa(ses, hedef, SESLEN); return true; }
   catch (e) { return false; }            // tarayıcı otomatik çalmayı engelledi: ▶ bekler
@@ -199,8 +227,30 @@ function dugmeler(){
   $("mYagmur").title = D.yagmur ? "Yağmur: " + YAGMUR_ADI[D.yagmur] : "Yağmur sesi";
   $("mPom").classList.toggle("acik", !!D.pom);
 }
-muzik.addEventListener("ended", () => { parcaYukle(D.parca + 1); if (muzikIstek && !sustur) cal(muzik, HEDEF.muzik); });
+/* Parça bitince sıradaki DOĞRUDAN tam seste (rampasız). Gökşin'in telefonu: uygulama
+   arka plandayken parça bitti, sıradaki başlamadı — rampa setInterval'la açılıyor, telefon
+   arka plandaki zamanlayıcıları donduruyor → yeni parça ses 0'da kalıyordu. */
+muzik.addEventListener("ended", () => {
+  parcaYukle(D.parca + 1);
+  if (muzikIstek && !sustur){ clearInterval(muzik._rampa); muzik.volume = HEDEF.muzik; muzik.play().catch(() => {}); }
+});
 muzik.addEventListener("play", dugmeler); muzik.addEventListener("pause", dugmeler);
+/* KENDİNİ TOPARLAMA (Gökşin'in telefonu, dengesiz internet): ağ hatasında 2 sn sonra
+   kaldığı yerden tekrar; 3 denemede olmazsa sıradaki parça. Yüklenirken ▶ yanıp söner
+   ("çalışmıyor mu?" diye art arda basılmasın). */
+let hataSay = 0;
+muzik.addEventListener("error", () => {
+  if (!muzikIstek || sustur) return;
+  const t = muzik.currentTime || 0;
+  setTimeout(() => {
+    if (++hataSay > 3){ hataSay = 0; parcaYukle(D.parca + 1); }
+    else parcaYukle(D.parca, t);
+    if (muzikIstek && !sustur) cal(muzik, HEDEF.muzik).then(dugmeler);
+  }, 2000);
+});
+muzik.addEventListener("waiting", () => $("mOynat").classList.add("yukleniyor"));
+muzik.addEventListener("playing", () => { hataSay = 0; $("mOynat").classList.remove("yukleniyor"); });
+muzik.addEventListener("pause", () => $("mOynat").classList.remove("yukleniyor"));
 
 $("mOynat").onclick = async () => {
   if (muzikIstek && !muzik.paused){ muzikIstek = false; sus(muzik, 900); }

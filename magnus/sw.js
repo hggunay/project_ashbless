@@ -6,7 +6,7 @@
    · Resim ve müzik: ÖNCE KAYIT. Müzik ilk çalındığında TAMAMI indirilip saklanır; tarayıcı
      parça parça (Range) isteyince saklanan dosyadan dilim kesilip verilir.
    Değişiklikte SURUM'u artır → eski kayıt silinir. */
-const SURUM = "magnus-1";
+const SURUM = "magnus-2";   // 2: müzik önbellekte yoksa BEKLETMEDEN ağdan (Gökşin'in telefonunda kesiliyordu)
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "ortak.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
@@ -25,7 +25,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || !url.href.startsWith(self.registration.scope)) return;
   const yol = url.pathname;
-  if (yol.endsWith(".mp3")) e.respondWith(muzik(e.request, url));
+  if (yol.endsWith(".mp3")) e.respondWith(muzik(e, e.request, url));
   else if (/\.(png|jpg|jpeg)$/.test(yol)) e.respondWith(onceKayit(e.request));
   else e.respondWith(onceAg(e.request));
 });
@@ -47,17 +47,16 @@ async function onceKayit(istek){
   if (y.ok) c.put(istek, y.clone());
   return y;
 }
-async function muzik(istek, url){
+async function muzik(e, istek, url){
   const c = await caches.open(SURUM);
   const anahtar = url.origin + url.pathname;
-  let k = await c.match(anahtar);
+  const k = await c.match(anahtar);
   if (!k){
-    try {
-      const y = await fetch(anahtar);                        // Range'siz: dosyanın tamamı
-      if (!y.ok) return y;
-      await c.put(anahtar, y.clone());
-      k = y;
-    } catch (err) { return Response.error(); }
+    /* KAYITTA YOK → BEKLETME (magnus-2). Eskiden tüm dosya (3-4 MB) inene kadar ses
+       başlamıyordu; dengesiz internette uzun sessizlik, kopunca hiç çalmama. Şimdi istek
+       olduğu gibi ağa gidiyor (anında akış), tam dosya ARKADA kaydediliyor. */
+    e.waitUntil(fetch(anahtar).then(y => (y.ok && y.status === 200) ? c.put(anahtar, y) : null).catch(() => {}));
+    return fetch(istek);
   }
   const aralik = istek.headers.get("range");
   if (!aralik) return k;
