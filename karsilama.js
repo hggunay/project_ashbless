@@ -85,8 +85,8 @@ const KARSILAMA_METINLERI = {
   },
   okumaOdasi: {
     baslik: '🕯️ Okuma Odası',
-    metin: 'Kitap okurken açık kalsın diye: Magnus\'un kütüphanesi ya da ormanı, lofi müzik, ' +
-           'yağmur sesi ve pomodoro. Bir sahne seç; müzik ve pomodoro ekrana dokununca ' +
+    metin: 'Kitap okurken açık kalsın diye: Magnus\'un kütüphanesi, odası ya da ormanı; lofi müzik, ' +
+           'ortam sesleri ve pomodoro. Bir sahne seç; müzik, sesler ve pomodoro ekrana dokununca ' +
            'alttaki şeritte belirir.'
   },
   members: {
