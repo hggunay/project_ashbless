@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="ikon-192.png"><link rel="apple-touch-icon" href="ikon-192.png"><meta name="theme-color" content="#000000">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Magnus</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+#ipucu{
+  position:fixed;left:50%;bottom:24px;transform:translateX(-50%);
+  color:#777;font:13px/1.4 system-ui,sans-serif;letter-spacing:.5px;
+  transition:opacity 1.2s;pointer-events:none
+}
+body.sakin{cursor:none}
+</style>
+</head>
+<body data-sahne="orman">
+<canvas id="c"></canvas>
+<script>
+/* MAGNUS — ASCII orman (25 Eylül, Gökşin'in fikri; Claude FM videolarından esinli).
+   Arka plan siyah-beyaz, yalnız Magnus ve feneri renkli.
+   DİKİŞSİZ DÖNGÜ: her hareket T saniyelik periyodun tam katı (kayma: şerit genişliği T'de
+   tam bir tur; titreme/süzülme: tamsayı frekanslı sinüsler) → t=T anı t=0'ın aynısı.
+   Deneme: ?t=20 → o saniyede donmuş kare (ekran görüntüsü için). */
+// T: döngü (144 sn). Şeritler uzayınca hız aynı kalsın diye 72'den çıkarıldı. Küçük hareketler
+// (süzülme, titreme) 72'lik tempoda kaldı — 72, 144'ü tam böldüğü için döngü yine dikişsiz.
+const T = 144, T_KUCUK = 72;
+// ızgara yüksekliği (karakter). 54 → 80 → 110 ("daha geniş sahne"). Küçük ekranda (telefon)
+// karakter ~8 pikselin altına inmesin diye ekran yüksekliğine göre, en az 60.
+const SATIR = Math.max(60, Math.min(110, Math.round(innerHeight / 8.2)));
+// Zeminler alttan sayılıyor (SATIR değişse de orman bozulmasın)
+const ZEMIN_UZAK = SATIR - 14, ZEMIN_ORTA = SATIR - 9, ZEMIN_YAKIN = SATIR - 4;
+const RAMPA = " .:-=+*#%@";
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+const P = new URLSearchParams(location.search);
+const DONUK = P.has("t") ? parseFloat(P.get("t")) : null;
+
+let W, H, cw, ch, SUTUN, katmanlar = [];
+const dalga = (k, t, faz = 0) => Math.sin(2 * Math.PI * k * t / T_KUCUK + faz);
+
+/* ── Tohumlu rastgele: her açılışta aynı orman ── */
+function rastgele(tohum){ return () => { tohum |= 0; tohum = tohum + 0x6D2B79F5 | 0;
+  let x = Math.imul(tohum ^ tohum >>> 15, 1 | tohum); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
+  return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+
+/* ── ORMAN KATMANLARI: sütun sayısı × SATIR karakter; uçlar birbirine ekli (mod) ── */
+function izgara(sutun){ return Array.from({length: SATIR}, () => Array(sutun).fill(null)); }
+function koy(g, x, y, k, b){ const s = g[0].length; if (y < 0 || y >= SATIR) return;
+  g[y][((Math.round(x) % s) + s) % s] = [k, b]; }
+function yaprak(g, R, cx, cy, rx, ry, b){
+  for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++){
+    const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+    if (d < 1 && R() > d * 0.8) koy(g, cx + x, cy + y, "*%&#@^"[Math.floor(R() * 6)], b * (0.7 + R() * 0.3));
+  }
+}
+function govde(g, R, x, gen, ust, alt, b){
+  for (let y = ust; y <= alt; y++) for (let i = 0; i < gen; i++){
+    const kenar = i === 0 ? "(" : i === gen - 1 ? ")" : "|!l:|I"[Math.floor(R() * 6)];
+    koy(g, x + i, y, gen < 3 ? "|" : kenar, b * (0.75 + R() * 0.25));
+  }
+}
+/* egim: satır/sütun. Küçük egim = yatık, geniş dal; satır değişmeyen adım "-" olur. */
+function dal(g, R, x, y, yon, uz, b, egim = 0.6){
+  for (let i = 1; i <= uz; i++){
+    const yeni = Math.floor(i * egim) !== Math.floor((i - 1) * egim);
+    koy(g, x + yon * i, y - Math.floor(i * egim), yeni ? (yon < 0 ? "\\" : "/") : "-", b);
+  }
+  return [x + yon * uz, y - Math.floor(uz * egim)];
+}
+/* TAÇ (Gökşin: "ağaçların üstleri daha dallı, dalları daha geniş"): tepeden yelpaze gibi
+   açılan yatık dallar, uçlarında büyük yaprak öbeği, ortalarında tali dal. */
+/* Beş taç tipi ("ağaçların üst dalları aynı gibi" → her ağaç farklı biçimde):
+   0 şemsiye (geniş, yatık) · 1 sivri (dik, dar) · 2 tek yana yatık (rüzgâr) ·
+   3 yuvarlak dolgun (büyük yaprak topu) · 4 çıplak kuru (çatallı, yapraksız) */
+function tac(g, R, x, gen, ust, b, olcek){
+  const tip = Math.floor(R() * 5), yan = R() < 0.5 ? -1 : 1;
+  const ayar = [
+    { n: [4, 7], uz: [10, 18], egim: [0.15, 0.35], yap: 1,   tali: 0.6 },
+    { n: [3, 5], uz: [4, 8],   egim: [0.8, 1.4],   yap: 0.8, tali: 0.3 },
+    { n: [4, 6], uz: [8, 15],  egim: [0.25, 0.55], yap: 0.9, tali: 0.5 },
+    { n: [3, 5], uz: [4, 8],   egim: [0.4, 0.8],   yap: 1.6, tali: 0.2 },
+    { n: [5, 8], uz: [5, 12],  egim: [0.5, 1.0],   yap: 0,   tali: 1 },
+  ][tip];
+  const ara = (a) => a[0] + R() * (a[1] - a[0]);
+  const n = Math.round(ara(ayar.n));
+  for (let i = 0; i < n; i++){
+    const yon = tip === 2 ? (R() < 0.8 ? yan : -yan) : (R() < 0.5 ? -1 : 1);
+    const y = ust + Math.floor(R() * 10 * olcek);
+    const uz = Math.round(ara(ayar.uz) * olcek), egim = ara(ayar.egim);
+    const bx = yon < 0 ? x : x + gen - 1;
+    const [ux, uy] = dal(g, R, bx, y, yon, uz, b, egim);
+    if (ayar.yap) yaprak(g, R, ux, uy, Math.round((3 + R() * 4) * olcek * ayar.yap), Math.max(1, Math.round((1.5 + R() * 1.5) * ayar.yap)), b * 0.9);
+    if (R() < ayar.tali){                            // tali dal
+      const yarim = Math.floor(uz * (0.3 + R() * 0.4)), tyon = tip === 4 && R() < 0.5 ? -yon : yon;
+      const [tx, ty] = dal(g, R, bx + yon * yarim, y - Math.floor(yarim * egim), tyon, Math.max(2, Math.round(uz * (0.3 + R() * 0.3))), b, Math.min(1.4, egim + 0.3 + R() * 0.3));
+      if (ayar.yap) yaprak(g, R, tx, ty, Math.round((2 + R() * 2) * olcek * ayar.yap), 1 + Math.floor(R() * 2), b * 0.85);
+    }
+  }
+  if (tip === 3) yaprak(g, R, x + Math.floor(gen / 2), ust + 2, Math.round((8 + R() * 4) * olcek), Math.round(5 * olcek), b * 0.9);
+  else if (tip !== 4) yaprak(g, R, x + Math.floor(gen / 2), ust - 2, Math.round((3 + R() * 4) * olcek), 2 + Math.floor(R() * 2), b * 0.9);
+}
+/* ÇALI + UZUN OT (Gökşin: "yerlere çalılar, uzun otlar"). Z = zemin satırı. */
+function otlar(g, R, x, Z, boyEn, b){                // sap demeti: eğik saplar, uçta püskül
+  const n = 3 + Math.floor(R() * 5);
+  for (let i = 0; i < n; i++){
+    const egim = Math.floor(R() * 3) - 1, boy = 2 + Math.floor(R() * boyEn);
+    let sx = x + i - Math.floor(n / 2);
+    for (let y = 0; y < boy; y++){
+      if (y > 0 && y % 2 === 0) sx += egim;
+      const k = y === boy - 1 ? "',v\""[Math.floor(R() * 4)] : egim > 0 ? "/" : egim < 0 ? "\\" : "|";
+      koy(g, sx, Z - 1 - y, k, b * (0.75 + R() * 0.25));
+    }
+  }
+}
+function cali(g, R, cx, Z, rx, ry, b){               // zemine oturan yarım öbek, kenarı seyrek
+  for (let y = 0; y <= ry; y++) for (let x = -rx; x <= rx; x++){
+    const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+    if (d < 1 && R() > d * 0.6) koy(g, cx + x, Z - 1 - y, "@%&*#o8"[Math.floor(R() * 7)], b * (0.65 + R() * 0.35));
+  }
+}
+function yerSus(g, R, s, Z, olcek, b){
+  for (let x = 3; x < s; x += 6 + Math.floor(R() * 14 * olcek)) otlar(g, R, x, Z, Math.round(5 * olcek), b);
+  for (let x = 10; x < s; x += 25 + Math.floor(R() * 40 * olcek))
+    cali(g, R, x, Z, Math.round((4 + R() * 6) * olcek), Math.round((2.5 + R() * 5) * olcek), b);
+}
+
+function cam(g, R, x, tepe, Z, b){
+  const boy = Z - tepe;
+  for (let y = 0; y < boy - 2; y++){
+    const yg = Math.floor(y * 0.45) + 1;
+    koy(g, x - yg, tepe + y, "/", 0.8 * b); koy(g, x + yg, tepe + y, "\\", 0.8 * b);
+    for (let i = -yg + 1; i < yg; i++) if (R() < 0.35) koy(g, x + i, tepe + y, "^", 0.6 * b);
+  }
+  for (let y = Z - 1; y <= Z; y++) koy(g, x, y, "|", 0.7 * b);   // kısa: uzun olunca çit gibi diziliyordu
+}
+function uzakKatman(){                               // çam siluetleri, en soluk
+  const s = 480, g = izgara(s), R = rastgele(7), Z = ZEMIN_UZAK;
+  // Tek tük çamlar + üç sık KORU (Gökşin: "arka sıradan bir grup Magnus'un arkasına")
+  for (let x = 2; x < s; x += 7 + Math.floor(R() * 9)) cam(g, R, x, Z - 14 - Math.floor(R() * 14), Z, 0.85);
+  for (const merkez of [30, 110, 190, 270, 350, 430]){
+    const n = 7 + Math.floor(R() * 4);
+    for (let i = 0; i < n; i++){
+      const x = merkez + Math.floor((R() - 0.5) * 34);
+      // koru ortasında uzun, kenarda kısa → tepe çizgisi kubbe gibi
+      const orta = 1 - Math.abs(x - merkez) / 17;
+      cam(g, R, x, Z - 16 - Math.floor(orta * 18) - Math.floor(R() * 8), Z, 1);
+    }
+  }
+  for (let x = 0; x < s; x++) if (R() < 0.5) koy(g, x, ZEMIN_UZAK + 1, "_.,"[Math.floor(R() * 3)], 0.6);
+  return { g, sutun: s, renk: 95 };
+}
+function ortaKatman(){                               // dallı ağaçlar + baykuş
+  const s = 640, g = izgara(s), R = rastgele(21);     // 320 → 640: aynı ağaçlar her ekranda tekrar etmesin
+  let baykus = false;
+  for (let x = 4; x < s - 8; x += 18 + Math.floor(R() * 16)){
+    const gen = 2 + Math.floor(R() * 2), ust = 6 + Math.floor(R() * 14);
+    govde(g, R, x, gen, ust, ZEMIN_ORTA, 0.9);
+    for (let d = 0; d < 5; d++){
+      const y = ust + 6 + Math.floor(R() * (ZEMIN_ORTA - ust - 18)), yon = R() < 0.5 ? -1 : 1;
+      const [ux, uy] = dal(g, R, yon < 0 ? x : x + gen - 1, y, yon, 3 + Math.floor(R() * 5), 0.85);
+      yaprak(g, R, ux, uy, 3 + Math.floor(R() * 3), 1 + Math.floor(R() * 2), 0.8);
+      if (!baykus && d === 1 && x > 100){            // baykuş: dalın üstünde, ışık değince görünür
+        baykus = true;
+        [["{o,o}", -2], ["/)_)", -1], [" \"\" ", 0]].forEach(([m, dy]) =>
+          [...m].forEach((k, i) => k !== " " && koy(g, ux - 2 + i, uy - 2 + dy, k, 1)));
+      }
+    }
+    tac(g, R, x, gen, ust, 0.85, 1);
+  }
+  for (let x = 0; x < s; x++) if (R() < 0.6) koy(g, x, ZEMIN_ORTA, "_.,-"[Math.floor(R() * 4)], 0.7);
+  yerSus(g, rastgele(33), s, ZEMIN_ORTA, 0.7, 0.8);
+  return { g, sutun: s, renk: 165 };
+}
+function yakinKatman(){                              // kalın gövdeler, kökler, çimen
+  const s = 1280, g = izgara(s), R = rastgele(99);    // 640 → 1280 (orta sırayla aynı oran)
+  const Z = ZEMIN_YAKIN;
+  for (let x = 6; x < s - 12; x += 55 + Math.floor(R() * 60)){
+    const gen = 4 + Math.floor(R() * 4);
+    govde(g, R, x, gen, 0, Z - 1, 1);
+    koy(g, x - 1, Z - 1, "/", 1); koy(g, x - 2, Z, "/", 0.9); koy(g, x + gen, Z - 1, "\\", 1); koy(g, x + gen + 1, Z, "\\", 0.9);
+    for (let d = 0; d < 5; d++){                     // dallar gövde boyunca (sahne genişleyince tepede kalıyordu)
+      const y = 4 + Math.floor(R() * SATIR * 0.55), yon = R() < 0.5 ? -1 : 1;
+      const [ux, uy] = dal(g, R, yon < 0 ? x : x + gen - 1, y, yon, 5 + Math.floor(R() * 7), 1);
+      yaprak(g, R, ux, uy, 4 + Math.floor(R() * 4), 2, 0.9);
+    }
+    tac(g, R, x, gen, 2, 1, 1.7);                    // üst kısım: uzun, yatık dallar
+  }
+  for (let x = 0; x < s; x++){
+    koy(g, x, Z, R() < 0.8 ? "_" : ".", 0.9);
+    if (R() < 0.3) koy(g, x, Z - 1, "\"',v"[Math.floor(R() * 4)], 0.9);
+    for (let y = Z + 1; y < SATIR; y++) if (R() < 0.35) koy(g, x, y, ".,:;'"[Math.floor(R() * 5)], 0.6);
+  }
+  // yüksek: bazıları Magnus'un önünden geçsin. Satır sayısıyla orantılı (telefonda Magnus'u gömüyordu)
+  yerSus(g, rastgele(77), s, Z, Math.max(1, 2.2 * SATIR / 110), 0.95);
+  return { g, sutun: s, renk: 235 };
+}
+function sisKatman(){                                // ince sis, çok soluk
+  const s = 480, g = izgara(s), R = rastgele(5);
+  for (let x = 0; x < s; x++) for (let y = ZEMIN_ORTA - 16; y < ZEMIN_YAKIN; y++){
+    const yog = 0.5 + 0.5 * Math.sin(x / s * 2 * Math.PI * 3 + y * 0.7);
+    if (R() < 0.10 * yog) koy(g, x, y, "~-"[Math.floor(R() * 2)], 0.5);
+  }
+  return { g, sutun: s, renk: 120 };
+}
+
+/* Katman bir kez çizilir (offscreen); her karede kaydırılıp yapıştırılır → tablette de akıcı. */
+function katmanCiz(k){
+  const o = document.createElement("canvas");
+  o.width = Math.ceil(k.sutun * cw); o.height = Math.ceil(SATIR * ch);
+  const x = o.getContext("2d");
+  x.font = `${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
+  x.textBaseline = "middle"; x.textAlign = "center";
+  k.g.forEach((satir, y) => satir.forEach((h, s) => {
+    if (!h) return;
+    const v = Math.round(k.renk * h[1]);
+    // arkadakini örtsün. TAM PİKSELE oturt: kesirli kenarlar yarı saydam kalıp turuncu ışıkta
+    // gri kutucuk çizgileri gibi görünüyordu
+    const x0 = Math.floor(s * cw), y0 = Math.floor(y * ch);
+    x.fillStyle = "#000"; x.fillRect(x0, y0, Math.ceil((s + 1) * cw) - x0, Math.ceil((y + 1) * ch) - y0);
+    x.fillStyle = `rgb(${v},${v},${v})`;
+    x.fillText(h[0], s * cw + cw / 2, y * ch + ch / 2);
+  }));
+  k.tuval = o;
+}
+
+function boyutlandir(){
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  W = c.width = Math.round(innerWidth * d); H = c.height = Math.round(innerHeight * d);
+  ch = H / SATIR; cw = ch * 0.6; SUTUN = Math.ceil(W / cw);
+  if (!katmanlar.length) katmanlar = [uzakKatman(), ortaKatman(), sisKatman(), yakinKatman()];
+  katmanlar.forEach(katmanCiz);
+}
+
+/* ── MAGNUS: şekil bir fonksiyon, her karede ızgaraya "örnekleniyor" → etek akıyor ── */
+function magnusDurum(t){
+  const R = 0.035 * H;
+  const hx = 0.45 * W + 0.012 * W * dalga(3, t), hy = 0.64 * H + 0.015 * H * dalga(18, t);
+  const aci = 0.16 * dalga(12, t, 0.8);                           // fener sallanıyor
+  const elx = hx - 2.5 * R, ely = hy + 0.45 * R;
+  const fx = elx + Math.sin(aci) * 1.1 * R, fy = ely + Math.cos(aci) * 1.1 * R;
+  return { R, hx, hy, elx, ely, fx, fy, aci };
+}
+function magnusIcinde(m, x, y, t){
+  const { R, hx, hy } = m;
+  // gözler: delik (siyah zemin görünür)
+  for (const [ex, ey] of [[hx - 0.5 * R, hy - 0.2 * R], [hx + 0.02 * R, hy - 0.24 * R]])
+    if (((x - ex) / (0.15 * R)) ** 2 + ((y - ey) / (0.24 * R)) ** 2 < 1) return 0;
+  // kol: kapsül, gövdeden fenere
+  const ax = hx - 0.7 * R, ay = hy + 0.55 * R, bx = m.elx, by = m.ely;
+  const u = Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (y - ay) * (by - ay)) / ((bx - ax) ** 2 + (by - ay) ** 2)));
+  const dk = Math.hypot(x - (ax + u * (bx - ax)), y - (ay + u * (by - ay)));
+  const kolR = R * (0.36 - 0.1 * u);
+  if (dk < kolR) return 0.45 + 0.4 * (1 - dk / kolR);
+  // baş: üst yarım daire
+  if (y < hy){ const d = Math.hypot(x - hx, y - hy); return d < R ? 0.5 + 0.5 * (1 - d / R) : -1; }
+  // gövde: aşağı doğru uzuyor, geriye (sağa) akıyor; üst kısa, etek uzun (Gökşin)
+  const L = 3.5 * R, s = (y - hy) / L;
+  if (s > 1.25) return -1;
+  const sal = 0.5 * R * s * s * dalga(9, t, -3 * s);              // etekte dalga
+  const cx = hx + 0.8 * L * Math.pow(s, 1.6) + sal;               // geriye (sağa) akıyor
+  const w = R * (1 + 0.22 * s + 0.35 * s * s * s);                // etek ucunda hafif açılma
+  const q = (x - cx) / w;
+  if (Math.abs(q) > 1) return -1;
+  // etek ucu: yuvarlak dilimler (|sin| → yuvarlak alt, sivri birleşme), yavaşça kıpırdıyor
+  const dilim = Math.pow(Math.abs(Math.sin(1.5 * Math.PI * (q + 1) + 0.5 * dalga(6, t))), 0.55);
+  const alt = 1 + 0.13 * dilim;
+  if (s > alt) return -1;
+  const kenar = Math.min(1 - Math.abs(q), (alt - s) * 3);         // kenara yakın → seyrek karakter
+  const cizgi = 0.5 + 0.5 * Math.sin(q * 7 + s * 5);             // tablodaki kıvrım çizgileri
+  return 0.25 + 0.45 * Math.min(1, kenar * 2.5) + 0.2 * cizgi;
+}
+const HAYALET_RAMPA = " .:-=+*o#";                               // yumuşak: yarı saydam dursun
+function magnusCiz(t, m){
+  const x0 = Math.floor((m.hx - 3.6 * m.R) / cw), x1 = Math.ceil((m.hx + 3.5 * m.R * 0.9 + 2 * m.R) / cw);
+  const y0 = Math.floor((m.hy - m.R) / ch), y1 = Math.ceil((m.hy + 3.5 * m.R * 1.2) / ch);
+  ctx.font = `${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
+  for (let sy = y0; sy <= y1; sy++) for (let sx = x0; sx <= x1; sx++){
+    const px = sx * cw + cw / 2, py = sy * ch + ch / 2;
+    const d = magnusIcinde(m, px, py, t);
+    if (d < 0) continue;
+    ctx.fillStyle = "rgba(0,0,0,.88)";                               // arkadaki orman içinden görünmesin
+    ctx.fillRect(sx * cw, sy * ch, cw + 0.5, ch + 0.5);
+    if (d === 0) continue;                                           // göz
+    const isik = Math.max(0, 1 - Math.hypot(px - m.fx, py - m.fy) / (0.5 * H));   // fenere yakın taraf sıcak
+    const k = HAYALET_RAMPA[Math.max(1, Math.min(8, Math.round(d * 8)))];
+    const r = 236, gg = Math.round(226 - 30 * isik), b = Math.round(196 - 90 * isik);
+    ctx.fillStyle = `rgba(${r},${gg},${b},${0.55 + 0.45 * Math.min(1, d + isik * 0.3)})`;
+    ctx.fillText(k, px, py);
+  }
+}
+function fenerCiz(t, m){
+  const sx = Math.round(m.fx / cw), sy = Math.round(m.fy / ch);
+  const alev = "*+^*"[Math.floor(((t * 7) % 4 + 4) % 4)];
+  // alevin sıcak parıltısı (tek renkli ışık; ormanı boyamasın diye küçük)
+  const px = sx * cw + cw / 2, py = sy * ch;
+  const pr = ch * (2.6 + 0.3 * dalga(37, t));
+  const g = ctx.createRadialGradient(px, py, 0, px, py, pr);
+  g.addColorStop(0, "rgba(255,190,90,.35)"); g.addColorStop(1, "rgba(255,190,90,0)");
+  ctx.fillStyle = g; ctx.fillRect(px - pr, py - pr, pr * 2, pr * 2);
+  const sanat = [[" | ", 0], ["_A_", 1], ["[" + alev + "]", 2], ["'-'", 3]];
+  ctx.font = `bold ${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
+  sanat.forEach(([m2, dy]) => [...m2].forEach((k, i) => {
+    if (k === " ") return;
+    ctx.fillStyle = "#000";                                          // ağaç gövdesiyle karışmasın
+    ctx.fillRect((sx - 1 + i) * cw, (sy - 2 + dy) * ch, cw + 0.5, ch + 0.5);
+    ctx.fillStyle = dy === 2 && i === 1 ? "#ffd25a" : "#c98a3a";
+    ctx.fillText(k, (sx - 1 + i) * cw + cw / 2, (sy - 2 + dy) * ch + ch / 2);
+  }));
+}
+
+/* ── SULUBOYA MAGNUS (Gökşin: "resim hâliyle kullanırız diye düşünmüştüm") ──
+   Oyundaki tablo (900×610, saydam, sola bakıyor). Dikey dilimlere bölünüp çiziliyor:
+   baş + fener (sol) sabit, etek (sağ) dalgalanıyor. Gelmezse ASCII Magnus yedek. */
+const RESIM = new Image();
+let resimHazir = false;
+const ETEK = document.createElement("canvas"); ETEK.width = 900; ETEK.height = 610;
+const etx = ETEK.getContext("2d");
+RESIM.onload = () => { resimHazir = true; if (DONUK !== null) ciz(DONUK); };
+/* ETEK UCU (Gökşin: "dümdüz kesilmesin, eğimli, yuvarlak, uçuşkan; üstü kısa altı uzun").
+   Tablo açık zemin için boyanmış, etek kenarda düz kesik → her karede yeniden oyuluyor:
+   kesim çizgisi ÜSTTE içeride, ALTTA dışarıda (eğim); üstünde yuvarlak dilimler aşağı akıyor.
+   Satır satır "destination-out" (sınırlı; destination-in bütün tuvali silerdi). */
+function etekHazirla(t){
+  etx.globalCompositeOperation = "source-over";
+  etx.clearRect(0, 0, 900, 610);
+  etx.drawImage(RESIM, 0, 0, 900, 610);
+  etx.globalCompositeOperation = "destination-out";
+  const ADIM = 3, YUMUSAK = 55;                                    // 3 px: dilim kenarı basamaklanmasın
+  for (let y = 0; y < 610; y += ADIM){
+    const v = Math.max(0, Math.min(1, (y - 170) / 400));          // 0 = eteğin üstü, 1 = altı
+    const dilim = Math.pow(Math.abs(Math.sin(Math.PI * (y - 170) / 85 - 2 * Math.PI * 6 * t / T_KUCUK)), 0.5);
+    // eğim + yuvarlak dilimler. İlk deneme 590+280v idi: uçlar beğenildi ama etek kısa kaldı
+    // ("eski kuyruğu daha iyiydi") → kesim dışarıda, eğim hafif; eski uzunluk + yeni uçlar.
+    const kenar = 715 + 150 * v + 34 * dilim;
+    const g = etx.createLinearGradient(kenar - YUMUSAK, 0, kenar, 0);
+    g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "#000");
+    etx.fillStyle = g; etx.fillRect(kenar - YUMUSAK, y, 900 - kenar + YUMUSAK, ADIM);
+  }
+  etx.globalCompositeOperation = "source-over";
+}
+RESIM.src = "gorsel/hayalet.png";
+const FENER_X = 170 / 900, FENER_Y = 345 / 610;                 // fenerin tablodaki yeri
+function resimDurum(t){
+  // "zoom out" (Gökşin): küçük ve yere yakın; ağaçların arasında
+  const olc = 0.23 * H / 610, gen = 900 * olc, boy = 610 * olc;
+  const x0 = 0.45 * W - gen * 0.3 + 0.012 * W * dalga(3, t);
+  const y0 = 0.79 * H - boy / 2 + 0.015 * H * dalga(18, t);     // çalıların arasından geçsin
+  return { olc, gen, boy, x0, y0, fx: x0 + FENER_X * gen, fy: y0 + FENER_Y * boy };
+}
+function resimCiz(t, r){
+  // fenerin sıcak ışığı Magnus'un ARKASINDA: önde olunca feneri de krem rengine boyuyordu
+  const tit = 1 + 0.08 * dalga(37, t) + 0.04 * dalga(91, t, 1);
+  const pr = r.boy * 0.28 * tit;
+  const g = ctx.createRadialGradient(r.fx, r.fy, 0, r.fx, r.fy, pr);
+  g.addColorStop(0, "rgba(255,170,70,.30)"); g.addColorStop(1, "rgba(255,170,70,0)");
+  ctx.fillStyle = g; ctx.fillRect(r.fx - pr, r.fy - pr, pr * 2, pr * 2);
+
+  etekHazirla(t);
+  const N = 90, dilim = 900 / N;
+  for (let i = 0; i < N; i++){
+    const u = i / N;                                               // 0 = baş/fener, 1 = etek ucu
+    const dy = 0.06 * r.boy * u * u * dalga(9, t, -4 * u);
+    // dilimler tam yan yana: üst üste binerse saydam etekte ince çizgiler çıkıyor
+    const xa = Math.round(r.x0 + i * dilim * r.olc), xb = Math.round(r.x0 + (i + 1) * dilim * r.olc);
+    ctx.drawImage(ETEK, i * dilim, 0, dilim, 610, xa, r.y0 + dy, xb - xa, r.boy);
+  }
+  // önde yalnız alev: küçük, turuncu, titrek (fenerin kendi rengi korunur)
+  const ar = r.boy * 0.05 * (1 + 0.25 * dalga(53, t) + 0.15 * dalga(131, t, 2));
+  const a = ctx.createRadialGradient(r.fx, r.fy, 0, r.fx, r.fy, ar);
+  a.addColorStop(0, "rgba(255,150,40,.45)"); a.addColorStop(1, "rgba(255,150,40,0)");
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = a; ctx.fillRect(r.fx - ar, r.fy - ar, ar * 2, ar * 2);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── KARE ── */
+/* KARANLIK: fenerin çevresi açık, gerisi neredeyse siyah; ışık titriyor. */
+function karanlik(x, m, t){
+  const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1) + 0.02 * dalga(153, t, 2);
+  const r = 0.50 * H * tit;                          // zoom out'ta orman fazla gizli kaldı → geniş
+  const gr = x.createRadialGradient(m.fx, m.fy - ch, 0, m.fx, m.fy - ch, r);
+  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.35, "rgba(0,0,0,0.18)");
+  gr.addColorStop(0.7, "rgba(0,0,0,0.66)"); gr.addColorStop(1, "rgba(0,0,0,0.9)");
+  x.fillStyle = gr; x.fillRect(0, 0, W, H);
+}
+function katmanYapistir(x, k, t){                    // sağa kayıyor (Magnus sola uçuyor): T'de tam bir şerit
+  const gen = k.tuval.width, kay = ((t / T) * gen) % gen;
+  for (let a = kay - gen; a < W; a += gen) x.drawImage(k.tuval, Math.round(a), 0);
+}
+/* ÖN KATMAN Magnus'un ÖNÜNDE (kalın gövdeler zaman zaman önünden geçsin — "etrafında orman").
+   Ayrı tuvalde çizilip yalnız kendi karakterleri karartılıyor (source-atop), sonra üste. */
+const ON = document.createElement("canvas"), onx = ON.getContext("2d");
+function ciz(t){
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+  const [uzak, orta, sis, yakin] = katmanlar;
+  [uzak, orta, sis].forEach(k => katmanYapistir(ctx, k, t));
+  const m = resimHazir ? resimDurum(t) : magnusDurum(t);
+  karanlik(ctx, m, t);
+  isikRengi(ctx, m, t);                               // arka katmanlar turuncuya; Magnus'a değil
+  // ay: ışıktan bağımsız, hep soluk
+  ctx.font = `${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  const ay = [" .--. ", "(    )", " `--' "];
+  ay.forEach((s, y) => [...s].forEach((k, i) => { if (k !== " "){ ctx.fillStyle = "rgba(200,200,200,.28)";
+    ctx.fillText(k, W - (16 - i) * cw, (4 + y) * ch); } }));
+  // ateş böcekleri: yerinde süzülüp yanıp sönüyorlar
+  for (let i = 0; i < 9; i++){
+    const x = W * (0.08 + 0.1 * i) + 0.05 * W * dalga(2 + i % 3, t, i * 1.7);
+    const y = H * (0.45 + 0.3 * ((i * 37) % 10) / 10) + 0.04 * H * dalga(3 + i % 4, t, i);
+    const a = Math.pow(Math.max(0, dalga(5 + i % 3, t, i * 2.3)), 3);
+    if (a < 0.03) continue;
+    ctx.fillStyle = `rgba(240,240,225,${a})`;
+    ctx.fillText("·", Math.round(x / cw) * cw + cw / 2, Math.round(y / ch) * ch + ch / 2);
+  }
+  if (resimHazir) resimCiz(t, m);
+  else { magnusCiz(t, m); fenerCiz(t, m); }
+  if (ON.width !== W || ON.height !== H){ ON.width = W; ON.height = H; }
+  onx.globalCompositeOperation = "source-over";
+  onx.clearRect(0, 0, W, H);
+  katmanYapistir(onx, yakin, t);
+  onx.globalCompositeOperation = "source-atop";
+  karanlik(onx, m, t);
+  // ön katmanı turuncuya boya ama saydam yerleri boyama: çarp, sonra kendi şekline geri kırp
+  if (ONR.width !== W || ONR.height !== H){ ONR.width = W; ONR.height = H; }
+  onrx.globalCompositeOperation = "source-over";
+  onrx.clearRect(0, 0, W, H);
+  onrx.drawImage(ON, 0, 0);
+  isikRengi(onrx, m, t);
+  onrx.globalCompositeOperation = "destination-in";
+  onrx.drawImage(ON, 0, 0);
+  onrx.globalCompositeOperation = "source-over";
+  ctx.drawImage(ONR, 0, 0);
+  // ön sıranın ÜSTÜNDE: arkada kalınca dolgun taçlar gözleri tamamen örtüyordu
+  baykusGozleri(t, orta);
+  // sıcak hale: her şeyin üstünde, hafif (Magnus'un fenere yakın yanı da ısınsın)
+  const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1);
+  const hr = 0.22 * H * tit;
+  const h = ctx.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, hr);
+  h.addColorStop(0, "rgba(255,140,40,.16)"); h.addColorStop(1, "rgba(255,140,40,0)");
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = h; ctx.fillRect(m.fx - hr, m.fy - hr, hr * 2, hr * 2);
+  ctx.globalCompositeOperation = "source-over";
+}
+/* BAYKUŞ GÖZLERİ (Gökşin'le, 25 Eylül): karanlıkta iki soluk sarı nokta belirir, bakar,
+   göz kırpar, kapanır. Işık gerekmez. Orta sırayla birlikte kayar; Magnus ve ön ağaçların
+   arkasında kalır. Yer: pencerenin ORTASINDA ekranın fx/fy noktasında olacak şekilde seçilir
+   (fener ışığından uzak), sonra şeritle birlikte akar. */
+const BAYKUSLAR = [
+  { t0: 10,  sure: 12, fx: 0.16, fy: 0.30, kirp: [3.5, 8, 8.4] },
+  { t0: 46,  sure: 10, fx: 0.82, fy: 0.42, kirp: [2.5, 6.8] },
+  { t0: 84,  sure: 13, fx: 0.24, fy: 0.52, kirp: [4, 4.4, 9.5] },
+  { t0: 117, sure: 11, fx: 0.72, fy: 0.24, kirp: [3, 7.5] },
+];
+function baykusGozleri(t, orta){
+  const gen = orta.tuval.width, hiz = gen / T;
+  for (const b of BAYKUSLAR){
+    let u = ((t - b.t0) % T + T) % T;                     // pencereye girdikten beri geçen süre
+    if (u > b.sure) continue;
+    const acilis = Math.min(1, u / 1.2, (b.sure - u) / 1.2);           // yavaşça belirip sönme
+    const kirpik = b.kirp.some(k => Math.abs(u - k) < 0.12) ? 0.12 : 1;
+    const x = b.fx * W + (u - b.sure / 2) * hiz, y = b.fy * H;
+    const r = Math.max(2, ch * 0.3), ara = ch * 1.25;
+    for (const ex of [x - ara / 2, x + ara / 2]){
+      const g = ctx.createRadialGradient(ex, y, 0, ex, y, r * 3.5);
+      g.addColorStop(0, `rgba(255,210,110,${0.35 * acilis})`); g.addColorStop(1, "rgba(255,210,110,0)");
+      ctx.fillStyle = g; ctx.fillRect(ex - r * 3.5, y - r * 3.5, r * 7, r * 7);
+      ctx.fillStyle = `rgba(255,225,140,${0.9 * acilis})`;
+      ctx.beginPath(); ctx.ellipse(ex, y, r, r * kirpik, 0, 0, Math.PI * 2); ctx.fill();
+    }
+  }
+}
+const ONR = document.createElement("canvas"), onrx = ONR.getContext("2d");
+/* SARI-TURUNCU IŞIK (Gökşin: "ışığı daha belirgin sarı-turuncu"). ÇARPMA (multiply): ışıktaki
+   beyaz karakter turuncuya döner, siyah siyah kalır, dışarısı (beyaz durak) değişmez → arka plan
+   yine siyah-beyaz. Magnus'a UYGULANMAZ (ilk denemede tablo baştan sona turuncu oldu). */
+function isikRengi(x, m, t){
+  const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1);
+  const r = 0.42 * H * tit;
+  x.globalCompositeOperation = "multiply";
+  const g = x.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, r);
+  g.addColorStop(0, "rgb(255,165,60)"); g.addColorStop(0.45, "rgb(255,200,110)");
+  g.addColorStop(0.8, "rgb(255,236,200)"); g.addColorStop(1, "rgb(255,255,255)");
+  x.fillStyle = g; x.fillRect(m.fx - r, m.fy - r, r * 2, r * 2);
+  x.globalCompositeOperation = "source-over";
+}
+
+let bas = null;
+function dongu(ms){
+  if (bas === null) bas = ms;
+  ciz(((ms - bas) / 1000) % T);
+  requestAnimationFrame(dongu);
+}
+boyutlandir();
+addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
+if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
+
+/* Dokununca tam ekran + ekran kararmasın (tablette kitap okurken). İpucu 4 sn sonra söner. */
+/* Tam ekran, ekranın kararmaması, müzik, yağmur, pomodoro ve sahne geçişi: ortak.js */
+
+</script>
+<script src="ortak.js"></script>
+</body>
+</html>

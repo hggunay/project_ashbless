@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#000000">
+<title>Magnus</title>
+<style>html,body{margin:0;height:100%;background:#000}</style>
+<script>
+/* Uygulama simgesinden açılış: en son hangi sahnedeysen oraya (ilk kez: kütüphane). */
+let s = "kutuphane";
+try { s = localStorage.getItem("magnus-son-sahne") || s; } catch (e) {}
+location.replace((s === "orman" ? "orman" : "kutuphane") + ".html");
+</script>
+</head>
+<body></body>
+</html>

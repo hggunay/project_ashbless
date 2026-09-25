@@ -74,10 +74,20 @@ const KARSILAMA_METINLERI = {
   stats: {
     baslik: '📊 İstatistikler',
     metin: 'Okuma alışkanlığının sayılara dökülmüş hâli: aylık seriler, türler, ülkeler. ' +
-           '<b>🎲 Eğlence</b> alt sekmesinde ise ölçüm değil oyun var — falına bakabilir, ' +
-           'Şeytan ile Melek\'in ayın hesabını görüşmesini izleyebilirsin. ' +
-           '<b>🎮 Oyunlar</b>\'da ise okuduğun kitaplardan açılan mini oyunlar var: ' +
-           'bir kitabı bitirdiğinde ona ait oyun kendiliğinden açılıyor.'
+           '<b>🗺️ Harita</b>\'da ise bir koltuk seyyahı olarak hangi rotalara yelken açtığını görebilirsin.'
+  },
+  // 2026-09-25: Eğlence ve Oyunlar İstatistikler'den kendi sekmesine taşındı.
+  eglence: {
+    baslik: '🎲 Eğlence',
+    metin: 'Burada ölçüm değil oyun var — falına bakabilir, Şeytan ile Melek\'in ayın hesabını ' +
+           'görüşmesini izleyebilirsin. <b>🎮 Oyunlar</b>\'da ise okuduğun kitaplardan açılan ' +
+           'mini oyunlar var: bir kitabı bitirdiğinde ona ait oyun kendiliğinden açılıyor.'
+  },
+  okumaOdasi: {
+    baslik: '🕯️ Okuma Odası',
+    metin: 'Kitap okurken açık kalsın diye: Magnus\'un kütüphanesi ya da ormanı, lofi müzik, ' +
+           'yağmur sesi ve pomodoro. Bir sahne seç; müzik ve pomodoro ekrana dokununca ' +
+           'alttaki şeritte belirir.'
   },
   members: {
     baslik: '👥 Üyeler',
