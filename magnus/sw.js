@@ -6,9 +6,11 @@
    · Resim ve müzik: ÖNCE KAYIT. Müzik ilk çalındığında TAMAMI indirilip saklanır; tarayıcı
      parça parça (Range) isteyince saklanan dosyadan dilim kesilip verilir.
    Değişiklikte SURUM'u artır → eski kayıt silinir. */
-const SURUM = "magnus-2";   // 2: müzik önbellekte yoksa BEKLETMEDEN ağdan (Gökşin'in telefonunda kesiliyordu)
+// 2: müzik önbellekte yoksa BEKLETMEDEN ağdan (Gökşin'in telefonunda kesiliyordu)
+// 3: kod HER SEFERİNDE sitede tazelenir (no-cache) + NoSleep. ortak.js SURUM_YAZI ile birlikte artır.
+const SURUM = "magnus-3";
 const CEKIRDEK = [
-  "./", "index.html", "orman.html", "kutuphane.html", "ortak.js", "manifest.webmanifest",
+  "./", "index.html", "orman.html", "kutuphane.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
       "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"].map(a => `muzik/${a}-kapak.jpg`)
@@ -32,7 +34,10 @@ self.addEventListener("fetch", e => {
 async function onceAg(istek){
   const c = await caches.open(SURUM);
   try {
-    const y = await fetch(istek);
+    /* no-cache: GitHub Pages dosyaları 10 dk "taze" gönderiyor; düz fetch o kopyayı kabul
+       ediyordu → deploy sonrası cihaz ESKİ ortak.js'i çalıştırdı (yağmur hâlâ kesiliyordu).
+       Şimdi her seferinde siteye soruluyor. (url ile: navigate isteği init'le kopyalanamıyor) */
+    const y = await fetch(istek.url, { cache: "no-cache", credentials: "same-origin" });
     if (y.ok) c.put(istek, y.clone());
     return y;
   } catch (err) {

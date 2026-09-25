@@ -10,6 +10,9 @@
    · Simgeler SVG: emoji cihazdan cihaza değişiyor (Huawei tablet).
    Pomodoro durumu localStorage'da → sahne değişince sayaç kaldığı yerden sürer. */
 (function(){
+// Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
+// sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
+const SURUM_YAZI = "3";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -109,7 +112,8 @@ panel.innerHTML = `
   <label>Mola (dk) <input id="mMola" type="number" min="1" max="60"></label>
   <label>Uzun mola, 4 turda bir (dk) <input id="mUzun" type="number" min="1" max="90"></label>
   <div class="alt"><button id="mPomBasla" class="ana">Başlat</button><button id="mPomKapat">Kapat</button></div>
-  <div class="durum" id="mPomDurum"></div>`;
+  <div class="durum" id="mPomDurum"></div>
+  <div class="durum" style="opacity:.5;font-size:11px">sürüm ${SURUM_YAZI}</div>`;
 document.body.appendChild(panel);
 
 const mesajKutu = document.createElement("div");
@@ -365,13 +369,18 @@ $("mSahne").onclick = () => {
 $("mTam").onclick = async () => {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch (e) {}
 };
-let kilit = null;
-addEventListener("pointerdown", async () => {
-  try { if (!kilit && navigator.wakeLock) kilit = await navigator.wakeLock.request("screen"); } catch (e) {}
-}, { once: false });
-document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState === "visible" && kilit) try { kilit = await navigator.wakeLock.request("screen"); } catch (e) {}
-});
+/* EKRAN KARARMASIN (Gökşin: "tablette sürekli açık kalmıyor"). Eskiden yalnız Wake Lock
+   API'si vardı ve yalnız ilk dokunuşta isteniyordu; Huawei tarayıcısı gibi desteklemeyenlerde
+   hiç çalışmıyordu. NoSleep.js (MIT, magnus/nosleep.min.js — internetsiz de olsun diye kopya):
+   destek varsa Wake Lock, yoksa görünmez sessiz minik video. Video yolu bir DOKUNUŞ ister →
+   her dokunuşta (açık değilse) yeniden denenir; arka plandan dönünce de. */
+const uyanik = typeof NoSleep === "function" ? new NoSleep() : null;
+async function ekranAcik(){
+  try { if (uyanik && !uyanik.isEnabled) await uyanik.enable(); } catch (e) {}
+}
+addEventListener("pointerdown", ekranAcik);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") ekranAcik(); });
+ekranAcik();                                           // Wake Lock destekleniyorsa dokunuş beklemez
 
 /* ── açılış: kalınan parça; sahne değişiminden geldiyse çalmayı sürdürmeyi dene ── */
 const devam = D.devam; delete D.devam; yaz(D);
