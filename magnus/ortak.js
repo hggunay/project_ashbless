@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "7";
+const SURUM_YAZI = "8";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -587,6 +587,29 @@ function pomTik(){
   $("mPomSure").title = D.pom.mod === "odak" ? "odak" : "mola";
 }
 setInterval(pomTik, 500);
+
+/* ── TUVAL = GÖRÜNEN ALAN (Gökşin'in telefonu, yatay): CSS'teki 100vh telefon tarayıcısında
+   adres çubuğunu da içine alıyor → sahnenin altı (halı, kedi, Magnus) ekrandan taşıyordu.
+   Tuval, görünen alanın gerçek boyuna (innerWidth/innerHeight) oturtuluyor. ── */
+const tuv = document.getElementById("c");
+function tuvalBoyu(){ if (tuv){ tuv.style.width = innerWidth + "px"; tuv.style.height = innerHeight + "px"; } }
+addEventListener("resize", tuvalBoyu); tuvalBoyu();
+
+/* ── DİKEY TELEFON: sahneler yatay için; dikeyde üst üste biniyordu → "yan çevir" notu ── */
+const yanCevir = document.createElement("div");
+yanCevir.id = "mYanCevir";
+yanCevir.innerHTML = `<svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/><path d="M20 9a7 7 0 0 1 0 6M18 7l2 2-2 2" /></svg>
+  <div>Telefonunu yan çevir</div>`;
+document.body.appendChild(yanCevir);
+const yanCss = document.createElement("style");
+yanCss.textContent = `#mYanCevir{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:14px;background:rgba(0,0,0,.72);color:#ffdca0;font:20px/1.3 Georgia,serif;z-index:4;text-align:center}
+#mYanCevir svg{animation:mCevir 2.4s ease-in-out infinite}
+@keyframes mCevir{0%,30%{transform:rotate(0)}60%,100%{transform:rotate(90deg)}}`;
+document.head.appendChild(yanCss);
+function dikeyMi(){ yanCevir.style.display = innerHeight > innerWidth && innerWidth < 700 && !ONIZLEME ? "flex" : "none"; }
+addEventListener("resize", dikeyMi); dikeyMi();
 
 /* ── SAHNE geçişi + TAM EKRAN + ekran kararmasın ── */
 $("mSahne").onclick = () => {

@@ -229,6 +229,9 @@ function atesRenk(v){
 }
 function atesCiz(t){
   if (!ISI) return;
+  // ⚠️ t her 144 sn'de başa döner: dönüşte fark eksiye düşüp ateş DONUYORDU (Gökşin: "ara sıra
+  // şömine hareketi duruyor") → t geriye gittiyse sayacı da geri al
+  if (t < atesSon) atesSon = t;
   if (DONUK === null && t - atesSon > 0.06){ atesAdim(); atesSon = t; }  // ~16 kare/sn yeter
   if (DONUK !== null && atesSon === 0){ for (let i = 0; i < 40; i++) atesAdim(); atesSon = 1; }
   ctx.font = `bold ${yazi()}`;
@@ -508,6 +511,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=7"></script>
+<script src="ortak.js?s=8"></script>
 </body>
 </html>

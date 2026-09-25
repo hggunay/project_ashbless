@@ -12,7 +12,8 @@
 // 5: ara sesler seçilince hemen bir kez çalar
 // 6: ODA sahnesi (üç sahne)
 // 7: ara seslerde yedek çalar (file://), kedi.wav, oda: saat/portre/sehpa
-const SURUM = "magnus-7";
+// 8: tuval görünen alana oturur, dikeyde "yan çevir", oda ateşi 144 sn sonra donmuyor
+const SURUM = "magnus-8";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
