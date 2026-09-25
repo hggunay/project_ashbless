@@ -42,7 +42,7 @@ function oyunKatalogu(){ return (typeof OYUN_LISTESI !== 'undefined') ? OYUN_LIS
 /* Oyun dosyaları iframe ile çekiliyor; index.html'deki `?s=` damgası onları
    kapsamıyor, dolayısıyla tarayıcı eski oyunu gösterebiliyor. Bir oyun
    dosyasını (oyunlar/*.html) her değiştirdiğinde bu tarihi de güncelle. */
-const OYUN_SURUM = '20260924g';
+const OYUN_SURUM = '20260925b';
 
 /* Hangi oyunlar açık? → id kümesi. Ziyarette ziyaret edilen kişiye bakar. */
 function acikOyunlar(kisi){
@@ -495,7 +495,7 @@ async function kesifTamamla(oyun, k){
     const idler = tumu.filter(id => !kesifListesi()[id]);
     if (!idler.length){
       await kesifKaydiYaz(oyun, { ...k, bulunan: 0, hedef: 0, hikaye: null, deste: [] });
-      mesajGoster('Bu öyküyü zaten keşfetmiştin — sana yeni bir öykü seçildi.');
+      mesajGoster('📜 Bu sayfalar tanıdık geldi… ama rafların arasına sıkışmış yeni bir öykü buldun.');
       renderOyunlar();
       await kesifDevam(oyun.id);
       return;

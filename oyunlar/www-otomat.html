@@ -64,6 +64,11 @@ button{
   font-size:13px;min-height:38px;padding:0 12px;cursor:pointer
 }
 button:active{background:#1a2a44}
+.desen-satir{width:100%;max-width:640px;display:flex;align-items:center;gap:8px;font-size:12px;color:#506a90}
+#desenSec{
+  flex:1;min-height:32px;background:#111520;color:#c8d4e8;border:1px solid #2a3550;
+  border-radius:8px;font-size:13px;padding:0 8px;cursor:pointer
+}
 #baslatBtn{background:#0e2a4a;border-color:#3a6aaa;color:#90c4ff;font-weight:600}
 #baslatBtn:active{background:#1a3a5a}
 #yardimKat{
@@ -110,6 +115,11 @@ button:active{background:#1a2a44}
 
   <div class="tahta"><canvas id="tuval"></canvas></div>
 
+  <div class="desen-satir">
+    <label for="desenSec">Hazır desen:</label>
+    <select id="desenSec"><option value="">seç ▾</option></select>
+  </div>
+
   <div class="alt">
     <button id="temizleBtn">TEMİZLE</button>
     <button id="rastgeleBtn">RASTGELE</button>
@@ -135,6 +145,7 @@ button:active{background:#1a2a44}
   <p><b>Düğmeler:</b><br>
   <b>Başlat</b> — çizdiğin deseni çalıştırır; çalışırken ⏸ Durdur olur.<br>
   <b>Rastgele</b> — yaklaşık %25 dolu rastgele bir desen yükler, durur; beğenirsen Başlat'a bas.<br>
+  <b>Hazır desen</b> — Conway'in ünlü desenlerinden birini ortaya yerleştirir; Başlat'a sen basarsın.<br>
   <b>Temizle</b> — ızgarayı sıfırlar.</p>
   <p><b>Ne zaman biter?</b><br>
   Ardışık <b>5 adımda hiçbir kare değişmezse</b>, desen <b>yerinde yanıp sönerek</b> kendini tekrar etmeye başlarsa ya da <b>tüm kareler ölürse</b> simülasyon durur.</p>
@@ -379,6 +390,46 @@ baslatBtn.onclick = () => {
     mesaj(asamaCumlesi(adim));
     butonDurum(); zamanla();
   }
+};
+
+/* ── HAZIR DESENLER (25 Eylül) ───────────────────────────────────
+   Hepsi 30×30'da oynatılıp ölçüldü. ELENEN: Gosper tabancası (36 geniş)
+   ve Simkin tabancası (33) — ızgaraya sığmıyor. Darbeli yıldız ve On beşli
+   hiç bitmiyor: 400. adımdaki "O, burada."yı görmenin garantili yolu (bilerek). */
+const DESENLER = [
+  ["Işıldak",        ["OOO"]],
+  ["Kurbağa",        [".OOO", "OOO."]],
+  ["Deniz feneri",   ["OO..", "OO..", "..OO", "..OO"]],
+  ["Planör",         [".O.", "..O", "OOO"]],
+  ["Uzay gemisi",    [".O..O", "O....", "O...O", "OOOO."], 2],   // soldan başlasın, yürüyecek yer olsun
+  ["Ölümcül",        ["......O.", "OO......", ".O...OOO"]],
+  ["Palamut",        [".O.....", "...O...", "OO..OOO"]],
+  ["R-pentomino",    [".OO", "OO.", ".O."]],
+  ["Darbeli yıldız", ["..OOO...OOO..", ".............", "O....O.O....O", "O....O.O....O",
+                      "O....O.O....O", "..OOO...OOO..", ".............", "..OOO...OOO..",
+                      "O....O.O....O", "O....O.O....O", "O....O.O....O", ".............",
+                      "..OOO...OOO.."]],
+  ["On beşli",       ["..O....O..", "OO.OOOO.OO", "..O....O.."]]
+];
+const desenSec = document.getElementById("desenSec");
+DESENLER.forEach(([ad], i) => {
+  const o = document.createElement("option");
+  o.value = i; o.textContent = ad;
+  desenSec.appendChild(o);
+});
+desenSec.onchange = () => {
+  const d = DESENLER[desenSec.value];
+  desenSec.value = "";                       // aynı desen tekrar seçilebilsin
+  if (!d) return;
+  const [ad, satirlar, solSutun] = d;
+  const { g } = bosIzgara();
+  const h = satirlar.length, w = satirlar[0].length;
+  const r0 = (BOYUT - h) >> 1, s0 = solSutun !== undefined ? solSutun : (BOYUT - w) >> 1;
+  let c = 0;
+  satirlar.forEach((satir, i) => [...satir].forEach((ch, j) => {
+    if (ch === "O") { g[r0 + i][s0 + j] = 1; c++; }
+  }));
+  sifirla(g, c, ad + ".");
 };
 
 /* ── HIZ ─────────────────────────────────────────────────────── */
