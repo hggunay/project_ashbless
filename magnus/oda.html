@@ -36,17 +36,21 @@ const yazi = (k = 1) => `${Math.round(ch * 0.86 * k)}px Consolas, "Courier New",
 /* ── YERLEŞİM (hücre) ── */
 function yerlesim(){
   const X = f => Math.round(f * SUTUN), Y = f => Math.round(f * SATIR);
-  const fx = X(0.46);
+  // şömine biraz solda ve dar: sehpa + Magnus'a yer kalsın (1366×640'ta sehpa şömineye değiyordu)
+  const fx = X(0.43);
+  const mx = X(0.80);
   return {
     duvarAlt: Y(0.74),                                     // duvar/zemin sınırı
-    somine: { x0: fx - X(0.13), x1: fx + X(0.13), ust: Y(0.42), alt: Y(0.80), cx: fx },
-    ates:   { x0: fx - X(0.075), x1: fx + X(0.075), ust: Y(0.53), alt: Y(0.78) },
+    somine: { x0: fx - X(0.12), x1: fx + X(0.12), ust: Y(0.42), alt: Y(0.80), cx: fx },
+    ates:   { x0: fx - X(0.07), x1: fx + X(0.07), ust: Y(0.53), alt: Y(0.78) },
     pencere:{ x0: X(0.05), x1: X(0.24), ust: Y(0.10), alt: Y(0.44) },
-    harita: { x0: X(0.67), x1: X(0.88), ust: Y(0.08), alt: Y(0.27) },   // portre (eskiden harita)
-    magnus: { x: X(0.78), y: Y(0.93) },                    // sallanma merkezi: kızak ortası
-    sehpa:  { x: X(0.655), y: Y(0.90) },
+    // portre (eskiden harita): DİKEY, rafın yanında ve daha aşağıda (Gökşin'in çizimi)
+    harita: { x0: X(0.645), x1: X(0.775), ust: Y(0.13), alt: Y(0.47) },
+    magnus: { x: mx, y: Y(0.93) },                         // sallanma merkezi: kızak ortası
+    // sehpa Magnus'a BAĞLI: kucağının (~14 sütun solu) hemen solunda, her ekran oranında
+    sehpa:  { x: mx - 27, y: Y(0.92) },                    // ayak uçları; tabla 7 satır yukarıda
     kedi:   { x: X(0.25), y: Y(0.91) },
-    saat:   { x: fx, y: Y(0.42) - 5 },
+    saat:   { x: fx, y: Y(0.42) - 6 },                 // kadran merkezi (kasa 8 satır, rafın üstünde)
   };
 }
 
@@ -112,11 +116,16 @@ function arkaKur(){
     "   \\|/   ",
     "  (___)  ",
     "   \\_/   " ].forEach((s, i, a) => yazS(px - 1, rafY - a.length + i, s, i < 6 ? 0.7 : 0.8));
-  // SAAT kasası (akrep/yelkovan her karede)
+  // SAAT: büyük, üstü KEMERLİ şömine saati, düz taban (Gökşin'in çizimi). Akrep/yelkovan her karede.
   const sx = L.saat.x, sy = L.saat.y;
-  yazS(sx - 4, sy - 2, "  .---.  ", 0.8); yazS(sx - 4, sy - 1, " /     \\ ", 0.8);
-  yazS(sx - 4, sy, "|       |", 0.8); yazS(sx - 4, sy + 1, " \\     / ", 0.8); yazS(sx - 4, sy + 2, "  '---'  ", 0.8);
-  yazS(sx - 1, sy + 3, "[_]", 0.7);
+  [ "   .-~~~~~-.   ",
+    "  /  12     \\  ",
+    " /           \\ ",
+    "|9     .     3|",
+    "|             |",
+    " \\     6     / ",
+    "  |_________|  ",
+    " [___________] " ].forEach((s, i) => yazS(sx - 7, sy - 3 + i, s, i < 6 ? 0.85 : 0.75));
   // PENCERE çerçevesi (içi her karede)
   const Pn = L.pencere, pcx = Math.round((Pn.x0 + Pn.x1) / 2), pcy = Math.round((Pn.ust + Pn.alt) / 2);
   for (let x = Pn.x0; x <= Pn.x1; x++){ koy(x, Pn.ust, "=", 0.75); koy(x, Pn.alt, "=", 0.75); koy(x, pcy, "-", 0.6); koy(x, Pn.alt + 1, "~", 0.45); }
@@ -128,23 +137,47 @@ function arkaKur(){
   for (let x = M.x0; x <= M.x1; x++){ koy(x, M.ust, "=", 0.75); koy(x, M.alt, "=", 0.75); }
   for (let y = M.ust; y <= M.alt; y++){ koy(M.x0, y, "|", 0.75); koy(M.x1, y, "|", 0.75); koy(M.x0 + 1, y, ":", 0.4); koy(M.x1 - 1, y, ":", 0.4); }
   [[M.x0, M.ust], [M.x1, M.ust], [M.x0, M.alt], [M.x1, M.alt]].forEach(([x, y]) => koy(x, y, "#", 0.85));
+  // ayakta uzun Magnus (tablolarındaki örtü) + yanında oturan, bıyıklı kedi; aynı taban çizgisi
   const portre = [
-    "    .-~~~-.                ",
-    "   /       \\       /\\_/\\   ",
-    "  |  O   O  |     ( o.o )  ",
-    "  |         |      > ^ <   ",
-    "  |  .---.  |     /     \\  ",
-    "   \\ |___| /     (  | |  ) ",
-    "   /       \\      \\_|_|_/~ ",
-    "  /_/\\_/\\_/\\_\\             ",
+    "   .-~~-.            ",
+    "  /      \\           ",
+    " |  O  O  |          ",
+    " |        |          ",
+    " |        |          ",
+    " |        |          ",
+    " |        |   /\\_/\\  ",
+    " |        | =( o.o )=",
+    " |        |   ) ^ (  ",
+    " |        |  /     \\ ",
+    " |        | (       )",
+    " |        | |  | |  |",
+    " /        \\ |  | |  |",
+    "/_/\\_/\\_/\\_\\ \\_|_|_/~",
   ];
   const pw = portre[0].length, pcx2 = Math.round((M.x0 + M.x1) / 2), pcy2 = Math.round((M.ust + M.alt) / 2);
   portre.forEach((s, i) => yazS(pcx2 - Math.floor(pw / 2), pcy2 - Math.floor(portre.length / 2) + i, s, 0.78));
-  // SEHPA + FİNCAN (buhar her karede)
+  // SEHPA: büyük, yüksek, Magnus'un solunda; üstünde kitaplar + tabaklı fincan (Gökşin'in çizimi).
+  // Sh.y = zemin (ayak ucu); tabla 7 satır yukarıda. Buhar her karede fincanın üstünden.
   const Sh = L.sehpa;
-  yazS(Sh.x - 4, Sh.y - 4, "c[_]", 0.8);
-  yazS(Sh.x - 6, Sh.y - 3, "_________", 0.75); yazS(Sh.x - 6, Sh.y - 2, " |     | ", 0.65);
-  yazS(Sh.x - 6, Sh.y - 1, " |     | ", 0.65); yazS(Sh.x - 6, Sh.y, " |     | ", 0.65);
+  // kitaplar ve tabak TABLANIN hemen üstünde (Gökşin: "kitaplar havada duruyor" — 2 satır yüksekteydi)
+  [ "                     ",
+    "            .----.   ",
+    " [=====]   (      )] ",
+    "[=======]   `----'   ",
+    "[=======] ~~~~~~~~~~ ",
+    "=====================",
+    " ||               || ",
+    " ||               || ",
+    " ||               || ",
+    " ||               || ",
+    " ||               || ",
+    "_||_             _||_" ].forEach((s, i, a) => {
+      // satırın dolu kısmındaki BOŞLUKLAR da yazılır: arkadaki süpürgelik (====) fincanın, kitapların
+      // arasından görünüyordu
+      const y = Sh.y - a.length + 1 + i, ilk = s.search(/\S/), son = s.length - [...s].reverse().join("").search(/\S/) - 1;
+      if (ilk < 0) return;
+      for (let j = ilk; j <= son; j++) koy(Sh.x - 10 + j, y, s[j], s[j] === " " ? 0 : (i < 5 ? 0.8 : 0.7));
+    });
   // çiz
   ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
   const x = ARKA.getContext("2d");
@@ -263,8 +296,8 @@ function saatCiz(){
     }
   };
   ctx.font = `bold ${yazi()}`;
-  kol(sa / 12 * 2 * Math.PI, 1, "rgb(200,200,200)");                  // akrep: kısa
-  kol(dk / 60 * 2 * Math.PI, 2, "rgb(235,235,235)");                  // yelkovan: uzun
+  kol(sa / 12 * 2 * Math.PI, 2, "rgb(200,200,200)");                  // akrep: kısa
+  kol(dk / 60 * 2 * Math.PI, 3, "rgb(235,235,235)");                  // yelkovan: uzun (büyük kadran)
   hk(L.saat.x, L.saat.y, "o", "rgb(235,235,235)");
 }
 
@@ -310,7 +343,8 @@ function buharCiz(t){
   ctx.font = yazi();
   for (let i = 0; i < 3; i++){
     const u = ((t * 0.35 + i / 3) % 1);                                 // 0 → 1: yükseliş
-    const x = L.sehpa.x - 3 + Math.sin(u * 6 + i) * 0.8, y = L.sehpa.y - 5 - u * 4;
+    // fincan: sehpanın sağ yarısında, üst kenarı tabla + 5 satır yukarıda
+    const x = L.sehpa.x + 4 + i * 1.4 + Math.sin(u * 6 + i) * 0.8, y = L.sehpa.y - 11 - u * 4;
     hk(x, y, u < 0.5 ? "(" : ")", `rgba(230,230,230,${0.45 * (1 - u)})`);
   }
 }
@@ -474,6 +508,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=6"></script>
+<script src="ortak.js?s=7"></script>
 </body>
 </html>

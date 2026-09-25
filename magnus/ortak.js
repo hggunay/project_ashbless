@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "6";
+const SURUM_YAZI = "7";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -30,7 +30,8 @@ const SESLER = [
   { id: "yagmur-kedi", ad: "Yağmur + mırlama",  tur: "dongu", ses: 0.5 },
   { id: "somine",      ad: "Şömine",            tur: "dongu", ses: 0.35 },
   { id: "saat",        ad: "Saat tik takı",     tur: "dongu", ses: 0.6, dosya: "saat.wav" },
-  { id: "kedi",        ad: "Kedi mırlaması",    tur: "dongu", ses: 0.55 },
+  // kedi.wav: mırlama pes, en yüksekte bile zor duyuluyordu (Gökşin) → 4 kat yükseltilmiş kopya
+  { id: "kedi",        ad: "Kedi mırlaması",    tur: "dongu", ses: 0.4, dosya: "kedi.wav" },
   { id: "kafe",        ad: "Kafe",              tur: "dongu", ses: 0.5 },
   { id: "nehir",       ad: "Dere",              tur: "dongu", ses: 0.75 },
   { id: "dalga",       ad: "Dalgalar",          tur: "dongu", ses: 0.6 },
@@ -365,9 +366,21 @@ async function tamponYukle(id){
   } catch (e) {}
   return tamponlar[id];
 }
+/* YEDEK YOL (Gökşin: "baykuş, çay dökme, sayfa çevirmeyi hiç duyamadım"): Web Audio dosyayı
+   fetch ile okuyor; dosyadan açılan sayfada (file://) Chrome buna izin vermiyor ve ses SESSİZCE
+   çalmıyordu. Tampon yoksa sıradan bir çalarla: sayfa için bir çevirmenin başına sarıp sonunda durdur. */
+function yedekCal(t, v){
+  const a = new Audio(dosyaYolu(t)); a.volume = Math.min(1, v);
+  if (t.olaylar){
+    const [b, s] = t.olaylar[Math.floor(Math.random() * t.olaylar.length)];
+    a.addEventListener("loadedmetadata", () => { a.currentTime = Math.max(0, b - 0.05); a.play().catch(() => {}); }, { once: true });
+    setTimeout(() => a.pause(), (s - b + 0.35) * 1000 + 400);
+  } else a.play().catch(() => {});
+}
 async function tekCal(id){
   const v = D.sesler[id]; if (v == null || sustur) return;
-  const t = sesTanim(id), buf = await tamponYukle(id); if (!buf) return;
+  const t = sesTanim(id), buf = await tamponYukle(id);
+  if (!buf) return yedekCal(t, v);
   const c = baglam(), kaynak = c.createBufferSource(), g = c.createGain();
   kaynak.buffer = buf; g.gain.value = v; kaynak.connect(g); g.connect(c.destination);
   if (t.olaylar){

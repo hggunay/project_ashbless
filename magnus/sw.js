@@ -11,7 +11,8 @@
 // 4: ses karıştırıcı (13 yeni ortam sesi, saat.wav)
 // 5: ara sesler seçilince hemen bir kez çalar
 // 6: ODA sahnesi (üç sahne)
-const SURUM = "magnus-6";
+// 7: ara seslerde yedek çalar (file://), kedi.wav, oda: saat/portre/sehpa
+const SURUM = "magnus-7";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
