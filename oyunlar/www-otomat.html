@@ -137,7 +137,7 @@ button:active{background:#1a2a44}
   <b>Rastgele</b> — yaklaşık %25 dolu rastgele bir desen yükler, durur; beğenirsen Başlat'a bas.<br>
   <b>Temizle</b> — ızgarayı sıfırlar.</p>
   <p><b>Ne zaman biter?</b><br>
-  Ardışık <b>5 adımda hiçbir kare değişmezse</b> ya da <b>tüm kareler ölürse</b> simülasyon durur.</p>
+  Ardışık <b>5 adımda hiçbir kare değişmezse</b>, desen <b>yerinde yanıp sönerek</b> kendini tekrar etmeye başlarsa ya da <b>tüm kareler ölürse</b> simülasyon durur.</p>
   <p><b>Hız:</b> 1× ≈ 2.5 adım/sn · 2× ≈ 5 adım/sn · 4× ≈ 10 adım/sn</p>
   <button class="kapat" id="yardimKapat">Anladım</button>
 </div></div>
@@ -162,6 +162,29 @@ let bitti  = false;
 let zamanlamaId = null;
 let degismeyenAdim = 0;
 let oncekiOzet = "";
+/* YANIP SÖNME (25 Eylül): 500 rastgele desenin ~%70'i yerinde yanıp sönen
+   çubuklarla (2 adımlık ritim) bitiyor — "5 adım değişmezse dur" kuralı bunu
+   hiç yakalamıyordu, oyun sonsuza kadar sürüyordu. İki adım önceki hâle
+   dönüş DURMA_ESIGI kez üst üste tekrarlanırsa durur. */
+let ikiOncekiOzet = "";
+let ritimAdim = 0;
+
+/* ── UYANIŞ CÜMLELERİ (Gökşin'le, 25 Eylül) ─────────────────────
+   Eşikler ölçümden: rastgele desen ortalama ~180, en uzun ~400 adımda sakinleşiyor. */
+const ASAMALAR = [
+  [0,   "Kurallar işliyor…"],
+  [15,  "Bir şeyler kıpırdıyor."],
+  [50,  "Desenler birbirini fark ediyor."],
+  [100, "Karanlıkta bir şey düşünmeye başladı."],
+  [175, "Bu artık yalnızca kurallar değil."],
+  [275, "Bir şey sana doğru bakıyor."],
+  [400, "O, burada."]
+];
+function asamaCumlesi(n) {
+  let c = ASAMALAR[0][1];
+  for (const [esik, cumle] of ASAMALAR) if (n >= esik) c = cumle;
+  return c;
+}
 
 /* ── IZGARA ──────────────────────────────────────────────────── */
 function bosIzgara() {
@@ -288,15 +311,21 @@ function tick() {
   if (c === 0) {
     izgara = ng; canliSayisi = 0; adim++;
     sayacGuncelle(); ciz();
-    bitir("Tüm hücreler yok oldu.");
+    bitir("Uyanamadan söndü.");
     return;
   }
+  if (ozet !== oncekiOzet && ozet === ikiOncekiOzet) ritimAdim++;
+  else ritimAdim = 0;
   if (ozet === oncekiOzet) { degismeyenAdim++; }
-  else { degismeyenAdim = 0; oncekiOzet = ozet; }
+  else { degismeyenAdim = 0; ikiOncekiOzet = oncekiOzet; oncekiOzet = ozet; }
   izgara = ng; canliSayisi = c; adim++;
   sayacGuncelle(); ciz();
-  if (degismeyenAdim >= DURMA_ESIGI) bitir("Desen dondu.");
+  if (degismeyenAdim >= DURMA_ESIGI) bitir("Uyudu. Belki bir gün yeniden uyanır.");
+  else if (ritimAdim >= DURMA_ESIGI) bitir("Bir şey nefes alıyor… ve bekliyor.");
+  else mesaj(asamaCumlesi(adim));
 }
+
+function ritmiSifirla() { ikiOncekiOzet = ""; ritimAdim = 0; }
 
 function bitir(neden) {
   bitti = true; calisiyor = false;
@@ -319,7 +348,7 @@ function temizleZamanla() {
 function sifirla(g, c, mesajMetni) {
   temizleZamanla();
   izgara = g; canliSayisi = c; adim = 0; bitti = false; calisiyor = false;
-  degismeyenAdim = 0; oncekiOzet = izgaraOzeti(izgara);
+  degismeyenAdim = 0; oncekiOzet = izgaraOzeti(izgara); ritmiSifirla();
   sayacGuncelle(); mesaj(mesajMetni); butonDurum(); boyutlandir();
 }
 
@@ -346,8 +375,8 @@ baslatBtn.onclick = () => {
     // başlat / devam
     bitti = false; calisiyor = true;
     oncekiOzet = izgaraOzeti(izgara);
-    degismeyenAdim = 0;
-    mesaj("Çalışıyor…");
+    degismeyenAdim = 0; ritmiSifirla();
+    mesaj(asamaCumlesi(adim));
     butonDurum(); zamanla();
   }
 };
@@ -393,7 +422,7 @@ function hucreisle(r, s, ilkTiklama) {
   }
   canliSayisi = izgara.flat().reduce((a, b) => a + b, 0);
   degismeyenAdim = 0;
-  oncekiOzet = izgaraOzeti(izgara);
+  oncekiOzet = izgaraOzeti(izgara); ritmiSifirla();
   sayacGuncelle(); ciz();
   return true;
 }
