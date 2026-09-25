@@ -8,9 +8,12 @@
    Değişiklikte SURUM'u artır → eski kayıt silinir. */
 // 2: müzik önbellekte yoksa BEKLETMEDEN ağdan (Gökşin'in telefonunda kesiliyordu)
 // 3: kod HER SEFERİNDE sitede tazelenir (no-cache) + NoSleep. ortak.js SURUM_YAZI ile birlikte artır.
-const SURUM = "magnus-3";
+// 4: ses karıştırıcı (13 yeni ortam sesi, saat.wav)
+// 5: ara sesler seçilince hemen bir kez çalar
+// 6: ODA sahnesi (üç sahne)
+const SURUM = "magnus-6";
 const CEKIRDEK = [
-  "./", "index.html", "orman.html", "kutuphane.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
+  "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
       "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"].map(a => `muzik/${a}-kapak.jpg`)
@@ -27,7 +30,7 @@ self.addEventListener("fetch", e => {
   const url = new URL(e.request.url);
   if (e.request.method !== "GET" || !url.href.startsWith(self.registration.scope)) return;
   const yol = url.pathname;
-  if (yol.endsWith(".mp3")) e.respondWith(muzik(e, e.request, url));
+  if (/\.(mp3|wav)$/.test(yol)) e.respondWith(muzik(e, e.request, url));
   else if (/\.(png|jpg|jpeg)$/.test(yol)) e.respondWith(onceKayit(e.request));
   else e.respondWith(onceAg(e.request));
 });
@@ -70,7 +73,7 @@ async function muzik(e, istek, url){
   const bas = m[1] ? +m[1] : 0, son = m[2] ? Math.min(+m[2], veri.size - 1) : veri.size - 1;
   return new Response(veri.slice(bas, son + 1), {
     status: 206,
-    headers: { "Content-Type": "audio/mpeg", "Content-Range": `bytes ${bas}-${son}/${veri.size}`,
+    headers: { "Content-Type": k.headers.get("Content-Type") || "audio/mpeg","Content-Range": `bytes ${bas}-${son}/${veri.size}`,
                "Content-Length": String(son - bas + 1), "Accept-Ranges": "bytes" }
   });
 }

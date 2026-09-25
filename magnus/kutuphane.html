@@ -188,6 +188,7 @@ RESIM.src = "gorsel/hayalet-okuyan.png";
 const SIRT = [233, 162], SAG_UC = [285, 137], SOL_UC = [197, 130];   // kitap (tablo pikseli)
 const SAYFALAR = [18, 44, 45.6, 77, 104, 131];                      // dönüş başlangıçları (sn)
 const SAYFA_SURE = 1.4;
+let _sonSayfa = null;                                               // ses bir dönüşte bir kez çalsın
 function magnusDurum(t){
   const olc = 0.36 * H / 315, gen = 520 * olc, boy = 315 * olc;
   const nefes = dalga(16, t);                                       // ~4.5 sn'de bir
@@ -201,6 +202,11 @@ function magnusCiz(t, m){
   // dönen sayfa
   const tt = ((t % T) + T) % T;
   const s = SAYFALAR.find(b => tt >= b && tt < b + SAYFA_SURE);
+  // sayfa dönmeye BAŞLADIĞI an çevirme sesi (ortak.js; "Sayfa çevirme" açıksa) — Gökşin'in isteği
+  if (s !== _sonSayfa){
+    _sonSayfa = s;
+    if (s !== undefined && DONUK === null && window.magnusSayfaSesi) window.magnusSayfaSesi();
+  }
   if (s === undefined) return;
   const p = yumusak((tt - s) / SAYFA_SURE), th = Math.PI * p;
   const px = (ix) => m.x0 + ix * m.olc * m.sx, py = (iy) => m.y0 + iy * m.olc * m.sy;
@@ -330,6 +336,6 @@ if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=3"></script>
+<script src="ortak.js?s=6"></script>
 </body>
 </html>

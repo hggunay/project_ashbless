@@ -12,16 +12,50 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "3";
+const SURUM_YAZI = "6";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
 ];
-const YAGMURLAR = [null, "yagmur", "yagmur-kedi"];                   // düğme bunlar arasında döner
-const YAGMUR_ADI = ["", "yağmur", "yağmur + kedi"];
+/* ── ORTAM SESLERİ (25 Eylül, Gökşin: "istediklerimizi üst üste aynı anda çalabilir miyiz …
+   custom ses kombinleri kaydedebiliyorduk"). Sesler Pixabay/Freesound (Gökşin indirdi),
+   hepsi ölçüldü: `ses` = varsayılan düzey (dosyaların yüksekliği farklı, biri ötekini
+   bastırmasın). saat.wav: kaynak ~10 kat kısıktı → 3,5 kat yükseltilmiş kopya.
+   tur "dongu" = kesintisiz döner · "ara" = arada bir, rastgele aralıkla (döngüde tuhaf olur).
+   sayfa: dosyada 10 ayrı çevirme var (ölçüldü) → her seferinde BİRİ; kütüphanede Magnus'un
+   sayfası döndüğü an çalar (Gökşin'in isteği), başka sahnede rastgele. */
+const SESLER = [
+  { id: "yagmur",      ad: "Yağmur",            tur: "dongu", ses: 0.5 },
+  { id: "yagmur2",     ad: "Hafif yağmur",      tur: "dongu", ses: 0.45 },
+  { id: "yagmur-kedi", ad: "Yağmur + mırlama",  tur: "dongu", ses: 0.5 },
+  { id: "somine",      ad: "Şömine",            tur: "dongu", ses: 0.35 },
+  { id: "saat",        ad: "Saat tik takı",     tur: "dongu", ses: 0.6, dosya: "saat.wav" },
+  { id: "kedi",        ad: "Kedi mırlaması",    tur: "dongu", ses: 0.55 },
+  { id: "kafe",        ad: "Kafe",              tur: "dongu", ses: 0.5 },
+  { id: "nehir",       ad: "Dere",              tur: "dongu", ses: 0.75 },
+  { id: "dalga",       ad: "Dalgalar",          tur: "dongu", ses: 0.6 },
+  { id: "gece-ormani", ad: "Gece ormanı",       tur: "dongu", ses: 0.9 },
+  { id: "ruzgar",      ad: "Ağaçlarda rüzgâr",  tur: "dongu", ses: 0.45 },
+  { id: "ruzgar-cani", ad: "Rüzgâr çanı",       tur: "dongu", ses: 0.35 },
+  { id: "baykus",      ad: "Baykuş",            tur: "ara", ses: 0.6, aralik: [45, 130] },
+  { id: "caydanlik",   ad: "Çay dökme",         tur: "ara", ses: 0.6, aralik: [200, 480] },
+  { id: "sayfa",       ad: "Sayfa çevirme",     tur: "ara", ses: 0.8, aralik: [25, 75],
+    olaylar: [[0, .5], [1.5, 2], [2.75, 3.25], [4, 4.5], [5.25, 5.75], [7.5, 7.75],
+              [8.75, 9], [10, 10.25], [11.5, 11.75], [12.5, 12.8]] },
+];
+const HAZIR_KARISIM = {
+  kutuphane: [{ ad: "Kütüphane", sesler: { saat: 0.6, sayfa: 0.8 } },
+              { ad: "Yağmurlu öğleden sonra", sesler: { yagmur2: 0.45, saat: 0.5, sayfa: 0.8 } }],
+  orman:     [{ ad: "Gece ormanı", sesler: { "gece-ormani": 0.9, baykus: 0.6, ruzgar: 0.35 } },
+              { ad: "Dere kenarı", sesler: { nehir: 0.7, "gece-ormani": 0.5 } }],
+  oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4 } }],
+};
+const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
 const SAHNE = document.body.dataset.sahne || "orman";
-const DIGER = SAHNE === "orman" ? { href: "kutuphane.html", ad: "Kütüphane" }
-                                : { href: "orman.html", ad: "Orman" };
+// Üç sahne (25 Eylül gecesi Oda eklendi): düğme sıradakine geçer, simgesi SIRADAKİNİ gösterir
+const SAHNELER = [{ id: "kutuphane", ad: "Kütüphane" }, { id: "oda", ad: "Oda" }, { id: "orman", ad: "Orman" }];
+const _si = Math.max(0, SAHNELER.findIndex(s => s.id === SAHNE));
+const DIGER = { href: SAHNELER[(_si + 1) % 3].id + ".html", ad: SAHNELER[(_si + 1) % 3].ad, id: SAHNELER[(_si + 1) % 3].id };
 try { localStorage.setItem("magnus-son-sahne", SAHNE); } catch (e) {}   // simgeden açılınca buraya
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 const ONIZLEME = new URLSearchParams(location.search).has("onizleme"); // kart resmi çekerken şerit yok
@@ -31,7 +65,9 @@ const DEPO = "magnus-ortak-v1";
 /* ── depo (sahne değişince sürsün; hata verirse sessizce yok say) ── */
 function oku(){ try { return JSON.parse(localStorage.getItem(DEPO)) || {}; } catch (e) { return {}; } }
 function yaz(d){ try { localStorage.setItem(DEPO, JSON.stringify(d)); } catch (e) {} }
-let D = Object.assign({ parca: 0, yagmur: 0, sure: { odak: 25, mola: 5, uzun: 15 }, pom: null }, oku());
+let D = Object.assign({ parca: 0, sesler: {}, karisimlar: [], sure: { odak: 25, mola: 5, uzun: 15 }, pom: null }, oku());
+// eski tek düğmeli yağmur (sürüm 1-3): 1 = yağmur, 2 = yağmur + kedi → karıştırıcıya
+if (D.yagmur){ D.sesler[D.yagmur === 2 ? "yagmur-kedi" : "yagmur"] = 0.4; delete D.yagmur; }
 
 /* ── SVG simgeler ── */
 const S = (d, v = "0 0 24 24") => `<svg viewBox="${v}" width="20" height="20" fill="currentColor" aria-hidden="true">${d}</svg>`;
@@ -39,12 +75,14 @@ const SIMGE = {
   oynat: S('<path d="M8 5v14l11-7z"/>'),
   dur: S('<path d="M7 5h4v14H7zM13 5h4v14h-4z"/>'),
   sonraki: S('<path d="M6 6l9 6-9 6zM16 6h2v12h-2z"/>'),
-  yagmur: S('<path d="M7 15a4 4 0 010-8 5 5 0 019.6 1.2A3.5 3.5 0 0117 15z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 18l-1 2M12 18l-1 2M16 18l-1 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>'),
+  ses: S('<path d="M4 10v4M8 7v10M12 4v16M16 8v8M20 11v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" fill="none"/>'),
   saat: S('<circle cx="12" cy="13" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 9v4l3 2M10 3h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/>'),
   tam: S('<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.8"/>'),
-  sahne: SAHNE === "orman"
-    ? S('<path d="M4 5h3v14H4zM9 5h3v14H9zM14.5 5.5l2.8-.8 3.6 13.5-2.8.8z"/>')          // kitaplar
-    : S('<path d="M12 3l6 9h-3l4 6H5l4-6H6z"/>'),                                         // çam
+  sahne: {                                                                                // SIRADAKİ sahne
+    kutuphane: S('<path d="M4 5h3v14H4zM9 5h3v14H9zM14.5 5.5l2.8-.8 3.6 13.5-2.8.8z"/>'), // kitaplar
+    orman: S('<path d="M12 3l6 9h-3l4 6H5l4-6H6z"/>'),                                    // çam
+    oda: S('<path d="M3 20h18M5 20V9h14v11M3 9h18M12 18c-2.5 0-3-2-1.5-4 .2 1 1 1.2 1.2.3.4-1.5 2.8-.8 2.3 1.6-.3 1.3-1 2.1-2 2.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'), // şömine
+  }[DIGER.id],
 };
 
 /* ── görünüm ── */
@@ -82,6 +120,31 @@ css.textContent = `
 #mPanel .alt{display:flex;gap:8px;margin-top:12px}
 #mPanel .alt button.ana{background:#6b4a22;border-color:#b98a4a;color:#ffe2b0}
 #mPanel .durum{margin-top:10px;color:#a8977a;font-size:13px;min-height:1.2em}
+#mSesPanel{position:fixed;left:50%;bottom:calc(70px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:rgba(14,11,9,.94);border:1px solid rgba(255,220,170,.18);border-radius:14px;padding:14px 16px;
+  color:#e9dcc0;font:14px/1.4 system-ui,sans-serif;z-index:6;width:min(380px,calc(100vw - 24px));
+  max-height:calc(100vh - 110px);overflow:auto;display:none}
+#mSesPanel.acik{display:block}
+#mSesPanel h3{margin:0 0 10px;font-size:15px;font-weight:600;color:#ffc46b}
+.m-cipler{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.m-cip{background:rgba(255,220,170,.08);border:1px solid rgba(255,220,170,.22);color:#e9dcc0;border-radius:20px;
+  padding:5px 11px;font:13px system-ui,sans-serif;cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.m-cip.kayitli{border-color:rgba(255,196,107,.45)}
+.m-cip .sil{opacity:.6;padding:0 2px}
+.m-cip.silinsin{border-color:#d9785a;color:#ffb39a}
+.m-ses{display:grid;grid-template-columns:1fr 110px;align-items:center;gap:8px;padding:5px 0;
+  border-top:1px solid rgba(255,220,170,.07)}
+.m-ses label{display:flex;align-items:center;gap:8px;cursor:pointer;color:#cdbfa3}
+.m-ses input[type=checkbox]{width:17px;height:17px;accent-color:#ffc46b}
+.m-ses input[type=range]{width:110px;accent-color:#ffc46b}
+.m-ses.kapali input[type=range]{opacity:.3}
+.m-kaydet{display:flex;gap:8px;margin-top:12px}
+.m-kaydet input{flex:1;min-width:0;background:#1c1714;border:1px solid rgba(255,220,170,.2);color:#e9dcc0;
+  border-radius:8px;padding:7px 9px;font:inherit}
+.m-kaydet button,.m-sesalt button{background:rgba(255,220,170,.08);border:1px solid rgba(255,220,170,.2);
+  color:#e9dcc0;border-radius:9px;padding:7px 12px;cursor:pointer;font:inherit}
+.m-sesalt{display:flex;gap:8px;margin-top:10px}
+.m-sesalt button{flex:1}
 #mMesaj{position:fixed;left:50%;top:18%;transform:translateX(-50%);color:#ffdca0;
   font:24px/1.3 Georgia,serif;letter-spacing:.5px;text-shadow:0 0 18px rgba(255,170,70,.5);
   opacity:0;transition:opacity 1.2s;pointer-events:none;z-index:7;text-align:center}
@@ -95,7 +158,7 @@ serit.innerHTML = `
   <div id="mParca"><img id="mKapak" alt=""><span id="mAd"></span></div>
   <button id="mSonraki" title="Sonraki parça">${SIMGE.sonraki}</button>
   <div class="ayrac"></div>
-  <button id="mYagmur" title="Yağmur sesi">${SIMGE.yagmur}</button>
+  <button id="mSes" title="Sesler">${SIMGE.ses}</button>
   <button id="mPom" title="Pomodoro">${SIMGE.saat}</button><span id="mPomSure"></span>
   <div class="ayrac"></div>
   <button id="mSahne" title="${DIGER.ad}">${SIMGE.sahne}</button>
@@ -116,6 +179,16 @@ panel.innerHTML = `
   <div class="durum" style="opacity:.5;font-size:11px">sürüm ${SURUM_YAZI}</div>`;
 document.body.appendChild(panel);
 
+const sesPanel = document.createElement("div");
+sesPanel.id = "mSesPanel";
+sesPanel.innerHTML = `
+  <h3>Sesler</h3>
+  <div class="m-cipler" id="mCipler"></div>
+  <div id="mSesListe"></div>
+  <div class="m-kaydet"><input id="mKarisimAd" maxlength="30" placeholder="Karışıma ad ver"><button id="mKaydet">Kaydet</button></div>
+  <div class="m-sesalt"><button id="mHepsiKapat">Hepsini kapat</button><button id="mSesPanelKapat">Kapat</button></div>`;
+document.body.appendChild(sesPanel);
+
 const mesajKutu = document.createElement("div");
 mesajKutu.id = "mMesaj";
 document.body.appendChild(mesajKutu);
@@ -133,7 +206,7 @@ function uyan(){
   serit.classList.remove("gizli"); document.body.classList.remove("sakin");
 }
 setInterval(() => {
-  if (panel.classList.contains("acik")) return;
+  if (panel.classList.contains("acik") || sesPanel.classList.contains("acik")) return;
   if (Date.now() - sonDokunus > 4000){ serit.classList.add("gizli"); document.body.classList.add("sakin"); }
 }, 500);
 ["pointermove", "pointerdown", "keydown"].forEach(o => addEventListener(o, uyan));
@@ -148,7 +221,7 @@ const muzik = new Audio(); muzik.preload = "auto";
 /* KESİTLER (ölçüldü, 25 Eylül): dosyaların uçlarında açılma/sönme var — yağmur.mp3'ün
    başında ~4 sn açılma, sonunda ~6 sn sönme (son 2 sn tamamen sessiz); döngü sessiz
    kuyruğa denk gelip "kesilip birkaç saniye sonra başlıyordu". [baştan atla, sondan atla] sn. */
-const KESIT = { "yagmur": [4, 6], "yagmur-kedi": [0.3, 1.2] };
+const KESIT = { "yagmur": [4, 6], "yagmur-kedi": [0.3, 1.2], "ruzgar": [3, 3] };
 function donguSes(CAPRAZ = 3){
   const a = [new Audio(), new Audio()]; a.forEach(x => x.preload = "auto");
   let akt = 0, usta = 0, karisim = [1, 0], caprazda = false, zaman = null, kes = [0, 0];
@@ -179,7 +252,7 @@ function donguSes(CAPRAZ = 3){
     get paused(){ return a[akt].paused; },
     get volume(){ return usta; }, set volume(v){ usta = v; uygula(); },
     set src(s){ clearInterval(zaman); caprazda = false; akt = 0; karisim = [1, 0];
-                const ad = (s.split("/").pop() || "").replace(/\.mp3$/, "");
+                const ad = (s.split("/").pop() || "").replace(/\.(mp3|wav)$/, "");
                 kes = KESIT[ad] || [0, 0];
                 a.forEach(x => { x.pause(); x.src = s; }); uygula(); },
     play(){ return a[akt].play(); },
@@ -187,8 +260,7 @@ function donguSes(CAPRAZ = 3){
              a.forEach(x => x.pause()); uygula(); },
   };
 }
-const yagmur = donguSes();
-const HEDEF = { muzik: 0.8, yagmur: 0.35 };
+const HEDEF = { muzik: 0.8 };
 function rampa(ses, hedef, ms, bitince){
   clearInterval(ses._rampa);
   const bas = ses.volume, t0 = performance.now();
@@ -227,10 +299,163 @@ async function cal(ses, hedef){
 function sus(ses, ms = SESLEN){ rampa(ses, 0, ms, () => ses.pause()); }
 function dugmeler(){
   $("mOynat").innerHTML = muzikIstek && !muzik.paused ? SIMGE.dur : SIMGE.oynat;
-  $("mYagmur").classList.toggle("acik", !!D.yagmur);
-  $("mYagmur").title = D.yagmur ? "Yağmur: " + YAGMUR_ADI[D.yagmur] : "Yağmur sesi";
+  const n = Object.keys(D.sesler).length;
+  $("mSes").classList.toggle("acik", n > 0);
+  $("mSes").title = n ? `Sesler (${n} açık)` : "Sesler";
   $("mPom").classList.toggle("acik", !!D.pom);
 }
+
+/* ── ORTAM SESLERİ KARIŞTIRICISI ─────────────────────────────────────────
+   D.sesler = { id: düzey } → AÇIK olanlar (seçim kalıcı; sahne değişse de, sayfa yeniden
+   açılsa da). Döngüler donguSes (iki kopya, kesintisiz); "ara" sesler Web Audio ile
+   (sayfa çevirmenin tek bir parçasını kesip çalabilmek için). Pomodoro molasında hepsi susar. */
+const dongular = {};
+let ak = null;                                          // Web Audio (zil + ara sesler)
+const sesTanim = id => SESLER.find(s => s.id === id);
+const dosyaYolu = t => `muzik/${t.dosya || t.id + ".mp3"}`;
+function baglam(){
+  ak = ak || new (window.AudioContext || window.webkitAudioContext)();
+  if (ak.state === "suspended") ak.resume().catch(() => {});
+  return ak;
+}
+function donguAl(id){
+  if (!dongular[id]){ const d = donguSes(); d.src = dosyaYolu(sesTanim(id)); dongular[id] = d; }
+  return dongular[id];
+}
+function ortamBaslat(){
+  if (sustur) return;
+  for (const [id, v] of Object.entries(D.sesler)){
+    const t = sesTanim(id); if (!t || t.tur !== "dongu") continue;
+    const d = donguAl(id);
+    if (d.paused) cal(d, v); else rampa(d, v, 400);
+  }
+  araPlanla();
+}
+function ortamSustur(ms = 900){
+  Object.values(dongular).forEach(d => { if (!d.paused) sus(d, ms); });
+}
+const ortamCaliyor = () => Object.values(dongular).some(d => !d.paused);
+/* onizle: kutucuk elle işaretlenince "ara" ses HEMEN bir kez çalar (Gökşin: "seçtiğimde
+   hemen duymuyorum, beklemem gerekiyor … seçip seçmeyeceğime karar verebilirim").
+   Karışım uygulanırken önizleme YOK (birkaç ara ses aynı anda çalıp kulağı yorardı). */
+function sesAc(id, v, onizle){
+  const t = sesTanim(id); if (!t) return;
+  D.sesler[id] = v; yaz(D);
+  if (t.tur === "dongu" && !sustur) cal(donguAl(id), v);
+  if (t.tur === "ara"){ baglam(); tamponYukle(id); araPlanla(); if (onizle) tekCal(id); }
+  dugmeler();
+}
+function sesKapat(id){
+  delete D.sesler[id]; yaz(D);
+  if (dongular[id] && !dongular[id].paused) sus(dongular[id], 700);
+  araPlanla(); dugmeler();
+}
+function sesDuzey(id, v){
+  D.sesler[id] = v; yaz(D);
+  const d = dongular[id];
+  if (d && !d.paused){ clearInterval(d._rampa); d.volume = v; }
+}
+/* "ara" sesler: dosya bir kez çözülür, her seferinde (sayfa için rastgele BİR çevirme) çalınır */
+const tamponlar = {};
+async function tamponYukle(id){
+  if (tamponlar[id]) return tamponlar[id];
+  try {
+    const b = await (await fetch(dosyaYolu(sesTanim(id)))).arrayBuffer();
+    tamponlar[id] = await new Promise((ok, no) => baglam().decodeAudioData(b, ok, no));
+  } catch (e) {}
+  return tamponlar[id];
+}
+async function tekCal(id){
+  const v = D.sesler[id]; if (v == null || sustur) return;
+  const t = sesTanim(id), buf = await tamponYukle(id); if (!buf) return;
+  const c = baglam(), kaynak = c.createBufferSource(), g = c.createGain();
+  kaynak.buffer = buf; g.gain.value = v; kaynak.connect(g); g.connect(c.destination);
+  if (t.olaylar){
+    const [a, b] = t.olaylar[Math.floor(Math.random() * t.olaylar.length)];
+    kaynak.start(0, Math.max(0, a - 0.05), b - a + 0.25);
+  } else kaynak.start();
+}
+const araZaman = {};
+function araPlanla(){
+  for (const t of SESLER){
+    if (t.tur !== "ara") continue;
+    // kütüphane ve odada sayfa sesi Magnus'un sayfasıyla eş → rastgele çalmaz
+    const kapali = D.sesler[t.id] == null || ((SAHNE === "kutuphane" || SAHNE === "oda") && t.id === "sayfa");
+    if (kapali){ clearTimeout(araZaman[t.id]); araZaman[t.id] = null; continue; }
+    if (araZaman[t.id]) continue;
+    const [a, b] = t.aralik;
+    araZaman[t.id] = setTimeout(() => { araZaman[t.id] = null; tekCal(t.id); araPlanla(); },
+                                (a + Math.random() * (b - a)) * 1000);
+  }
+}
+// Kütüphane: Magnus'un sayfası döndüğü AN (kutuphane.html çağırır)
+window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
+
+/* ── panel ── */
+function karisimlar(){
+  return [...(HAZIR_KARISIM[SAHNE] || []).map(k => ({ ...k, hazir: true })),
+          ...GENEL_KARISIM.map(k => ({ ...k, hazir: true })),
+          ...D.karisimlar.map((k, i) => ({ ...k, sira: i }))];
+}
+function karisimUygula(k){
+  Object.keys(D.sesler).forEach(id => { if (!(id in k.sesler)) sesKapat(id); });
+  for (const [id, v] of Object.entries(k.sesler)){
+    if (D.sesler[id] == null) sesAc(id, v); else sesDuzey(id, v);
+  }
+  if (sustur) mesaj("Mola sürüyor — sesler odakla başlayacak");
+  sesPanelCiz();
+}
+let silinecek = null, silZ = null;
+function sesPanelCiz(){
+  $("mCipler").innerHTML = karisimlar().map((k, i) => {
+    const sil = k.hazir ? "" : `<span class="sil" data-sil="${k.sira}">${silinecek === k.sira ? "silinsin mi?" : "×"}</span>`;
+    return `<button class="m-cip${k.hazir ? "" : " kayitli"}${silinecek === k.sira && !k.hazir ? " silinsin" : ""}" data-k="${i}">${k.ad.replace(/[<>&"]/g, "")}${sil}</button>`;
+  }).join("");
+  $("mSesListe").innerHTML = SESLER.map(t => {
+    const acik = D.sesler[t.id] != null, v = acik ? D.sesler[t.id] : t.ses;
+    return `<div class="m-ses${acik ? "" : " kapali"}"><label><input type="checkbox" data-id="${t.id}"${acik ? " checked" : ""}> ${t.ad}</label>
+      <input type="range" min="0.05" max="1" step="0.05" value="${v}" data-duzey="${t.id}"></div>`;
+  }).join("");
+}
+$("mCipler").onclick = (e) => {
+  const s = e.target.closest("[data-sil]");
+  if (s){
+    e.stopPropagation();
+    const i = +s.dataset.sil;
+    if (silinecek === i){ D.karisimlar.splice(i, 1); yaz(D); silinecek = null; mesaj("Karışım silindi"); }
+    else { silinecek = i; clearTimeout(silZ); silZ = setTimeout(() => { silinecek = null; sesPanelCiz(); }, 3000); }
+    return sesPanelCiz();
+  }
+  const b = e.target.closest("[data-k]"); if (!b) return;
+  const k = karisimlar()[+b.dataset.k]; if (k){ karisimUygula(k); mesaj(k.ad); }
+};
+$("mSesListe").onchange = (e) => {
+  const id = e.target.dataset.id;
+  if (id){
+    const r = $("mSesListe").querySelector(`[data-duzey="${id}"]`);
+    if (e.target.checked) sesAc(id, +r.value, true); else sesKapat(id);
+    sesPanelCiz();
+  }
+  // "ara" sesin kaydırıcısı BIRAKILINCA bir kez çalar: yeni düzey hemen duyulsun
+  const dz = e.target.dataset.duzey;
+  if (dz && D.sesler[dz] != null && sesTanim(dz).tur === "ara") tekCal(dz);
+};
+$("mSesListe").oninput = (e) => {
+  const id = e.target.dataset.duzey;
+  if (id && D.sesler[id] != null) sesDuzey(id, +e.target.value);
+};
+$("mKaydet").onclick = () => {
+  if (!Object.keys(D.sesler).length){ mesaj("Önce birkaç ses aç"); return; }
+  const ad = ($("mKarisimAd").value.trim() || `Karışımım ${D.karisimlar.length + 1}`).slice(0, 30);
+  D.karisimlar.push({ ad, sesler: { ...D.sesler } }); yaz(D);
+  $("mKarisimAd").value = ""; sesPanelCiz(); mesaj(`"${ad}" kaydedildi`);
+};
+$("mHepsiKapat").onclick = () => { Object.keys(D.sesler).forEach(sesKapat); sesPanelCiz(); };
+$("mSesPanelKapat").onclick = () => sesPanel.classList.remove("acik");
+$("mSes").onclick = () => {
+  panel.classList.remove("acik");
+  sesPanel.classList.toggle("acik"); sesPanelCiz(); uyan();
+};
 /* Parça bitince sıradaki DOĞRUDAN tam seste (rampasız). Gökşin'in telefonu: uygulama
    arka plandayken parça bitti, sıradaki başlamadı — rampa setInterval'la açılıyor, telefon
    arka plandaki zamanlayıcıları donduruyor → yeni parça ses 0'da kalıyordu. */
@@ -269,22 +494,10 @@ $("mSonraki").onclick = async () => {
   parcaYukle(D.parca + 1);
   if (muzikIstek && !sustur) await cal(muzik, HEDEF.muzik);
 };
-$("mYagmur").onclick = async () => {
-  D.yagmur = (D.yagmur + 1) % YAGMURLAR.length; yaz(D);
-  if (!D.yagmur) sus(yagmur, 900);
-  else {
-    yagmur.src = `muzik/${YAGMURLAR[D.yagmur]}.mp3`;
-    if (!sustur) await cal(yagmur, HEDEF.yagmur);
-    mesaj(YAGMUR_ADI[D.yagmur]);
-  }
-  dugmeler();
-};
-
 /* ── ZİL: dosya yok, küçük bir çan sesi sentezleniyor ── */
-let ak = null;
 function zil(){
   try {
-    ak = ak || new (window.AudioContext || window.webkitAudioContext)();
+    baglam();
     const t = ak.currentTime;
     [[660, 0], [880, 0.18], [990, 0.36]].forEach(([f, d]) => {
       const o = ak.createOscillator(), g = ak.createGain();
@@ -312,7 +525,7 @@ function sureleriAl(){
 panel.querySelectorAll(".hazir button").forEach(b => b.onclick = () => {
   D.sure = { odak: +b.dataset.o, mola: +b.dataset.m, uzun: +b.dataset.u }; yaz(D); panelDoldur();
 });
-$("mPom").onclick = () => { panel.classList.toggle("acik"); panelDoldur(); uyan(); };
+$("mPom").onclick = () => { sesPanel.classList.remove("acik"); panel.classList.toggle("acik"); panelDoldur(); uyan(); };
 $("mPomKapat").onclick = () => panel.classList.remove("acik");
 $("mPomBasla").onclick = () => {
   if (D.pom){ pomBitir(); mesaj("Pomodoro durdu"); }
@@ -325,9 +538,10 @@ function evreBasla(mod, tur){
   if (mod === "odak"){
     sustur = false; muzikIstek = true;                 // okumaya başlarken ses yavaşça açılır
     cal(muzik, HEDEF.muzik).then(dugmeler);
-    if (D.yagmur){ yagmur.src = `muzik/${YAGMURLAR[D.yagmur]}.mp3`; cal(yagmur, HEDEF.yagmur); }
+    ortamBaslat();
   } else {
     sustur = true;                                     // molada ses yok
+    ortamSustur(800);
   }
   dugmeler(); panelDoldur();
 }
@@ -341,7 +555,7 @@ function pomTik(){
   if (D.pom.mod === "odak" && !D.pom.kisildi && kalan <= KISIL){  // okuma biterken sesler azalarak susar
     D.pom.kisildi = true; yaz(D);
     if (!muzik.paused) sus(muzik, Math.max(500, kalan));
-    if (!yagmur.paused) sus(yagmur, Math.max(500, kalan));
+    ortamSustur(Math.max(500, kalan));
   }
   if (kalan <= 0){
     zil();
@@ -385,7 +599,6 @@ ekranAcik();                                           // Wake Lock destekleniyo
 /* ── açılış: kalınan parça; sahne değişiminden geldiyse çalmayı sürdürmeyi dene ── */
 const devam = D.devam; delete D.devam; yaz(D);
 parcaYukle(D.parca, devam && devam.zaman);
-if (D.yagmur) yagmur.src = `muzik/${YAGMURLAR[D.yagmur]}.mp3`;
 if (D.pom){
   sustur = D.pom.mod !== "odak";
   if (D.pom.bitis - Date.now() < -60000){ pomBitir(); }             // çoktan bitmiş eski sayaç
@@ -394,9 +607,15 @@ if (devam && devam.caliyor && !sustur){
   muzikIstek = true;
   cal(muzik, HEDEF.muzik).then(ok => {
     if (!ok){ muzikIstek = false; mesaj("Müzik için oynat düğmesine dokun"); }
-    if (ok && D.yagmur) cal(yagmur, HEDEF.yagmur);
     dugmeler();
   });
 }
+/* Açık sesler (seçim kalıcı): hemen başlatmayı dene; tarayıcı engellerse İLK DOKUNUŞTA başlar. */
+if (Object.keys(D.sesler).length && !sustur) ortamBaslat();
+addEventListener("pointerdown", () => {
+  if (Object.keys(D.sesler).length && !sustur && !ortamCaliyor()) ortamBaslat();
+}, { once: true });
 dugmeler();
+// Deneme: ?panel=ses → ses paneli açık gelir (ekran görüntüsü için)
+if (new URLSearchParams(location.search).get("panel") === "ses") $("mSes").click();
 })();
