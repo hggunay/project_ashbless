@@ -432,7 +432,9 @@ async function kesifAc(oyun){
     return;
   }
   // Atanmış öykü havuzdan kalkmışsa (liste güncellendi) yenisi seçilir; toplanan sayfa sıfırlanır.
-  if (!k.hikaye || !havuz[k.hikaye]) {
+  // ZATEN KEŞFEDİLMİŞSE de (25 Eylül, Gökşin yakaladı): açık kalmış eski bir sekme
+  // tamamlanmış öyküyü kayda geri yazmıştı → Kalleş Ülke ikinci kez açıldı.
+  if (!k.hikaye || !havuz[k.hikaye] || kesifListesi()[k.hikaye]) {
     const haric = kesifListesi();
     const plan = kesifPlani(havuz, oykuSec(havuz, haric), haric);
     const id = plan.hikaye;
@@ -479,8 +481,25 @@ async function kesifTamamla(oyun, k){
   _kesifTamamlaniyor = true;
   try {
     const havuz = await oykuHavuzu();
-    const idler = havuz ? kesifOykuleri(k).filter(id => havuz[id]) : [];
-    if (!idler.length){ mesajGoster('Öykü tamamlandı ama bilgisi okunamadı. Tekrar açınca görünecek.', 'uyari'); return; }
+    const tumu = havuz ? kesifOykuleri(k).filter(id => havuz[id]) : [];
+    if (!tumu.length){ mesajGoster('Öykü tamamlandı ama bilgisi okunamadı. Tekrar açınca görünecek.', 'uyari'); return; }
+    /* ESKİ SEKME KORUMASI (25 Eylül): bu sekmenin belleği bayat olabilir (telefonda
+       günlerce açık kalan sekme). Keşif listesi SUNUCUDAN taze okunur; orada zaten
+       olan öykü ikinci kez açılmaz. Okunamazsa bellekteki listeyle devam edilir. */
+    const { ok: tazeOk, veri: taze } = await fbGetDurum('aa-v4/users/' + me + '/oyunlar/kesif');
+    if (tazeOk && taze && typeof taze === 'object') {
+      if (!db.users[me]) db.users[me] = {};
+      if (!db.users[me].oyunlar) db.users[me].oyunlar = {};
+      db.users[me].oyunlar.kesif = { ...(db.users[me].oyunlar.kesif || {}), ...taze };
+    }
+    const idler = tumu.filter(id => !kesifListesi()[id]);
+    if (!idler.length){
+      await kesifKaydiYaz(oyun, { ...k, bulunan: 0, hedef: 0, hikaye: null, deste: [] });
+      mesajGoster('Bu öyküyü zaten keşfetmiştin — sana yeni bir öykü seçildi.');
+      renderOyunlar();
+      await kesifDevam(oyun.id);
+      return;
+    }
     // DESTE: her öykü ayrı kayıt; `deste` = ana öykünün kimliği (akış tek kart yapsın diye).
     const ts = Date.now(), bulunanlar = [];
     for (const id of idler) {
