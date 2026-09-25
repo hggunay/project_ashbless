@@ -11,7 +11,7 @@
 /* Uygulama simgesinden açılış: en son hangi sahnedeysen oraya (ilk kez: kütüphane). */
 let s = "kutuphane";
 try { s = localStorage.getItem("magnus-son-sahne") || s; } catch (e) {}
-location.replace((s === "orman" ? "orman" : "kutuphane") + ".html");
+location.replace((["orman", "oda"].includes(s) ? s : "kutuphane") + ".html");
 </script>
 </head>
 <body></body>

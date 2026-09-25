@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="ikon-192.png"><link rel="apple-touch-icon" href="ikon-192.png"><meta name="theme-color" content="#000000">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Magnus · Oda</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+body.sakin{cursor:none}
+</style>
+</head>
+<body data-sahne="oda">
+<canvas id="c"></canvas>
+<script>
+/* MAGNUS — ASCII ODA (25 Eylül gecesi; Gökşin'in fikri, tasarım onaylı).
+   Ortada şömine (ışık kaynağı, piksel-ateş), sol üstte pencere (yağmur, sallanan dal, seyrek
+   şimşek), şöminenin sağında sallanan sandalyede kitap okuyan ASCII Magnus (görsel yok → ASCII,
+   krem; ışıkla BOYANMAZ), yanında sehpa + buharı tüten çay, halıda uyuyan KARA KEDİ (Gökşin'in
+   kara kedileri), raf: kitaplar + GERÇEK SAATİ gösteren saat + sarkan bitki, duvarda eski dünya
+   haritası ("koltuk seyyahı"). Müzik/sesler/pomodoro: ortak.js. Deneme: ?t=20 donmuş kare. */
+const T = 144, T_KUCUK = 72;
+const SATIR = Math.max(50, Math.min(72, Math.round(innerHeight / 12)));
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+const P = new URLSearchParams(location.search);
+const DONUK = P.has("t") ? parseFloat(P.get("t")) : null;
+const dalga = (k, t, faz = 0) => Math.sin(2 * Math.PI * k * t / T_KUCUK + faz);
+function rastgele(tohum){ return () => { tohum |= 0; tohum = tohum + 0x6D2B79F5 | 0;
+  let x = Math.imul(tohum ^ tohum >>> 15, 1 | tohum); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
+  return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+
+let W, H, cw, ch, SUTUN, ARKA = null, L = null;
+const yazi = (k = 1) => `${Math.round(ch * 0.86 * k)}px Consolas, "Courier New", monospace`;
+
+/* ── YERLEŞİM (hücre) ── */
+function yerlesim(){
+  const X = f => Math.round(f * SUTUN), Y = f => Math.round(f * SATIR);
+  const fx = X(0.46);
+  return {
+    duvarAlt: Y(0.74),                                     // duvar/zemin sınırı
+    somine: { x0: fx - X(0.13), x1: fx + X(0.13), ust: Y(0.42), alt: Y(0.80), cx: fx },
+    ates:   { x0: fx - X(0.075), x1: fx + X(0.075), ust: Y(0.53), alt: Y(0.78) },
+    pencere:{ x0: X(0.05), x1: X(0.24), ust: Y(0.10), alt: Y(0.44) },
+    harita: { x0: X(0.64), x1: X(0.92), ust: Y(0.08), alt: Y(0.32) },
+    magnus: { x: X(0.78), y: Y(0.93) },                    // sallanma merkezi: kızak ortası
+    sehpa:  { x: X(0.655), y: Y(0.90) },
+    kedi:   { x: X(0.30), y: Y(0.90) },
+    saat:   { x: fx, y: Y(0.42) - 5 },
+  };
+}
+
+/* ── ARKA PLAN (bir kez çizilir): duvar, zemin, şömine, raf, harita, pencere çerçevesi, halı ── */
+function arkaKur(){
+  const R = rastgele(5), g = Array.from({ length: SATIR }, () => Array(SUTUN).fill(null));
+  const koy = (x, y, k, b) => { x = Math.round(x); y = Math.round(y);
+    if (x >= 0 && x < SUTUN && y >= 0 && y < SATIR) g[y][x] = [k, b]; };
+  const yazS = (x, y, s, b) => [...s].forEach((k, i) => k !== " " && koy(x + i, y, k, b));
+  // duvar kâğıdı: seyrek, çok soluk desen
+  for (let y = 0; y < L.duvarAlt; y++) for (let x = 0; x < SUTUN; x++)
+    if ((x % 7 === 3 && y % 3 === 1) || R() < 0.012) koy(x, y, R() < 0.5 ? "." : ":", 0.22);
+  // süpürgelik + zemin tahtaları
+  for (let x = 0; x < SUTUN; x++){ koy(x, L.duvarAlt, "=", 0.55); koy(x, L.duvarAlt + 1, "_", 0.4); }
+  for (let y = L.duvarAlt + 2; y < SATIR; y++) for (let x = 0; x < SUTUN; x++){
+    if ((y - L.duvarAlt) % 3 === 0) koy(x, y, "_", 0.28);
+    else if ((x + y * 11) % 17 === 0) koy(x, y, "|", 0.22);
+  }
+  // halı (şöminenin önü): çerçeveli oval, içinde desen
+  const hx = L.somine.cx, hy = Math.round((L.duvarAlt + SATIR) / 2) + 1, rx = Math.round(SUTUN * 0.2), ry = Math.round((SATIR - L.duvarAlt) * 0.34);
+  for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++){
+    const d = (x * x) / (rx * rx) + (y * y) / (ry * ry);
+    if (d > 1) continue;
+    if (d > 0.82) koy(hx + x, hy + y, "o", 0.45);
+    else if (d > 0.62 && d < 0.7) koy(hx + x, hy + y, "~", 0.35);
+    else if ((x + y * 3) % 6 === 0) koy(hx + x, hy + y, "*", 0.28);
+    else koy(hx + x, hy + y, " ", 0);
+  }
+  // ŞÖMİNE: taş çerçeve (tuğla deseni), içi boş (ateş ayrı çizilir)
+  const S = L.somine, A = L.ates;
+  for (let y = S.ust; y <= S.alt; y++) for (let x = S.x0; x <= S.x1; x++){
+    const ic = x >= A.x0 && x <= A.x1 && y >= A.ust && y <= A.alt;
+    if (ic) continue;
+    const tugla = (y % 2 === 0) ? (x % 4 === 0 ? "|" : "_") : ((x + 2) % 4 === 0 ? "|" : "_");
+    koy(x, y, tugla, 0.55 + R() * 0.15);
+  }
+  // ocak kemeri + ocak tabanı + odunlar
+  for (let x = A.x0 - 1; x <= A.x1 + 1; x++) koy(x, A.ust - 1, x === A.x0 - 1 ? "/" : x === A.x1 + 1 ? "\\" : "-", 0.7);
+  for (let y = A.ust; y <= A.alt; y++){ koy(A.x0 - 1, y, "[", 0.7); koy(A.x1 + 1, y, "]", 0.7); }
+  const odun = A.alt, ox = Math.round((A.x0 + A.x1) / 2);
+  yazS(ox - 7, odun, "(==o==)(==o==)", 0.75);
+  yazS(S.x0 - 2, S.alt + 1, "=".repeat(S.x1 - S.x0 + 5), 0.7);          // ocak taşı
+  // RAF (şömine üstü)
+  const rafY = S.ust - 1;
+  for (let x = S.x0 - 3; x <= S.x1 + 3; x++){ koy(x, rafY, "=", 0.8); koy(x, rafY + 1, "-", 0.5); }
+  // raftaki kitaplar (sol)
+  let bx = S.x0 - 1;
+  for (const [gen, boy] of [[2, 5], [3, 6], [2, 4], [3, 5]]){
+    for (let y = 0; y < boy; y++) for (let i = 0; i < gen; i++){
+      const k = y === 0 ? (i === 0 || i === gen - 1 ? "." : "_") : (i === 0 || i === gen - 1 ? "|" : (y === 1 || y === boy - 2 ? "=" : " "));
+      koy(bx + i, rafY - 1 - (boy - 1) + y, k, 0.75);
+    }
+    bx += gen;
+  }
+  yazS(bx + 1, rafY - 1, "[=====]", 0.7);                               // yatık kitap
+  // saksı + sarkan bitki (sağ)
+  const px = S.x1 - 4;
+  yazS(px, rafY - 3, " \\|/ ", 0.6); yazS(px, rafY - 2, "(***)", 0.6); yazS(px, rafY - 1, "\\___/", 0.7);
+  for (let i = 0; i < 9; i++) koy(px + 5 + Math.round(Math.sin(i * 0.9)), rafY + 1 + i, i % 3 === 2 ? "*" : (i % 2 ? ")" : "("), 0.55);
+  // SAAT kasası (akrep/yelkovan her karede)
+  const sx = L.saat.x, sy = L.saat.y;
+  yazS(sx - 4, sy - 2, "  .---.  ", 0.8); yazS(sx - 4, sy - 1, " /     \\ ", 0.8);
+  yazS(sx - 4, sy, "|       |", 0.8); yazS(sx - 4, sy + 1, " \\     / ", 0.8); yazS(sx - 4, sy + 2, "  '---'  ", 0.8);
+  yazS(sx - 1, sy + 3, "[_]", 0.7);
+  // PENCERE çerçevesi (içi her karede)
+  const Pn = L.pencere, pcx = Math.round((Pn.x0 + Pn.x1) / 2), pcy = Math.round((Pn.ust + Pn.alt) / 2);
+  for (let x = Pn.x0; x <= Pn.x1; x++){ koy(x, Pn.ust, "=", 0.75); koy(x, Pn.alt, "=", 0.75); koy(x, pcy, "-", 0.6); koy(x, Pn.alt + 1, "~", 0.45); }
+  for (let y = Pn.ust; y <= Pn.alt; y++){ koy(Pn.x0, y, "|", 0.75); koy(Pn.x1, y, "|", 0.75); koy(pcx, y, "|", 0.6); }
+  // perde kenarları
+  for (let y = Pn.ust - 1; y <= Pn.alt + 2; y++){ koy(Pn.x0 - 2, y, ")", 0.4); koy(Pn.x1 + 2, y, "(", 0.4); }
+  // DÜNYA HARİTASI (koltuk seyyahı): çerçeve + kıtalar + noktalı rota + yelkenli + pusula
+  const M = L.harita;
+  for (let x = M.x0; x <= M.x1; x++){ koy(x, M.ust, "-", 0.7); koy(x, M.alt, "-", 0.7); }
+  for (let y = M.ust; y <= M.alt; y++){ koy(M.x0, y, "|", 0.7); koy(M.x1, y, "|", 0.7); }
+  [[M.x0, M.ust], [M.x1, M.ust], [M.x0, M.alt], [M.x1, M.alt]].forEach(([x, y]) => koy(x, y, "+", 0.8));
+  const mw = M.x1 - M.x0 - 2, mh = M.alt - M.ust - 2;
+  const kita = (fx, fy, rx, ry) => {                                   // yumuşak kenarlı kıta lekesi
+    for (let y = -ry; y <= ry; y++) for (let x = -rx; x <= rx; x++){
+      const d = (x * x) / (rx * rx) + (y * y) / (ry * ry) + (R() - 0.5) * 0.35;
+      if (d < 1) koy(M.x0 + 1 + Math.round(fx * mw) + x, M.ust + 1 + Math.round(fy * mh) + y, d > 0.7 ? "." : "%", 0.5);
+    }
+  };
+  kita(0.14, 0.3, 3, 2); kita(0.2, 0.72, 2, 3);                       // Amerikalar
+  kita(0.5, 0.28, 2, 2); kita(0.52, 0.68, 3, 3);                      // Avrupa, Afrika
+  kita(0.76, 0.35, 5, 3); kita(0.88, 0.8, 2, 1);                      // Asya, Avustralya
+  for (let i = 0; i <= 12; i++){                                       // noktalı rota
+    const u = i / 12, x = 0.2 + u * 0.55, y = 0.5 - Math.sin(u * Math.PI) * 0.3;
+    if (i % 2 === 0) koy(M.x0 + 1 + Math.round(x * mw), M.ust + 1 + Math.round(y * mh), ".", 0.75);
+  }
+  yazS(M.x0 + 1 + Math.round(0.36 * mw), M.ust + Math.round(0.38 * mh), "|>", 0.8);   // yelkenli
+  yazS(M.x0 + Math.round(0.35 * mw), M.ust + 1 + Math.round(0.38 * mh), "\\_/", 0.8);
+  yazS(M.x1 - 4, M.alt - 3, " N ", 0.7); yazS(M.x1 - 4, M.alt - 2, "-+-", 0.7); yazS(M.x1 - 4, M.alt - 1, " | ", 0.7);
+  // SEHPA + FİNCAN (buhar her karede)
+  const Sh = L.sehpa;
+  yazS(Sh.x - 4, Sh.y - 4, "c[_]", 0.8);
+  yazS(Sh.x - 6, Sh.y - 3, "_________", 0.75); yazS(Sh.x - 6, Sh.y - 2, " |     | ", 0.65);
+  yazS(Sh.x - 6, Sh.y - 1, " |     | ", 0.65); yazS(Sh.x - 6, Sh.y, " |     | ", 0.65);
+  // çiz
+  ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
+  const x = ARKA.getContext("2d");
+  x.font = yazi(); x.textBaseline = "middle"; x.textAlign = "center";
+  g.forEach((satir, y) => satir.forEach((h, s) => {
+    if (!h || !h[1]) return;
+    const v = Math.round(220 * h[1]);
+    x.fillStyle = `rgb(${v},${v},${v})`;
+    x.fillText(h[0], s * cw + cw / 2, y * ch + ch / 2);
+  }));
+}
+
+/* ── hücreye tek karakter (canlı parçalar için) ── */
+function hk(x, y, k, renk){
+  ctx.fillStyle = renk;
+  ctx.fillText(k, x * cw + cw / 2, y * ch + ch / 2);
+}
+
+/* ── ATEŞ: "piksel ateş" — alt sıra hep sıcak, ısı yukarı taşınırken rastgele soğur ve
+   yana kayar → dalgalanan alevler. Isı 0..36; karakter ve renk ısıya göre. ── */
+let ISI = null, ATES_W = 0, ATES_H = 0, atesSon = 0;
+const ATES_K = " ..,:;+*%#@@";
+function atesKur(){
+  ATES_W = L.ates.x1 - L.ates.x0 + 1; ATES_H = L.ates.alt - L.ates.ust;   // en alt sıra odunlar
+  ISI = new Uint8Array(ATES_W * ATES_H);
+  for (let x = 0; x < ATES_W; x++) ISI[(ATES_H - 1) * ATES_W + x] = 36;
+  atesSon = 0;                        // yeniden boyutlanınca ateş baştan ısınsın (donuk karede boş kalıyordu)
+}
+function atesAdim(){
+  for (let y = 1; y < ATES_H; y++) for (let x = 0; x < ATES_W; x++){
+    const kaynak = ISI[y * ATES_W + x], r = Math.floor(Math.random() * 3);
+    const hedefX = Math.min(ATES_W - 1, Math.max(0, x - r + 1));
+    // soğuma kutu boyuna göre: alev kutunun ~2/3'üne uzansın (ilk ayarda kutuyu dolduruyordu)
+    const sogu = Math.floor(Math.random() * (36 / ATES_H) * 1.9);
+    ISI[(y - 1) * ATES_W + hedefX] = Math.max(0, kaynak - sogu);
+  }
+  // alt sıra nabız atsın: kenarlar soğuk, ortada yer yer sıcak dilli (alev dilleri buradan)
+  for (let x = 0; x < ATES_W; x++){
+    const kenar = Math.min(x, ATES_W - 1 - x) / (ATES_W / 2);
+    ISI[(ATES_H - 1) * ATES_W + x] = Math.round((18 + 18 * Math.min(1, kenar * 1.4)) * (0.75 + Math.random() * 0.25));
+  }
+}
+function atesRenk(v){
+  const u = v / 36;
+  if (u < 0.3) return `rgba(150,40,15,${u * 2.4})`;
+  if (u < 0.55) return `rgb(220,${Math.round(70 + u * 60)},25)`;
+  if (u < 0.8) return `rgb(255,${Math.round(120 + u * 90)},50)`;
+  return "rgb(255,236,170)";
+}
+function atesCiz(t){
+  if (!ISI) return;
+  if (DONUK === null && t - atesSon > 0.06){ atesAdim(); atesSon = t; }  // ~16 kare/sn yeter
+  if (DONUK !== null && atesSon === 0){ for (let i = 0; i < 40; i++) atesAdim(); atesSon = 1; }
+  ctx.font = `bold ${yazi()}`;
+  for (let y = 0; y < ATES_H; y++) for (let x = 0; x < ATES_W; x++){
+    const v = ISI[y * ATES_W + x]; if (v < 3) continue;
+    hk(L.ates.x0 + x, L.ates.ust + y, ATES_K[Math.min(ATES_K.length - 1, Math.floor(v / 36 * (ATES_K.length - 1)))], atesRenk(v));
+  }
+  // ateşin kendi parıltısı
+  const fx = L.somine.cx * cw, fy = (L.ates.ust + ATES_H * 0.6) * ch, pr = ATES_H * ch * (1.1 + 0.08 * dalga(37, t));
+  const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, pr);
+  g.addColorStop(0, "rgba(255,140,40,.35)"); g.addColorStop(1, "rgba(255,140,40,0)");
+  ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = g; ctx.fillRect(fx - pr, fy - pr, pr * 2, pr * 2);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── PENCERE: gece, çapraz yağmur, sallanan dal, seyrek şimşek ── */
+const SIMSEK = [[70, 70.12], [70.3, 70.42]];                            // T içinde (sn)
+const simsekMi = t => SIMSEK.some(([a, b]) => t % T >= a && t % T < b);
+function pencereCiz(t){
+  const Pn = L.pencere, sm = simsekMi(t);
+  const x0 = (Pn.x0 + 1) * cw, y0 = (Pn.ust + 1) * ch, w = (Pn.x1 - Pn.x0 - 1) * cw, h = (Pn.alt - Pn.ust - 1) * ch;
+  ctx.fillStyle = sm ? "rgba(210,220,255,.55)" : "rgba(10,14,26,.9)"; ctx.fillRect(x0, y0, w, h);
+  ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
+  ctx.font = yazi();
+  // dal: sağ üstten içeri uzanıyor, rüzgârla sallanıyor
+  const sal = 0.12 * dalga(5, t) + 0.05 * dalga(13, t, 1);
+  for (let i = 0; i < 14; i++){
+    const u = i / 13, bx = Pn.x1 - 1 - i * 0.9, by = Pn.ust + 2 + u * u * 5 + Math.sin(sal * 6 + u) * u * 2.2;
+    hk(bx, by, i % 4 === 3 ? "*" : (u < 0.5 ? "-" : "\\"), sm ? "#fff" : "rgba(120,130,125,.8)");
+    if (i % 3 === 1) hk(bx - 0.5, by + 1, "&", sm ? "#fff" : "rgba(90,105,95,.7)");
+  }
+  // yağmur çizgileri
+  const R = rastgele(9);
+  for (let i = 0; i < 26; i++){
+    const hiz = 9 + R() * 6, yy = ((t * hiz + R() * 100) % (Pn.alt - Pn.ust + 4)) + Pn.ust - 2;
+    hk(Pn.x0 + 1 + R() * (Pn.x1 - Pn.x0) - (yy - Pn.ust) * 0.35, yy, "/", sm ? "#fff" : "rgba(160,180,215,.55)");
+  }
+  ctx.restore();
+}
+
+/* ── SAAT: GERÇEK saati gösterir (açtığın an kaçsa o) ── */
+function saatCiz(){
+  const n = new Date(), dk = n.getMinutes() + n.getSeconds() / 60, sa = (n.getHours() % 12) + dk / 60;
+  const kol = (aci, boy, kalin) => {
+    for (let i = 1; i <= boy; i++){
+      const x = L.saat.x + Math.sin(aci) * i * 1.4, y = L.saat.y - Math.cos(aci) * i * 0.8;
+      const a = ((aci % Math.PI) + Math.PI) % Math.PI;
+      const k = a < 0.4 || a > 2.75 ? "|" : a < 1.2 ? "/" : a < 1.95 ? "-" : "\\";
+      hk(Math.round(x), Math.round(y), k, kalin);
+    }
+  };
+  ctx.font = `bold ${yazi()}`;
+  kol(sa / 12 * 2 * Math.PI, 1, "rgb(200,200,200)");                  // akrep: kısa
+  kol(dk / 60 * 2 * Math.PI, 2, "rgb(235,235,235)");                  // yelkovan: uzun
+  hk(L.saat.x, L.saat.y, "o", "rgb(235,235,235)");
+}
+
+/* ── KARA KEDİ: halıda kıvrılmış uyuyor. Koyu gri gövde + ateş tarafında turuncu kenar
+   ışığı. Nefes (sırt kabarır), kulak seğirmesi, kuyruk ucu; T içinde bir kez gözlerini
+   açıp bakar (sarı-yeşil). ── */
+const KEDI_UYANIK = [80, 86];
+function kediCiz(t){
+  const tt = t % T, uyanik = tt >= KEDI_UYANIK[0] && tt < KEDI_UYANIK[1];
+  const nefes = dalga(24, t) > 0;                                       // ~3 sn'de bir
+  const kulak = Math.abs((t * 0.37) % 11 - 5) < 0.12;                   // arada bir seğirir
+  const kuyruk = dalga(7, t) > 0.6 ? "," : "~";
+  // Kıvrılmış uyuyan kedi — Felix Lee'nin klasik ASCII kedisinden uyarlandı. ",4-" kapalı göz.
+  const sanat = [
+    (kulak ? "  |/" : "  |\\") + (nefes ? "      _,,,----,_" : "      _,,,---,,_") + "      ",
+    "  /,`.-'`'    -.  ;-;;,_",
+    "  |," + (uyanik ? "o " : "4-") + "  ) )-,_. ,\\ (  `'-" + (kuyruk === "," ? "," : "'"),
+    " '---''(_/--'  `-'\\_)",
+  ];
+  const kx = L.kedi.x - 12, ky = L.kedi.y - sanat.length + 1;
+  ctx.font = `bold ${yazi()}`;
+  sanat.forEach((s, y) => {
+    let ilk = 0; while (ilk < s.length && s[ilk] === " ") ilk++;
+    let son = s.length - 1; while (son > 0 && s[son] === " ") son--;
+    for (let i = ilk; i <= son; i++){                                   // halı deseni içinden görünmesin
+      ctx.fillStyle = "#000"; ctx.fillRect((kx + i) * cw, (ky + y) * ch, cw + 1, ch + 1);
+    }
+    [...s].forEach((k, i) => {
+      if (k === " ") return;
+      let renk = "rgb(70,68,76)";
+      if (i >= son - 1) renk = "rgb(215,125,55)";                       // ateş tarafı: kenar ışığı
+      if (uyanik && y === 2 && i === 4) renk = "rgb(190,230,60)";       // göz (karanlıkta yanar)
+      hk(kx + i, ky + y, k, renk);
+    });
+  });
+}
+
+/* ── ÇAY BUHARI: fincandan yükselip savrulan, sönen kıvrımlar ── */
+function buharCiz(t){
+  ctx.font = yazi();
+  for (let i = 0; i < 3; i++){
+    const u = ((t * 0.35 + i / 3) % 1);                                 // 0 → 1: yükseliş
+    const x = L.sehpa.x - 3 + Math.sin(u * 6 + i) * 0.8, y = L.sehpa.y - 5 - u * 4;
+    hk(x, y, u < 0.5 ? "(" : ")", `rgba(230,230,230,${0.45 * (1 - u)})`);
+  }
+}
+
+/* ── MAGNUS + SALLANAN SANDALYE ─────────────────────────────────────────
+   Şekil bir fonksiyon (orman sahnesindeki yedek ASCII Magnus'un oturan hâli), her karede
+   küçük bir tuvale ızgara olarak çizilip KIZAK ORTASI etrafında döndürülerek konuyor.
+   Yerel birim: satır yüksekliği; x sütunda 0.6 (hücre eni). Kökten yukarı eksi. */
+const MG = document.createElement("canvas"), mgx = MG.getContext("2d");
+const MG_SUT = 34, MG_SAT = 26;                        // yerel ızgara (kök: alt orta)
+const RAMPA_H = " .:-=+*o#";
+const SAYFALAR = [20, 58, 59.6, 97, 128], SAYFA_SURE = 1.4;
+let _sonSayfa = null;
+function magnusSekil(X, Y, t){
+  // döndür: 0 = boş, -1 = göz, -2 = kitap kapağı, -3 = kitap sayfası, >0 = örtü yoğunluğu
+  const nefes = 1 + 0.025 * dalga(16, t);
+  const hx = -1.2, hy = -17.5, R = 3.9;
+  for (const [ex, ey] of [[-2.5, -17.6], [0.2, -17.8]])                 // gözler: iri, belirgin
+    if (((X - ex) / 0.75) ** 2 + ((Y - ey) / 1.0) ** 2 < 1) return -1;
+  // kitap: göğüs hizasında, tablodaki gibi kapağı bize dönük; üstünde V açık sayfalar
+  if (X > -3.6 && X < 1.6 && Y > -13.2 && Y < -8.8) return -2;
+  if (Y >= -14 && Y <= -13.2 && X > -3.4 && X < 1.4) return -3;
+  if (Y < hy){ const d = Math.hypot(X - hx, Y - hy); return d < R ? 0.55 + 0.45 * (1 - d / R) : 0; }
+  const s = (Y - hy) / 13;                               // 0 baş → 1 oturak
+  if (s > 1.35) return 0;
+  const cx = hx + 0.6 * s, w = R * nefes * (1 + 0.55 * Math.pow(Math.max(0, s), 1.3));
+  const q = (X - cx) / w;
+  if (Math.abs(q) > 1) return 0;
+  const alt = 1.05 + 0.25 * Math.pow(Math.abs(Math.sin(3 * Math.PI * (q + 1) / 2 + 0.6 * dalga(9, t))), 0.6);
+  if (s > alt) return 0;                                 // oturağın önünden sarkan dalgalı etek
+  const kenar = Math.min(1 - Math.abs(q), (alt - s) * 3);
+  return 0.25 + 0.5 * Math.min(1, kenar * 2.5) + 0.2 * (0.5 + 0.5 * Math.sin(q * 7 + s * 5));
+}
+function sandalyeCiz(koy){
+  const kh = "rgb(150,108,72)";
+  for (let x = -12; x <= 11; x++) koy(x, 0, "_", kh);                    // kızak
+  koy(-13, -1, "(", kh); koy(12, -1, ")", kh);
+  for (let y = -1; y >= -4; y--){ koy(-8, y, "|", kh); koy(6, y, "|", kh); }
+  for (let x = -9; x <= 8; x++) koy(x, -4, "=", kh);                    // oturak
+  for (let y = -5; y >= -22; y--){ koy(7, y, "|", kh); koy(8, y, "|", kh); }   // arkalık
+  for (let y = -8; y >= -20; y -= 4) koy(7.5, y, "=", kh);
+  koy(6.5, -23, "_", kh); koy(7.5, -23, "_", kh); koy(8.5, -23, "_", kh);
+  for (let x = -10; x <= -7; x++) koy(x, -9, "=", kh);                 // kolçak
+  koy(-10, -8, "|", kh); koy(-10, -7, "|", kh); koy(-10, -6, "|", kh); koy(-10, -5, "|", kh);
+}
+function magnusCiz(t){
+  const kw = cw, kh = ch;
+  MG.width = Math.ceil(MG_SUT * kw); MG.height = Math.ceil(MG_SAT * kh);
+  mgx.font = `bold ${yazi()}`; mgx.textBaseline = "middle"; mgx.textAlign = "center";
+  const kok = [MG_SUT / 2, MG_SAT - 1];
+  const koy = (x, y, k, renk) => { mgx.fillStyle = renk; mgx.fillText(k, (kok[0] + x) * kw + kw / 2, (kok[1] + y) * kh + kh / 2); };
+  sandalyeCiz(koy);
+  for (let y = -MG_SAT + 1; y <= 0; y++) for (let x = -MG_SUT / 2; x < MG_SUT / 2; x++){
+    const d = magnusSekil(x * 0.6, y, t);
+    if (d === 0) continue;
+    // Magnus'un arkasındaki sandalye çizgisi görünmesin
+    mgx.fillStyle = "#000"; mgx.fillRect((kok[0] + x) * kw, (kok[1] + y) * kh, kw + 1, kh + 1);
+    if (d === -1) continue;
+    if (d === -2) koy(x, y, x === -1 ? "|" : (y === -9 || y === -13 ? "=" : "#"), "rgb(168,72,48)");
+    else if (d === -3) koy(x, y, x < -1 ? "\\" : x > -1 ? "/" : "v", "rgb(238,228,205)");
+    // yumuşak örtü: çoğunlukla hafif karakterler (tablodaki gibi), yoğunlar yalnız kenarda/kıvrımda
+    else koy(x, y, RAMPA_H[Math.max(1, Math.min(6, Math.round(d * 6)))], `rgba(236,224,194,${0.55 + 0.45 * Math.min(1, d)})`);
+  }
+  // SAYFA ÇEVİRME: kitabın üstünde sağdan sola kıvrılan sayfa (+ ses, ortak.js)
+  const tt = ((t % T) + T) % T, s = SAYFALAR.find(b => tt >= b && tt < b + SAYFA_SURE);
+  if (s !== _sonSayfa){ _sonSayfa = s; if (s !== undefined && DONUK === null && window.magnusSayfaSesi) window.magnusSayfaSesi(); }
+  if (s !== undefined){
+    const p = (tt - s) / SAYFA_SURE, th = Math.PI * p * p * (3 - 2 * p);
+    for (let i = 1; i <= 3; i++){                        // kısa: gözlere kadar çıkmasın
+      const x = -1 + Math.cos(th) * i * 1.1, y = -13.8 - Math.sin(th) * i * 0.45;
+      koy(Math.round(x), Math.round(y), th < 1.2 ? "/" : th < 1.95 ? "|" : "\\", "rgb(245,236,212)");
+    }
+  }
+  // sallanma: kızağın ortası etrafında
+  const aci = 0.045 * dalga(14, t);
+  ctx.save();
+  ctx.translate(L.magnus.x * cw + cw / 2, L.magnus.y * ch + ch / 2);
+  ctx.rotate(aci);
+  ctx.drawImage(MG, -kok[0] * kw - kw / 2, -kok[1] * kh - kh / 2);
+  ctx.restore();
+}
+
+/* ── IŞIK: şömine tek kaynak; titrer. Karanlık + sarı-turuncu (orman/kütüphane dili). ── */
+function isik(t){
+  const fx = L.somine.cx * cw, fy = (L.ates.ust + L.ates.alt) / 2 * ch;
+  const tit = 1 + 0.06 * dalga(37, t) + 0.04 * dalga(91, t, 1) + 0.03 * dalga(153, t, 2);
+  const r = 0.95 * H * tit;
+  const gr = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.35, "rgba(0,0,0,0.12)");
+  gr.addColorStop(0.7, "rgba(0,0,0,0.55)"); gr.addColorStop(1, "rgba(0,0,0,0.85)");
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "multiply";
+  const r2 = 0.8 * H * tit, g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r2);
+  g.addColorStop(0, "rgb(255,150,55)"); g.addColorStop(0.4, "rgb(255,195,110)");
+  g.addColorStop(0.8, "rgb(255,232,195)"); g.addColorStop(1, "rgb(255,255,255)");
+  ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── KARE ── */
+function ciz(t){
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(ARKA, 0, 0);
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  saatCiz();
+  isik(t);                                             // oda (saat dahil) ateşle boyanır
+  pencereCiz(t);
+  atesCiz(t);
+  kediCiz(t);
+  buharCiz(t);
+  magnusCiz(t);                                        // Magnus kendi renginde
+  if (simsekMi(t)){ ctx.fillStyle = "rgba(200,210,255,.10)"; ctx.fillRect(0, 0, W, H); }
+}
+
+function boyutlandir(){
+  if (innerWidth < 50 || innerHeight < 50) return;     // arka plandayken gelen sıfır boyut
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  W = c.width = Math.round(innerWidth * d); H = c.height = Math.round(innerHeight * d);
+  ch = H / SATIR; cw = ch * 0.6; SUTUN = Math.ceil(W / cw);
+  L = yerlesim(); arkaKur(); atesKur();
+}
+let bas = null;
+function dongu(ms){
+  if (bas === null) bas = ms;
+  try { ciz(((ms - bas) / 1000) % T); } catch (e) {}
+  requestAnimationFrame(dongu);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  if (c.width !== Math.round(innerWidth * d) || c.height !== Math.round(innerHeight * d)) boyutlandir();
+});
+boyutlandir();
+addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
+if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
+</script>
+<script src="nosleep.min.js"></script>
+<script src="ortak.js?s=6"></script>
+</body>
+</html>
