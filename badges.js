@@ -32,7 +32,9 @@ const BADGE_CATS = [
   {label:'📚 Okuma Miktarı', chains:[
     {id:'toplam_kitap', label:'📖 Toplam Kitap', badges:[
       {id:'b5',   tier:'bronze', icon:'📖', name:'İlk Adım',          desc:'5 kitap oku.',            check:b=>cap(b.length,5)},
-      {id:'b10',  tier:'bronze', icon:'📚', name:'Okuma Alışkanlığı', desc:'10 kitap oku.',           check:b=>cap(b.length,10)},
+      // b10 eskiden de "Okuma Alışkanlığı"ydı — streak6 ile aynı ad (2026-09-26 Gökşin fark etti).
+      // Akışta önceden çıkmış kartlar eski adı taşır: ad badgeEvents'e kart anında yazılıyor.
+      {id:'b10',  tier:'bronze', icon:'📚', name:'Okur Adayı',        desc:'10 kitap oku.',          check:b=>cap(b.length,10)},
       {id:'b25',  tier:'silver', icon:'🥈', name:'Kitap Kurdu',       desc:'25 kitap oku.',           check:b=>cap(b.length,25)},
       {id:'b50',  tier:'silver', icon:'🏅', name:'Kütüphane Dostu',   desc:'50 kitap oku.',           check:b=>cap(b.length,50)},
       {id:'b100', tier:'gold',   icon:'🥇', name:'Yüzler Kulübü',     desc:'100 kitap oku.',          check:b=>cap(b.length,100)},
