@@ -230,8 +230,29 @@ function mumDurum(t){
   return { x, y, fx: x, fy: y - 2.6 * ch * MUM_K };                 // ışık alevden çıkar
 }
 const MUM_K = 1.8;                                                 // mum kendi iri karakteriyle (küçükte seçilmiyordu)
+/* MUM TABLODAN (26 Eylül, Gökşin): gorsel/mum.png = tablodaki mum (elle maskeyle kesildi, 160×430).
+   Boyalı alevin üstünde ASCII alev titriyor. Resim gelmezse eski ASCII mum. */
+const MUM_RESIM = new Image(); let mumHazir = false;
+MUM_RESIM.onload = () => { mumHazir = true; if (DONUK !== null) ciz(DONUK); };
+MUM_RESIM.src = "gorsel/mum.png";
+const MUM_ALEV = [68, 70];                                         // resimde alevin ortası (piksel)
 function mumCiz(t, m){
   const alev = ["(", ")", "(", "^"][Math.floor(((t * 6) % 4 + 4) % 4)];
+  if (mumHazir){
+    const s = 0.14 * H / 430, x0 = m.fx - MUM_ALEV[0] * s, y0 = m.fy - MUM_ALEV[1] * s;
+    const pr = ch * MUM_K * (2.2 + 0.3 * dalga(37, t));
+    const g = ctx.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, pr);
+    g.addColorStop(0, "rgba(255,170,70,.45)"); g.addColorStop(1, "rgba(255,170,70,0)");
+    ctx.drawImage(MUM_RESIM, x0, y0, 160 * s, 430 * s);
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = g; ctx.fillRect(m.fx - pr, m.fy - pr, pr * 2, pr * 2);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.font = `bold ${Math.round(ch * 0.86 * MUM_K)}px Consolas, "Courier New", monospace`;
+    ctx.textBaseline = "middle"; ctx.textAlign = "center";
+    ctx.fillStyle = "#ffcf5a"; ctx.fillText(alev, m.fx, y0 + 38 * s);
+    ctx.fillStyle = "#ff9a3a"; ctx.fillText("*", m.fx, y0 + 88 * s);
+    return;
+  }
   const sanat = [[alev, 0, -3], ["*", 0, -2], ["|", -1, -1], ["~", 0, -1], ["|", 1, -1],
                  ["|", -1, 0], ["|", 1, 0], ["|", -1, 1], ["_", 0, 1], ["|", 1, 1]];
   ctx.font = `bold ${Math.round(ch * 0.86 * MUM_K)}px Consolas, "Courier New", monospace`;
@@ -336,6 +357,6 @@ if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=10"></script>
+<script src="ortak.js?s=11"></script>
 </body>
 </html>

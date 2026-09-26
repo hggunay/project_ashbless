@@ -15,10 +15,11 @@
 // 8: tuval görünen alana oturur, dikeyde "yan çevir", oda ateşi 144 sn sonra donmuyor
 // 9: yan çevir notu 4 sn (dikey serbest, manifest any), orman ay ışığı + geniş fener, oda aydınlık
 // 10: oda arka planı KALIN yazı + daha az karanlık (9'daki artış Gökşin'in cihazında fark edilmedi)
-const SURUM = "magnus-10";
+// 11: kütüphanede mum TABLODAN (gorsel/mum.png) + üstünde ASCII alev
+const SURUM = "magnus-11";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
-  "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "ikon-192.png", "ikon-512.png",
+  "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
       "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"].map(a => `muzik/${a}-kapak.jpg`)
 ];
