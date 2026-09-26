@@ -16,7 +16,8 @@
 // 9: yan çevir notu 4 sn (dikey serbest, manifest any), orman ay ışığı + geniş fener, oda aydınlık
 // 10: oda arka planı KALIN yazı + daha az karanlık (9'daki artış Gökşin'in cihazında fark edilmedi)
 // 11: kütüphanede mum TABLODAN (gorsel/mum.png) + üstünde ASCII alev
-const SURUM = "magnus-11";
+// 12: oda duvarı koyu sıcak kahve + zemin, Magnus kalın/opak
+const SURUM = "magnus-12";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",

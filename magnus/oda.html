@@ -331,7 +331,7 @@ function kediCiz(t){
   sanat.forEach((s, y) => {
     let ilk = 0; while (ilk < s.length && s[ilk] === " ") ilk++;
     let son = s.length - 1; while (son > 0 && s[son] === " ") son--;
-    ctx.fillStyle = "#000";                                             // halı deseni içinden görünmesin
+    ctx.fillStyle = ZEMIN_RENK;                                         // halı deseni içinden görünmesin
     ctx.fillRect(x0 + ilk * kcw, y0 + y * kch, (son - ilk + 1) * kcw + 1, kch + 1);
     [...s].forEach((k, i) => {
       if (k === " ") return;
@@ -432,12 +432,14 @@ function magnusCiz(t){
     const d = magnusSekil(fx * F * 0.6, fy * F, t);
     if (d === 0) continue;
     // Magnus'un arkasındaki sandalye çizgisi görünmesin
-    mgx.fillStyle = "#000"; mgx.fillRect(kok[0] * kw + kw / 2 + (fx - 0.5) * fw, kok[1] * kh + kh / 2 + (fy - 0.5) * fh, fw + 1, fh + 1);
+    // (siyah boyamak yerine SİL: duvar tonu altından görünsün)
+    mgx.clearRect(kok[0] * kw + kw / 2 + (fx - 0.5) * fw, kok[1] * kh + kh / 2 + (fy - 0.5) * fh, fw + 1, fh + 1);
     if (d === -1) continue;
     if (d === -2) inceKoy(fx, fy, (fx + fy) % 3 === 0 ? "=" : "#", "rgb(168,72,48)");        // kapak
     else if (d === -3) inceKoy(fx, fy, fx % 2 ? "^" : "~", "rgb(238,228,205)");                // açık sayfalar
-    // yumuşak örtü: çoğunlukla hafif karakterler (tablodaki gibi), yoğunlar yalnız kenarda/kıvrımda
-    else inceKoy(fx, fy, RAMPA_H[Math.max(1, Math.min(6, Math.round(d * 6)))], `rgba(236,224,194,${0.55 + 0.45 * Math.min(1, d)})`);
+    // örtü: 26 Eylül'de KALINLAŞTI (Gökşin: "Magnus'un kendisi çok silik") — tam opak, rampada
+    // iki basamak daha dolgun karakter; eskisi yarı saydam " .:-" ağırlıklıydı
+    else inceKoy(fx, fy, RAMPA_H[Math.max(3, Math.min(8, Math.round(d * 6) + 2))], `rgb(${Math.round(225 + 25 * Math.min(1, d))},${Math.round(212 + 25 * Math.min(1, d))},185)`);
   }
   mgx.font = `bold ${yazi()}`;
   // SAYFA ÇEVİRME: kitabın üstünde sağdan sola kıvrılan sayfa (+ ses, ortak.js)
@@ -479,8 +481,13 @@ function isik(t){
 }
 
 /* ── KARE ── */
+/* DUVAR/ZEMİN TONU (26 Eylül, Gökşin'in telefon/tablet görüntüleri): siyah zeminde çizgiler
+   boşlukta yüzüyordu, parlaklık artışı fark edilmedi → tablodaki gibi koyu sıcak kahve duvar,
+   daha koyu zemin. YALNIZ ODA; orman ve kütüphane siyah kalır. */
+const DUVAR_RENK = "rgb(46,31,22)", ZEMIN_RENK = "rgb(28,19,14)";
 function ciz(t){
-  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = ZEMIN_RENK; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = DUVAR_RENK; ctx.fillRect(0, 0, W, (L.duvarAlt + 0.5) * ch);
   ctx.drawImage(ARKA, 0, 0);
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
   saatCiz();
@@ -516,6 +523,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=11"></script>
+<script src="ortak.js?s=12"></script>
 </body>
 </html>
