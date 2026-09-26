@@ -377,13 +377,15 @@ function resimCiz(t, r){
 }
 
 /* ── KARE ── */
-/* KARANLIK: fenerin çevresi açık, gerisi neredeyse siyah; ışık titriyor. */
+/* KARANLIK: fenerin çevresi açık, gerisi loş; ışık titriyor. Gökşin (26 Eylül): "ekran çok boş,
+   her şey alt ortada toplanmış, nesneler varla yok arası" → ışık alanı geniş (0.50 → 0.85 H) ve en
+   koyu yer artık 0.9 değil 0.42: uzak orman ay ışığında seçiliyor. */
 function karanlik(x, m, t){
   const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1) + 0.02 * dalga(153, t, 2);
-  const r = 0.50 * H * tit;                          // zoom out'ta orman fazla gizli kaldı → geniş
+  const r = 0.85 * H * tit;
   const gr = x.createRadialGradient(m.fx, m.fy - ch, 0, m.fx, m.fy - ch, r);
-  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.35, "rgba(0,0,0,0.18)");
-  gr.addColorStop(0.7, "rgba(0,0,0,0.66)"); gr.addColorStop(1, "rgba(0,0,0,0.9)");
+  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.3, "rgba(0,0,0,0.08)");
+  gr.addColorStop(0.7, "rgba(0,0,0,0.28)"); gr.addColorStop(1, "rgba(0,0,0,0.42)");
   x.fillStyle = gr; x.fillRect(0, 0, W, H);
 }
 function katmanYapistir(x, k, t){                    // sağa kayıyor (Magnus sola uçuyor): T'de tam bir şerit
@@ -400,11 +402,16 @@ function ciz(t){
   const m = resimHazir ? resimDurum(t) : magnusDurum(t);
   karanlik(ctx, m, t);
   isikRengi(ctx, m, t);                               // arka katmanlar turuncuya; Magnus'a değil
-  // ay: ışıktan bağımsız, hep soluk
+  // ay: ışıktan bağımsız; 26 Eylül'den beri ormanı aydınlatan kaynak → biraz daha parlak + hale
   ctx.font = `${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  const ayx = W - 13 * cw, ayy = 5 * ch, ayr = 10 * ch;
+  const ah = ctx.createRadialGradient(ayx, ayy, 0, ayx, ayy, ayr);
+  ah.addColorStop(0, "rgba(190,205,235,.10)"); ah.addColorStop(1, "rgba(190,205,235,0)");
+  ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = ah; ctx.fillRect(ayx - ayr, ayy - ayr, ayr * 2, ayr * 2);
+  ctx.globalCompositeOperation = "source-over";
   const ay = [" .--. ", "(    )", " `--' "];
-  ay.forEach((s, y) => [...s].forEach((k, i) => { if (k !== " "){ ctx.fillStyle = "rgba(200,200,200,.28)";
+  ay.forEach((s, y) => [...s].forEach((k, i) => { if (k !== " "){ ctx.fillStyle = "rgba(215,222,240,.55)";
     ctx.fillText(k, W - (16 - i) * cw, (4 + y) * ch); } }));
   // ateş böcekleri: yerinde süzülüp yanıp sönüyorlar
   for (let i = 0; i < 9; i++){
@@ -476,14 +483,16 @@ const ONR = document.createElement("canvas"), onrx = ONR.getContext("2d");
 /* SARI-TURUNCU IŞIK (Gökşin: "ışığı daha belirgin sarı-turuncu"). ÇARPMA (multiply): ışıktaki
    beyaz karakter turuncuya döner, siyah siyah kalır, dışarısı (beyaz durak) değişmez → arka plan
    yine siyah-beyaz. Magnus'a UYGULANMAZ (ilk denemede tablo baştan sona turuncu oldu). */
+/* 26 Eylül: turuncu alan daha geniş (0.42 → 0.6 H); dışarısı artık beyaz değil SOLUK MAVİ-GRİ
+   (ay ışığı) ve bütün ekrana uygulanıyor: gradyan r'den sonra son rengiyle sürer. */
 function isikRengi(x, m, t){
   const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1);
-  const r = 0.42 * H * tit;
+  const r = 0.6 * H * tit;
   x.globalCompositeOperation = "multiply";
   const g = x.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, r);
-  g.addColorStop(0, "rgb(255,165,60)"); g.addColorStop(0.45, "rgb(255,200,110)");
-  g.addColorStop(0.8, "rgb(255,236,200)"); g.addColorStop(1, "rgb(255,255,255)");
-  x.fillStyle = g; x.fillRect(m.fx - r, m.fy - r, r * 2, r * 2);
+  g.addColorStop(0, "rgb(255,165,60)"); g.addColorStop(0.4, "rgb(255,200,110)");
+  g.addColorStop(0.75, "rgb(250,236,210)"); g.addColorStop(1, "rgb(196,212,240)");
+  x.fillStyle = g; x.fillRect(0, 0, W, H);
   x.globalCompositeOperation = "source-over";
 }
 
@@ -509,6 +518,6 @@ if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=8"></script>
+<script src="ortak.js?s=9"></script>
 </body>
 </html>
