@@ -181,11 +181,13 @@ function arkaKur(){
   // çiz
   ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
   const x = ARKA.getContext("2d");
-  x.font = yazi(); x.textBaseline = "middle"; x.textAlign = "center";
+  // KALIN yazı (26 Eylül, 2. tur): ince çizgiler Gökşin'in cihazlarında sönük kalıyordu — yalnız
+  // parlaklık artışı fark edilmedi. Magnus ve kedi zaten kalın, onlar seçiliyordu.
+  x.font = `bold ${yazi()}`; x.textBaseline = "middle"; x.textAlign = "center";
   g.forEach((satir, y) => satir.forEach((h, s) => {
     if (!h || !h[1]) return;
-    // Gökşin (26 Eylül): "oda çok belli belirsiz, gündüz/telefonda neredeyse boş" → 220 → 300 (tavan 255)
-    const v = Math.min(255, Math.round(300 * h[1]));
+    // Gökşin (26 Eylül): "oda çok belli belirsiz, gündüz/telefonda neredeyse boş" → 220 → 330 (tavan 255)
+    const v = Math.min(255, Math.round(330 * h[1]));
     x.fillStyle = `rgb(${v},${v},${v})`;
     x.fillText(h[0], s * cw + cw / 2, y * ch + ch / 2);
   }));
@@ -461,11 +463,11 @@ function magnusCiz(t){
 function isik(t){
   const fx = L.somine.cx * cw, fy = (L.ates.ust + L.ates.alt) / 2 * ch;
   const tit = 1 + 0.06 * dalga(37, t) + 0.04 * dalga(91, t, 1) + 0.03 * dalga(153, t, 2);
-  // 26 Eylül: karanlık yumuşadı (en koyu 0.85 → 0.45), odanın köşeleri de seçilsin
-  const r = 1.1 * H * tit;
+  // 26 Eylül: karanlık yumuşadı (en koyu 0.85 → 0.30), odanın köşeleri de seçilsin
+  const r = 1.2 * H * tit;
   const gr = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
-  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.4, "rgba(0,0,0,0.06)");
-  gr.addColorStop(0.75, "rgba(0,0,0,0.28)"); gr.addColorStop(1, "rgba(0,0,0,0.45)");
+  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.45, "rgba(0,0,0,0.04)");
+  gr.addColorStop(0.8, "rgba(0,0,0,0.18)"); gr.addColorStop(1, "rgba(0,0,0,0.30)");
   ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = "multiply";
   // sıcak ışık bütün odaya: dışarısı beyaz değil kehribar-krem (şömine odayı dolduruyor)
@@ -514,6 +516,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=9"></script>
+<script src="ortak.js?s=10"></script>
 </body>
 </html>
