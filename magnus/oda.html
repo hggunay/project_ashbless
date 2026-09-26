@@ -416,7 +416,28 @@ function sandalyeCiz(koy){
   koy(8.8, -23, "_", kh); koy(9.8, -23, "_", kh);
   for (let x = -6; x <= 3; x++) koy(x, -8, "-", kh);                   // kolçak (çoğu gövdenin arkasında)
 }
+/* GÖKŞİN'İN ÇİZİMİ İÇİN HAZIR YER (27 Eylül). `gorsel/magnus-sandalye.png` yüklenirse ASCII
+   Magnus + sandalyenin yerine o çizilir; yoksa (ya da açılamazsa) ASCII kalır — KOD GEREKMEZ.
+   Resim kuralları (Gökşin'e söylendi): arka plan SAYDAM, kızağın alt ucu resmin EN ALTINA değecek
+   şekilde kırpılmış. Sallanma resmin alt-orta noktası etrafında; boy = ASCII Magnus'un boyu. */
+const SANDALYE_RESIM = new Image(); let sandalyeHazir = false;
+SANDALYE_RESIM.onload = () => { sandalyeHazir = SANDALYE_RESIM.naturalWidth > 0; if (DONUK !== null) ciz(DONUK); };
+SANDALYE_RESIM.src = "gorsel/magnus-sandalye.png";
+function sandalyeResimCiz(t){
+  // sayfa sesi ASCII'deki gibi aynı anlarda çalsın (resimde sayfa çizilmiyor)
+  const tt = ((t % T) + T) % T, s = SAYFALAR.find(b => tt >= b && tt < b + SAYFA_SURE);
+  if (s !== _sonSayfa){ _sonSayfa = s; if (s !== undefined && DONUK === null && window.magnusSayfaSesi) window.magnusSayfaSesi(); }
+  // ASCII Magnus'un kutusuna sığdır (en MG_SUT sütun, boy MG_SAT satır): geniş çizim sehpaya/kenara taşmasın
+  const oran = SANDALYE_RESIM.naturalWidth / SANDALYE_RESIM.naturalHeight;
+  const boy = Math.min(MG_SAT * ch, MG_SUT * cw / oran), en = boy * oran;
+  ctx.save();
+  ctx.translate(L.magnus.x * cw + cw / 2, (L.magnus.y + 1) * ch);
+  ctx.rotate(0.045 * dalga(14, t));
+  ctx.drawImage(SANDALYE_RESIM, -en / 2, -boy, en, boy);
+  ctx.restore();
+}
 function magnusCiz(t){
+  if (sandalyeHazir) return sandalyeResimCiz(t);
   const kw = cw, kh = ch;
   MG.width = Math.ceil(MG_SUT * kw); MG.height = Math.ceil(MG_SAT * kh);
   mgx.font = `bold ${yazi()}`; mgx.textBaseline = "middle"; mgx.textAlign = "center";
@@ -523,6 +544,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=12"></script>
+<script src="ortak.js?s=13"></script>
 </body>
 </html>
