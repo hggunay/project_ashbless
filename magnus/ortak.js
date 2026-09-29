@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "15";
+const SURUM_YAZI = "16";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -274,6 +274,8 @@ function donguSes(CAPRAZ = 3){
     get paused(){ return a[akt].paused; },
     get volume(){ return usta; }, set volume(v){ usta = v; uygula(); },
     yenile: uygula,                                   // genel ses değişince
+    // döngünün kaçıncı saniyesinde (çapraz geçişte YENİ başlayan kopya — duyulan başlangıç o)
+    get zaman(){ return a[caprazda ? 1 - akt : akt].currentTime; },
     set src(s){ clearInterval(zaman); caprazda = false; akt = 0; karisim = [1, 0];
                 const ad = (s.split("/").pop() || "").replace(/\.(mp3|wav)$/, "");
                 kes = KESIT[ad] || [0, 0];
@@ -428,6 +430,8 @@ function araPlanla(){
                                 (a + Math.random() * (b - a)) * 1000);
   }
 }
+// Herbert: daktilo sesi döngünün neresinde (çalmıyorsa null) — hırslı anda "imdat" yazsın diye
+window.magnusSesZamani = id => { const d = dongular[id]; return d && !d.paused && !sustur ? d.zaman : null; };
 // Kütüphane: Magnus'un sayfası döndüğü AN (kutuphane.html çağırır)
 window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
 
