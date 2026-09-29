@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "16";
+const SURUM_YAZI = "17";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -448,6 +448,10 @@ function karisimUygula(k){
     if (D.sesler[id] == null) sesAc(id, v); else sesDuzey(id, v);
   }
   hazirUyguluyor = false;
+  // "açık" görünüp ÇALMAYAN sesleri de başlat (Gökşin: "Dune 7'yi seçince çalmıyor, başka sese geçip
+  // geri gelince bazen başlıyor"): telefon açılışta kendiliğinden çalmayı engelleyince sesler D.sesler'de
+  // kalıp duraklıyordu; yukarıdaki sesDuzey yalnız ÇALANIN düzeyini değiştirir. Molada dokunmaz.
+  ortamBaslat();
   // hazır karışım → sahne değişince yenisininkine geçer; "Kafe" gibi genel olanlar ve kayıtlılar taşınır
   D.hazir = k.hazir ? { sahne: SAHNE, ad: k.ad, genel: GENEL_KARISIM.some(g => g.ad === k.ad) } : null; yaz(D);
   if (sustur) mesaj("Mola sürüyor — sesler odakla başlayacak");
