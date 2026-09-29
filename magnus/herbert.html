@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="ikon-192.png"><link rel="apple-touch-icon" href="ikon-192.png"><meta name="theme-color" content="#000000">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Magnus · Herbert</title>
+<style>
+html,body{margin:0;height:100%;background:#000;overflow:hidden}
+canvas{display:block;width:100vw;height:100vh}
+body.sakin{cursor:none}
+</style>
+</head>
+<body data-sahne="herbert">
+<canvas id="c"></canvas>
+<script>
+/* MAGNUS — HERBERT'E DUNE 7'Yİ YAZDIRAN MAGNUS (29 Eylül). Aynı kütüphanenin BAŞKA BİR GÜNÜ:
+   kitaplık kutuphane.html ile BİREBİR aynı (aynı tohum, aynı kurallar — oradaki kitaplık kodu
+   değişirse burada da değişmeli). Mum yok; ışık Magnus'un FENERİNDEN.
+   Figürler Gökşin'in tablosundan (Masaüstü\guaj resim\magnus&herbert.jpg, düzleştirilip kesildi):
+     gorsel/magnus-fener.png · herbert.png (masa, daktilo, kitaplar, zincir) · herbert-aura.png
+     (aura silueti, parıltı için) · kagitlar.png (yerdeki kâğıtlar) · kagit-ucan.png
+   Hepsi aynı ölçekte kesildi (0.5085); aşağıdaki konumlar TABLONUN pikseli (2640×3520).
+   Hareketler (Gökşin): daktilodan kâğıt kopup salına salına yerdeki bir kâğıdın üstüne düşer ·
+   Herbert'ten ASCII ter damlaları · sakalda kıpırdayan ASCII çizikler · aura nefes alır gibi
+   incelip kalınlaşır (MAVİ kalsın diye ışık katmanından SONRA çizilir) · fener titrer.
+   Deneme: ?t=20 → o saniyede donmuş kare. */
+const T = 144, T_KUCUK = 72;
+const SATIR = Math.max(50, Math.min(72, Math.round(innerHeight / 12)));
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+const P = new URLSearchParams(location.search);
+const DONUK = P.has("t") ? parseFloat(P.get("t")) : null;
+const dalga = (k, t, faz = 0) => Math.sin(2 * Math.PI * k * t / T_KUCUK + faz);
+const yumusak = u => u * u * (3 - 2 * u);
+function rastgele(tohum){ return () => { tohum |= 0; tohum = tohum + 0x6D2B79F5 | 0;
+  let x = Math.imul(tohum ^ tohum >>> 15, 1 | tohum); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
+  return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
+
+let W, H, cw, ch, SUTUN, ARKA = null, izg = null, UCANLAR = [];
+const yazi = () => `${Math.round(ch * 0.86)}px Consolas, "Courier New", monospace`;
+
+/* ── KİTAPLIK (kutuphane.html'den birebir) ─────────────────────────────── */
+function kitaplikKur(){
+  const R = rastgele(11);
+  izg = Array.from({length: SATIR}, () => Array(SUTUN).fill(null));
+  const koy = (x, y, k, b) => { if (x >= 0 && x < SUTUN && y >= 0 && y < SATIR) izg[y][x] = [k, b]; };
+  const direkler = [Math.round(SUTUN * 0.18), Math.round(SUTUN * 0.79)], DG = 3;
+  const raflar = [0.07, 0.25, 0.43, 0.61, 0.75].map(f => Math.round(SATIR * f));
+  const kutular = [];
+  for (const y of raflar) for (let x = 0; x < SUTUN; x++) koy(x, y, R() < 0.9 ? "=" : "-", 0.75);
+  for (const d of direkler) for (let y = 0; y <= raflar[raflar.length - 1]; y++)
+    for (let i = 0; i < DG; i++) koy(d + i, y, i === 0 || i === DG - 1 ? "|" : ":", 0.7);
+  const sutunlar = [[0, direkler[0] - 1], [direkler[0] + DG, direkler[1] - 1], [direkler[1] + DG, SUTUN - 1]];
+  const bolmeler = [[-1, raflar[0]], ...raflar.slice(0, -1).map((y, i) => [y, raflar[i + 1]])];
+  for (const [ust, alt] of bolmeler) for (const [x0, x1] of sutunlar) kutular.push({ x0, x1, ust: ust + 1, alt: alt - 1 });
+  const bosluklar = [];
+  kutular.forEach((k, ki) => {
+    const yuk = k.alt - k.ust + 1;
+    let x = k.x0 + 1, konuldu = false;
+    const bosYer = ki >= 3 ?k.x0 + 4 + Math.floor(R() * Math.max(1, k.x1 - k.x0 - 14)) : -1;
+    while (x <= k.x1 - 1){
+      if (bosYer >= 0 && !konuldu && x >= bosYer && x + 5 <= k.x1){
+        bosluklar.push({ x: x + 1, alt: k.alt, yuk }); konuldu = true; x += 5; continue;
+      }
+      if (R() < 0.06){ x += 1 + Math.floor(R() * 2); continue; }
+      const gen = Math.min(k.x1 - x, 2 + Math.floor(R() * 3));
+      if (gen < 2) break;
+      const boy = Math.max(3, Math.round(yuk * (0.55 + R() * 0.4)));
+      const b = 0.5 + R() * 0.5;
+      if (R() < 0.07 && gen === 1 && x + 3 < k.x1){
+        for (let i = 0; i < boy - 1; i++) koy(x + Math.floor(i / 3), k.alt - i, "/", b);
+        x += Math.ceil(boy / 3) + 1; continue;
+      }
+      kitapCiz(koy, R, x, k.alt, gen, boy, b);
+      x += gen;
+    }
+  });
+  for (let y = raflar[raflar.length - 1] + 1; y < SATIR; y++)
+    for (let x = 0; x < SUTUN; x++) if (R() < 0.05 + 0.02 * (y - raflar[4]) / SATIR) koy(x, y, "._-,"[Math.floor(R() * 4)], 0.35);
+  return { raflar, bosluklar, kutular };
+}
+function kitapCiz(koy, R, x, alt, gen, boy, b){
+  const ust = alt - boy + 1, bant1 = ust + 1, bant2 = alt - 1;
+  const etiket = gen >= 3 && R() < 0.5 ? ust + Math.floor(boy * 0.35) : -1;
+  for (let y = ust; y <= alt; y++) for (let i = 0; i < gen; i++){
+    const kenar = i === 0 || i === gen - 1;
+    let k = null;
+    if (y === ust) k = kenar ? "." : "_";
+    else if (kenar) k = "|";
+    else if (y === bant1 || y === bant2) k = "=";
+    else if (y === etiket) k = "#";
+    if (k) koy(x + i, y, k, b * (0.85 + R() * 0.15));
+    else koy(x + i, y, " ", b);
+  }
+}
+function ucanlariKur(yer){
+  const R = rastgele(3);
+  const b = yer.bosluklar.slice();
+  for (let i = b.length - 1; i > 0; i--){ const j = Math.floor(R() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; }
+  const n = Math.min(6, Math.floor(b.length / 2));
+  const ciftler = Array.from({length: n}, (_, i) => [b[i], b[i + n]]);
+  const GIDIS = [4, 17, 20, 38, 52, 55];
+  const plan = ciftler.map((_, j) => [GIDIS[j], GIDIS[j] + 72]);
+  return ciftler.map(([a, h], i) => {
+    const boy = Math.max(3, Math.min(a.yuk, h.yuk) - 2 - Math.floor(R() * 2));
+    const gen = 3, bb = 1;
+    const o = document.createElement("canvas");
+    o.width = Math.ceil(gen * cw); o.height = Math.ceil(boy * ch);
+    const x = o.getContext("2d");
+    x.font = yazi(); x.textBaseline = "middle"; x.textAlign = "center";
+    const koy = (cx, cy, k, br) => { const v = Math.round(235 * br);
+      x.fillStyle = `rgb(${v},${v},${v})`; x.fillText(k, cx * cw + cw / 2, cy * ch + ch / 2); };
+    kitapCiz(koy, R, 0, boy - 1, gen, boy, bb);
+    return { o, gen, boy, a, h, git: plan[i][0], don: plan[i][1], sure: 9 };
+  });
+}
+function ucanKonum(u, t){
+  const tt = ((t % T) + T) % T;
+  let bas = u.a, son = u.h, p = null;
+  if (tt < u.git) p = 0;
+  else if (tt < u.git + u.sure) p = (tt - u.git) / u.sure;
+  else if (tt < u.don) p = 1;
+  else if (tt < u.don + u.sure) p = 1 - (tt - u.don) / u.sure;
+  else p = 0;
+  const kx = (s) => s.x * cw, ky = (s) => (s.alt - u.boy + 1) * ch;
+  const e = yumusak(p);
+  const x = kx(bas) + (kx(son) - kx(bas)) * e;
+  const kalk = Math.sin(Math.PI * p) * (0.12 * H) + Math.sin(Math.PI * p * 3) * 0.01 * H;
+  const y = ky(bas) + (ky(son) - ky(bas)) * e - kalk;
+  const aci = Math.sin(Math.PI * p * 2) * 0.25 * Math.sin(Math.PI * p);
+  return { x, y, aci, ucuyor: p > 0 && p < 1, p };
+}
+let YER = null;
+function arkaCiz(){
+  ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
+  const x = ARKA.getContext("2d");
+  x.font = yazi(); x.textBaseline = "middle"; x.textAlign = "center";
+  izg.forEach((satir, y) => satir.forEach((h, s) => {
+    if (!h) return;
+    const v = Math.round(215 * h[1]);
+    x.fillStyle = `rgb(${v},${v},${v})`;
+    x.fillText(h[0], s * cw + cw / 2, y * ch + ch / 2);
+  }));
+}
+function boyutlandir(){
+  if (innerWidth < 50 || innerHeight < 50) return;
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  W = c.width = Math.round(innerWidth * d); H = c.height = Math.round(innerHeight * d);
+  ch = H / SATIR; cw = ch * 0.6; SUTUN = Math.ceil(W / cw);
+  YER = kitaplikKur(); arkaCiz(); UCANLAR = ucanlariKur(YER);
+  yerlesim();
+}
+
+/* ── TABLO → EKRAN: figür grubu alt ortaya oturur ─────────────────────── */
+const OLC_KES = 0.5085;                                           // resimler bu ölçekte kesildi
+const GRUP = [22, 1282, 2640, 3490];                               // Magnus'tan zincir ucuna, kâğıtlar dahil
+const KUTU = { magnus: [22, 1282, 1177, 3052], herbert: [1035, 1466, 2640, 2941], kagitlar: [1021, 2664, 2555, 3490] };
+const FENER = [1044, 2050];                                        // fenerin camının ortası
+let s = 1, ox = 0, oy = 0;
+const px = X => ox + X * s, py = Y => oy + Y * s;
+function yerlesim(){
+  // Magnus ekranın yarısı boyunda; dik ekranda grup genişliğe sığsın
+  s = Math.min(0.5 * H / (KUTU.magnus[3] - KUTU.magnus[1]), 0.94 * W / (GRUP[2] - GRUP[0]));
+  ox = 0.5 * W - (GRUP[0] + GRUP[2]) / 2 * s;
+  oy = 0.975 * H - GRUP[3] * s;
+}
+const RES = {};
+function yukle(ad, dosya){
+  const i = new Image();
+  i.onload = () => { RES[ad] = i; if (ad === "aura") parilti(); if (DONUK !== null) ciz(DONUK); };
+  i.src = "gorsel/" + dosya;
+}
+yukle("magnus", "magnus-fener.png"); yukle("herbert", "herbert.png"); yukle("aura", "herbert-aura.png");
+yukle("kagitlar", "kagitlar.png"); yukle("ucan", "kagit-ucan.png");
+yukle("set", "kagit-set.png"); yukle("zincir", "zincir-parca.png");
+function resimCiz(ad){
+  const k = KUTU[ad];
+  if (RES[ad]) ctx.drawImage(RES[ad], px(k[0]), py(k[1]), (k[2] - k[0]) * s, (k[3] - k[1]) * s);
+}
+
+/* ── MAGNUS: nefes alıyor (alt ortadan); fener onunla birlikte ─────────── */
+const M_ORTA = (KUTU.magnus[0] + KUTU.magnus[2]) / 2, M_TABAN = KUTU.magnus[3];
+function magnusDurum(t){
+  const nefes = dalga(16, t);
+  const sx = 1 + 0.007 * nefes, sy = 1 + 0.018 * nefes;
+  const fx = px(M_ORTA) + (FENER[0] - M_ORTA) * s * sx, fy = py(M_TABAN) - (M_TABAN - FENER[1]) * s * sy;
+  return { sx, sy, fx, fy };
+}
+function magnusCiz(m){
+  if (!RES.magnus) return;
+  const k = KUTU.magnus, w = (k[2] - k[0]) * s * m.sx, h = (k[3] - k[1]) * s * m.sy;
+  ctx.drawImage(RES.magnus, px(M_ORTA) - w / 2, py(M_TABAN) - h, w, h);
+}
+function fenerCiz(m, t){
+  const pr = 75 * s * (1 + 0.12 * dalga(37, t) + 0.06 * dalga(91, t, 1));
+  const g = ctx.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, pr);
+  g.addColorStop(0, `rgba(255,175,75,${0.5 + 0.1 * dalga(53, t)})`); g.addColorStop(1, "rgba(255,170,70,0)");
+  ctx.globalCompositeOperation = "lighter";
+  ctx.fillStyle = g; ctx.fillRect(m.fx - pr, m.fy - pr, pr * 2, pr * 2);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── IŞIK: kütüphanedeki gibi, kaynak fener ─────────────────────────────── */
+function karanlik(m, t){
+  const tit = 1 + 0.05 * dalga(37, t) + 0.03 * dalga(91, t, 1) + 0.02 * dalga(153, t, 2);
+  const r = 0.75 * H * tit;
+  const gr = ctx.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, r);
+  gr.addColorStop(0, "rgba(0,0,0,0)"); gr.addColorStop(0.35, "rgba(0,0,0,0.1)");
+  gr.addColorStop(0.7, "rgba(0,0,0,0.5)"); gr.addColorStop(1, "rgba(0,0,0,0.82)");
+  ctx.fillStyle = gr; ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "multiply";
+  const r2 = 0.5 * H * tit;
+  const g = ctx.createRadialGradient(m.fx, m.fy, 0, m.fx, m.fy, r2);
+  g.addColorStop(0, "rgb(255,165,60)"); g.addColorStop(0.45, "rgb(255,200,110)");
+  g.addColorStop(0.8, "rgb(255,236,200)"); g.addColorStop(1, "rgb(255,255,255)");
+  ctx.fillStyle = g; ctx.fillRect(m.fx - r2, m.fy - r2, r2 * 2, r2 * 2);
+  ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── AURA: Herbert'in siluetinden mavi parıltı; nefes alır gibi incelip kalınlaşır ──
+   Parıltı yüklemede bir kez üretilir (gölge hilesi: şekil tuvalin dışına çizilir, yalnız
+   bulanık gölgesi içeri düşer), her karede ince ile kalın arasında geçiş yapılır. */
+let PAR = null;
+function parilti(){
+  const a = RES.aura;
+  PAR = [7, 24].map(b => {
+    const pad = b * 3, o = document.createElement("canvas");
+    o.width = a.width + 2 * pad; o.height = a.height + 2 * pad;
+    const x = o.getContext("2d"), OFF = o.width + 50;
+    x.shadowColor = "rgba(110,165,255,1)"; x.shadowBlur = b; x.shadowOffsetX = OFF;
+    x.drawImage(a, pad - OFF, pad); x.drawImage(a, pad - OFF, pad);
+    return { o, pad };
+  });
+}
+function auraCiz(t){
+  if (!PAR) return;
+  const nf = 0.5 + 0.5 * dalga(18, t);                               // ~4 sn'de bir nefes
+  const k = s / OLC_KES, kx = px(KUTU.herbert[0]), ky = py(KUTU.herbert[1]);
+  const cx = kx + RES.aura.width * k / 2, cy = ky + RES.aura.height * k / 2;
+  ctx.globalCompositeOperation = "lighter";
+  [[PAR[0], 0.35, 1], [PAR[1], 0.1 + 0.45 * nf, 1 + 0.035 * nf]].forEach(([p, alfa, olc]) => {
+    const w = p.o.width * k * olc, h = p.o.height * k * olc;
+    ctx.globalAlpha = alfa;
+    ctx.drawImage(p.o, cx - w / 2, cy - h / 2, w, h);
+  });
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = "source-over";
+}
+
+/* ── DÜŞEN KÂĞIT: daktilodan çıkar, salına salına yerdeki bir kâğıdın üstüne konar,
+   bir süre kalır, söner (döngü dikişsiz) ─────────────────────────────── */
+const DAKTILO = [1537, 2075];
+const DUSUSLER = [{ bas: 12, hedef: [1732, 3100], aci: 0.18 },
+                  { bas: 60, hedef: [2430, 3125], aci: -0.22 },
+                  { bas: 108, hedef: [2014, 3200], aci: 0.1 }];
+const CIKIS = 0.7, DUS = 6, KALIS = 26, SONME = 3;
+const KAGIT_BOY = [251, 185];                                       // kagit-ucan.png, tablo pikseli
+function kagitCiz(t){
+  if (!RES.ucan) return;
+  const tt = ((t % T) + T) % T;
+  for (const d of DUSUSLER){
+    const u = tt - d.bas;
+    if (u < 0 || u > DUS + KALIS + SONME) continue;
+    let X, Y, aci, olc, olcY = 1, alfa = 1;
+    if (u < CIKIS){                                                  // daktilodan yükselir
+      const e = yumusak(u / CIKIS);
+      X = DAKTILO[0]; Y = DAKTILO[1] - 25 * e; aci = 0; olc = 0.42 + 0.1 * e; olcY = e;
+    } else if (u < DUS){                                             // salınarak düşer
+      const p = (u - CIKIS) / (DUS - CIKIS), q = 0.35 * p + 0.65 * yumusak(p), r = 1 - q;
+      const [hx, hy] = d.hedef, P0 = [DAKTILO[0], DAKTILO[1] - 25], P1 = [1800, 1850], P2 = [hx + 60, hy - 700];
+      const b = (i) => r * r * r * P0[i] + 3 * r * r * q * P1[i] + 3 * r * q * q * P2[i] + q * q * q * [hx, hy][i];
+      const sal = 2 * Math.PI * (u - CIKIS) / 1.7;
+      X = b(0) + 110 * (1 - p) * Math.sin(sal); Y = b(1);
+      aci = (1 - p) * 0.6 * Math.sin(sal + 1.2) + p * d.aci;
+      olc = 0.52 + 0.48 * p;
+      olcY = 1 - (1 - p) * 0.45 * Math.abs(Math.sin(sal + 0.6));       // eğilip dönüyor gibi
+    } else {                                                         // yerde; sonunda söner
+      [X, Y] = d.hedef; aci = d.aci; olc = 1;
+      const v = u - DUS - KALIS; if (v > 0) alfa = 1 - v / SONME;
+    }
+    const w = KAGIT_BOY[0] * s * olc, h = KAGIT_BOY[1] * s * olc * olcY;
+    ctx.save(); ctx.globalAlpha = Math.max(0, alfa);
+    ctx.translate(px(X), py(Y)); ctx.rotate(aci);
+    ctx.drawImage(RES.ucan, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+}
+
+/* ── ZEMİNE SAÇILMIŞ KÂĞITLAR (Gökşin, 29 Eylül: "yerdeki boş alanlara da kâğıtlar, birkaç
+   buruşturulmuş kâğıt; farklı yönlere çevrilsin"). Tablodaki kâğıtlar (kagit-set.png) rastgele
+   döndürülüp ters çevrilerek dağıtılır. Magnus'un, masanın ve daktilodan düşen kâğıtların
+   konduğu yerlerin üstüne gelmez. Geniş ekranda sahnenin iki yanına da uzanır; arkadakiler küçük,
+   fenerden uzaklaştıkça kararır. Konumlar tablo pikseli (tablonun dışına taşabilir). */
+const KSET = { k0: [0, 87, 49], k1: [89, 165, 58], k2: [256, 183, 103], k3: [441, 128, 94],
+               k4: [571, 166, 91], top: [739, 71, 54] };                    // [x, gen, boy] (resim pikseli)
+const YER_UST = 2790, YER_ALT = 3470;
+const EK_KAGITLAR = (() => {
+  const yasak = [[0, 1282, 1200, 3075], [1030, 1460, 2640, 2960], [2640, 2800, 1e5, 2990],   // Magnus, masa, zincir
+                 [1540, 3000, 1920, 3200], [1810, 3080, 2220, 3330], [2280, 3010, 2580, 3260],  // düşüş yerleri +
+                 [1000, 3290, 1370, 3490]];                                                     // tablodaki kâğıtlar
+  const R = rastgele(77), l = [], tipler = ["k0", "k1", "k2", "k3", "k4"];
+  const cakisir = (a, b) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+  for (let deneme = 0; deneme < 600 && l.length < 30; deneme++){
+    const X = -2800 + R() * 8200, Y = YER_UST + R() * (YER_ALT - YER_UST);
+    const tip = R() < 0.35 ? "top" : tipler[Math.floor(R() * 5)];
+    const olc = (0.55 + 0.45 * (Y - YER_UST) / (YER_ALT - YER_UST)) * (0.75 + 0.35 * R());
+    const w = KSET[tip][1] / OLC_KES * olc, h = KSET[tip][2] / OLC_KES * olc, r = Math.max(w, h) / 2 + 30;
+    const kutu = [X - r, Y - r, X + r, Y + r];
+    if (yasak.some(y => cakisir(kutu, y)) || l.some(k => cakisir(kutu, k.kutu))) continue;
+    l.push({ X, Y, tip, w, h, kutu, aci: R() * Math.PI * 2, fx: R() < 0.5 ? -1 : 1, fy: R() < 0.3 ? -1 : 1 });
+  }
+  return l;
+})();
+function ekKagitCiz(m){
+  if (!RES.set) return;
+  for (const k of EK_KAGITLAR){
+    const x = px(k.X), y = py(k.Y), w = k.w * s, h = k.h * s;
+    if (x < -w || x > W + w) continue;
+    const d = Math.hypot(x - m.fx, y - m.fy);
+    ctx.save();
+    ctx.globalAlpha = Math.max(0.15, Math.min(1, 1.3 - d / (0.85 * H)));
+    ctx.translate(x, y); ctx.rotate(k.aci); ctx.scale(k.fx, k.fy);
+    const [sx, sw, sh] = KSET[k.tip];
+    ctx.drawImage(RES.set, sx, 0, sw, sh, -w / 2, -h / 2, w, h);
+    ctx.restore();
+  }
+}
+
+/* ── ZİNCİR: tablonun kenarından ekranın dışına uzanır (Gökşin'in resminde de dışarı çıkıyor).
+   Tablodaki dört baklalık parça (zincir-parca.png) yan yana dizilir, yerde hafifçe kıvrılır. ── */
+const ZINCIR_PARCA = [270, 97], ZINCIR_BAS = [2640, 2853];            // parça boyu / başlangıç (tablo pikseli)
+function zincirCiz(m){
+  if (!RES.zincir) return;
+  const [pw, ph] = ZINCIR_PARCA;
+  let X = ZINCIR_BAS[0], i = 0;
+  const yol = x => ZINCIR_BAS[1] + 0.06 * (x - ZINCIR_BAS[0]) + 40 * Math.sin((x - ZINCIR_BAS[0]) / 900);
+  while (px(X) < W && i++ < 60){
+    const Y = yol(X + pw / 2), aci = Math.atan2(yol(X + pw) - yol(X), pw);
+    const x = px(X + pw / 2), y = py(Y);
+    ctx.save();
+    // tablonun kenarında tam parlak (ilk denemede orada birden sönükleşiyordu), uzaklaştıkça söner
+    ctx.globalAlpha = Math.max(0.12, 1 - (x - px(ZINCIR_BAS[0])) / (0.9 * H));
+    ctx.translate(x, y); ctx.rotate(aci);
+    ctx.drawImage(RES.zincir, -pw * s / 2, -ph * s / 2, pw * s, ph * s);
+    ctx.restore();
+    X += pw - 4;                                                      // baklalar birbirine değsin
+  }
+}
+
+/* ── TER DAMLALARI (ASCII): alından/şakaklardan süzülür; kâğıt kopunca bir damla daha ── */
+const TER_YER = [[1455, 1735], [1722, 1715], [1600, 1662]];
+const DAMLALAR = (() => {
+  const R = rastgele(21), l = [];
+  for (let t = 3; t < T - 3; t += 6 + R() * 7) l.push([t, Math.floor(R() * 3)]);
+  for (const d of DUSUSLER) l.push([d.bas + 0.9, 0], [d.bas + 1.3, 1]);
+  return l;
+})();
+const DAMLA_SURE = 2.4;
+// Kâğıt kopunca çizgi film terlemesi: alnın iki yanından dışa fışkıran üç damla
+const FISKIR = DUSUSLER.map(d => d.bas + 0.4), FISKIR_SURE = 1.1;
+/* Damla ŞEKLİ: ASCII damla (' , .) iri yazıda bile iğne ucu kadar kalıyordu (Gökşin: "görünmüyor")
+   → sivri ucu yukarıda, açık mavi, ince koyu kenarlı, beyaz parıltılı gözyaşı. r = tablo pikseli. */
+function damla(x, y, r, a, aci = 0){
+  const R = Math.max(3, r * s);
+  ctx.save(); ctx.translate(x, y); ctx.rotate(aci); ctx.globalAlpha = a;
+  ctx.beginPath();
+  ctx.moveTo(0, -R * 1.9);
+  ctx.bezierCurveTo(R * 0.35, -R * 1.1, R, -R * 0.45, R, R * 0.15);
+  ctx.arc(0, R * 0.15, R, 0, Math.PI);
+  ctx.bezierCurveTo(-R, -R * 0.45, -R * 0.35, -R * 1.1, 0, -R * 1.9);
+  ctx.fillStyle = "rgb(200,230,255)"; ctx.fill();
+  ctx.lineWidth = Math.max(1, R * 0.18); ctx.strokeStyle = "rgb(55,110,190)"; ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(-R * 0.35, -R * 0.05, R * 0.2, R * 0.33, -0.4, 0, 2 * Math.PI);
+  ctx.fillStyle = "#fff"; ctx.fill();
+  ctx.restore();
+}
+function terCiz(t){
+  const tt = ((t % T) + T) % T;
+  for (const [b, i] of DAMLALAR){
+    const u = (tt - b) / DAMLA_SURE;
+    if (u < 0 || u > 1) continue;
+    const [X, Y] = TER_YER[i], yon = i === 0 ? -1 : i === 1 ? 1 : 0;
+    const a = u < 0.12 ? u / 0.12 : 1 - Math.pow((u - 0.12) / 0.88, 2);
+    damla(px(X + yon * 22 * u), py(Y + 130 * Math.pow(u, 1.6)), 20 + 6 * Math.min(1, u * 3), a);
+  }
+  for (const b of FISKIR){
+    const u = (tt - b) / FISKIR_SURE;
+    if (u < 0 || u > 1) continue;
+    [[-1, -0.9], [-1, -0.35], [1, -0.6]].forEach(([yon, egim], j) => {
+      const r = 60 + 190 * Math.sqrt(u), bx = yon > 0 ? 1745 : 1440, by = 1690 + j * 25;
+      // uçarken sivri ucu geldiği yöne bakar (uç varsayılanda yukarıda: açı = atan2(-vx, vy))
+      const vx = yon * Math.cos(egim), vy = Math.sin(egim) + 2.5 * u;
+      damla(px(bx + yon * r * Math.cos(egim)), py(by + r * Math.sin(egim) + 260 * u * u), 17, 1 - u * u,
+            Math.atan2(-vx, vy));
+    });
+  }
+}
+
+/* ── SAKAL: içine ASCII çizikler; kıllar ağızdan dışa-aşağı akar, hafifçe kıpırdar ── */
+const SAKAL = [[1380, 1850], [1470, 1880], [1560, 1870], [1650, 1880], [1740, 1850], [1760, 1930],
+               [1720, 2010], [1640, 2070], [1560, 2090], [1470, 2070], [1400, 2010], [1350, 1930]];
+const AGIZ = [1560, 1880];
+function icinde(x, y, p){
+  let ic = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++)
+    if ((p[i][1] > y) !== (p[j][1] > y) && x < (p[j][0] - p[i][0]) * (y - p[i][1]) / (p[j][1] - p[i][1]) + p[i][0]) ic = !ic;
+  return ic;
+}
+const KILLAR = (() => {
+  const R = rastgele(5), l = [];
+  for (let y = 1850; y <= 2090; y += 38) for (let x = 1350; x <= 1760; x += 30){
+    const X = x + (R() - 0.5) * 8, Y = y + (R() - 0.5) * 8;
+    if (!icinde(X, Y, SAKAL) || R() < 0.4) continue;
+    const dx = (X - AGIZ[0]) / 200;
+    let k = Y < 1905 && Math.abs(X - AGIZ[0]) < 90 ? "~" : Math.abs(dx) < 0.25 ? "|" : dx < 0 ? "/" : "\\";
+    if (R() < 0.12) k = R() < 0.5 ? "," : "'";
+    l.push([X, Y, k, 0.5 + 0.35 * R(), R() * 6.28]);
+  }
+  return l;
+})();
+function sakalCiz(t){
+  // ilk denemede 30·s (~7 px) sakalın içinde kayboluyordu
+  ctx.font = `bold ${Math.max(9, Math.round(46 * s))}px Consolas, "Courier New", monospace`;
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  KILLAR.forEach(([X, Y, k, a, f], i) => {
+    const kip = Math.floor(t * 1.5 + i * 0.37) % 11 === 0;               // arada bir kıvrılır
+    ctx.fillStyle = `rgba(255,246,220,${a})`;
+    ctx.fillText(kip ? "~" : k, px(X + 3 * dalga(8, t, f)), py(Y + 1.5 * dalga(5, t, f)));
+  });
+}
+
+/* ── KARE ── */
+function ciz(t){
+  ctx.fillStyle = "#000"; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(ARKA, 0, 0);
+  const izler = [], ucanlar = [];
+  const kitapKoy = (u, k, zeminli) => {
+    ctx.save();
+    ctx.translate(k.x + u.o.width / 2, k.y + u.o.height / 2); ctx.rotate(k.aci);
+    if (zeminli){ ctx.fillStyle = "rgba(48,36,26,.85)"; ctx.fillRect(-u.o.width / 2, -u.o.height / 2, u.o.width, u.o.height); }
+    ctx.drawImage(u.o, -u.o.width / 2, -u.o.height / 2);
+    ctx.restore();
+  };
+  for (const u of UCANLAR){
+    const k = ucanKonum(u, t);
+    if (k.ucuyor){ ucanlar.push([u, k]); izler.push([k.x + u.o.width / 2, k.y + u.o.height / 2, k.p]); }
+    else kitapKoy(u, k);
+  }
+  const mm = magnusDurum(t);
+  karanlik(mm, t);
+  for (const [u, k] of ucanlar){
+    const cx = k.x + u.o.width / 2, cy = k.y + u.o.height / 2, hr = u.o.height * 1.3;
+    const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, hr);
+    g.addColorStop(0, `rgba(255,225,160,${0.22 * Math.sin(Math.PI * k.p)})`); g.addColorStop(1, "rgba(255,225,160,0)");
+    ctx.fillStyle = g; ctx.fillRect(cx - hr, cy - hr, hr * 2, hr * 2);
+    kitapKoy(u, k, true);
+  }
+  ctx.font = yazi(); ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  for (const [x, y, p] of izler) for (let i = 1; i <= 6; i++){
+    const a = (1 - i / 7) * 0.7 * Math.sin(Math.PI * p);
+    const dx = -Math.cos(p * 9 + i) * i * cw * 1.3, dy = Math.sin(p * 7 + i * 1.7) * i * ch * 0.6;
+    ctx.fillStyle = `rgba(255,230,160,${a})`;
+    ctx.fillText(i % 2 ? "·" : "*", x + dx, y + dy);
+  }
+  for (let i = 0; i < 14; i++){
+    const x = mm.fx + (0.35 * H) * Math.sin(i * 2.4 + 2 * Math.PI * (1 + i % 3) * t / T);
+    const y = mm.fy + (0.25 * H) * Math.cos(i * 1.3 + 2 * Math.PI * (1 + i % 2) * t / T);
+    const a = 0.35 * Math.pow(Math.max(0, dalga(3 + i % 4, t, i)), 2);
+    if (a < 0.02) continue;
+    ctx.fillStyle = `rgba(255,225,170,${a})`; ctx.fillText("·", x, y);
+  }
+  // figürler ışıktan SONRA: kendi renklerinde kalsınlar (aura mavi)
+  ekKagitCiz(mm);
+  zincirCiz(mm);
+  auraCiz(t);
+  resimCiz("herbert");
+  resimCiz("kagitlar");
+  sakalCiz(t);
+  terCiz(t);
+  magnusCiz(mm);
+  fenerCiz(mm, t);
+  kagitCiz(t);
+}
+
+let bas = null;
+function dongu(ms){
+  if (bas === null) bas = ms;
+  try { ciz(((ms - bas) / 1000) % T); } catch (e) {}
+  requestAnimationFrame(dongu);
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState !== "visible") return;
+  const d = Math.min(window.devicePixelRatio || 1, 2);
+  if (c.width !== Math.round(innerWidth * d) || c.height !== Math.round(innerHeight * d)) boyutlandir();
+});
+boyutlandir();
+addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
+if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
+
+/* Tam ekran, ekranın kararmaması, müzik, ses karıştırıcı, pomodoro ve sahne geçişi: ortak.js */
+</script>
+<script src="nosleep.min.js"></script>
+<script src="ortak.js?s=14"></script>
+</body>
+</html>

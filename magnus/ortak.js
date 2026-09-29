@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "13";
+const SURUM_YAZI = "14";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -38,7 +38,11 @@ const SESLER = [
   { id: "gece-ormani", ad: "Gece ormanı",       tur: "dongu", ses: 0.9 },
   { id: "ruzgar",      ad: "Ağaçlarda rüzgâr",  tur: "dongu", ses: 0.45 },
   { id: "ruzgar-cani", ad: "Rüzgâr çanı",       tur: "dongu", ses: 0.35 },
-  { id: "baykus",      ad: "Baykuş",            tur: "ara", ses: 0.6, aralik: [45, 130] },
+  // daktilo.mp3 (29 Eylül): Gökşin'in indirdiği üç Freesound kaydından karıştırıldı — tuşlar,
+  // doğal boşluklarda zil + şaryo; döngü sonu da satır sonu (dikişsiz, 39 sn). Kodla üretilen ilk
+  // deneme "klavye gibi" olmuştu.
+  { id: "daktilo",     ad: "Daktilo",           tur: "dongu", ses: 0.45 },
+  { id: "baykus",      ad: "Baykuş",           tur: "ara", ses: 0.6, aralik: [45, 130] },
   { id: "caydanlik",   ad: "Çay dökme",         tur: "ara", ses: 0.6, aralik: [200, 480] },
   { id: "sayfa",       ad: "Sayfa çevirme",     tur: "ara", ses: 0.8, aralik: [25, 75],
     olaylar: [[0, .5], [1.5, 2], [2.75, 3.25], [4, 4.5], [5.25, 5.75], [7.5, 7.75],
@@ -49,14 +53,19 @@ const HAZIR_KARISIM = {
               { ad: "Yağmurlu öğleden sonra", sesler: { yagmur2: 0.45, saat: 0.5, sayfa: 0.8 } }],
   orman:     [{ ad: "Gece ormanı", sesler: { "gece-ormani": 0.9, baykus: 0.6, ruzgar: 0.35 } },
               { ad: "Dere kenarı", sesler: { nehir: 0.7, "gece-ormani": 0.5 } }],
+  herbert:   [{ ad: "Dune 7", sesler: { daktilo: 0.45, saat: 0.5 } },
+              { ad: "Yağmurlu gece mesaisi", sesler: { daktilo: 0.4, yagmur2: 0.4 } }],
   oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4 } }],
 };
 const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
 const SAHNE = document.body.dataset.sahne || "orman";
-// Üç sahne (25 Eylül gecesi Oda eklendi): düğme sıradakine geçer, simgesi SIRADAKİNİ gösterir
-const SAHNELER = [{ id: "kutuphane", ad: "Kütüphane" }, { id: "oda", ad: "Oda" }, { id: "orman", ad: "Orman" }];
+// Dört sahne (25 Eylül gecesi Oda, 29 Eylül Herbert = kütüphanenin başka bir günü):
+// düğme sıradakine geçer, simgesi SIRADAKİNİ gösterir
+const SAHNELER = [{ id: "kutuphane", ad: "Kütüphane" }, { id: "herbert", ad: "Herbert" },
+                  { id: "oda", ad: "Oda" }, { id: "orman", ad: "Orman" }];
 const _si = Math.max(0, SAHNELER.findIndex(s => s.id === SAHNE));
-const DIGER = { href: SAHNELER[(_si + 1) % 3].id + ".html", ad: SAHNELER[(_si + 1) % 3].ad, id: SAHNELER[(_si + 1) % 3].id };
+const _sn = SAHNELER[(_si + 1) % SAHNELER.length];
+const DIGER = { href: _sn.id + ".html", ad: _sn.ad, id: _sn.id };
 try { localStorage.setItem("magnus-son-sahne", SAHNE); } catch (e) {}   // simgeden açılınca buraya
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 const ONIZLEME = new URLSearchParams(location.search).has("onizleme"); // kart resmi çekerken şerit yok
@@ -82,6 +91,7 @@ const SIMGE = {
   sahne: {                                                                                // SIRADAKİ sahne
     kutuphane: S('<path d="M4 5h3v14H4zM9 5h3v14H9zM14.5 5.5l2.8-.8 3.6 13.5-2.8.8z"/>'), // kitaplar
     orman: S('<path d="M12 3l6 9h-3l4 6H5l4-6H6z"/>'),                                    // çam
+    herbert: S('<path d="M7 4h10v6H7zM3 10h18v9H3zM6 13h2M10 13h2M14 13h2M18 13h0M7 16h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>'), // daktilo
     oda: S('<path d="M3 20h18M5 20V9h14v11M3 9h18M12 18c-2.5 0-3-2-1.5-4 .2 1 1 1.2 1.2.3.4-1.5 2.8-.8 2.3 1.6-.3 1.3-1 2.1-2 2.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'), // şömine
   }[DIGER.id],
 };

@@ -18,10 +18,12 @@
 // 11: kütüphanede mum TABLODAN (gorsel/mum.png) + üstünde ASCII alev
 // 12: oda duvarı koyu sıcak kahve + zemin, Magnus kalın/opak
 // 13: odada gorsel/magnus-sandalye.png varsa ASCII Magnus yerine o (Gökşin'in çizimi için hazır yer)
-const SURUM = "magnus-13";
+// 14: HERBERT sahnesi (kütüphanenin başka bir günü; tablodan Magnus+fener, Herbert, kâğıtlar) + daktilo sesi
+const SURUM = "magnus-14";
 const CEKIRDEK = [
-  "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
+  "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "herbert.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
+  "gorsel/magnus-fener.png", "gorsel/herbert.png", "gorsel/herbert-aura.png", "gorsel/kagitlar.png", "gorsel/kagit-ucan.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
       "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"].map(a => `muzik/${a}-kapak.jpg`)
 ];
