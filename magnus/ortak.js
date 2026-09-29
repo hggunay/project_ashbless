@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "14";
+const SURUM_YAZI = "15";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -75,7 +75,11 @@ const DEPO = "magnus-ortak-v1";
 /* ── depo (sahne değişince sürsün; hata verirse sessizce yok say) ── */
 function oku(){ try { return JSON.parse(localStorage.getItem(DEPO)) || {}; } catch (e) { return {}; } }
 function yaz(d){ try { localStorage.setItem(DEPO, JSON.stringify(d)); } catch (e) {} }
-let D = Object.assign({ parca: 0, sesler: {}, karisimlar: [], sure: { odak: 25, mola: 5, uzun: 15 }, pom: null }, oku());
+/* genel / muzikDuzey (29 Eylül, Gökşin: "yeni sahne açınca hem lofi hem ortam sesleri aniden yüksek
+   başlıyor, bilgisayarın ses ayarından kısmak zorunda kalıyorum") → sahnenin KENDİ ses ayarı, hatırlanır.
+   hazir: en son uygulanan HAZIR karışım {sahne, ad, genel?}; kullanıcı elle değiştirince null (kendi karışımı). */
+let D = Object.assign({ parca: 0, sesler: {}, karisimlar: [], sure: { odak: 25, mola: 5, uzun: 15 }, pom: null,
+                        genel: 1, muzikDuzey: 0.8, hazir: null }, oku());
 // eski tek düğmeli yağmur (sürüm 1-3): 1 = yağmur, 2 = yağmur + kedi → karıştırıcıya
 if (D.yagmur){ D.sesler[D.yagmur === 2 ? "yagmur-kedi" : "yagmur"] = 0.4; delete D.yagmur; }
 
@@ -156,6 +160,9 @@ css.textContent = `
   color:#e9dcc0;border-radius:9px;padding:7px 12px;cursor:pointer;font:inherit}
 .m-sesalt{display:flex;gap:8px;margin-top:10px}
 .m-sesalt button{flex:1}
+.m-ana{padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid rgba(255,220,170,.14)}
+.m-ana label{display:grid;grid-template-columns:1fr 150px;align-items:center;gap:8px;padding:4px 0;color:#e9dcc0}
+.m-ana input{width:150px;accent-color:#ffc46b}
 #mMesaj{position:fixed;left:50%;top:18%;transform:translateX(-50%);color:#ffdca0;
   font:24px/1.3 Georgia,serif;letter-spacing:.5px;text-shadow:0 0 18px rgba(255,170,70,.5);
   opacity:0;transition:opacity 1.2s;pointer-events:none;z-index:7;text-align:center}
@@ -194,6 +201,10 @@ const sesPanel = document.createElement("div");
 sesPanel.id = "mSesPanel";
 sesPanel.innerHTML = `
   <h3>Sesler</h3>
+  <div class="m-ana">
+    <label>Genel ses <input type="range" id="mGenel" min="0" max="1" step="0.05"></label>
+    <label>Müzik <input type="range" id="mMuzikDuzey" min="0" max="1" step="0.05"></label>
+  </div>
   <div class="m-cipler" id="mCipler"></div>
   <div id="mSesListe"></div>
   <div class="m-kaydet"><input id="mKarisimAd" maxlength="30" placeholder="Karışıma ad ver"><button id="mKaydet">Kaydet</button></div>
@@ -236,7 +247,7 @@ const KESIT = { "yagmur": [4, 6], "yagmur-kedi": [0.3, 1.2], "ruzgar": [3, 3] };
 function donguSes(CAPRAZ = 3){
   const a = [new Audio(), new Audio()]; a.forEach(x => x.preload = "auto");
   let akt = 0, usta = 0, karisim = [1, 0], caprazda = false, zaman = null, kes = [0, 0];
-  const uygula = () => a.forEach((x, i) => x.volume = Math.max(0, Math.min(1, usta * karisim[i])));
+  const uygula = () => a.forEach((x, i) => x.volume = Math.max(0, Math.min(1, usta * karisim[i] * D.genel)));
   a.forEach((x, i) => x.addEventListener("timeupdate", () => {
     if (i !== akt || caprazda || x.paused || !x.duration) return;
     if (x.currentTime < kes[0] - 0.5) { x.currentTime = kes[0]; return; }   // baştaki açılmayı atla
@@ -262,6 +273,7 @@ function donguSes(CAPRAZ = 3){
     _rampa: null,
     get paused(){ return a[akt].paused; },
     get volume(){ return usta; }, set volume(v){ usta = v; uygula(); },
+    yenile: uygula,                                   // genel ses değişince
     set src(s){ clearInterval(zaman); caprazda = false; akt = 0; karisim = [1, 0];
                 const ad = (s.split("/").pop() || "").replace(/\.(mp3|wav)$/, "");
                 kes = KESIT[ad] || [0, 0];
@@ -271,7 +283,8 @@ function donguSes(CAPRAZ = 3){
              a.forEach(x => x.pause()); uygula(); },
   };
 }
-const HEDEF = { muzik: 0.8 };
+// müziğin hedef düzeyi: eskiden sabit 0.8'di (sahnede kısacak düğme yoktu)
+const muzikHedef = () => D.muzikDuzey * D.genel;
 function rampa(ses, hedef, ms, bitince){
   clearInterval(ses._rampa);
   const bas = ses.volume, t0 = performance.now();
@@ -349,20 +362,24 @@ const ortamCaliyor = () => Object.values(dongular).some(d => !d.paused);
 /* onizle: kutucuk elle işaretlenince "ara" ses HEMEN bir kez çalar (Gökşin: "seçtiğimde
    hemen duymuyorum, beklemem gerekiyor … seçip seçmeyeceğime karar verebilirim").
    Karışım uygulanırken önizleme YOK (birkaç ara ses aynı anda çalıp kulağı yorardı). */
+/* Elle yapılan her değişiklik karışımı "kendi karışımın" yapar (sahne değişince taşınır);
+   hazır karışım uygulanırken (karisimUygula) bu sayılmaz. */
+let hazirUyguluyor = false;
+const elle = () => { if (!hazirUyguluyor) D.hazir = null; };
 function sesAc(id, v, onizle){
   const t = sesTanim(id); if (!t) return;
-  D.sesler[id] = v; yaz(D);
+  D.sesler[id] = v; elle(); yaz(D);
   if (t.tur === "dongu" && !sustur) cal(donguAl(id), v);
   if (t.tur === "ara"){ baglam(); tamponYukle(id); araPlanla(); if (onizle) tekCal(id); }
   dugmeler();
 }
 function sesKapat(id){
-  delete D.sesler[id]; yaz(D);
+  delete D.sesler[id]; elle(); yaz(D);
   if (dongular[id] && !dongular[id].paused) sus(dongular[id], 700);
   araPlanla(); dugmeler();
 }
 function sesDuzey(id, v){
-  D.sesler[id] = v; yaz(D);
+  D.sesler[id] = v; elle(); yaz(D);
   const d = dongular[id];
   if (d && !d.paused){ clearInterval(d._rampa); d.volume = v; }
 }
@@ -380,7 +397,7 @@ async function tamponYukle(id){
    fetch ile okuyor; dosyadan açılan sayfada (file://) Chrome buna izin vermiyor ve ses SESSİZCE
    çalmıyordu. Tampon yoksa sıradan bir çalarla: sayfa için bir çevirmenin başına sarıp sonunda durdur. */
 function yedekCal(t, v){
-  const a = new Audio(dosyaYolu(t)); a.volume = Math.min(1, v);
+  const a = new Audio(dosyaYolu(t)); a.volume = Math.min(1, v * D.genel);
   if (t.olaylar){
     const [b, s] = t.olaylar[Math.floor(Math.random() * t.olaylar.length)];
     a.addEventListener("loadedmetadata", () => { a.currentTime = Math.max(0, b - 0.05); a.play().catch(() => {}); }, { once: true });
@@ -392,7 +409,7 @@ async function tekCal(id){
   const t = sesTanim(id), buf = await tamponYukle(id);
   if (!buf) return yedekCal(t, v);
   const c = baglam(), kaynak = c.createBufferSource(), g = c.createGain();
-  kaynak.buffer = buf; g.gain.value = v; kaynak.connect(g); g.connect(c.destination);
+  kaynak.buffer = buf; g.gain.value = v * D.genel; kaynak.connect(g); g.connect(c.destination);
   if (t.olaylar){
     const [a, b] = t.olaylar[Math.floor(Math.random() * t.olaylar.length)];
     kaynak.start(0, Math.max(0, a - 0.05), b - a + 0.25);
@@ -421,15 +438,20 @@ function karisimlar(){
           ...D.karisimlar.map((k, i) => ({ ...k, sira: i }))];
 }
 function karisimUygula(k){
+  hazirUyguluyor = true;
   Object.keys(D.sesler).forEach(id => { if (!(id in k.sesler)) sesKapat(id); });
   for (const [id, v] of Object.entries(k.sesler)){
     if (D.sesler[id] == null) sesAc(id, v); else sesDuzey(id, v);
   }
+  hazirUyguluyor = false;
+  // hazır karışım → sahne değişince yenisininkine geçer; "Kafe" gibi genel olanlar ve kayıtlılar taşınır
+  D.hazir = k.hazir ? { sahne: SAHNE, ad: k.ad, genel: GENEL_KARISIM.some(g => g.ad === k.ad) } : null; yaz(D);
   if (sustur) mesaj("Mola sürüyor — sesler odakla başlayacak");
   sesPanelCiz();
 }
 let silinecek = null, silZ = null;
 function sesPanelCiz(){
+  $("mGenel").value = D.genel; $("mMuzikDuzey").value = D.muzikDuzey;
   $("mCipler").innerHTML = karisimlar().map((k, i) => {
     const sil = k.hazir ? "" : `<span class="sil" data-sil="${k.sira}">${silinecek === k.sira ? "silinsin mi?" : "×"}</span>`;
     return `<button class="m-cip${k.hazir ? "" : " kayitli"}${silinecek === k.sira && !k.hazir ? " silinsin" : ""}" data-k="${i}">${k.ad.replace(/[<>&"]/g, "")}${sil}</button>`;
@@ -467,6 +489,19 @@ $("mSesListe").oninput = (e) => {
   const id = e.target.dataset.duzey;
   if (id && D.sesler[id] != null) sesDuzey(id, +e.target.value);
 };
+/* Genel ses + müzik: hemen duyulur ve hatırlanır. Müzik azalarak susarken (pomodoro sonu,
+   duraklatma) dokunulmaz — yoksa sönme yarıda kalıp müzik çalmaya devam ederdi. */
+function muzikDuzeyiUygula(){
+  if (muzikIstek && !sustur && !muzik.paused && !(D.pom && D.pom.kisildi)){
+    clearInterval(muzik._rampa); muzik.volume = Math.min(1, muzikHedef());
+  }
+}
+$("mGenel").oninput = (e) => {
+  D.genel = +e.target.value; yaz(D);
+  Object.values(dongular).forEach(d => d.yenile());
+  muzikDuzeyiUygula();
+};
+$("mMuzikDuzey").oninput = (e) => { D.muzikDuzey = +e.target.value; yaz(D); muzikDuzeyiUygula(); };
 $("mKaydet").onclick = () => {
   if (!Object.keys(D.sesler).length){ mesaj("Önce birkaç ses aç"); return; }
   const ad = ($("mKarisimAd").value.trim() || `Karışımım ${D.karisimlar.length + 1}`).slice(0, 30);
@@ -484,7 +519,7 @@ $("mSes").onclick = () => {
    arka plandaki zamanlayıcıları donduruyor → yeni parça ses 0'da kalıyordu. */
 muzik.addEventListener("ended", () => {
   parcaYukle(D.parca + 1);
-  if (muzikIstek && !sustur){ clearInterval(muzik._rampa); muzik.volume = HEDEF.muzik; muzik.play().catch(() => {}); }
+  if (muzikIstek && !sustur){ clearInterval(muzik._rampa); muzik.volume = muzikHedef(); muzik.play().catch(() => {}); }
 });
 muzik.addEventListener("play", dugmeler); muzik.addEventListener("pause", dugmeler);
 /* KENDİNİ TOPARLAMA (Gökşin'in telefonu, dengesiz internet): ağ hatasında 2 sn sonra
@@ -497,7 +532,7 @@ muzik.addEventListener("error", () => {
   setTimeout(() => {
     if (++hataSay > 3){ hataSay = 0; parcaYukle(D.parca + 1); }
     else parcaYukle(D.parca, t);
-    if (muzikIstek && !sustur) cal(muzik, HEDEF.muzik).then(dugmeler);
+    if (muzikIstek && !sustur) cal(muzik, muzikHedef()).then(dugmeler);
   }, 2000);
 });
 muzik.addEventListener("waiting", () => $("mOynat").classList.add("yukleniyor"));
@@ -509,13 +544,13 @@ $("mOynat").onclick = async () => {
   else {
     muzikIstek = true;
     if (sustur){ mesaj("Mola sürüyor — müzik odakla başlayacak"); dugmeler(); return; }
-    await cal(muzik, HEDEF.muzik);
+    await cal(muzik, muzikHedef());
   }
   dugmeler();
 };
 $("mSonraki").onclick = async () => {
   parcaYukle(D.parca + 1);
-  if (muzikIstek && !sustur) await cal(muzik, HEDEF.muzik);
+  if (muzikIstek && !sustur) await cal(muzik, muzikHedef());
 };
 /* ── ZİL: dosya yok, küçük bir çan sesi sentezleniyor ── */
 function zil(){
@@ -525,7 +560,7 @@ function zil(){
     [[660, 0], [880, 0.18], [990, 0.36]].forEach(([f, d]) => {
       const o = ak.createOscillator(), g = ak.createGain();
       o.type = "sine"; o.frequency.value = f;
-      g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(0.18, t + d + 0.02);
+      g.gain.setValueAtTime(0, t + d); g.gain.linearRampToValueAtTime(Math.max(0.001, 0.18 * D.genel), t + d + 0.02);
       g.gain.exponentialRampToValueAtTime(0.0001, t + d + 2.2);
       o.connect(g); g.connect(ak.destination); o.start(t + d); o.stop(t + d + 2.3);
     });
@@ -560,7 +595,7 @@ function evreBasla(mod, tur){
   D.pom = { mod, tur, bitis: Date.now() + dakika * 60000, kisildi: false }; yaz(D);
   if (mod === "odak"){
     sustur = false; muzikIstek = true;                 // okumaya başlarken ses yavaşça açılır
-    cal(muzik, HEDEF.muzik).then(dugmeler);
+    cal(muzik, muzikHedef()).then(dugmeler);
     ortamBaslat();
   } else {
     sustur = true;                                     // molada ses yok
@@ -661,10 +696,18 @@ if (D.pom){
 }
 if (devam && devam.caliyor && !sustur){
   muzikIstek = true;
-  cal(muzik, HEDEF.muzik).then(ok => {
+  cal(muzik, muzikHedef()).then(ok => {
     if (!ok){ muzikIstek = false; mesaj("Müzik için oynat düğmesine dokun"); }
     dugmeler();
   });
+}
+/* SAHNEYE GÖRE KARIŞIM (Gökşin, 29 Eylül): önceki sahnede o sahnenin HAZIR karışımı çalıyorduysa
+   bu sahnenin ilk hazır karışımına geç ve adını göster. Kendi karışımı (elle değiştirilmiş ya da
+   kayıtlı) ve "Kafe" gibi genel karışımlar olduğu gibi taşınır. */
+if (D.hazir && !D.hazir.genel && D.hazir.sahne !== SAHNE && (HAZIR_KARISIM[SAHNE] || []).length){
+  const k = HAZIR_KARISIM[SAHNE][0];
+  D.sesler = { ...k.sesler }; D.hazir = { sahne: SAHNE, ad: k.ad, genel: false }; yaz(D);
+  if (!ONIZLEME) setTimeout(() => mesaj(k.ad), 600);
 }
 /* Açık sesler (seçim kalıcı): hemen başlatmayı dene; tarayıcı engellerse İLK DOKUNUŞTA başlar. */
 if (Object.keys(D.sesler).length && !sustur) ortamBaslat();
