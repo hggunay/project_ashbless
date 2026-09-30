@@ -2321,13 +2321,16 @@ const GENRE_NORMALIZE = {
   'siyaset':'siyaset','politics':'siyaset',
 };
 
+// Büyük "İ" küçültmeden ÖNCE çevrilir: JS'te 'İ'.toLowerCase() "i" değil "i"+nokta
+// işareti veriyor → "RED KİT" ile "Red Kit" ayrı sayılıyordu. 30.09.2026'da yedekle
+// ölçüldü: mevcut kayıtlarda bu düzeltmeyle birleşen seri/tür YOK.
 function normalizeGenre(g){
-  const low=g.toLowerCase().trim();
+  const low=g.replace(/İ/g,'i').toLowerCase().trim();
   return GENRE_NORMALIZE[low]||low;
 }
 
 function normalizeSeries(s){
-  return (s||'').toLowerCase().trim()
+  return (s||'').replace(/İ/g,'i').toLowerCase().trim()
     .replace(/ğ/g,'g').replace(/ü/g,'u').replace(/ş/g,'s')
     .replace(/ı/g,'i').replace(/ö/g,'o').replace(/ç/g,'c');
 }
