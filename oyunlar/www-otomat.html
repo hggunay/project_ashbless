@@ -133,27 +133,11 @@ button:active{background:#1a2a44}
 
 <div id="yardimKat"><div class="yk">
   <h2>Nasıl çalışır</h2>
-  <p>Bu bir <b>Conway'in Yaşam Oyunu</b> simülasyonu. 30×30 kareden oluşan bir ızgara var. Her kare <b>canlı</b> ya da <b>ölü</b>.</p>
-  <p><b>Kurallar (her adımda):</b><br>
-  • Canlı bir kare, 2 veya 3 canlı komşusuyla <b>yaşamaya devam eder</b>.<br>
-  • Canlı bir kare, 2'den az komşusuyla <b>yalnızlıktan ölür</b>.<br>
-  • Canlı bir kare, 3'ten fazla komşusuyla <b>kalabalıktan ölür</b>.<br>
-  • Ölü bir kare, tam 3 canlı komşusuyla <b>doğar</b>.<br>
-  Komşu: 8 yön (çaprazlar dahil).</p>
-  <p><b>Ve bu önemli:</b> bütün kareler <b>aynı anda</b> bir sonraki nesle
-  geçer — tek tek güncellenmezler. Yani bir karenin kaderi, komşularının
-  <i>bu adımdaki</i> hâline bakılarak belirlenir; az önce değişmiş hâline
-  değil. Desenlerin canlı gibi davranması bundan.</p>
-  <p><b>Sen ne yapabilirsin?</b><br>
-  Herhangi bir kareye tıkla veya dokun — canlıysa öldürür, ölüyse canlandırır. Fareyle sürükleyerek de çizebilirsin. Simülasyon çalışırken de dokunabilirsin.</p>
-  <p><b>Düğmeler:</b><br>
-  <b>Başlat</b> — çizdiğin deseni çalıştırır; çalışırken ⏸ Durdur olur.<br>
-  <b>Rastgele</b> — yaklaşık %25 dolu rastgele bir desen yükler, durur; beğenirsen Başlat'a bas.<br>
-  <b>Hazır desen</b> — Conway'in ünlü desenlerinden birini ortaya yerleştirir; Başlat'a sen basarsın.<br>
-  <b>Temizle</b> — ızgarayı sıfırlar.</p>
-  <p><b>Ne zaman biter?</b><br>
-  Ardışık <b>5 adımda hiçbir kare değişmezse</b>, desen <b>yerinde yanıp sönerek</b> kendini tekrar etmeye başlarsa ya da <b>tüm kareler ölürse</b> simülasyon durur.</p>
-  <p><b>Hız:</b> 1× ≈ 2.5 adım/sn · 2× ≈ 5 adım/sn · 4× ≈ 10 adım/sn</p>
+  <p>Bu, <b>Conway'in Yaşam Oyunu</b>. Her kare ya canlı ya ölü.</p>
+  <p>Az komşusu olan yalnızlıktan, çok komşusu olan kalabalıktan ölür.
+  Tam üç komşu, yeni bir kareyi doğurur.</p>
+  <p>Karelere dokunarak bir desen çiz, <b>Başlat</b>'a bas ve ne olacağını izle.
+  Hazır desenleri de dene.</p>
   <button class="kapat" id="yardimKapat">Anladım</button>
 </div></div>
 
