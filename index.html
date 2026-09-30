@@ -1511,6 +1511,13 @@ try{
           <button class="filter-tab" id="sortByAuthor" onclick="setSortStories('author',this)">✍️ Yazar</button>
           <button class="filter-tab" id="activeAuthorFilter" style="display:none" onclick="clearAuthorFilter()">✕ Yazar filtresi</button>
         </div>
+        <!-- Tür süzgeci (2026-09-30) — tur:'yazi' olmayan her kayıt öykü sayılır -->
+        <div id="storyTurFilterBar" style="padding:.5rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+          <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;text-transform:uppercase">Göster:</span>
+          <button class="filter-tab active" data-tur="all" onclick="filterStories('all',this)">Tümü</button>
+          <button class="filter-tab" data-tur="oyku" onclick="filterStories('oyku',this)">📖 Öykü</button>
+          <button class="filter-tab" data-tur="yazi" onclick="filterStories('yazi',this)">📰 Yazı</button>
+        </div>
         <div id="storiesContainer" style="padding:.5rem"></div>
       </div>
     </div>
@@ -7650,6 +7657,16 @@ function getStoryStatus(){
   return a?a.dataset.val:'read';
 }
 
+/* "Okundu" olan kısa okumaya tarih (2026-09-30, Gökşin: "elle girene kadar
+   tarih yazmıyordu"). Kitaplardaki finishReading'in endDate=today'inin karşılığı.
+   Tarih doluysa ya da "geçmişte okudum" işaretliyse DOKUNMAZ — ne zaman
+   okunduğu bilinmiyor. Durum okundu'ya GEÇERKEN çağrılır; eski kayıtlara değil. */
+function okunduTarihiVer(story){
+  if(!story||story.readDate||story.retroactive) return;
+  story.readDate=todayLocal();
+  story.readYearOnly=null;
+}
+
 function addStory(){
   const title=document.getElementById('storyTitle').value.trim();
   const author=document.getElementById('storyAuthor').value.trim();
@@ -7692,6 +7709,7 @@ function addStory(){
     addedAt:new Date().toISOString(),
   };
   if(document.querySelector('#storyTurChips .chip.active')?.dataset.val==='yazi') story.tur='yazi';
+  if(story.status==='read') okunduTarihiVer(story);
   db.stories[me].push(story);
   diyarKesifKontrol();       // öykü de diyar açabilir (King'in Derry öyküleri)
   saveDb();
@@ -7723,9 +7741,10 @@ function closeStoryDupConfirm(){
 }
 
 function filterStories(f,el){
+  // Tür süzgeci: 'all' | 'oyku' | 'yazi'. Yalnız kendi çubuğundaki düğmeleri söndürür —
+  // eskiden '#stories .filter-tab' idi, sıralama düğmelerini de söndürürdü.
   storyFilter=f; storiesPage=1;
-  document.querySelectorAll('#stories .filter-tab').forEach(t=>t.classList.remove('active'));
-  if(el) el.classList.add('active');
+  document.querySelectorAll('#storyTurFilterBar .filter-tab').forEach(t=>t.classList.toggle('active',t.dataset.tur===f));
   renderStories();
 }
 
@@ -7922,6 +7941,7 @@ function saveStoryField(storyId, field, value){
   const prevCtx=snapshotBadgeContext();
   const oncekiDurum=story.status;
   story[field]=value;
+  if(field==='status' && value==='read' && oncekiDurum!=='read') okunduTarihiVer(story);
   saveDb();
   renderStories();
   renderJournal();
@@ -8059,10 +8079,12 @@ function renderStories(){
   // Okundu listesi
   let stories=allStories.filter(s=>s.status==='read');
   if(storyAuthorFilter) stories=stories.filter(s=>s.author===storyAuthorFilter);
+  if(storyFilter==='oyku') stories=stories.filter(s=>s.tur!=='yazi');
+  else if(storyFilter==='yazi') stories=stories.filter(s=>s.tur==='yazi');
 
   if(!stories.length){
     container.innerHTML=`<div class="empty-state" style="padding:1rem">${
-      storyAuthorFilter?'Filtreye uyan öykü bulunamadı.':'Henüz okunmuş öykü eklenmemiş.'
+      (storyAuthorFilter||storyFilter!=='all')?'Filtreye uyan kayıt bulunamadı.':'Henüz okunmuş kısa okuma eklenmemiş.'
     }</div>`;
     return;
   }
@@ -8103,6 +8125,7 @@ function oykuyuOkunduYap(storyId){
   const story=db.stories[me].find(s=>s.id===storyId);
   if(!story) return;
   story.status='read';
+  okunduTarihiVer(story);
   diyarKesifKontrol();
   saveDb();renderStories();
   notify('✔ Okundu',`"${story.title}" okundu listesine taşındı.`);
