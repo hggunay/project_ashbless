@@ -223,8 +223,11 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 .acc-header:hover{opacity:.85;}
 .acc-arrow{font-size:.55rem;transition:transform .25s;display:inline-block;color:var(--rust);opacity:.4;flex-shrink:0;}.acc-arrow.open{transform:rotate(90deg);}
 .acc-body{overflow:hidden;transition:max-height .3s ease,opacity .25s ease;max-height:0;opacity:0;}
-.acc-body.open{max-height:9999px;opacity:1;overflow:visible;}
-.acc-body.open{max-height:9999px;opacity:1;}
+/* max-height:none (eskiden 9999px). Telefonda rozet kartları tek sütuna dizilince
+   🎭 Tür Keşfi 17.473px ölçüldü (2026-09-30): 9999'da kesiliyor, taşan kartlar alttaki
+   kategori başlıklarının ÜSTÜNE biniyordu. 9999'a doğru "kayma" zaten anlık bitiyordu,
+   sınırı kaldırınca görünür bir animasyon kaybı yok; açılma/kapanma opaklıkla yumuşuyor. */
+.acc-body.open{max-height:none;opacity:1;overflow:visible;}
 /* Ekleme panelleri (+ Kitap/Hikâye/Giriş/Seri/Grup/Raf Ekle) için: .acc-body'nin 9999px hedefi
    gerçek içerikten (~150-900px) o kadar büyük ki geçiş neredeyse anlık bitiyor gibi hissettiriyor.
    Bu panellerin tamamı bu aralıkta kaldığı için 2000px hâlâ hiçbir içeriği kesmeyecek kadar bol ama
