@@ -422,6 +422,13 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
 
 /* ── ARCANE: Fantastik (mor/altın) ── */
 @keyframes auraFantasy{0%,100%{box-shadow:0 0 8px 2px rgba(139,92,246,.18),0 0 16px 4px rgba(201,162,39,.10)}50%{box-shadow:0 0 18px 6px rgba(139,92,246,.32),0 0 28px 8px rgba(201,162,39,.18)}}
+/* Sezonluk rozet aurası (2026-09-30) — renkler sezonluk.js SEZONLAR[].konfeti'den.
+   Yeni sezon eklenirse burada da bir @keyframes + sınıf satırı gerekir. */
+@keyframes auraCadilar{0%,100%{box-shadow:0 0 8px 2px rgba(224,122,47,.25),0 0 16px 4px rgba(107,63,160,.14)}50%{box-shadow:0 0 18px 6px rgba(224,122,47,.42),0 0 30px 9px rgba(143,91,208,.24)}}
+@keyframes auraKis{0%,100%{box-shadow:0 0 8px 2px rgba(168,216,240,.30),0 0 16px 4px rgba(255,255,255,.18)}50%{box-shadow:0 0 18px 6px rgba(122,184,221,.45),0 0 30px 9px rgba(234,246,255,.30)}}
+.badge-aura-sezon-cadilar{animation:auraCadilar 2.8s ease-in-out infinite;}
+.badge-aura-sezon-kis{animation:auraKis 3.2s ease-in-out infinite;}
+@media (prefers-reduced-motion:reduce){.badge-aura-sezon-cadilar,.badge-aura-sezon-kis{animation:none;}}
 .badge-aura-fantasy{animation:auraFantasy 3s ease-in-out infinite;}
 .badge-aura-fantasy.tier-bronze{animation-duration:3.5s;}
 .badge-aura-fantasy.tier-silver{animation-duration:3s;}
@@ -2144,7 +2151,7 @@ try{
 <script src="coreading.js?s=20260919b"></script>
 <script src="series.js?s=20260930m"></script>
 <script src="feed.js?s=20260930k"></script>
-<script src="badges.js?s=20260930k"></script>
+<script src="badges.js?s=20260930n"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20260919b"></script>
@@ -7859,7 +7866,7 @@ function openStoryDetail(ownerId, storyId, duzenle){
         })()}
         <div class="detail-field" style="grid-column:1/-1">
           <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
-          ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
+          ${isMe?`<input class="detail-input" id="storyDateInput_${storyId}" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
         </div>
       </div>
       <div style="margin-top:.5rem">
@@ -7944,7 +7951,12 @@ function saveStoryField(storyId, field, value){
   const prevCtx=snapshotBadgeContext();
   const oncekiDurum=story.status;
   story[field]=value;
-  if(field==='status' && value==='read' && oncekiDurum!=='read') okunduTarihiVer(story);
+  if(field==='status' && value==='read' && oncekiDurum!=='read'){
+    okunduTarihiVer(story);
+    // Düzenleme ekranı açıksa tarih kutusu da hemen dolsun (yoksa kapatıp açınca görünüyordu)
+    const tarihKutusu=document.getElementById('storyDateInput_'+storyId);
+    if(tarihKutusu&&!tarihKutusu.value) tarihKutusu.value=story.readDate||'';
+  }
   saveDb();
   renderStories();
   renderJournal();

@@ -876,6 +876,10 @@ function renderBadges(){
     if(s.earned){
       const found = BADGE_AURA_MAP.find(entry => entry.ids.includes(b.id));
       if(found) auraClass = ' ' + found.cls;
+      // Sezonluk rozet (2026-09-30): sezonun konfeti renginde aura. Kimlik
+      // 'sezon_<sezonId>_<kademe>' (sezonluk.js) → sınıf badge-aura-sezon-<sezonId>.
+      const sz = /^sezon_([a-z]+)_/.exec(b.id);
+      if(sz) auraClass = ' badge-aura-sezon-' + sz[1];
     }
     const cls=(s.earned?'earned':s.cur===0?'locked':'')+' tier-'+tier+auraClass;
     const isOpen2=openBadgeId===b.id;
