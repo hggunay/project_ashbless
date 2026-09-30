@@ -823,6 +823,7 @@ function startPlannedBook(seriesId, manualTitle, manualAuthor){
     const bkEntry = (ser.books||[]).find(b=>b.planned&&(b.manualTitle||'').toLowerCase()===title.toLowerCase());
     if(bkEntry){ delete bkEntry.planned; delete bkEntry.manualTitle; delete bkEntry.manualAuthor; bkEntry.bookId=existing.id; }
     seriNoDoldur(existing, ser, bkEntry);
+    if(typeof seriHafizasiDoldur==='function') seriHafizasiDoldur(existing);
     saveDb(); render();
     notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
     return;
@@ -852,6 +853,7 @@ function startPlannedBook(seriesId, manualTitle, manualAuthor){
      `seriesTotal` da buradan verilebilirdi ama bilerek verilmedi: seri hedefi
      sonradan değişebiliyor ve kitaba kopyalanınca iki yerde ayrı ayrı eskiyor. */
   seriNoDoldur(book, ser, bkEntry);
+  if(typeof seriHafizasiDoldur==='function') seriHafizasiDoldur(book);   // ülke/tür/kadın yazar (index.html)
   saveDb(); render();
   notify('📖 Okumaya Başlandı', title+' şu an okunanlar listesine eklendi.');
 }

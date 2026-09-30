@@ -2132,7 +2132,7 @@ try{
      gerekmesin, index.html zaten her deploy'da yükleniyor. -->
 <script src="map.js?s=20260919b"></script>
 <script src="coreading.js?s=20260919b"></script>
-<script src="series.js?s=20260930k"></script>
+<script src="series.js?s=20260930m"></script>
 <script src="feed.js?s=20260930k"></script>
 <script src="badges.js?s=20260930k"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
@@ -5492,6 +5492,35 @@ function bestSeriesRef(seriesName){
   });
 }
 
+/* Okumaya BAŞLARKEN boş alanları doldur (2026-09-30). İki yol API'ye hiç
+   sormuyordu: Serilerim'den "📖 Başla" (series.js startPlannedBook — kayıt
+   çıplak doğuyor) ve bilgisiz eklenmiş Tsundoku kitabı. Sonuç: ülke haritaya,
+   tür/kadın yazar rozetlere girmiyordu. Önce seride en dolu kitap (bestSeriesRef),
+   kadın yazar hâlâ boşsa Wikidata. DOLU alana dokunmaz. Çağıran kaydeder;
+   Wikidata cevabı sonradan gelirse kendisi bir kez daha kaydeder. */
+function seriHafizasiDoldur(book){
+  if(!book) return;
+  const ref=book.series?bestSeriesRef(book.series):null;
+  if(ref&&ref!==book){
+    if(!book.author&&ref.author) book.author=ref.author;
+    if(!book.country&&ref.country) book.country=ref.country;
+    if(!book.femaleAuthor&&ref.femaleAuthor) book.femaleAuthor=true;
+    if(!book.authorBirthYear&&ref.authorBirthYear) book.authorBirthYear=ref.authorBirthYear;
+    if((!book.genres||!book.genres.length)&&ref.genres?.length) book.genres=[...ref.genres];
+  }
+  if(!book.femaleAuthor&&book.author){
+    const id=book.id, sahibi=me;
+    yazarKadinMi(book.author).then(kadin=>{
+      const b=(db.books[sahibi]||[]).find(x=>x.id===id);
+      if(!kadin||!b||b.femaleAuthor||sahibi!==me) return;
+      const prevValid=snapshotValidBooks();
+      b.femaleAuthor=true;
+      saveDb(); renderSafe();
+      checkAndAwardBadges(prevValid);
+    });
+  }
+}
+
 function applySeriesMemory(seriesName){
   if(!seriesName.trim()) return;
   const ref=bestSeriesRef(seriesName);
@@ -7227,6 +7256,7 @@ function startReadingFromWishlist(bookId){
   if(isReread) book.rereadStarted=true;
   book.readingStatus='reading';
   book.startDate=todayLocal();
+  seriHafizasiDoldur(book);
   pushReadingEvent(book,isReread?'reread':'started');
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid,500,prevCtx);
@@ -7720,7 +7750,59 @@ function setAuthorFilter(author){
   renderStories();
 }
 
-function openStoryDetail(ownerId, storyId){
+/* Kısa Okumalarım detayı İKİ MODLU (2026-09-30, Kitaplarım'daki renderViewMode /
+   renderEditMode kalıbı): açılınca GÖRÜNTÜLEME (yalnız dolu alanlar, kutu yok),
+   "✏️ Düzenle" ile bugünkü kayıt ekranı. Puan ve Sil yalnız düzenlemede
+   (Gökşin: "kitaplarla aynı kalsın"). Başkasının kaydı hep görüntüleme. */
+function storyViewMode(ownerId, storyId){
+  const story=(db.stories[ownerId]||[]).find(s=>s.id===storyId);
+  if(!story) return;
+  const isMe=ownerId===me;
+  const esc=s=>(typeof escapeHtml==='function'?escapeHtml(s):s)||'';
+  const srcMap={kitap:'📖 Kitap',ekitap:'📱 E-Kitap',sesli:'🎧 Sesli',web:'🌐 Web'};
+  const tarih=story.readDate?(story.readYearOnly?String(story.readDate):String(story.readDate).split('-').reverse().join('.')):'';
+  const bilgi=[['Kaynak kitap',esc(story.sourceBook)],['Okuma tarihi',tarih]].filter(([,v])=>v);
+  const seriEtiketi=(typeof oykuSeriEtiketi==='function')?oykuSeriEtiketi(ownerId,storyId):'';
+  const cipler=[story.tur==='yazi'?'📰 Yazı':'📖 Öykü',srcMap[story.source]||story.source,
+    story.status==='read'?'✔ Okundu':'⏳ Okunacak',story.retroactive?'📦 Geçmişte okundu':''].filter(Boolean)
+    .map(l=>`<span class="vm-chip">${l}</span>`).join('');
+  const linkHtml=!story.link?'':((typeof oykuBaglantisiMi==='function'&&oykuBaglantisiMi(story.link)&&!isMe)
+    ?`<span style="color:var(--gold);font-size:.9rem">📜 Buluntu Metinler'de bulundu</span>`
+    :`<a href="${esc(story.link)}" target="_blank" rel="noopener" style="color:var(--gold);font-size:.9rem;word-break:break-all">${(typeof oykuBaglantisiMi==='function'&&oykuBaglantisiMi(story.link))?'📜 Metni aç':'🔗 '+esc(story.link)}</a>`);
+  document.getElementById('modalTitle').textContent=story.title;
+  document.getElementById('modalSubtitle').textContent=story.author?`— ${story.author}`:'';
+  document.getElementById('modalBody').innerHTML=`
+    <style>
+      .vm-section{padding:.65rem 0;border-bottom:1px solid rgba(44,26,14,.1);}
+      .vm-section:last-child{border-bottom:none;}
+      .vm-label{font-size:.65rem;letter-spacing:.1em;color:var(--gold);text-transform:uppercase;margin-bottom:.45rem;font-family:'Space Mono',monospace;}
+      .vm-info-grid{display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;}
+      .vm-key{font-size:.75rem;color:var(--ink-light);padding:.2rem .4rem .2rem 0;align-self:center;white-space:nowrap;}
+      .vm-val{font-size:.85rem;color:var(--ink);padding:.2rem 0;align-self:center;}
+      .vm-chip{background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:3px;padding:.2rem .5rem;font-size:.75rem;color:var(--ink-light);display:inline-block;margin:.15rem .15rem 0 0;}
+    </style>
+    <div class="vm-section">
+      <div>${cipler}</div>
+      ${bilgi.length?`<div class="vm-info-grid" style="margin-top:.5rem">${bilgi.map(([k,v])=>`<span class="vm-key">${k}</span><span class="vm-val">${v}</span>`).join('')}</div>`:''}
+    </div>
+    ${seriEtiketi?`<div class="vm-section"><div class="vm-label">📚 Ara öykü olarak bağlı olduğu seri</div><span style="font-size:.9rem;color:#4f3470">${seriEtiketi}</span></div>`:''}
+    ${linkHtml?`<div class="vm-section"><div class="vm-label">Bağlantı</div>${linkHtml}</div>`:''}
+    ${story.rating?`<div class="vm-section"><div class="vm-label">Puan</div>
+      <span style="color:var(--gold);font-size:1rem">${'★'.repeat(Math.floor(story.rating))}${story.rating%1?'½':''}</span>
+      <span style="font-size:.75rem;color:var(--ink-light);margin-left:.3rem;font-family:'Space Mono',monospace">${story.rating}/5</span></div>`:''}
+    ${isMe&&story.note?`<div class="vm-section"><div class="vm-label">💬 Kişisel not <span style="font-size:.6rem;opacity:.6;text-transform:none;letter-spacing:0">— sadece sana görünür</span></div>
+      <div style="background:rgba(201,162,39,.06);border-left:3px solid var(--gold);padding:.6rem .75rem;border-radius:0 4px 4px 0;font-size:.88rem;color:var(--ink);font-style:italic;line-height:1.6;white-space:pre-wrap">${esc(story.note)}</div></div>`:''}
+  `;
+  document.getElementById('modalFooter').innerHTML=isMe?`
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:.4rem;width:100%">
+      <button onclick="openStoryDetail('${me}',${storyId},true)" style="background:rgba(201,162,39,.2);border:1px solid rgba(201,162,39,.5);color:var(--gold);border-radius:4px;padding:.35rem .75rem;font-size:.75rem;cursor:pointer;font-family:'Space Mono',monospace">✏️ Düzenle</button>
+      ${story.status!=='read'?`<button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="saveStoryField(${storyId},'status','read');storyViewMode('${me}',${storyId})">✔ Okudum</button>`:''}
+    </div>`:'';
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function openStoryDetail(ownerId, storyId, duzenle){
+  if(ownerId!==me||!duzenle){ storyViewMode(ownerId,storyId); return; }
   const story=(db.stories[ownerId]||[]).find(s=>s.id===storyId);
   if(!story) return;
   const isMe=ownerId===me;
@@ -7817,7 +7899,8 @@ function openStoryDetail(ownerId, storyId){
     </div>
   `;
   document.getElementById('modalFooter').innerHTML=isMe
-    ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
+    ?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.4);font-size:.75rem" onclick="storyViewMode('${me}',${storyId})">← Görüntüle</button>
+      <span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
       <button class="btn btn-danger btn-sm" onclick="confirmRemoveStory(${storyId})">🗑 Sil</button>`
     :'';
   document.getElementById('modalOverlay').classList.add('open');
@@ -7892,7 +7975,7 @@ function confirmRemoveStory(storyId){
     <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bunu silmek istediğine emin misin?</span>
     <div style="display:flex;gap:.5rem">
       <button class="btn btn-danger btn-sm" onclick="removeStory(${storyId})">🗑 Evet, Sil</button>
-      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openStoryDetail('${me}',${storyId})">İptal</button>
+      <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openStoryDetail('${me}',${storyId},true)">İptal</button>
     </div>`;
 }
 
@@ -8022,7 +8105,7 @@ function oykuyuOkunduYap(storyId){
   story.status='read';
   diyarKesifKontrol();
   saveDb();renderStories();
-  notify('✔ Öykü okundu',`"${story.title}" okundu listesine taşındı.`);
+  notify('✔ Okundu',`"${story.title}" okundu listesine taşındı.`);
 }
 
 
