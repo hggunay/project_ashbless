@@ -28,7 +28,7 @@ const KARSILAMA_DEPO = 'aa-karsilama';
 const KARSILAMA_METINLERI = {
   feed: {
     baslik: '🏠 Ana Sayfa',
-    metin: 'Herkesin okuma akışı burada: değerlendirmeler, alıntılar, hikâyeler ve ' +
+    metin: 'Herkesin okuma akışı burada: değerlendirmeler, alıntılar, kısa okumalar ve ' +
            'birlikte okumalar. Üstteki süzgeçlerden yalnızca ilgilendiğin türü seçebilirsin.'
   },
   myBooks: {
@@ -44,15 +44,17 @@ const KARSILAMA_METINLERI = {
            'içine ekle.'
   },
   stories: {
-    baslik: '📖 Hikâyelerim',
-    metin: 'Kısa öyküler için — Kitaplarım\'ın küçük kardeşi. Bir öykü kitabının tamamını ' +
+    baslik: '📖 Kısa Okumalarım',
+    metin: 'Kısa öyküler ve kısa yazılar için — Kitaplarım\'ın küçük kardeşi. Bir öykü kitabının tamamını ' +
            'bitirmeden içinden yalnızca birkaç öykü okuduysan, kitabı değil <b>okuduğun ' +
            'öyküleri</b> buraya kaydedersin. Herkesin konuştuğu bir öyküyü unutmamak için ' +
            '<b>⏳ Okunacak</b> olarak da işaretleyebilirsin; öyle olanlar 🔖 Tsundoku ' +
            'bölümünde birikir.<br><br>' +
            'Öykü her zaman basılı olmuyor: kaynağı <b>kitap, e-kitap, sesli ya da web</b> ' +
            'seçebilir, internetten okuduysan bağlantısını da kaydedebilirsin — böylece ' +
-           'nereden okuduğun kayıtlı kalır.'
+           'nereden okuduğun kayıtlı kalır.<br><br>' +
+           'Beğendiğin bir köşe yazısı, deneme ya da makale de buraya girer: eklerken ' +
+           '<b>📰 Yazı</b>\'yı seç. Öykü rozetlerine yalnızca öyküler sayılır.'
   },
   journal: {
     baslik: '📒 Defterim',

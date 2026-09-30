@@ -181,10 +181,10 @@ const BADGE_CATS = [
       {id:'siir4',tier:'diamond',icon:'🌙', name:'Şiir Ustası',        desc:'20 şiir kitabı oku.', check:b=>genre(b,'siir',20)},
     ]},
     {id:'kc_oyku',   label:'📖 Öykü',             badges:[
-      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,5)},
-      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,15)},
-      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,30)},
-      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Hikayelerim sekmesindeki okunanlar birlikte sayılır.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuRozeteSayilir).length,50)},
+      {id:'oyk1',tier:'bronze', icon:'📖', name:'Hikaye Dostu',       desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Kısa Okumalarım sekmesinde okunan öyküler birlikte sayılır. 📰 Yazılar sayılmaz.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuTuruMu).length,5)},
+      {id:'oyk2',tier:'silver', icon:'📚', name:'Öykü Avcısı',        desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Kısa Okumalarım sekmesinde okunan öyküler birlikte sayılır. 📰 Yazılar sayılmaz.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuTuruMu).length,15)},
+      {id:'oyk3',tier:'gold',   icon:'🎭', name:'Öykü Koleksiyoncusu',desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Kısa Okumalarım sekmesinde okunan öyküler birlikte sayılır. 📰 Yazılar sayılmaz.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuTuruMu).length,30)},
+      {id:'oyk4',tier:'diamond',icon:'🌟', name:'Öykü Efsanesi',      desc:'Kitaplığındaki öykü kitapları (aşağıda listelenir) + Kısa Okumalarım sekmesinde okunan öyküler birlikte sayılır. 📰 Yazılar sayılmaz.',  check:(b,ctx)=>cap(b.filter(x=>(x.genres||[]).some(g=>normalizeGenre(g)==='oyku')).length+((ctx&&ctx.stories)||(db.stories&&db.stories[me])||[]).filter(oykuTuruMu).length,50)},
     ]},
     {id:'kc_dis',    label:'🔥 Distopya',          badges:[
       {id:'dis1',tier:'bronze', icon:'🔥', name:'Distopya Kaçkını',   desc:'3 distopya/cyberpunk kitabı oku.',  check:b=>genre(b,'distopya',3)},
@@ -590,6 +590,12 @@ function isRetroactive(b){
 function oykuRozeteSayilir(s){
   return !!s && s.status==='read' && !s.retroactive && !s.rozetDisi;
 }
+/* Öykü rozetleri (oyk1-4) için ayrıca TÜR: Kısa Okumalarım'a köşe yazısı, deneme
+   de ekleniyor (2026-09-30) — onlar tur:'yazi' taşır ve öykü sayılmaz. Sezonluk
+   rozetler türe bakmaz (zaman rozeti), yalnız oykuRozeteSayilir'i kullanır. */
+function oykuTuruMu(s){
+  return oykuRozeteSayilir(s) && s.tur!=='yazi';
+}
 function bstat(badge,books,ctx){
   const filteredBooks = retroaktifSayilirMi(badge.id)
     ? books
@@ -648,7 +654,7 @@ function booksForBadge(badge,books){
   if(['siir1','siir2','siir3','siir4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='siir'));
   if(['oyk1','oyk2','oyk3','oyk4'].includes(id)){
     const bookList=filtered.filter(b=>(b.genres||[]).some(g=>normalizeGenre(g)==='oyku'));
-    const storyCount=db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(s=>s.status==="read").length:0;
+    const storyCount=db.stories&&db.stories[me]?Object.values(db.stories[me]).filter(oykuTuruMu).length:0;
     if(storyCount>0) bookList._storyCount=storyCount;
     return bookList;
   }
@@ -789,7 +795,7 @@ function confirmResetBadges(){
     (db.books[me]||[]).forEach(b=>{ b.retroactive=true; });
     ((db.stories&&db.stories[me])||[]).forEach(s=>{ s.retroactive=true; });
     saveDb();renderSafe();renderBadges();
-    notify('🗺️🏅 Sıfırlandı','Tüm kitap ve hikayelerin "geçmişte okundu" olarak işaretlendi. Harita da sıfırlandı.');
+    notify('🗺️🏅 Sıfırlandı','Tüm kitap ve kısa okumaların "geçmişte okundu" olarak işaretlendi. Harita da sıfırlandı.');
   });
 }
 
@@ -876,7 +882,7 @@ function renderBadges(){
     const relBooks=booksForBadge(b,books);
     const MAX_BOOKS=5;
     const storyCount=relBooks._storyCount||0;
-    const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} hikaye (Hikayelerim sekmesi)</div>`:'';
+    const storyNote=storyCount>0?`<div style="font-size:.75rem;color:var(--rust);font-style:italic;padding:.2rem 0">+ ${storyCount} öykü (Kısa Okumalarım sekmesi)</div>`:'';
     const isSerisBadge=['badge_dune','badge_vakif','badge_hp','badge_ye','badge_earthsea','badge_hainish'].includes(b.id);
     const isShelfBadge=b.id==='secret_bedside'||b.id==='secret_forbidden';
     const isForbiddenBadge=b.id==='secret_forbidden';

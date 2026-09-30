@@ -1701,7 +1701,7 @@ function oykuEkleFormuHtml(seriesId, kucuk){
   const pd = kucuk ? '.3rem .45rem' : '.35rem .5rem';
   return `<div id="seriesAddOyku_${seriesId}" style="display:none">
     <div style="position:relative">
-      <input class="book-input" id="seriOykuBaslik_${seriesId}" type="text" placeholder="Öykü adı — Hikâyelerim'de ara..."
+      <input class="book-input" id="seriOykuBaslik_${seriesId}" type="text" placeholder="Öykü adı — Kısa Okumalarım'da ara..."
         style="width:100%;font-size:${kucuk?'.78rem':'.85rem'};padding:${kucuk?'.32rem .5rem':'.4rem .6rem'}"
         oninput="delete this.dataset.oykuId;seriOykuAra('${seriesId}')" onblur="setTimeout(()=>seriOykuAraGizle('${seriesId}'),300)"/>
       <div id="seriOykuListe_${seriesId}" class="series-ac-dropdown" style="display:none"></div>
@@ -1723,7 +1723,7 @@ function oykuEkleFormuHtml(seriesId, kucuk){
     <div style="display:flex;gap:.4rem;align-items:center;margin-top:.3rem">
       <button class="btn btn-sm btn-primary" style="font-size:${kucuk?'.68rem':''}" onclick="seriyeOykuEkle('${seriesId}')">+ Öyküyü Ekle</button>
     </div>
-    <div style="font-size:.7rem;color:#dccbf0;opacity:.9;font-style:italic;margin-top:.3rem">Hikâyelerim'de yoksa oraya ⏳ Okunacak olarak eklenir. Ara öykü serinin toplamına sayılmaz.</div>
+    <div style="font-size:.7rem;color:#dccbf0;opacity:.9;font-style:italic;margin-top:.3rem">Kısa Okumalarım'da yoksa oraya ⏳ Okunacak olarak eklenir. Ara öykü serinin toplamına sayılmaz.</div>
   </div>`;
 }
 
@@ -1820,7 +1820,7 @@ function seriyeOykuEkle(seriesId, secim){
       const bar = document.getElementById('seriOykuOnay_'+seriesId);
       const msg = document.getElementById('seriOykuOnayMsg_'+seriesId);
       baslikEl.dataset.oykuAday = String(ayni.id);
-      if(msg) msg.textContent = `"${ayni.title}" zaten Hikâyelerim'de var (${ayni.status==='read'?'Okundu':'Tsundoku'}). Onu mu bağlayayım?`;
+      if(msg) msg.textContent = `"${ayni.title}" zaten Kısa Okumalarım'da var (${ayni.status==='read'?'Okundu':'Tsundoku'}). Onu mu bağlayayım?`;
       if(bar) bar.classList.add('show');
       return;
     }
@@ -1864,8 +1864,8 @@ function seriyeOykuEkle(seriesId, secim){
   seriOykuOnayKapat(seriesId);
   seriOykuAraGizle(seriesId);
   notify(yeni?'📄 Öykü eklendi':'🔗 Öykü bağlandı',
-    yeni ? `"${baslik}" Hikâyelerim'e ⏳ Okunacak olarak eklendi ve seriye bağlandı.`
-         : `Hikâyelerim'deki "${oyku.title}" seriye bağlandı.`);
+    yeni ? `"${baslik}" Kısa Okumalarım'a ⏳ Okunacak olarak eklendi ve seriye bağlandı.`
+         : `Kısa Okumalarım'daki "${oyku.title}" seriye bağlandı.`);
   renderSeriesList();
   // Kitap formu eklemeden sonra açık kalıyor; öykü formu da kalsın — art arda
   // birkaç ara öykü eklenebilsin (liste yeniden çizilince form kapalı doğuyor).
@@ -1898,7 +1898,7 @@ function oykuyuSeridenCikarSor(evt, seriesId, storyId){
   kutu.id = kutuId;
   kutu.style.cssText = 'display:flex;align-items:center;gap:.4rem;padding:.25rem .5rem;background:rgba(139,0,0,.12);border:1px solid rgba(139,0,0,.3);border-radius:4px;font-family:Crimson Pro,serif;font-size:.78rem;color:var(--gold-light);flex-wrap:wrap;margin-top:.2rem';
   const ad = document.createElement('span');
-  ad.textContent = `"${(s&&s.title)||'Bu öykü'}" seriden çıkarılsın mı? Hikâyelerim'de kalır.`;
+  ad.textContent = `"${(s&&s.title)||'Bu öykü'}" seriden çıkarılsın mı? Kısa Okumalarım'da kalır.`;
   kutu.appendChild(ad);
   kutu.insertAdjacentHTML('beforeend',
     `<button class="btn btn-sm btn-danger" style="font-size:.68rem;padding:.1rem .4rem" onclick="oykuyuSeridenCikar('${seriesId}',${storyId})">Evet</button>

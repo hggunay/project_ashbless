@@ -59,7 +59,7 @@ function getFeedCards(){
       cards.push({
         type:'story', u, userName:user.displayName, userAvatar:user.avatar||'📚',
         storyId:s.id, bookTitle:s.title, author:s.author,
-        rating:s.rating||0, source:s.source, link:s.link, sourceBook:s.sourceBook||null,
+        rating:s.rating||0, source:s.source, link:s.link, sourceBook:s.sourceBook||null, tur:s.tur||null,
         ts:s.addedAt||0, reactions:s.reactions||{},
       });
     });
@@ -343,7 +343,7 @@ function renderFeed(append=false){
   });
 
   if(!cards.length){
-    container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz paylaşım yok. Kitap değerlendirmesi yaz, alıntı veya hikâye ekle!</div>`;
+    container.innerHTML=`<div class="empty-state" style="padding:2rem">Henüz paylaşım yok. Kitap değerlendirmesi yaz, alıntı veya kısa okuma ekle!</div>`;
     return;
   }
 
@@ -580,7 +580,7 @@ ${(()=>{
               ?`readingev_${card.u}_${card.readingEventId}`
               :`review_${card.u}_${card.bookId}`;
     const typeBadgeClass=card.type==='review'?'journal-type-review':card.type==='story'?'journal-type-story':card.type==='badge'?'journal-type-series':(card.type==='series_event'||card.type==='country_event'||card.type==='realm_event'||card.type==='oyun_rekor'||card.type==='oyku_kesif'||card.type==='streak_milestone'||card.type==='reading_event')?'journal-type-series':'journal-type-quote';
-const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?'📖 hikâye':card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='oyun_rekor'?'🎮 oyun rekoru':card.type==='oyku_kesif'?'📜 buluntu metin':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
+const typeBadgeLabel=card.type==='review'?'📖 değerlendirme':card.type==='story'?(card.tur==='yazi'?'📰 yazı':'📖 öykü'):card.type==='badge'?'🏅 rozet':card.type==='series_event'?'📚 seri':card.type==='country_event'?'🌍 yeni ülke':card.type==='realm_event'?'🗺️ yeni diyar':card.type==='oyun_rekor'?'🎮 oyun rekoru':card.type==='oyku_kesif'?'📜 buluntu metin':card.type==='streak_milestone'?'🔥 seri':card.type==='reading_event'?(card.eventType==='started'?'📜 yolculuk':'📖 okuma'):' 💬 alıntı';
     const headerBook=card.type==='country_event'
       ?`<span class="journal-entry-book">${escapeHtml(card.country)||'—'}</span>`
       :card.type==='realm_event'

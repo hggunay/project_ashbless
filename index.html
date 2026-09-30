@@ -1060,7 +1060,7 @@ try{
       <button class="nav-tab" onclick="showPanel('feed',this)">🏠 Ana Sayfa <span id="feedBadge" style="display:none;background:var(--rust);color:white;font-size:.55rem;font-family:'Space Mono',monospace;padding:.1rem .35rem;border-radius:20px;margin-left:.2rem;vertical-align:middle"></span></button>
       <button class="nav-tab" onclick="showPanel('myBooks',this)">📖 Kitaplarım</button>
       <button class="nav-tab" onclick="showPanel('series',this)">📚 Seriler</button>
-      <button class="nav-tab" onclick="showPanel('stories',this)">📖 Hikâyelerim</button>
+      <button class="nav-tab" onclick="showPanel('stories',this)">📖 Kısa Okumalarım</button>
       <button class="nav-tab" onclick="showPanel('journal',this)">📒 Defterim</button>
       <button class="nav-tab" onclick="showPanel('shelf',this)">🗄️ Kitap Rafım</button>
       <button class="nav-tab" onclick="showPanel('myBadges',this)">🏅 Rozetlerim</button>
@@ -1084,7 +1084,7 @@ try{
               <button class="filter-tab active" onclick="filterFeed('all',this)">Tümü</button>
               <button class="filter-tab" onclick="filterFeed('reviews',this)">Değerlendirme</button>
               <button class="filter-tab" onclick="filterFeed('quotes',this)">Alıntı</button>
-              <button class="filter-tab" onclick="filterFeed('stories',this)">Hikâye</button>
+              <button class="filter-tab" onclick="filterFeed('stories',this)">Kısa Okuma</button>
               <button class="filter-tab" onclick="filterFeed('coreading',this)">👥 Birlikte</button>
               <button class="filter-tab" onclick="filterFeed('journey',this)">📜 Yolculuk</button>
             </div>
@@ -1408,21 +1408,28 @@ try{
         <span id="storiesViewingText"></span>
         <button class="btn btn-danger btn-sm" onclick="stopViewing()">← Kendi profilime dön</button>
       </div>
-      <!-- Hikâye Ekle formu -->
+      <!-- Kısa Okuma Ekle formu (2026-09-30: eski adı Hikâyelerim — öykü + yazı) -->
       <div class="add-section" id="addStorySection">
-        <button class="btn btn-primary" id="addStoryToggleBtn" onclick="toggleAddStorySection()">+ Hikâye Ekle</button>
+        <button class="btn btn-primary" id="addStoryToggleBtn" onclick="toggleAddStorySection()">+ Kısa Okuma Ekle</button>
         <div class="add-acc-body" id="addStoryAccBody">
-        <div class="section-title">📖 Hikâye Ekle</div>
+        <div class="section-title">📖 Kısa Okuma Ekle</div>
         <!-- Her zaman görünür: başlık + yazar -->
         <div class="input-grid" style="margin-bottom:.75rem">
           <div class="field-group" style="grid-column:1/-1">
-            <span class="field-label">Hikâye Başlığı *</span>
-            <input class="book-input" id="storyTitle" type="text" placeholder="Hikâye adı..."/>
+            <span class="field-label">Başlık *</span>
+            <input class="book-input" id="storyTitle" type="text" placeholder="Öykü ya da yazının adı..."/>
           </div>
           <div class="field-group" style="grid-column:1/-1">
             <span class="field-label">Yazar</span>
             <input class="book-input" id="storyAuthor" type="text" placeholder="Yazar adı..."/>
           </div>
+        </div>
+        <!-- Tür (2026-09-30): köşe yazısı / deneme / makale de ekleniyor. Yalnız
+             ÖYKÜ, öykü rozetlerine sayılır (badges.js oykuTuruMu). Kayıtta yalnız
+             yazı işaretlenir (tur:'yazi'); alan yoksa öykü → eski kayıtlar değişmez. -->
+        <div class="chip-group" id="storyTurChips" style="margin-bottom:.75rem">
+          <span class="chip active" data-val="oyku" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">📖 Öykü</span>
+          <span class="chip" data-val="yazi" onclick="this.parentNode.querySelectorAll('.chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">📰 Yazı</span>
         </div>
         <!-- Daha Fazla accordion -->
         <div>
@@ -1452,7 +1459,7 @@ try{
             <!-- Kaynak kitap adı - kitap veya ekitap seçilince açılır -->
             <div id="storySourceBookWrap" style="display:block;margin-bottom:.75rem">
               <div class="field-group">
-                <span class="field-label">📚 Kaynak Kitap Adı <span style="opacity:.5;font-weight:400">(isteğe bağlı — hikâyenin alındığı kitap)</span></span>
+                <span class="field-label">📚 Kaynak Kitap Adı <span style="opacity:.5;font-weight:400">(isteğe bağlı — alındığı kitap)</span></span>
                 <input class="book-input" id="storySourceBook" type="text" placeholder="örn: Körler Ülkesi ve Diğer Karanlık Öyküler"/>
               </div>
             </div>
@@ -1472,7 +1479,7 @@ try{
           </div>
         </div>
         <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;margin-top:.5rem">
-          <button class="btn btn-primary" onclick="addStory()">+ Hikâye Ekle</button>
+          <button class="btn btn-primary" onclick="addStory()">+ Kısa Okuma Ekle</button>
           <div class="status-msg" id="addStoryStatus"></div>
         </div>
         <!-- "zaten mevcut" uyarısı (2026-09-17) — kitap eklemedeki dupConfirmBar'ın aynısı -->
@@ -1497,7 +1504,7 @@ try{
 
       <!-- Okundu listesi -->
       <div class="card">
-        <div class="card-header">📖 Hikâyelerim</div>
+        <div class="card-header">📖 Kısa Okumalarım</div>
         <div id="storySortBar" style="padding:.5rem .75rem;border-bottom:1px solid rgba(201,162,39,.1);display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
           <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.6;text-transform:uppercase">Sırala:</span>
           <button class="filter-tab active" id="sortByDate" onclick="setSortStories('date',this)">📅 Eklenme</button>
@@ -2029,7 +2036,7 @@ try{
               <div style="padding-top:.75rem">
                 <div style="margin-bottom:1.2rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Tüm kitaplarımı sil</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın kalır ama tüm kitap kayıtların, rozet ilerlemen ve haritaların silinir. Hikâyelerin kalır — yalnızca onların açtığı hayali diyarlar haritanda durur.</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Hesabın kalır ama tüm kitap kayıtların, rozet ilerlemen ve haritaların silinir. Kısa okumaların kalır — yalnızca onların açtığı hayali diyarlar haritanda durur.</div>
                   <button class="btn btn-danger" onclick="confirmDeleteBooks()">🗑️ Tüm Kitapları Sil</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
@@ -2043,13 +2050,13 @@ try{
                      Artık: yalnız harita · yalnız rozet · ikisi birden. -->
                 <div style="margin-bottom:1.2rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Yalnızca rozetleri sıfırla</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitaplarını ve hikayelerini rozet sayımının dışında bırakır; rozetler 0'a döner ve yeniden kazanılabilir. <b>Haritana, kitap listene ve ülke kayıtlarına dokunmaz.</b> İsme özel rozetler (Dune, Harry Potter, Yüzüklerin Efendisi vb.) etkilenmez. Tek düğmeyle geri alınabilir.</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kitaplarını ve kısa okumalarını rozet sayımının dışında bırakır; rozetler 0'a döner ve yeniden kazanılabilir. <b>Haritana, kitap listene ve ülke kayıtlarına dokunmaz.</b> İsme özel rozetler (Dune, Harry Potter, Yüzüklerin Efendisi vb.) etkilenmez. Tek düğmeyle geri alınabilir.</div>
                   <button class="btn btn-danger" onclick="confirmRozetSifirla()">🏅 Yalnızca Rozetleri Sıfırla</button>
                   <button id="rozetGeriAlBtn" class="btn btn-sm" style="display:none;margin-left:.5rem;background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="confirmRozetSifirlaGeriAl()">↩️ Rozet Sıfırlamasını Geri Al</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
                   <div style="font-family:'Crimson Pro',serif;font-size:.95rem;margin-bottom:.5rem">Harita + rozetleri birlikte sıfırla</div>
-                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kayıtlı tüm kitaplarına ve hikayelerine <b>"geçmişte okundu"</b> etiketi verir. Rozetler sıfırlanır; dünya haritası bu kitapları saymadığı için <b>harita da boşalır</b> (ülke renkleri, ülke sayısı, avatarın konumu). Kitaplarım listesinde hepsi "geçmiş" bölümüne geçer. Hayali diyarlar haritası etkilenmez; kitapların, notların ve ülke kayıtların silinmez. İsme özel rozetler korunur. <b>Toplu geri alma yok</b> — geri almak için kitap/hikaye kayıtlarındaki "geçmişte okudum" kutucuklarını tek tek kaldırman gerekir.</div>
+                  <div style="font-size:.8rem;opacity:.6;margin-bottom:.75rem;font-style:italic">Kayıtlı tüm kitaplarına ve kısa okumalarına <b>"geçmişte okundu"</b> etiketi verir. Rozetler sıfırlanır; dünya haritası bu kitapları saymadığı için <b>harita da boşalır</b> (ülke renkleri, ülke sayısı, avatarın konumu). Kitaplarım listesinde hepsi "geçmiş" bölümüne geçer. Hayali diyarlar haritası etkilenmez; kitapların, notların ve ülke kayıtların silinmez. İsme özel rozetler korunur. <b>Toplu geri alma yok</b> — geri almak için kitap/kısa okuma kayıtlarındaki "geçmişte okudum" kutucuklarını tek tek kaldırman gerekir.</div>
                   <button class="btn btn-danger" onclick="confirmResetBadges()">🗺️🏅 Harita + Rozetleri Sıfırla</button>
                 </div>
                 <div style="margin-bottom:1.2rem">
@@ -2125,9 +2132,9 @@ try{
      gerekmesin, index.html zaten her deploy'da yükleniyor. -->
 <script src="map.js?s=20260919b"></script>
 <script src="coreading.js?s=20260919b"></script>
-<script src="series.js?s=20260919b"></script>
-<script src="feed.js?s=20260924a"></script>
-<script src="badges.js?s=20260926"></script>
+<script src="series.js?s=20260930k"></script>
+<script src="feed.js?s=20260930k"></script>
+<script src="badges.js?s=20260930k"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20260919b"></script>
@@ -2145,7 +2152,7 @@ try{
 <script src="uye-onay.js?s=20260919b"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js?s=20260925b"></script>
+<script src="karsilama.js?s=20260930k"></script>
 <script src="hesap-vakti-cumleler.js?s=20260919b"></script>
 <script src="hesap-vakti.js?s=20260919b"></script>
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
@@ -7654,6 +7661,7 @@ function addStory(){
     retroactive:document.getElementById('storyRetroactive')?.checked||false,
     addedAt:new Date().toISOString(),
   };
+  if(document.querySelector('#storyTurChips .chip.active')?.dataset.val==='yazi') story.tur='yazi';
   db.stories[me].push(story);
   diyarKesifKontrol();       // öykü de diyar açabilir (King'in Derry öyküleri)
   saveDb();
@@ -7669,7 +7677,8 @@ function addStory(){
   document.getElementById('storySourceBookWrap').style.display='block';
   document.querySelectorAll('#storySourceChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='kitap'));
   document.querySelectorAll('#storyStatusChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='read'));
-  notify('✅ Hikâye eklendi',`"${title}" listenize eklendi.`);
+  document.querySelectorAll('#storyTurChips .chip').forEach(c=>c.classList.toggle('active',c.dataset.val==='oyku'));
+  notify('✅ Kısa okuma eklendi',`"${title}" listenize eklendi.`);
   renderStories();
   renderJournal();
 }
@@ -7721,7 +7730,7 @@ function openStoryDetail(ownerId, storyId){
   document.getElementById('modalSubtitle').textContent=story.author?`— ${story.author}`:'';
   document.getElementById('modalBody').innerHTML=`
     <div class="detail-section">
-      <div class="detail-section-title">📌 Öykü Bilgileri</div>
+      <div class="detail-section-title">📌 Bilgiler</div>
       <div class="detail-grid">
         <div class="detail-field">
           <span class="detail-field-label">Başlık</span>
@@ -7748,6 +7757,10 @@ function openStoryDetail(ownerId, storyId){
           <span class="detail-field-label">📅 Okuma Tarihi <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(YYYY-AA-GG veya sadece YYYY)</span></span>
           ${isMe?`<input class="detail-input" value="${story.readDate||''}" placeholder="örn: 2024-03-15 veya 2024" onchange="saveStoryDate(${storyId},this.value)"/>`:`<span style="font-size:.9rem;color:var(--ink)">${story.readDate?(story.readYearOnly?story.readDate+' (yıl)':story.readDate):'—'}</span>`}
         </div>
+      </div>
+      <div style="margin-top:.5rem">
+        <div class="detail-field-label" style="margin-bottom:.3rem">Tür</div>
+        ${isMe?`<div class="check-chips">${[[null,'📖 Öykü'],['yazi','📰 Yazı']].map(([v,l])=>`<span class="check-chip ${(story.tur||null)===v?'active':''}" onclick="saveStoryField(${storyId},'tur',${v?`'${v}'`:'null'});this.closest('.check-chips').querySelectorAll('.check-chip').forEach(c=>c.classList.remove('active'));this.classList.add('active')">${l}</span>`).join('')}</div>`:`<span class="tag format-tag">${story.tur==='yazi'?'📰 Yazı':'📖 Öykü'}</span>`}
       </div>
       <div style="margin-top:.5rem">
         <div class="detail-field-label" style="margin-bottom:.3rem">Kaynak</div>
@@ -7799,13 +7812,13 @@ function openStoryDetail(ownerId, storyId){
     <div class="detail-section">
       <div class="detail-section-title">📝 Kişisel Not</div>
       ${isMe
-        ?`<textarea class="detail-input" style="width:100%;min-height:70px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem" placeholder="Bu öykü hakkında notun..." onchange="saveStoryField(${storyId},'note',this.value||null)">${story.note||''}</textarea>`
+        ?`<textarea class="detail-input" style="width:100%;min-height:70px;resize:vertical;font-family:'Crimson Pro',serif;font-size:.93rem" placeholder="Bununla ilgili notun..." onchange="saveStoryField(${storyId},'note',this.value||null)">${story.note||''}</textarea>`
         :`<div style="font-family:'Crimson Pro',serif;font-size:.93rem;color:var(--ink);white-space:pre-wrap">${story.note||'<span style="opacity:.4;font-style:italic">Not yok.</span>'}</div>`}
     </div>
   `;
   document.getElementById('modalFooter').innerHTML=isMe
     ?`<span style="font-size:.75rem;font-family:'Space Mono',monospace;color:var(--rust);opacity:.6">Değişiklikler otomatik kaydedilir</span>
-      <button class="btn btn-danger btn-sm" onclick="confirmRemoveStory(${storyId})">🗑 Hikâyeyi Sil</button>`
+      <button class="btn btn-danger btn-sm" onclick="confirmRemoveStory(${storyId})">🗑 Sil</button>`
     :'';
   document.getElementById('modalOverlay').classList.add('open');
 }
@@ -7876,7 +7889,7 @@ function setStoryRating(storyId, rating){
 function confirmRemoveStory(storyId){
   const footer=document.getElementById('modalFooter');
   footer.innerHTML=`
-    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bu hikâyeyi silmek istediğine emin misin?</span>
+    <span style="font-family:'Crimson Pro',serif;font-style:italic;font-size:.9rem;color:var(--rust)">Bunu silmek istediğine emin misin?</span>
     <div style="display:flex;gap:.5rem">
       <button class="btn btn-danger btn-sm" onclick="removeStory(${storyId})">🗑 Evet, Sil</button>
       <button class="btn btn-sm" style="background:rgba(201,162,39,.15);color:var(--ink)" onclick="openStoryDetail('${me}',${storyId})">İptal</button>
@@ -7911,7 +7924,7 @@ function renderStories(){
   const banner=document.getElementById('storiesViewingBanner');
   if(banner){
     banner.style.display=viewing?'':'none';
-    if(viewing){const _av=user?.avatar||'📚';const _avD=_av.startsWith('data:')||_av.startsWith('avatar_')?'👤':_av;document.getElementById('storiesViewingText').textContent=`${_avD} ${user?.displayName||target} adlı üyenin hikâyeleri`;}
+    if(viewing){const _av=user?.avatar||'📚';const _avD=_av.startsWith('data:')||_av.startsWith('avatar_')?'👤':_av;document.getElementById('storiesViewingText').textContent=`${_avD} ${user?.displayName||target} adlı üyenin kısa okumaları`;}
   }
   if(isMe){
     const addSec=document.getElementById('addStorySection');
@@ -7932,7 +7945,7 @@ function renderStories(){
   if(wlCard&&wlList&&wlCount){
     if(toreadStories.length&&isMe){
       wlCard.style.display='';
-      wlCount.textContent=`${toreadStories.length} hikâye`;
+      wlCount.textContent=`${toreadStories.length} kısa okuma`;
       const sortedWl=[...toreadStories].sort((a,b)=>(a.author||'').localeCompare(b.author||'','tr'));
       wlList.innerHTML=sortedWl.map(s=>`
         <div class="book-item book-item-wishlist">
