@@ -145,8 +145,9 @@ const OYUN_LISTESI = [
     id: 'kulucka-merkezi',
     ad: 'Kuluçka Merkezi',
     kitap: 'Cesur Yeni Dünya — Aldous Huxley',
-    aciklama: 'Bant şişeleri getiriyor, sen doğru kapılara ayırıyorsun. ' +
-              'Gerginlik artarsa bir hap her şeyi yumuşatır — bir süreliğine.',
+    aciklama: "Londra Merkez Kuluçka ve Şartlandırma Merkezi'nde vardiyan başladı. Banttan akan her şişenin " +
+              'kaderi çoktan yazıldı; seninki onları doğru kapıya göndermek. Huzurun kaçarsa ' +
+              'merak etme, herkese yetecek kadar soma var.',
     ikon: '🧪',
     tur: 'oyun',
     skorAdi: 'şişe',

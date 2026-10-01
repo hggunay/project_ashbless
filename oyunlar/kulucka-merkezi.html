@@ -64,11 +64,13 @@ button:active{background:#d5dedb}
 
 <div id="yardimKat"><div class="yk">
   <h2>Nasıl oynanır</h2>
-  <p>Bant şişeleri getiriyor. Her şişenin üstünde bir <b>işaret</b> var: şişeyi aynı işaretli <b>kapıya sürükle</b>.</p>
-  <p>Doğru kapıya giren her şişe <b>1 puan</b>.</p>
-  <p><b>Yanlış kapı</b> ya da <b>kaçan şişe</b> gerginliği artırır. Gerginlik arttıkça <b>bant hızlanır</b>. Ölçer dolarsa vardiya biter.</p>
-  <p><b>Soma</b> gerginliği siler, bant sakinleşir. Ama işaretler bir süre bulanıklaşır — ve her seferinde biraz daha uzun.</p>
+  <p>Burada kimse doğmaz, şişeden çıkar. Alfalar yönetmek, Epsilonlar hizmet etmek için. Sen de düzenin bir parçasısın; yeter ki kapıları karıştırma.</p>
+  <p>Her şişenin üstünde kastının <b>işareti</b> var. Şişeyi aynı işaretli <b>kapıya sürükle</b>. Doğru kapıya giren her şişe <b>1 puan</b>.</p>
+  <p><b>Yanlış kapı</b> ya da <b>kaçan şişe</b>, Müdür'ün kaşlarını çattırır: gerginlik artar, <b>bant hızlanır</b>. Ölçer dolarsa vardiyan biter.</p>
+  <p><b>Soma</b> her şeyi yumuşatır, bant sakinleşir. Ama dünya bulanıklaşır, ve her gram bir öncekinden uzun sürer.</p>
+  <p>Soma bedava değil: doğru ayırdığın şişeler <b>maaşını</b> doldurur, maaşın soma olarak ödenir. Bant hızlandıkça ve yeni kastlar geldikçe maaşın da artar. İyi çalışan iyi kazanır.</p>
   <p>Zaman geçtikçe bant hızlanacak. Yeni kastlar gelecek.</p>
+  <p>Bilgisayarda soma için <b>boşluk tuşu</b>.</p>
   <button class="kapat" id="yardimKapat">Anladım</button>
 </div></div>
 
@@ -92,6 +94,22 @@ const CEZA_KACAN=20, CEZA_YANLIS=25, ODUL_DOGRU=3;
 
 let siseler=[], tutulan=null, stres=0, puan=0, bitti=false;
 let somaSayisi=0, somaBitis=0, zaman=0, mesafe=0, aralik=0;
+/* SOMA = MAAŞ (Gökşin, 2026-10-01: "iyi çalışan iyi kazansın"). Doğru şişe maaşı
+   doldurur; bant (vardiyanın NORMAL hızı, panik değil) hızlandıkça şişe başına
+   maaş artar. Maaş dolunca 1 soma. Vardiya 1 somayla başlar. */
+let somaHakki=1, maas=0;
+/* Başlangıç hızında kaç şişe = 1 soma. Ölçüm (makine, yarıda soma alan):
+   8–30 arası kısıt değil (sınırsızla aynı, ~5 soma/oyun) · 45'te yeni yeni
+   sıkıyor · 60'ta puan düşüyor (122, kötü oyun 93). 40: soma biriktirmek ile
+   harcamak arasında gerçek seçim, ama cezalandırmıyor. */
+/* Gökşin denedi (aynı gün): "yavaş doluyor; başta biraz hızlı olsun, kast
+   sayısı ve bant hızı artınca da hızlansın" → 40'tan 25'e + kapı çarpanı. */
+const MAAS_SISE=25;
+function maasArtisi(){
+  const kapiCarpani=[1, 1, 1, 1.3, 1.6][kapiSayisi()-1];     // 3 / 4 / 5 kapı
+  return Math.pow(temelHiz()/70, 1.2) * kapiCarpani / MAAS_SISE;
+}
+function temelHiz(){ return 70 + zaman*0.8; }
 let parlama=[0,0,0,0,0], parlamaIyi=[true,true,true,true,true], sarsinti=0;
 
 /* ── Görsel: Gökşin'in şişesi gelirse o, gelmezse kodla çizilen şişe ── */
@@ -115,8 +133,10 @@ function siseGenislik(s){
 function mesaj(t){ document.getElementById("msg").textContent=t; }
 function sayaclar(){
   document.getElementById("puan").textContent=puan;
-  document.getElementById("somaSay").textContent=somaSayisi;
-  document.getElementById("soma").disabled = bitti || somaEtkisi()>0;
+  document.getElementById("somaSay").textContent=somaHakki;
+  const d = document.getElementById("soma");
+  d.disabled = bitti || somaEtkisi()>0 || somaHakki<1;
+  d.textContent = "SOMA (" + somaHakki + ")";
 }
 
 function kapiSayisi(){ return puan<15 ? 3 : puan<35 ? 4 : 5; }
@@ -129,7 +149,7 @@ function kapiSayisi(){ return puan<15 ? 3 : puan<35 ? 4 : 5; }
    Hız ZAMANA bağlı + güçlü panikte: somasız medyan 135 (kötü oyun 67), yarıda
    soma alan 174 (kötü oyun 155) → soma gerçek karar oldu. */
 function hiz(){
-  const temel=70 + zaman*0.8;                                  // piksel/saniye
+  const temel=temelHiz();                                      // piksel/saniye
   return somaEtkisi()>0 ? temel*0.6 : temel*(1 + 2.5*stres/100);
 }
 function yeniAralik(){ return 120 + Math.random()*110; }
@@ -217,6 +237,11 @@ function ciz(){
   for(let x=-30+kay; x<T; x+=30) ctx.fillRect(x, BANT_Y+4, 14, 8);
   ctx.fillStyle="#7d8b87"; ctx.fillRect(0, BANT_Y+16, T, 4);
 
+  // Dünya Devleti'nin sloganı — kitapta girişin üzerinde yazar (İthaki, 1. bölüm)
+  ctx.fillStyle="rgba(38,48,45,.28)"; ctx.textAlign="center";
+  ctx.font="bold 22px Georgia,serif";
+  ctx.fillText("CEMAAT  ·  ÖZDEŞLİK  ·  İSTİKRAR", T/2, 345);
+
   // kapılar
   const n=kapiSayisi();
   for(let i=0;i<n;i++){
@@ -256,6 +281,12 @@ function ciz(){
   ctx.fillStyle=karisim("#e0b0b0", "#d22c2c", Math.min(1, stres/100));
   ctx.fillRect(mx, 20, mw*Math.min(1, stres/100), 18);
   ctx.strokeStyle="#26302d"; ctx.lineWidth=1.5; ctx.strokeRect(mx, 20, mw, 18);
+  // maaş: dolunca bir soma
+  ctx.fillStyle="#26302d"; ctx.font="bold 11px system-ui,sans-serif"; ctx.textAlign="left";
+  ctx.fillText("MAAŞ", 18, 58);
+  ctx.fillStyle="rgba(255,255,255,.75)"; ctx.fillRect(mx, 49, mw, 10);
+  ctx.fillStyle="#c792b8"; ctx.fillRect(mx, 49, mw*Math.min(1, maas), 10);
+  ctx.strokeStyle="#26302d"; ctx.lineWidth=1; ctx.strokeRect(mx, 49, mw, 10);
 
   if(bitti){
     ctx.fillStyle="rgba(30,30,30,.55)"; ctx.fillRect(0, 270, T, 130);
@@ -301,17 +332,23 @@ function guncelle(dt){
 function birak(x, y){
   const s=tutulan; tutulan=null;
   if(!s || bitti) return;
-  if(y < KAPI_Y-30) return;                  // kapıya ulaşmadı: banta geri döner
+  /* Sloganın altına inen her bırakış sayılır, hizadaki (ya da EN YAKIN) kapıya
+     gider. Kapının tam içine bırakmak fareyle zordu, şişe boşa kaçıyordu. */
+  if(y < KAPI_Y-75) return;                  // kapılara inmedi: banta geri döner
   const n=kapiSayisi();
-  let i=-1;
-  for(let j=0;j<n;j++){ const k=kapiKutusu(j,n); if(x>=k.x-5 && x<=k.x+k.w+5) i=j; }
-  if(i<0) return;
+  let i=0, enYakin=Infinity;
+  for(let j=0;j<n;j++){
+    const k=kapiKutusu(j,n), d=Math.abs(x-(k.x+k.w/2));
+    if(d<enYakin){ enYakin=d; i=j; }
+  }
   siseler.splice(siseler.indexOf(s),1);
   parlama[i]=1; parlamaIyi[i]=(i===s.kast);
   if(i===s.kast){
     const onceki=kapiSayisi();
     puan++; stres=Math.max(0, stres-ODUL_DOGRU);
-    if(kapiSayisi()>onceki) mesaj("Yeni bir kapı açıldı: "+KAST[kapiSayisi()-1].ad+".");
+    maas += maasArtisi();
+    if(maas>=1){ maas-=1; somaHakki++; mesaj("Maaşın ödendi: bir gram soma."); }
+    else if(kapiSayisi()>onceki) mesaj("Yeni bir kapı açıldı: "+KAST[kapiSayisi()-1].ad+".");
     else if(somaEtkisi()===0) mesaj("");
   } else {
     stresEkle(CEZA_YANLIS, KAST[s.kast].ad+" şişesi "+KAST[i].ad+" kapısına girdi.");
@@ -321,6 +358,8 @@ function birak(x, y){
 
 function somaAl(){
   if(bitti || somaEtkisi()>0) return;
+  if(somaHakki<1){ mesaj("Soman kalmadı. Çalış, maaşın dolsun."); return; }
+  somaHakki--;
   stres=0;
   somaBitis=zaman+somaSuresi(somaSayisi);
   somaSayisi++;
@@ -331,6 +370,7 @@ function somaAl(){
 function yeniOyun(){
   siseler=[]; tutulan=null; stres=0; puan=0; bitti=false;
   somaSayisi=0; somaBitis=0; zaman=0; mesafe=0; aralik=60;
+  somaHakki=1; maas=0;
   parlama=[0,0,0,0,0]; sarsinti=0;
   sayaclar(); mesaj("Şişeleri işaretlerine göre kapılara sürükle."); boyutlandir(); ciz();
 }
@@ -353,8 +393,10 @@ tuval.addEventListener("pointerdown", e=>{
   const p=noktaAl(e);
   let sec=null;
   for(const s of siseler){
-    if(Math.abs(p.x-s.x)<=siseGenislik(s)/2+10 &&p.y>=BANT_Y-SISE_H-12 && p.y<=BANT_Y+20)
-      if(!sec || s.x>sec.x) sec=s;           // üst üste gelirse öndeki
+    /* Cömert tutma alanı: fareyle şişenin hemen dışına tıklamak çok kolay
+       (Gökşin, bilgisayarda denerken). Telefonda parmak zaten geniş. */
+    if(Math.abs(p.x-s.x)<=siseGenislik(s)/2+20 && p.y>=BANT_Y-SISE_H-30 && p.y<=BANT_Y+35)
+      if(!sec || Math.abs(p.x-s.x)<Math.abs(p.x-sec.x)) sec=s;   // alanlar örtüşürse en yakını
   }
   if(!sec) return;
   tutulan=sec; tutulan.tx=p.x; tutulan.ty=p.y;
