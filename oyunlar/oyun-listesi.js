@@ -142,6 +142,34 @@ const OYUN_LISTESI = [
     }
   },
   {
+    id: 'kulucka-merkezi',
+    ad: 'Kuluçka Merkezi',
+    kitap: 'Cesur Yeni Dünya — Aldous Huxley',
+    aciklama: 'Bant şişeleri getiriyor, sen doğru kapılara ayırıyorsun. ' +
+              'Gerginlik artarsa bir hap her şeyi yumuşatır — bir süreliğine.',
+    ikon: '🧪',
+    tur: 'oyun',
+    skorAdi: 'şişe',
+    dosya: 'oyunlar/kulucka-merkezi.html',
+    /* Tetikleyici KİTAP ADINA bağlı, yazara değil: Huxley'in "Ada"sı açmamalı.
+       ⚠️ Huxley'in "Cesur Yeni Dünya'yı Ziyaret" (1958, deneme) kitabı da var;
+       `baslikIcerir` onu da yakalardı → `haric`te. haric TAM eşleşme arar,
+       o yüzden bilinen yazılışlar tek tek yazıldı. (2026-10-01) */
+    tetikleyiciler: {
+      haric: [
+        { baslik: "Cesur Yeni Dünya'yı Ziyaret",
+          takmaAdlar: ['Cesur Yeni Dünyayı Ziyaret', "Cesur Yeni Dünya'ya Dönüş",
+                       "Cesur Yeni Dünya'yı Yeniden Ziyaret", 'Brave New World Revisited'] }
+      ],
+      baslikIcerir: [
+        { yazar: 'Aldous Huxley', baslikIcerir: 'cesur yeni' },
+        { yazar: 'Aldous Huxley', baslikIcerir: 'brave new world' }
+      ],
+      kitaplar: [{ baslik: 'Cesur Yeni Dünya', yazar: 'Aldous Huxley',
+                   takmaAdlar: ['Brave New World', 'Yeni Dünya'] }]
+    }
+  },
+  {
     /* Bir kitaba bağlı DEĞİL: kitapları açan oyun bu. Hikâyeyi uygulama atar,
        oyun yalnızca sayfa sayısını bilir (oyunlar.js → BULUNTU METİNLER).
        Ad kaynağı: Ashbless özel rozetindeki "William Ashbless (buluntu metin)". */

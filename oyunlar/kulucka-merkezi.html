@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Kuluçka Merkezi</title>
+<style>
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#e4e9e7;color:#2b3633;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+     overflow:hidden;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+.app{height:100%;display:flex;flex-direction:column;align-items:center;
+     padding:6px 8px calc(6px + env(safe-area-inset-bottom));gap:6px}
+.ust{width:100%;max-width:640px;display:flex;align-items:center;gap:8px}
+h1{margin:0;font-size:17px;flex:1;text-align:left;letter-spacing:.5px;color:#2b3633}
+.yardim{width:30px;height:30px;flex:none;border-radius:50%;font-size:15px;font-weight:700;
+        background:#f6f8f7;color:#2b3633;border:1px solid #9aa8a3}
+.sayac{width:100%;max-width:640px;display:flex;justify-content:space-between;font-size:12px;
+       background:#f3f6f5;border:1px solid #b9c4c0;border-radius:7px;padding:5px 9px}
+.sayac b{color:#5a3f7a;font-size:13px}
+.tahta{flex:1 1 auto;min-height:0;width:100%;display:flex;align-items:center;justify-content:center}
+canvas{background:#e9efec;border:2px solid #9aa8a3;border-radius:8px;touch-action:none;display:block}
+.alt{width:100%;max-width:640px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* SABİT yükseklik — min-height DEĞİL. Değişken olursa yazı iki satıra
+   çıktığında aşağısı büyür, tuval küçülür ve ekran zıplar. */
+#msg{width:100%;max-width:640px;font-size:12px;line-height:1.35;height:2.8em;
+     overflow:hidden;color:#3c4a46}
+button{background:#f6f8f7;color:#2b3633;border:1px solid #9aa8a3;border-radius:8px;
+       font-size:13px;min-height:38px;padding:0 12px}
+button:active{background:#d5dedb}
+#soma{background:#f3d9ec;border-color:#c792b8;color:#5a2f50;font-weight:700;letter-spacing:1px;min-width:120px}
+#soma:disabled{opacity:.45}
+#yardimKat{position:fixed;inset:0;background:rgba(40,48,46,.88);display:none;overflow:auto;padding:18px;z-index:9}
+#yardimKat.acik{display:block}
+.yk{max-width:520px;margin:auto;background:#f6f8f7;border:1px solid #9aa8a3;border-radius:12px;padding:16px 18px;color:#2b3633}
+.yk h2{margin:0 0 10px;font-size:17px;color:#5a3f7a}
+.yk p{margin:0 0 9px;font-size:13.5px;line-height:1.55}
+.yk b{color:#7a3f6a}
+.yk .kapat{width:100%;margin-top:6px;height:38px;background:#d9c4e0;color:#2b2233;
+           border:none;border-radius:8px;font-size:14px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="ust">
+    <h1>Kuluçka Merkezi</h1>
+    <button class="yardim" id="yardimAc" aria-label="Nasıl oynanır">?</button>
+  </div>
+
+  <div class="sayac">
+    <span>Şişe <b id="puan">0</b></span>
+    <span>Soma <b id="somaSay">0</b></span>
+  </div>
+
+  <div id="msg">Şişeleri işaretlerine göre kapılara sürükle.</div>
+
+  <div class="tahta"><canvas id="tuval" width="600" height="600"></canvas></div>
+
+  <div class="alt">
+    <button id="yeni">YENİ VARDİYA</button>
+    <button id="soma">SOMA</button>
+  </div>
+</div>
+
+<div id="yardimKat"><div class="yk">
+  <h2>Nasıl oynanır</h2>
+  <p>Bant şişeleri getiriyor. Her şişenin üstünde bir <b>işaret</b> var: şişeyi aynı işaretli <b>kapıya sürükle</b>.</p>
+  <p>Doğru kapıya giren her şişe <b>1 puan</b>.</p>
+  <p><b>Yanlış kapı</b> ya da <b>kaçan şişe</b> gerginliği artırır. Gerginlik arttıkça <b>bant hızlanır</b>. Ölçer dolarsa vardiya biter.</p>
+  <p><b>Soma</b> gerginliği siler, bant sakinleşir. Ama işaretler bir süre bulanıklaşır — ve her seferinde biraz daha uzun.</p>
+  <p>Zaman geçtikçe bant hızlanacak. Yeni kastlar gelecek.</p>
+  <button class="kapat" id="yardimKapat">Anladım</button>
+</div></div>
+
+<script>
+const OYUN_ID="kulucka-merkezi";        // oyun-listesi.js'teki id ile AYNI
+const T=600;                            // tuvalin iç çözünürlüğü
+const tuval=document.getElementById("tuval"), ctx=tuval.getContext("2d");
+
+/* Kastlar ŞEKİLLE ayrılır, renkle değil: gerginlik arttıkça ekran griye
+   döner, renk o zaman hiçbir şey söylemez. Renkler yalnız süs. */
+const KAST=[
+  {ad:"ALFA",    sekil:"ucgen",   renk:"#8fa9d6"},
+  {ad:"BETA",    sekil:"daire",   renk:"#d38fbd"},
+  {ad:"GAMA",    sekil:"kare",    renk:"#8fcb98"},
+  {ad:"DELTA",   sekil:"baklava", renk:"#d4b878"},
+  {ad:"EPSİLON", sekil:"arti",    renk:"#9b95b3"}
+];
+const BANT_Y=232, SISE_W=60, SISE_H=104;      // BANT_Y = şişelerin oturduğu çizgi
+const KAPI_Y=436, KAPI_ALT=590;
+const CEZA_KACAN=20, CEZA_YANLIS=25, ODUL_DOGRU=3;
+
+let siseler=[], tutulan=null, stres=0, puan=0, bitti=false;
+let somaSayisi=0, somaBitis=0, zaman=0, mesafe=0, aralik=0;
+let parlama=[0,0,0,0,0], parlamaIyi=[true,true,true,true,true], sarsinti=0;
+
+/* ── Görsel: Gökşin'in şişesi gelirse o, gelmezse kodla çizilen şişe ── */
+const GORSEL={};
+function gorselYukle(ad, yol){
+  const im=new Image();
+  im.onload=()=>{ GORSEL[ad]=im; };
+  im.onerror=()=>{ GORSEL[ad]=null; };
+  im.src=yol;
+}
+/* Beş şişe görseli, şişeye RASTGELE verilir — kastla ilgisi YOK. Bağlı olsaydı
+   oyuncu işarete değil şişenin rengine bakardı (gri ekranda da şekle bakmalı). */
+const SISE_SAYISI=5;
+for(let i=1;i<=SISE_SAYISI;i++) gorselYukle("sise"+i, "gorseller/sise"+i+".png");
+function siseGorsel(s){ return GORSEL["sise"+s.g] || null; }
+function siseGenislik(s){
+  const im=siseGorsel(s);
+  return im ? Math.min(92, im.width*SISE_H/im.height) : SISE_W;
+}
+
+function mesaj(t){ document.getElementById("msg").textContent=t; }
+function sayaclar(){
+  document.getElementById("puan").textContent=puan;
+  document.getElementById("somaSay").textContent=somaSayisi;
+  document.getElementById("soma").disabled = bitti || somaEtkisi()>0;
+}
+
+function kapiSayisi(){ return puan<15 ? 3 : puan<35 ? 4 : 5; }
+/* Tavan YOK: kusursuz oynayan biri de bir yerde yetişemez, oyun hep biter.
+   (Tavan 210 iken ölçümde kusursuz oyuncu hiç bitiremiyordu.) */
+/* Gerginlik bandı HIZLANDIRIR (panik): kaçan şişe → gerginlik → hız → yine
+   kaçan şişe. Soma bu döngüyü kırar: gerginlik sıfır, bant tatil hızında.
+   (İlk sürümde gerginlik yalnız can barıydı; Gökşin: "etkisi yok, soma anlamsız".)
+   Ölçüm (makine oyuncusu): hız puana bağlı + zayıf panikte soma +1 puan getiriyordu.
+   Hız ZAMANA bağlı + güçlü panikte: somasız medyan 135 (kötü oyun 67), yarıda
+   soma alan 174 (kötü oyun 155) → soma gerçek karar oldu. */
+function hiz(){
+  const temel=70 + zaman*0.8;                                  // piksel/saniye
+  return somaEtkisi()>0 ? temel*0.6 : temel*(1 + 2.5*stres/100);
+}
+function yeniAralik(){ return 120 + Math.random()*110; }
+/* Soma'nın bulanıklığı: 1 = tam, son saniyede yavaşça 0'a iner. */
+function somaEtkisi(){ return Math.max(0, Math.min(1, somaBitis - zaman)); }
+function somaSuresi(n){ return 3 + n*1.6; }                 // her hap daha uzun
+
+function kapiKutusu(i, n){
+  const bosluk=10, g=(T - bosluk*(n+1))/n;
+  return {x: bosluk + i*(g+bosluk), y: KAPI_Y, w: g, h: KAPI_ALT-KAPI_Y};
+}
+
+/* ── Çizim ─────────────────────────────────────────────────────────── */
+function sekilCiz(sekil, x, y, r){
+  ctx.beginPath();
+  if(sekil==="ucgen"){ ctx.moveTo(x, y-r); ctx.lineTo(x+r*0.95, y+r*0.75); ctx.lineTo(x-r*0.95, y+r*0.75); ctx.closePath(); }
+  else if(sekil==="daire"){ ctx.arc(x, y, r*0.85, 0, Math.PI*2); }
+  else if(sekil==="kare"){ ctx.rect(x-r*0.75, y-r*0.75, r*1.5, r*1.5); }
+  else if(sekil==="baklava"){ ctx.moveTo(x, y-r); ctx.lineTo(x+r*0.8, y); ctx.lineTo(x, y+r); ctx.lineTo(x-r*0.8, y); ctx.closePath(); }
+  else { const k=r*0.32; ctx.moveTo(x-k, y-r); ctx.lineTo(x+k, y-r); ctx.lineTo(x+k, y-k); ctx.lineTo(x+r, y-k);
+         ctx.lineTo(x+r, y+k); ctx.lineTo(x+k, y+k); ctx.lineTo(x+k, y+r); ctx.lineTo(x-k, y+r);
+         ctx.lineTo(x-k, y+k); ctx.lineTo(x-r, y+k); ctx.lineTo(x-r, y-k); ctx.lineTo(x-k, y-k); ctx.closePath(); }
+  ctx.fill();
+}
+
+function siseCiz(s, cx, altY){
+  const x=cx-SISE_W/2, y=altY-SISE_H;
+  const im=siseGorsel(s);
+  if(im){
+    const o=Math.min(92/im.width, SISE_H/im.height);
+    ctx.drawImage(im, cx-im.width*o/2, altY-im.height*o, im.width*o, im.height*o);
+  } else {
+    // yedek şişe: mantar, boyun, gövde, içinde sıvı
+    ctx.fillStyle="#b08a62"; ctx.fillRect(cx-8, y, 16, 12);
+    ctx.fillStyle="rgba(235,245,248,.95)"; ctx.strokeStyle="#7f9a98"; ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(cx-9, y+12); ctx.lineTo(cx+9, y+12); ctx.lineTo(cx+9, y+30);
+    ctx.quadraticCurveTo(x+SISE_W, y+34, x+SISE_W, y+48);
+    ctx.lineTo(x+SISE_W, altY-8); ctx.quadraticCurveTo(x+SISE_W, altY, x+SISE_W-8, altY);
+    ctx.lineTo(x+8, altY); ctx.quadraticCurveTo(x, altY, x, altY-8);
+    ctx.lineTo(x, y+48); ctx.quadraticCurveTo(x, y+34, cx-9, y+30); ctx.closePath();
+    ctx.fill(); ctx.stroke();
+    ctx.fillStyle="rgba(190,225,215,.8)";
+    ctx.fillRect(x+3, altY-34, SISE_W-6, 31);
+  }
+  // etiket + işaret (gövdenin geniş, alt kısmında)
+  const ey=altY-SISE_H*0.34;
+  ctx.fillStyle="rgba(255,255,255,.92)"; ctx.strokeStyle="#8c9b97"; ctx.lineWidth=1.5;
+  ctx.beginPath(); ctx.arc(cx, ey, 21, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  const b=somaEtkisi(), sekil=KAST[s.kast].sekil;
+  ctx.fillStyle="#26302d";
+  if(b>0){
+    /* bulanık ama DİKKATLE BAKINCA SEÇİLİR: işaret soluk durur, çevresinde
+       yavaşça salınan birkaç gölgesi olur. (İlk sürümde rastgele titreşim
+       işareti tamamen okunmaz yapıyordu → soma yalnız ceza oluyordu.) */
+    ctx.globalAlpha=1-0.55*b;
+    sekilCiz(sekil, cx, ey, 13);
+    ctx.globalAlpha=0.22*b;
+    const r=6*b, faz=s.x*0.05;
+    for(let k=0;k<4;k++){
+      const a=zaman*2.2 + faz + k*Math.PI/2;
+      sekilCiz(sekil, cx+Math.cos(a)*r, ey+Math.sin(a*1.3)*r, 13*(1+0.25*b));
+    }
+    ctx.globalAlpha=1;
+  } else sekilCiz(sekil, cx, ey, 13);
+}
+
+function karisim(a, b, t){                   // iki #rrggbb rengi karıştır
+  const pa=parseInt(a.slice(1),16), pb=parseInt(b.slice(1),16);
+  const c=k=>Math.round(((pa>>k)&255)*(1-t)+((pb>>k)&255)*t);
+  return "rgb("+c(16)+","+c(8)+","+c(0)+")";
+}
+
+function ciz(){
+  ctx.setTransform(1,0,0,1,0,0); ctx.globalAlpha=1; ctx.globalCompositeOperation="source-over";
+  const b=somaEtkisi();
+  ctx.fillStyle=karisim("#e9efec", "#f7d9ee", b);
+  ctx.fillRect(0,0,T,T);
+  if(sarsinti>0) ctx.translate((Math.random()-.5)*10*sarsinti, 0);
+
+  // bant
+  ctx.fillStyle="#c9d2cf"; ctx.fillRect(0, BANT_Y, T, 16);
+  ctx.fillStyle="#9aa8a3";
+  const kay=(zaman*hiz())%30;
+  for(let x=-30+kay; x<T; x+=30) ctx.fillRect(x, BANT_Y+4, 14, 8);
+  ctx.fillStyle="#7d8b87"; ctx.fillRect(0, BANT_Y+16, T, 4);
+
+  // kapılar
+  const n=kapiSayisi();
+  for(let i=0;i<n;i++){
+    const k=kapiKutusu(i,n), K=KAST[i];
+    ctx.fillStyle=K.renk; ctx.globalAlpha=.35; ctx.fillRect(k.x, k.y, k.w, k.h); ctx.globalAlpha=1;
+    if(parlama[i]>0){
+      ctx.fillStyle=parlamaIyi[i] ? "rgba(255,255,255,"+(parlama[i]*.8)+")" : "rgba(40,30,30,"+(parlama[i]*.6)+")";
+      ctx.fillRect(k.x, k.y, k.w, k.h);
+    }
+    ctx.strokeStyle=K.renk; ctx.lineWidth=3; ctx.strokeRect(k.x, k.y, k.w, k.h);
+    ctx.fillStyle="#26302d"; sekilCiz(K.sekil, k.x+k.w/2, k.y+58, Math.min(26, k.w*0.25));
+    ctx.font="bold "+(n>4?13:15)+"px system-ui,sans-serif"; ctx.textAlign="center";
+    ctx.fillText(K.ad, k.x+k.w/2, k.y+k.h-18);
+  }
+
+  // şişeler (tutulan en üstte)
+  for(const s of siseler) if(s!==tutulan) siseCiz(s, s.x, BANT_Y);
+  if(tutulan) siseCiz(tutulan, tutulan.tx, tutulan.ty+SISE_H/2);
+
+  // gerginlik = renk kaybı. Ölçer bunun ÜSTÜNE çizilir ki kızarması görünsün.
+  ctx.setTransform(1,0,0,1,0,0);
+  if(stres>0){
+    ctx.globalCompositeOperation="saturation";
+    ctx.globalAlpha=Math.min(1, stres/100);
+    ctx.fillStyle="#808080"; ctx.fillRect(0,0,T,T);
+    ctx.globalCompositeOperation="source-over";
+    ctx.globalAlpha=Math.min(.35, stres/300);
+    ctx.fillStyle="#5c5c5c"; ctx.fillRect(0,0,T,T);   // biraz da kararsın
+    ctx.globalAlpha=1;
+  }
+
+  // ölçer
+  ctx.fillStyle="#26302d"; ctx.font="bold 13px system-ui,sans-serif"; ctx.textAlign="left";
+  ctx.fillText("GERGİNLİK", 18, 34);
+  const mx=110, mw=T-mx-18;
+  ctx.fillStyle="rgba(255,255,255,.75)"; ctx.fillRect(mx, 20, mw, 18);
+  ctx.fillStyle=karisim("#e0b0b0", "#d22c2c", Math.min(1, stres/100));
+  ctx.fillRect(mx, 20, mw*Math.min(1, stres/100), 18);
+  ctx.strokeStyle="#26302d"; ctx.lineWidth=1.5; ctx.strokeRect(mx, 20, mw, 18);
+
+  if(bitti){
+    ctx.fillStyle="rgba(30,30,30,.55)"; ctx.fillRect(0, 270, T, 130);
+    ctx.fillStyle="#f2f2f2"; ctx.textAlign="center";
+    ctx.font="italic 24px Georgia,serif"; ctx.fillText("Bir gramı bin musibet savuşturur.", T/2, 325);   // İthaki çevirisi, s. 153
+    ctx.font="15px system-ui,sans-serif"; ctx.fillText(puan+" şişe ayrıldı", T/2, 365);
+  }
+}
+
+/* ── Oyun akışı ────────────────────────────────────────────────────── */
+function stresEkle(m, neden){
+  stres=Math.min(100, stres+m);
+  sarsinti=1;
+  if(stres>=100) oyunBitti(neden+" Gerginlik doldu.");
+  else mesaj(neden);
+}
+
+function guncelle(dt){
+  if(bitti || kat.classList.contains("acik")) return;
+  zaman+=dt;
+  const v=hiz();
+  mesafe+=v*dt;
+  if(mesafe>=aralik){
+    mesafe=0; aralik=yeniAralik();
+    siseler.push({x:-50, kast:Math.floor(Math.random()*kapiSayisi()),
+                  g:1+Math.floor(Math.random()*SISE_SAYISI)});
+  }
+  for(let i=siseler.length-1;i>=0;i--){
+    const s=siseler[i];
+    if(s===tutulan) continue;
+    s.x+=v*dt;
+    if(s.x-siseGenislik(s)/2>T){
+      siseler.splice(i,1);
+      stresEkle(CEZA_KACAN, "Bir "+KAST[s.kast].ad+" şişesi kaçtı.");
+      if(bitti) return;
+    }
+  }
+  for(let i=0;i<5;i++) parlama[i]=Math.max(0, parlama[i]-dt*2.5);
+  sarsinti=Math.max(0, sarsinti-dt*4);
+  sayaclar();
+}
+
+function birak(x, y){
+  const s=tutulan; tutulan=null;
+  if(!s || bitti) return;
+  if(y < KAPI_Y-30) return;                  // kapıya ulaşmadı: banta geri döner
+  const n=kapiSayisi();
+  let i=-1;
+  for(let j=0;j<n;j++){ const k=kapiKutusu(j,n); if(x>=k.x-5 && x<=k.x+k.w+5) i=j; }
+  if(i<0) return;
+  siseler.splice(siseler.indexOf(s),1);
+  parlama[i]=1; parlamaIyi[i]=(i===s.kast);
+  if(i===s.kast){
+    const onceki=kapiSayisi();
+    puan++; stres=Math.max(0, stres-ODUL_DOGRU);
+    if(kapiSayisi()>onceki) mesaj("Yeni bir kapı açıldı: "+KAST[kapiSayisi()-1].ad+".");
+    else if(somaEtkisi()===0) mesaj("");
+  } else {
+    stresEkle(CEZA_YANLIS, KAST[s.kast].ad+" şişesi "+KAST[i].ad+" kapısına girdi.");
+  }
+  sayaclar();
+}
+
+function somaAl(){
+  if(bitti || somaEtkisi()>0) return;
+  stres=0;
+  somaBitis=zaman+somaSuresi(somaSayisi);
+  somaSayisi++;
+  mesaj(somaSayisi===1 ? "Her şey yumuşadı. Her şey güzel." : "Biraz daha uzun sürecek bu sefer.");
+  sayaclar();
+}
+
+function yeniOyun(){
+  siseler=[]; tutulan=null; stres=0; puan=0; bitti=false;
+  somaSayisi=0; somaBitis=0; zaman=0; mesafe=0; aralik=60;
+  parlama=[0,0,0,0,0]; sarsinti=0;
+  sayaclar(); mesaj("Şişeleri işaretlerine göre kapılara sürükle."); boyutlandir(); ciz();
+}
+
+function oyunBitti(neden){
+  bitti=true; tutulan=null;
+  mesaj(neden+" Puan: "+puan);
+  sayaclar();
+  ciz();
+  skoruBildir(puan);
+}
+
+/* ── Dokunma / fare ────────────────────────────────────────────────── */
+function noktaAl(e){
+  const r=tuval.getBoundingClientRect();
+  return {x:(e.clientX-r.left)*T/r.width, y:(e.clientY-r.top)*T/r.height};
+}
+tuval.addEventListener("pointerdown", e=>{
+  if(bitti) return;
+  const p=noktaAl(e);
+  let sec=null;
+  for(const s of siseler){
+    if(Math.abs(p.x-s.x)<=siseGenislik(s)/2+10 &&p.y>=BANT_Y-SISE_H-12 && p.y<=BANT_Y+20)
+      if(!sec || s.x>sec.x) sec=s;           // üst üste gelirse öndeki
+  }
+  if(!sec) return;
+  tutulan=sec; tutulan.tx=p.x; tutulan.ty=p.y;
+  try{ tuval.setPointerCapture(e.pointerId); }catch(_){}
+  e.preventDefault();
+});
+tuval.addEventListener("pointermove", e=>{
+  if(!tutulan) return;
+  const p=noktaAl(e); tutulan.tx=p.x; tutulan.ty=p.y;
+});
+tuval.addEventListener("pointerup", e=>{ if(tutulan){ const p=noktaAl(e); birak(p.x, p.y); } });
+tuval.addEventListener("pointercancel", ()=>{ tutulan=null; });
+
+let onceki=0;
+function dongu(t){
+  const dt=onceki ? Math.min(0.05, (t-onceki)/1000) : 0;
+  onceki=t;
+  guncelle(dt);
+  ciz();
+  requestAnimationFrame(dongu);
+}
+
+/* ── SKORU BİLDİR — DEĞİŞTİRME ─────────────────────────────────────── */
+function skoruBildir(p){
+  if(window.parent===window) return;
+  try{
+    window.parent.postMessage({ ashbless:'oyun-skor', oyun:OYUN_ID,
+                                skor:Math.max(0,Math.round(p)) }, '*');
+  }catch(e){}
+}
+
+/* ── TUVALİ KALAN BOŞLUĞA SIĞDIR — DEĞİŞTİRME ──────────────────────── */
+function boyutlandir(){
+  const k=document.querySelector(".tahta").getBoundingClientRect();
+  const b=Math.max(150, Math.floor(Math.min(k.width,k.height,620))-12);
+  tuval.style.width=b+"px"; tuval.style.height=b+"px";
+}
+window.addEventListener("resize",boyutlandir);
+if(window.visualViewport) window.visualViewport.addEventListener("resize",boyutlandir);
+document.addEventListener("contextmenu",e=>e.preventDefault());
+
+const kat=document.getElementById("yardimKat");
+const yardimKapat=()=>kat.classList.remove("acik");
+document.getElementById("yardimAc").onclick=()=>kat.classList.add("acik");
+document.getElementById("yardimKapat").onclick=yardimKapat;
+kat.addEventListener("click",e=>{ if(e.target===kat) yardimKapat(); });
+window.addEventListener("keydown",e=>{
+  if(e.key==="Escape") yardimKapat();
+  if(e.key===" "){ e.preventDefault(); somaAl(); }
+});
+document.getElementById("yeni").onclick=yeniOyun;
+document.getElementById("soma").onclick=somaAl;
+
+boyutlandir(); yeniOyun();
+requestAnimationFrame(dongu);
+</script>
+</body>
+</html>
