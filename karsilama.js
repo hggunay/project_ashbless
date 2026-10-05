@@ -82,7 +82,7 @@ const KARSILAMA_METINLERI = {
   eglence: {
     baslik: '🎲 Eğlence',
     metin: 'Burada ölçüm değil oyun var — falına bakabilir, Şeytan ile Melek\'in ayın hesabını ' +
-           'görüşmesini izleyebilirsin. <b>🎮 Oyunlar</b>\'da ise okuduğun kitaplardan açılan ' +
+           'görüşmesini izleyebilir, Al\'ın Kileri\'ndeki delikten okuma geçmişine düşebilirsin. <b>🎮 Oyunlar</b>\'da ise okuduğun kitaplardan açılan ' +
            'mini oyunlar var: bir kitabı bitirdiğinde ona ait oyun kendiliğinden açılıyor.'
   },
   okumaOdasi: {

@@ -2169,9 +2169,10 @@ try{
 <script src="uye-onay.js?s=20260919b"></script>
 <!-- Sekme karşılama şeritleri — metinler ve gösterim mantığı burada.
      ⚠️ Yeni bir sekme eklenirse karşılama metnini yazmak da işin parçası. -->
-<script src="karsilama.js?s=20260930k"></script>
+<script src="karsilama.js?s=20261005a"></script>
 <script src="hesap-vakti-cumleler.js?s=20260919b"></script>
 <script src="hesap-vakti.js?s=20260919b"></script>
+<script src="kiler.js?s=20261005d"></script>
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
@@ -8520,6 +8521,8 @@ function eglenceyiTasi(){
     if(bolum){ kap.innerHTML=''; kap.appendChild(bolum); }
     // Hesap Vakti falın ALTINA ekleniyor; kendi kapısı var (yalnızca deneme).
     if(typeof hesapVaktiCiz==='function') hesapVaktiCiz();
+    // Al'ın Kileri (Tavşan Deliği) en alta — kiler.js, 2026-10-05.
+    if(typeof kilerCiz==='function') kilerCiz();
   }catch(e){}
 }
 /* EĞLENCE ANA SEKMESİ (2026-09-25): alt sekmeler Eğlence (Fal, Hesap Vakti) · Oyunlar.
