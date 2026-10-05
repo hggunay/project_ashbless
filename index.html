@@ -2172,7 +2172,7 @@ try{
 <script src="karsilama.js?s=20261005a"></script>
 <script src="hesap-vakti-cumleler.js?s=20260919b"></script>
 <script src="hesap-vakti.js?s=20260919b"></script>
-<script src="kiler.js?s=20261005d"></script>
+<script src="kiler.js?s=20261005e"></script>
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
@@ -5936,6 +5936,97 @@ document.addEventListener('click',function(e){
 // ── TARİH YARDIMCI FONKSİYONLARI ─────────────────────────────
 // "Bugün" için her yerde aynı (yerel) tarihi üret — UTC ile yerel saat arasındaki
 // kaymayı önler (gece yarısına yakın saatlerde tarih hatası oluşmasın diye).
+/* Kitabın tüm okumaları, modalda gösterilmek üzere: [['📖 1. okuma','22.05.2025 → 28.05.2025'], …]
+   Önceki okumalar `oncekiOkumalar`da (yeniden okuma başlarken saklanır, 2026-10-05);
+   sonuncusu kitabın kendi startDate/endDate'i. Tek okumalı kitapta 1 satır döner. */
+function okumaListesi(book){
+  const g=t=>t?String(t).split('-').reverse().join('.'):'?';
+  const aralik=o=>o.startDate||o.endDate ? `${g(o.startDate)} → ${o.endDate?g(o.endDate):'devam ediyor'}`
+                                        : (o.yearOnly?`${o.yearOnly} (yıl)`:'tarih yok');
+  const hepsi=(book.oncekiOkumalar||[]).filter(Boolean).concat([{
+    startDate:book.startDate, endDate:(book.rereadStarted?null:book.endDate), yearOnly:book.yearOnly }]);
+  return hepsi.map((o,i)=>[`📖 ${i+1}. okuma`, aralik(o)]);
+}
+/* ── ÖNCEKİ OKUMALARI DÜZENLEME (2026-10-05, Gökşin) ─────────────────────
+   Düzenleme ekranında her önceki okumanın yanında ✏️ (tarihleri düzelt) ve 🗑️
+   (yanlışlıkla oluşmuş okumayı sil). Son okuma yine aşağıdaki normal tarih
+   kutularından düzenlenir. Yalnızca kitabın sahibi görür.
+   Yalnız bu blok yeniden çiziliyor (#oncekiOk-<id>) — bütün düzenleme ekranı
+   çizilseydi açık akordeonlar kapanırdı. */
+let _okumaDuzenle=null;   // {bookId, i} — şu an düzenlenen satır
+function oncekiOkumaHtml(book,isMe){
+  const onceki=(book.oncekiOkumalar||[]);
+  if(!onceki.length) return '';
+  const g=t=>t?String(t).split('-').reverse().join('.'):'';
+  const btn="background:none;border:none;cursor:pointer;font-size:.8rem;padding:0 .15rem";
+  const kutu="width:7.5rem;padding:.2rem .35rem;font-size:.75rem;font-family:'Space Mono',monospace;border:1px solid rgba(201,162,39,.4);border-radius:4px;background:var(--cream);color:var(--ink)";
+  const etiketler=okumaListesi(book);
+  const satir=(o,i)=>{
+    if(isMe && _okumaDuzenle && _okumaDuzenle.bookId===book.id && _okumaDuzenle.i===i){
+      return `<div style="padding:.35rem 0">
+        <span class="detail-field-label" style="display:inline">${etiketler[i][0]}:</span>
+        <div style="display:flex;gap:.35rem;align-items:center;flex-wrap:wrap;margin-top:.25rem">
+          <input id="okBas-${book.id}" style="${kutu}" placeholder="gg.aa.yyyy" value="${g(o.startDate)}">
+          <span>→</span>
+          <input id="okBit-${book.id}" style="${kutu}" placeholder="gg.aa.yyyy veya yyyy" value="${o.endDate?g(o.endDate):(o.yearOnly||'')}">
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="okumaDuzenleKaydet(${book.id},${i})">Kaydet</button>
+          <button class="btn btn-sm" style="background:transparent;color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="okumaDuzenleVazgec(${book.id})">Vazgeç</button>
+        </div>
+        <div id="okHata-${book.id}" style="color:var(--rust);font-size:.72rem;min-height:1em;margin-top:.15rem"></div>
+      </div>`;
+    }
+    return `<div><span class="detail-field-label" style="display:inline">${etiketler[i][0]}:</span> ${etiketler[i][1]}
+      ${isMe?`<button title="Tarihleri düzelt" style="${btn}" onclick="okumaDuzenleAc(${book.id},${i})">✏️</button><button title="Bu okumayı sil" style="${btn}" onclick="event.stopPropagation();okumaSil(this,${book.id},${i})">🗑️</button>`:''}</div>`;
+  };
+  const satirlar=onceki.map(satir);
+  // Görüntülemedeki gibi: son 4 önceki okuma açık, eskiler katlı (düzenlenen satır katlıysa açık gelsin)
+  const katliAcik=_okumaDuzenle&&_okumaDuzenle.bookId===book.id&&_okumaDuzenle.i<satirlar.length-4;
+  const liste=satirlar.length>4
+    ? `<details${katliAcik?' open':''}><summary style="cursor:pointer;color:var(--gold);font-size:.75rem">${satirlar.length-4} eski okuma daha</summary>${satirlar.slice(0,-4).join('')}</details>${satirlar.slice(-4).join('')}`
+    : satirlar.join('');
+  return `<div style="margin-top:.5rem;font-size:.78rem;line-height:1.6">${liste}
+    <div class="detail-field-label" style="margin-top:.3rem">Aşağıdaki tarihler ${onceki.length+1}. okumanın</div></div>`;
+}
+function oncekiOkumaYenile(bookId){
+  const book=myBooks().find(b=>b.id===bookId);
+  const yer=document.getElementById('oncekiOk-'+bookId);
+  if(book&&yer) yer.innerHTML=oncekiOkumaHtml(book,true);
+}
+function okumaDuzenleAc(bookId,i){ _okumaDuzenle={bookId,i}; oncekiOkumaYenile(bookId); }
+function okumaDuzenleVazgec(bookId){ _okumaDuzenle=null; oncekiOkumaYenile(bookId); }
+function okumaDuzenleKaydet(bookId,i){
+  const book=myBooks().find(b=>b.id===bookId);
+  if(!book||!(book.oncekiOkumalar||[])[i]) return;
+  const hata=m=>{ const el=document.getElementById('okHata-'+bookId); if(el) el.textContent=m; };
+  const basHam=(document.getElementById('okBas-'+bookId)?.value||'').trim();
+  const bitHam=(document.getElementById('okBit-'+bookId)?.value||'').trim();
+  const bas=basHam?normalizeDate(basHam):null;
+  if(basHam&&!bas) return hata('Başlangıç tarihi anlaşılamadı (gg.aa.yyyy).');
+  let bit=null, yil=null;
+  if(/^\d{4}$/.test(bitHam)) yil=parseInt(bitHam);
+  else if(bitHam){ bit=normalizeDate(bitHam); if(!bit) return hata('Bitiş tarihi anlaşılamadı (gg.aa.yyyy ya da yyyy).'); }
+  if(!bas&&!bit&&!yil) return hata('En az bir tarih gerekli. Okuma yanlışsa 🗑️ ile silebilirsin.');
+  // Bu sayfadaki hatanın kaynağı buydu — bir daha kaydedilmesin.
+  if(bas&&bit&&bas>bit) return hata('Başlangıç, bitişten sonra olamaz.');
+  if((bas&&bas>todayLocal())||(bit&&bit>todayLocal())) return hata('Gelecekte bir tarih girilemez.');
+  book.oncekiOkumalar[i]={startDate:bas, endDate:bit, yearOnly:bit?null:yil};
+  _okumaDuzenle=null;
+  saveDb();
+  oncekiOkumaYenile(bookId);
+  mesajGoster('✓ Okuma tarihleri kaydedildi.');
+}
+function okumaSil(btn,bookId,i){
+  showInlineConfirm(btn,`${i+1}. okuma silinsin mi?`,()=>{
+    const book=myBooks().find(b=>b.id===bookId);
+    if(!book||!(book.oncekiOkumalar||[])[i]) return;
+    book.oncekiOkumalar=book.oncekiOkumalar.filter((_,k)=>k!==i);
+    if(!book.oncekiOkumalar.length) book.oncekiOkumalar=null;   // null: Firebase'de alan silinir
+    _okumaDuzenle=null;
+    saveDb();
+    oncekiOkumaYenile(bookId);
+    mesajGoster('✓ Okuma silindi.');
+  });
+}
 function todayLocal(){
   const d=new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -6412,6 +6503,7 @@ async function openBook(bookId,fromShelf=false){
   const book=targetBooks().find(b=>b.id===bookId);
   if(!book)return;
   modalBookId=bookId;
+  _okumaDuzenle=null;   // yarıda bırakılmış okuma düzenlemesi başka açılışa taşınmasın
   const isMe=!viewing;
 
   document.getElementById('modalTitle').textContent=book.title;
@@ -6482,8 +6574,17 @@ function renderViewMode(book, fromShelf){
     ['Yayın Yılı',book.pubYear],
     ['Sayfa Sayısı',book.pages],
     ['Ülke',book.country],
-    ['Başlama Tarihi',book.startDate?book.startDate.split('-').reverse().join('.'):''],
-    ['Bitiş Tarihi',book.endDate?book.endDate.split('-').reverse().join('.'):(book.yearOnly?String(book.yearOnly):'')],
+    // Yeniden okunmuş kitapta iki tarih satırı yerine okuma listesi (aşağıda)
+    // 5'ten fazla okumada (Gökşin: "Harry Potter'ları 7-8 kere okumuştum") SON 5 görünür,
+    // eskiler düğmenin ardında — liste kuralının (ilk 5) tersi, çünkü önemli olan son okuma.
+    ...(okumaListesi(book).length>5 ? (()=>{
+      const t=okumaListesi(book), eski=t.slice(0,-5);
+      return [['',`<button type="button" data-n="${eski.length}" onclick="const g=this.closest('.vm-info-grid');g.classList.toggle('okumalar-acik');this.textContent=g.classList.contains('okumalar-acik')?'▴ Daha az':'▾ '+this.dataset.n+' eski okuma daha'" style="background:none;border:none;color:var(--gold);cursor:pointer;font-size:.75rem;padding:0">▾ ${eski.length} eski okuma daha</button>`]]
+        .concat(eski.map(([k,v])=>[k,v,'okuma-eski']), t.slice(-5));
+    })() : okumaListesi(book).length>1 ? okumaListesi(book) : [
+      ['Başlama Tarihi',book.startDate?book.startDate.split('-').reverse().join('.'):''],
+      ['Bitiş Tarihi',book.endDate?book.endDate.split('-').reverse().join('.'):(book.yearOnly?String(book.yearOnly):'')],
+    ]),
   ].filter(([k,v])=>v||v===0);
 
   // Format chipleri
@@ -6593,6 +6694,8 @@ function renderViewMode(book, fromShelf){
       .vm-info-grid{display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;}
       .vm-key{font-size:.75rem;color:var(--ink-light);padding:.2rem .4rem .2rem 0;align-self:center;white-space:nowrap;}
       .vm-val{font-size:.85rem;color:var(--ink);padding:.2rem 0;align-self:center;}
+      .okuma-eski{display:none;}
+      .okumalar-acik .okuma-eski{display:block;}
       .vm-chip{background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:3px;padding:.2rem .5rem;font-size:.75rem;color:var(--ink-light);display:inline-block;margin:.15rem .15rem 0 0;}
       .vm-chip-flag{background:rgba(74,103,65,.1);border-color:rgba(74,103,65,.3);color:var(--moss);}
     </style>
@@ -6601,7 +6704,7 @@ function renderViewMode(book, fromShelf){
     <div class="vm-section">
       <div class="vm-label">Kitap bilgileri</div>
       <div class="vm-info-grid">
-        ${infoFields.map(([k,v])=>`<span class="vm-key">${k}</span><span class="vm-val">${v}</span>`).join('')}
+        ${infoFields.map(([k,v,c])=>`<span class="vm-key ${c||''}">${k}</span><span class="vm-val ${c||''}">${v}</span>`).join('')}
       </div>
       ${fmtChips||genreChips?`<div style="margin-top:.5rem">${fmtChips}${genreChips}</div>`:''}
     </div>`:''}
@@ -6643,6 +6746,8 @@ const modalEl=document.querySelector('#modalOverlay .modal');
         ${book.readingStatus==='planned'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">📖 Okumaya Başla</button>`:''}
         ${book.readingStatus==='new'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>`:''}
+        ${book.readingStatus==='past'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>`:''}
       `:''}
     </div>`;
@@ -6739,9 +6844,10 @@ function renderEditMode(bookId, fromShelf){
         <span class="acc-arrow" id="arr-mSec-info-${book.id}">▶</span>
       </div>
       <div class="detail-acc-body" id="mSec-info-${book.id}">
+        <div id="oncekiOk-${book.id}">${oncekiOkumaHtml(book,isMe)}</div>
         <div class="detail-grid" style="margin-top:.5rem">
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe,'gg.aa.yyyy')}
-          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.endDate||(book.yearOnly?String(book.yearOnly):''),'text',isMe,'gg.aa.yyyy veya sadece yyyy')}
+          ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.rereadStarted?'':(book.endDate||(book.yearOnly?String(book.yearOnly):'')),'text',isMe,'gg.aa.yyyy veya sadece yyyy')}
           ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
@@ -6965,6 +7071,8 @@ function renderEditMode(bookId, fromShelf){
         ${book.readingStatus==='new'?`
           <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>
           <button class="btn btn-sm" style="background:rgba(201,162,39,.12);color:var(--rust);border:1px solid rgba(201,162,39,.3)" onclick="markAsUnread(${book.id})">↩️ Geri Al</button>`:''}
+        ${book.readingStatus==='past'?`
+          <button class="btn btn-sm" style="background:rgba(74,103,65,.2);color:var(--moss);border:1px solid rgba(74,103,65,.4)" onclick="startReadingFromWishlist(${book.id});closeModal()">🔄 Tekrar Oku</button>`:''}
         <button class="btn btn-sm" style="background:rgba(201,162,39,.08);color:var(--rust);border:1px solid rgba(201,162,39,.2);font-size:.7rem" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'▴ Daha az':'▾ Daha fazla'">▾ Daha fazla</button>
         <div class="modal-more-wrap" style="flex-wrap:wrap;gap:.5rem;margin-top:.3rem;display:none">
           ${book.series?`<button class="btn btn-sm" style="background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="applyToWholeSeries(${book.id})">📚 Seri bilgilerini tüm seriye uygula</button>`:''}
@@ -7271,7 +7379,13 @@ function startReadingFromWishlist(bookId){
   const prevCtx=snapshotBadgeContext();
   book.previousStatus=book.readingStatus||'wishlist';
   const isReread=book.readingStatus==='new'||book.readingStatus==='past';
-  if(isReread) book.rereadStarted=true;
+  if(isReread){
+    book.rereadStarted=true;
+    // Eski okuma saklanıyor (2026-10-05). endDate BİLEREK yerinde kalıyor: okurken
+    // kitap sayımdan düşmesin (bkz. hasBeenFinished). Yenisini finishReading yazar.
+    book.oncekiOkumalar=(book.oncekiOkumalar||[]).concat([{
+      startDate:book.startDate||null, endDate:book.endDate||null, yearOnly:book.yearOnly||null }]);
+  }
   book.readingStatus='reading';
   book.startDate=todayLocal();
   seriHafizasiDoldur(book);
@@ -7326,7 +7440,13 @@ async function finishReading(bookId){
   // Daha önce okunmuşsa yeniden okuma say
   if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
-  book.endDate=book.endDate||todayLocal();
+  /* ⚠️ Yeniden okumada eski bitiş tarihi hâlâ dolu — `||` yüzünden YENİ BİTİŞ HİÇ
+     YAZILMIYORDU, başlangıç bitişten sonra kalıyordu (2026-10-05'te bulundu:
+     Katilbot 1-3, Maymunlar Gezegeni; Nimet'te 10 kayıt). Eski okuma artık
+     `oncekiOkumalar`da; yeni okuma bugünün tarihini alır ve o aya sayılır
+     (Gökşin'in kararı: A — "yeni okumanın tarihine"). */
+  if(book.rereadStarted){ book.endDate=todayLocal(); book.yearOnly=null; }
+  else book.endDate=book.endDate||todayLocal();
   book.rereadStarted=false;
   const month=book.endDate.substring(0,7);
   book.month=month;
@@ -7366,10 +7486,23 @@ function confirmMarkAsUnread(bookId, status){
   // Önceki konuma dön — previousStatus varsa oraya, yoksa wishlist
   // 'new'(okundu) listesinden geri alınıyorsa reading'e dön
   const targetStatus = book.readingStatus==='new' ? 'reading' : (book.previousStatus && book.previousStatus!=='reading' ? book.previousStatus : status);
+  /* Yeniden okumadan vazgeçildi (okunuyor → okundu'ya geri): bugünün başlangıç
+     tarihi kalırsa başlangıç bitişten sonra olur — aynı hata. Saklanan eski okuma
+     geri yüklenir. */
+  const okunmusDurum = targetStatus==='new' || targetStatus==='past';   // 'past' = geçmişte okundu (aktarılmış)
+  if(okunmusDurum && book.rereadStarted && (book.oncekiOkumalar||[]).length){
+    const eski=book.oncekiOkumalar[book.oncekiOkumalar.length-1];
+    book.startDate=eski.startDate; book.endDate=eski.endDate||book.endDate; book.yearOnly=eski.yearOnly||book.yearOnly||null;
+    book.oncekiOkumalar=book.oncekiOkumalar.slice(0,-1);
+    if(!book.oncekiOkumalar.length) book.oncekiOkumalar=null;   // null: Firebase'de alan silinir
+    book.rereadStarted=false;
+  }
   book.readingStatus=targetStatus;
   book.previousStatus=null;
-  // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle
-  if(targetStatus!=='new'){
+  // Okundu listesinden geliyorsa endDate korunur, wishlist'e gidiyorsa temizle.
+  // 'past' da okunmuş sayılır (2026-10-05): yoksa geçmişte okunmuş kitabın yeniden
+  // okumasından vazgeçince eski bitiş tarihi siliniyordu.
+  if(!okunmusDurum){
     book.endDate=null;
     book.month=book.addedAt?String(typeof book.addedAt==='string'?book.addedAt:new Date(book.addedAt).toISOString()).substring(0,7):new Date().toISOString().substring(0,7);
   }
@@ -7411,7 +7544,7 @@ function confirmMarkAsUnread(bookId, status){
   }
   closeModal();
   render();
-  const statusLabels={wishlist:'Tsundoku listesine eklendi',new:'Okundu listesine geri döndü',paused:'Yarım bırakılanlar listesine geri döndü'};
+  const statusLabels={wishlist:'Tsundoku listesine eklendi',new:'Okundu listesine geri döndü',past:'Okundu listesine geri döndü',paused:'Yarım bırakılanlar listesine geri döndü'};
   const label=statusLabels[targetStatus]||'eski konumuna döndü';
   notify('↩️ Geri Alındı',`"${book.title}" ${label}.`);
 }
@@ -7809,6 +7942,8 @@ function storyViewMode(ownerId, storyId){
       .vm-info-grid{display:grid;grid-template-columns:auto 1fr;gap:.25rem .75rem;}
       .vm-key{font-size:.75rem;color:var(--ink-light);padding:.2rem .4rem .2rem 0;align-self:center;white-space:nowrap;}
       .vm-val{font-size:.85rem;color:var(--ink);padding:.2rem 0;align-self:center;}
+      .okuma-eski{display:none;}
+      .okumalar-acik .okuma-eski{display:block;}
       .vm-chip{background:rgba(201,162,39,.12);border:1px solid rgba(201,162,39,.3);border-radius:3px;padding:.2rem .5rem;font-size:.75rem;color:var(--ink-light);display:inline-block;margin:.15rem .15rem 0 0;}
     </style>
     <div class="vm-section">

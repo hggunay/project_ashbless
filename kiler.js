@@ -54,12 +54,23 @@ function kilerVerisi(kisi){
 
   for(const b of kitaplar){
     if(b.readingStatus==='wishlist' || b.readingStatus==='planned') continue;
+    // Yeniden okunan kitabın önceki okumaları (index.html `oncekiOkumalar`, 2026-10-05)
+    const onceki = (b.oncekiOkumalar||[]).filter(Boolean);
+    onceki.forEach((o,i) => {
+      const ob = kilerGunNo(kilerTarih(o.startDate)), oe = kilerGunNo(kilerTarih(o.endDate));
+      const ko = { tur:'kitap', id:b.id, ad:b.title, yazar:b.author||'', okumaNo:i+1 };
+      if(ob!==null && oe!==null && ob<=oe) anlar.push({...ko, bas:ob, bit:oe, basBilinir:true, bitBilinir:true});
+      else if(oe!==null) anlar.push({...ko, bas:oe, bit:oe, basBilinir:false, bitBilinir:true});
+      else if(ob!==null) anlar.push({...ko, bas:ob, bit:ob, basBilinir:true, bitBilinir:false});
+      else if(o.yearOnly) belirsiz.push({...ko, yil:+o.yearOnly, ay:null});
+    });
     const bas = kilerGunNo(kilerTarih(b.startDate));
-    const bit = kilerGunNo(kilerTarih(b.endDate));
+    // Yeniden okuma sürerken endDate hâlâ ESKİ okumanın — bu okumanın bitişi değil
+    const bit = b.rereadStarted ? null : kilerGunNo(kilerTarih(b.endDate));
     // YALNIZ 'reading' bugüne uzar. 'paused' uzamaz: yarım bırakılmış kitap
     // (Cro-Magnon, 2022'den beri) "1681. günüydü" diye çıkıyordu.
     const okunuyor = b.readingStatus==='reading';
-    const k = { tur:'kitap', id:b.id, ad:b.title, yazar:b.author||'' };
+    const k = { tur:'kitap', id:b.id, ad:b.title, yazar:b.author||'', okumaNo: onceki.length ? onceki.length+1 : 0 };
 
     if(bas!==null && bit!==null && bas<=bit){
       anlar.push({...k, bas, bit, basBilinir:true, bitBilinir:true});
@@ -333,7 +344,8 @@ function kilerSatir(a, gun){
     || (a.bas===a.bit && a.basBilinir && a.bitBilinir ? (a.tur==='kitap' ? 'Başladığın gün bitirdin.' : 'O gün okudun.')
     :  gun===a.bit && a.bitBilinir ? 'O gün bitirdin.'
     :  gun===a.bas && a.basBilinir ? 'O gün başladın.'
-    :  a.basBilinir ? `Bu kitabın ${gun - a.bas + 1}. günüydü.` : '');
+    :  a.basBilinir ? `Bu kitabın ${gun - a.bas + 1}. günüydü.` : '')
+    + (a.okumaNo ? ` (${a.okumaNo}. okuma)` : '');
   return `<div ${tik} style="cursor:pointer;display:flex;gap:.6rem;align-items:flex-start;padding:.5rem .6rem;margin-top:.4rem;
               background:rgba(201,162,39,.07);border:1px solid rgba(201,162,39,.2);border-radius:6px">
       <div style="font-size:1.3rem;line-height:1">${simge}</div>
