@@ -289,6 +289,15 @@ function createSeriesFromBook(bookId, notifId){
   renderSeriesList();
 }
 
+/* Toplu satırın sonundaki sayfa sayısı (Gökşin, 2026-10-06): "Kralın Dönüşü 416s",
+   "… 416 s", "… 416 sayfa". Sondaki ÇIPLAK sayı sayfa SAYILMAZ — "Fahrenheit 451",
+   "Dune 7" adın parçası; bu yüzden "s" işareti şart (Gökşin seçti). */
+function seriSatiriAyir(satir){
+  const m = String(satir).match(/^(.*\S)\s+(\d{1,5})\s*(?:s|sf|sayfa)\.?$/i);
+  if(m && parseInt(m[2]) > 0) return { ad:m[1].trim(), sayfa:parseInt(m[2]) };
+  return { ad:String(satir).trim(), sayfa:null };
+}
+
 function createSeries(){
   const name = document.getElementById('newSeriesName').value.trim();
   const total = parseInt(document.getElementById('newSeriesTotal').value)||null;
@@ -305,13 +314,14 @@ function createSeries(){
   let books = [];
   if(bulkText){
     const lines = bulkText.split("\n").map(l=>l.trim()).filter(Boolean);
-    lines.forEach((line,i)=>{
+    lines.forEach((satir,i)=>{
+      const { ad:line, sayfa } = seriSatiriAyir(satir);
       // Kitaplarımda var mı?
       const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
       if(linked){
-        books.push({ bookId:linked.id, num:i+1 });
+        books.push({ bookId:linked.id, num:i+1, pages:sayfa||linked.pages||null });
       } else {
-        books.push({ manualTitle:line, manualAuthor:bulkAuthor||'', num:i+1, planned:true });
+        books.push({ manualTitle:line, manualAuthor:bulkAuthor||'', num:i+1, pages:sayfa, planned:true });
       }
     });
   }
@@ -395,18 +405,19 @@ function addBulkBooksToSeries(seriesId){
   // kitaplar 8.5, 9.5 diye değil 8, 9 diye devam etsin.
   const startNum = (ser.books||[]).reduce((m,b)=>Math.max(m,Math.floor(b.num||0)),0);
   let added = 0;
-  lines.forEach((line,i)=>{
+  lines.forEach((satir,i)=>{
+    const { ad:line, sayfa } = seriSatiriAyir(satir);
     const linked = myBooksList.find(b=>b.title.toLowerCase()===line.toLowerCase());
     if(linked){
       if(!(ser.books||[]).find(b=>b.bookId===linked.id)){
         ser.books = ser.books||[];
-        ser.books.push({ bookId:linked.id, num:startNum+i+1 });
+        ser.books.push({ bookId:linked.id, num:startNum+i+1, pages:sayfa||linked.pages||null });
         added++;
       }
     } else {
       if(!(ser.books||[]).find(b=>b.manualTitle&&b.manualTitle.toLowerCase()===line.toLowerCase())){
         ser.books = ser.books||[];
-        ser.books.push({ manualTitle:line, manualAuthor:commonAuthor, num:startNum+i+1, planned:true });
+        ser.books.push({ manualTitle:line, manualAuthor:commonAuthor, num:startNum+i+1, pages:sayfa, planned:true });
         added++;
       }
     }
@@ -1269,7 +1280,7 @@ const totalDisplay = ongoing ? (seriToplam(ser, kitaplar.length)||'?')+'+' : (se
         </div>
       </div>
       <div id="seriesAddBulk_${ser.id}" style="display:none">
-        <textarea class="book-input" id="seriesBulkText_${ser.id}" placeholder="Her satıra bir kitap adı&#10;Asimov'un Vakfı&#10;Vakıf ve İmparatorluk&#10;İkinci Vakıf"
+        <textarea class="book-input" id="seriesBulkText_${ser.id}" placeholder="Her satıra bir kitap adı (sayfa sayısı istersen sonuna: 255s)&#10;Asimov'un Vakfı 255s&#10;Vakıf ve İmparatorluk&#10;İkinci Vakıf"
           style="min-height:90px;resize:vertical;font-size:.85rem;line-height:1.5"></textarea>
         <div style="display:flex;gap:.4rem;align-items:center;margin-top:.3rem">
           <input class="book-input" id="seriesBulkAuthor_${ser.id}" type="text" placeholder="Yazar (opsiyonel — tümü için)"
@@ -1505,7 +1516,7 @@ function renderGroupCards(seriesContainer){
               </div>
             </div>
             <div id="seriesAddBulk_${st.ser.id}" style="display:none">
-              <textarea class="book-input" id="seriesBulkText_${st.ser.id}" placeholder="Her satıra bir kitap adı"
+              <textarea class="book-input" id="seriesBulkText_${st.ser.id}" placeholder="Her satıra bir kitap adı&#10;Sayfa sayısı istersen sonuna: Kitap Adı 255s"
                 style="min-height:70px;resize:vertical;font-size:.78rem;line-height:1.4"></textarea>
               <div style="display:flex;gap:.3rem;align-items:center;margin-top:.3rem">
                 <input class="book-input" id="seriesBulkAuthor_${st.ser.id}" type="text" placeholder="Yazar (opsiyonel — tümü için)"
