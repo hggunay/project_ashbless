@@ -264,11 +264,12 @@ function lucienSesCal(){
     const tampon = ac.createBuffer(1, Math.floor(ac.sampleRate*sure), ac.sampleRate);
     const veri = tampon.getChannelData(0); for(let i=0;i<veri.length;i++) veri[i] = Math.random()*2-1;
     const kaynak = ac.createBufferSource(); kaynak.buffer = tampon;
-    // Videoda ~90 Hz; telefon hoparlörü o kadar alçağı çalamaz → biraz yukarıda (280→160 Hz)
+    // Videoda ~90 Hz; telefon hoparlörü o kadar alçağı çalamaz → yukarıda. Gökşin telefonda
+    // "ancak sesi açınca duyuluyor" dedi (2026-10-06) → 280→160 Hz'den 380→220'ye, gür 0.9→1.8.
     const suzgec = ac.createBiquadFilter(); suzgec.type = 'lowpass'; suzgec.Q.value = 4;
-    suzgec.frequency.setValueAtTime(280, bas); suzgec.frequency.linearRampToValueAtTime(160, bas+sure);
+    suzgec.frequency.setValueAtTime(380, bas); suzgec.frequency.linearRampToValueAtTime(220, bas+sure);
     const fg = ac.createGain();
-    fg.gain.setValueAtTime(0, bas); fg.gain.linearRampToValueAtTime(.9, bas+.2); fg.gain.linearRampToValueAtTime(0, bas+sure);
+    fg.gain.setValueAtTime(0, bas); fg.gain.linearRampToValueAtTime(1.8, bas+.2); fg.gain.linearRampToValueAtTime(0, bas+sure);
     // Çalkalanma: ses saniyede 5 kez kabarır (zarfla ÇARPILIR, eksiye düşmez: .55 ± .45)
     const kabar = ac.createGain(); kabar.gain.value = .55;
     const dalga = ac.createOscillator(); dalga.frequency.value = 5;
