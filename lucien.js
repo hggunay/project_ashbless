@@ -569,9 +569,29 @@ const _lucienIzinGerek = typeof DeviceMotionEvent!=='undefined' && typeof Device
 let _lucienDinliyor = false, _lucienIzinTazelendi = false, _lucienOncekiIvme = null, _lucienSarsintilar = [];
 
 function lucienSallaAcikMi(){ try{ return localStorage.getItem(LUCIEN_SALLA_ANAHTAR)==='acik'; }catch(e){ return false; } }
+let _lucienIzinSebep = '';                                     // izin neden olmadı (uyarıda gösterilir)
 function lucienSensorIzin(){                                   // dokunuşun İÇİNDE, beklemeden çağrılmalı
   if(!_lucienIzinGerek) return Promise.resolve(true);
-  return DeviceMotionEvent.requestPermission().then(s => s==='granted').catch(() => false);
+  try{
+    return DeviceMotionEvent.requestPermission()
+      .then(s => { _lucienIzinSebep = 'cevap: '+s; return s==='granted'; })
+      .catch(e => { _lucienIzinSebep = 'hata: '+((e && (e.name||e.message)) || e); return false; });
+  }catch(e){ _lucienIzinSebep = 'hata: '+((e && (e.name||e.message)) || e); return Promise.resolve(false); }
+}
+/* Sensör gerçekten veri gönderiyor mu? (≤1.2 sn dinle). Gökşin'in Android'inde
+   requestPermission VAR ama kutu göstermeden "verilmedi" dönüyor (2026-10-06) →
+   izin cevabına değil, gelen veriye güven. Masadaki telefon da veri gönderir (yerçekimi). */
+function lucienSensorDene(){
+  return new Promise(coz => {
+    let bitti = false;
+    const dinle = e => {
+      const a = e.accelerationIncludingGravity || e.acceleration;
+      if(a && a.x!=null){ son(true); }
+    };
+    const son = sonuc => { if(bitti) return; bitti = true; window.removeEventListener('devicemotion', dinle); coz(sonuc); };
+    window.addEventListener('devicemotion', dinle);
+    setTimeout(() => son(false), 1200);
+  });
 }
 function lucienSesHazirla(){                                   // ses kilidini dokunuşla aç
   try{
@@ -593,8 +613,11 @@ async function lucienSallaAcKapa(btn){
   }
   const izinSozu = lucienSensorIzin();                         // önce izin (dokunuş bitmeden)
   lucienSesHazirla();
-  if(!(await izinSozu)){
-    if(typeof mesajGoster==='function') mesajGoster('Sensör izni verilmedi. Tekrar denemek için 📳 düğmesine bas.', 'uyari');
+  // İzin "hayır" dese bile veri geliyorsa çalışıyordur (Android); veri de yoksa gerçekten yok
+  if(!(await izinSozu) && !(await lucienSensorDene())){
+    // Sebep sonda küçük not olarak: "cevap: denied" = telefon izni reddetti (iPhone bunu
+    // Safari kapanana dek hatırlar) · "hata: …" = istek hiç yapılamadı. Teşhis için (2026-10-06).
+    if(typeof mesajGoster==='function') mesajGoster(`Sensörden veri gelmedi. Tarayıcı ayarlarında bu site için "Hareket sensörleri" açık mı? Sonra 📳'ye tekrar bas. (${_lucienIzinSebep||'?'})`, 'uyari');
     return;
   }
   try{ localStorage.setItem(LUCIEN_SALLA_ANAHTAR, 'acik'); }catch(e){}
