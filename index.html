@@ -2173,6 +2173,7 @@ try{
 <script src="hesap-vakti-cumleler.js?s=20260919b"></script>
 <script src="hesap-vakti.js?s=20260919b"></script>
 <script src="kiler.js?s=20261005e"></script>
+<script src="lucien.js?s=20261006a"></script>
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->
@@ -8658,6 +8659,8 @@ function eglenceyiTasi(){
     if(typeof hesapVaktiCiz==='function') hesapVaktiCiz();
     // Al'ın Kileri (Tavşan Deliği) en alta — kiler.js, 2026-10-05.
     if(typeof kilerCiz==='function') kilerCiz();
+    // Lucien'in Kütüphanesi (kitap önerisi) — lucien.js, 2026-10-05. Yalnız kendi profilinde.
+    if(typeof lucienCiz==='function') lucienCiz();
   }catch(e){}
 }
 /* EĞLENCE ANA SEKMESİ (2026-09-25): alt sekmeler Eğlence (Fal, Hesap Vakti) · Oyunlar.
