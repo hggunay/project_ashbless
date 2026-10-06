@@ -333,10 +333,14 @@ function lucienCiz(){
           <div style="font-size:.76rem;color:var(--parchment);opacity:.8">Ne okusam? Topa dokun, Lucien raflara baksın.</div>
           <div style="font-size:.66rem;color:var(--parchment);opacity:.55;font-style:italic;margin-top:.15rem">Rafların ne kadar doluysa, Lucien o kadar iyi seçer.</div>
         </div>
-        <button onclick="lucienSesAcKapa(this)" title="Sesi aç / kapat"
-          style="background:transparent;border:1px solid rgba(201,162,39,.35);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;color:var(--gold);cursor:pointer">${lucienSesAcikMi()?'🔊':'🔇'}</button>
+        <div style="display:flex;gap:.3rem;flex-shrink:0">
+          <button onclick="lucienSallaAcKapa(this)" title="Telefonu sallayarak sor (aç / kapat)"
+            style="background:transparent;border:1px solid rgba(201,162,39,.35);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;color:var(--gold);cursor:pointer;opacity:${lucienSallaAcikMi()?1:.4}">📳</button>
+          <button onclick="lucienSesAcKapa(this)" title="Sesi aç / kapat"
+            style="background:transparent;border:1px solid rgba(201,162,39,.35);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;color:var(--gold);cursor:pointer">${lucienSesAcikMi()?'🔊':'🔇'}</button>
+        </div>
       </div>
-      <div class="lc-top" id="lcTop" onclick="lucienSalla()" role="button" aria-label="Lucien'e sor">
+      <div class="lc-top" id="lcTop" onclick="lucienDokun()" role="button" aria-label="Lucien'e sor">
         <div class="lc-halka" id="lcHalka">
           <div class="lc-mercek">
             <div class="lc-girdap" id="lcGirdap" style="opacity:0"></div>
@@ -548,3 +552,94 @@ function lucienBitti(){
   const alt = document.getElementById('lcAlt');
   if(alt) alt.innerHTML = `<div style="font-size:.78rem;color:var(--gold);margin-top:.4rem">✓ İyi okumalar. Lucien rafı düzeltiyor.</div>`;
 }
+
+/* ── SALLAYARAK SOR (Gökşin, 2026-10-06) ──────────────────────────────────
+   📳 düğmesi Lucien bölümünde (ayarlarda DEĞİL — tek yerde dursun). Tercih cihazda
+   (localStorage): sensör de cihaza ait. Yalnız top EKRANDA GÖRÜNÜRKEN dinler →
+   cepte/başka sekmede/akordeon kapalıyken tetiklenmez. (Gökşin "akordeon hep kapalı
+   açılsın" diye sordu → gerek yok, görünürlük denetimi yetiyor, her girişte fazladan
+   dokunuş olurdu.) Hafif sarsıntı yetmez: 0.8 sn içinde 3 sert sarsıntı gerekir.
+   iPhone: izin YALNIZ dokunuşla istenebilir → 📳'ye basınca; sayfa yeniden açılınca
+   topa ilk dokunuşta sessizce tazelenir (verilmişse yeniden sormaz).
+   Ses: sallama "dokunuş" sayılmaz, iPhone sesi kilitli tutar → sayfadaki ilk dokunuşta
+   ses kilidi açılır; hiç dokunmadan ilk sallamada ses çıkmayabilir. */
+const LUCIEN_SALLA_ANAHTAR = 'aa-lucien-salla';
+const LUCIEN_SARSINTI = 12, LUCIEN_SARSINTI_SAYI = 3, LUCIEN_SARSINTI_SURE = 800;   // m/s² · adet · ms
+const _lucienIzinGerek = typeof DeviceMotionEvent!=='undefined' && typeof DeviceMotionEvent.requestPermission==='function';
+let _lucienDinliyor = false, _lucienIzinTazelendi = false, _lucienOncekiIvme = null, _lucienSarsintilar = [];
+
+function lucienSallaAcikMi(){ try{ return localStorage.getItem(LUCIEN_SALLA_ANAHTAR)==='acik'; }catch(e){ return false; } }
+function lucienSensorIzin(){                                   // dokunuşun İÇİNDE, beklemeden çağrılmalı
+  if(!_lucienIzinGerek) return Promise.resolve(true);
+  return DeviceMotionEvent.requestPermission().then(s => s==='granted').catch(() => false);
+}
+function lucienSesHazirla(){                                   // ses kilidini dokunuşla aç
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
+    if(!_lucienSes) _lucienSes = new AC();
+    if(_lucienSes.state==='suspended') _lucienSes.resume();
+  }catch(e){}
+}
+async function lucienSallaAcKapa(btn){
+  if(lucienSallaAcikMi()){
+    try{ localStorage.setItem(LUCIEN_SALLA_ANAHTAR, 'kapali'); }catch(e){}
+    if(btn) btn.style.opacity = '.4';
+    if(typeof mesajGoster==='function') mesajGoster('📳 Sallayarak sorma kapandı.');
+    return;
+  }
+  if(typeof DeviceMotionEvent==='undefined'){
+    if(typeof mesajGoster==='function') mesajGoster('Bu cihazda hareket sensörü yok.', 'uyari');
+    return;
+  }
+  const izinSozu = lucienSensorIzin();                         // önce izin (dokunuş bitmeden)
+  lucienSesHazirla();
+  if(!(await izinSozu)){
+    if(typeof mesajGoster==='function') mesajGoster('Sensör izni verilmedi. Tekrar denemek için 📳 düğmesine bas.', 'uyari');
+    return;
+  }
+  try{ localStorage.setItem(LUCIEN_SALLA_ANAHTAR, 'acik'); }catch(e){}
+  _lucienIzinTazelendi = true;
+  if(btn) btn.style.opacity = '1';
+  lucienSallaDinle();
+  if(typeof mesajGoster==='function') mesajGoster('📳 Açıldı. Top ekrandayken telefonu salla.');
+}
+// Topa dokunuş: iPhone'da sayfa yeniden açıldıysa izni sessizce tazele, sonra sor
+function lucienDokun(){
+  if(lucienSallaAcikMi() && _lucienIzinGerek && !_lucienIzinTazelendi){
+    _lucienIzinTazelendi = true;
+    lucienSensorIzin();
+  }
+  lucienSalla();
+}
+function lucienTopGorunurMu(){
+  if(document.visibilityState!=='visible') return false;
+  const top = document.getElementById('lcTop');
+  if(!top || !top.offsetParent) return false;                 // akordeon kapalı / başka sekme
+  const r = top.getBoundingClientRect();
+  return r.width > 0 && r.bottom > 0 && r.top < window.innerHeight;
+}
+function lucienHareket(e){
+  if(!lucienSallaAcikMi() || _lucienMesgul) return;
+  const a = e.accelerationIncludingGravity || e.acceleration;
+  if(!a || a.x==null) return;
+  // Büyüklük farkı DEĞİL vektör farkı: ileri-geri sallamada büyüklük aynı kalır, yön döner
+  const v = [a.x||0, a.y||0, a.z||0], o = _lucienOncekiIvme;
+  const fark = o ? Math.hypot(v[0]-o[0], v[1]-o[1], v[2]-o[2]) : 0;
+  _lucienOncekiIvme = v;
+  if(fark < LUCIEN_SARSINTI) return;
+  const simdi = Date.now();
+  _lucienSarsintilar = _lucienSarsintilar.filter(t => simdi - t < LUCIEN_SARSINTI_SURE);
+  _lucienSarsintilar.push(simdi);
+  if(_lucienSarsintilar.length >= LUCIEN_SARSINTI_SAYI && lucienTopGorunurMu()){
+    _lucienSarsintilar = [];
+    lucienSalla();
+  }
+}
+function lucienSallaDinle(){
+  if(_lucienDinliyor) return;
+  _lucienDinliyor = true;
+  window.addEventListener('devicemotion', lucienHareket);
+  // iPhone ses kilidi: sayfadaki ilk dokunuşta aç
+  ['touchend','click'].forEach(o => document.addEventListener(o, lucienSesHazirla, { once:true, capture:true }));
+}
+if(lucienSallaAcikMi()) lucienSallaDinle();
