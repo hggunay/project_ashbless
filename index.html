@@ -1737,6 +1737,11 @@ try{
             <button class="btn btn-sm" onclick="closeShelfDup()" style="background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">İptal</button>
           </div>
         </div>
+        <!-- Fotoğraftan toplu ekleme — raf-toplu.js (2026-10-06) -->
+        <div style="border-top:1px solid rgba(201,162,39,.15);margin-top:.9rem;padding-top:.75rem">
+          <button type="button" class="btn btn-sm" onclick="rafTopluAc()" style="background:rgba(201,162,39,.15);color:var(--gold);border:1px solid rgba(201,162,39,.35)">📷 Fotoğraftan toplu ekle</button>
+          <div id="rafTopluKutu" style="display:none"></div>
+        </div>
         <button class="btn btn-sm" onclick="toggleShelfAddSection(false)" style="margin-top:.75rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.3)">✕ Kapat</button>
         </div><!-- /shelfAddAccBody -->
       </div>
@@ -2156,7 +2161,8 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20260919b"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20260919b"></script>
+<script src="shelf.js?s=20261006a"></script>
+<script src="raf-toplu.js?s=20261006a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
 <script src="diyarlar-katalog.js?s=20260919b"></script>
@@ -2173,7 +2179,7 @@ try{
 <script src="hesap-vakti-cumleler.js?s=20260919b"></script>
 <script src="hesap-vakti.js?s=20261006a"></script>
 <script src="kiler.js?s=20261005e"></script>
-<script src="lucien.js?s=20261006e"></script>
+<script src="lucien.js?s=20261006f"></script>
 <!-- Kitap temalı oyunlar (2026-09-19). Oyunların KENDİSİ burada değil:
      her oyun `oyunlar/` klasöründe kendi HTML dosyası, iframe ile açılıyor.
      Yeni oyun eklerken yalnızca oyun-listesi.js'e satır eklenir. -->

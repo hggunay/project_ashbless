@@ -141,7 +141,8 @@ function lucienAdaylar(){
   try{
     const ad = t => String(t||'').toLocaleLowerCase('tr').replace(/\s+/g,' ').trim();
     const rafKitaplari = ((db.shelf && db.shelf[me] && db.shelf[me].books) || [])
-      .filter(r => r && r.title && !r.lent && !String(r.title).startsWith('ISBN:'));
+      // okundu: rafta "✓ okudum" işaretli (uygulamadan önce okunmuş, kitaplıkta kaydı yok)
+      .filter(r => r && r.title && !r.lent && !r.okundu && !String(r.title).startsWith('ISBN:'));
     for(const r of rafKitaplari){
       const k = kitaplar.find(b => ad(b.title)===ad(r.title));
       if(!k) c.raf.push({ anahtar:'r'+r.id, ad:r.title, yazar:r.author||'', rafId:r.id, eylem:'rafEkle' });

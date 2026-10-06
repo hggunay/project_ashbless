@@ -546,6 +546,9 @@ function saveShelfBookEdit(bookId){
   if(p!==undefined) book.publisher=p;
   book.qty=q>1?q:null;
   if(n!==undefined) book.note=n||null;
+  // "Okudum" (2026-10-06): uygulamadan önce okunmuş raf kitabı — Lucien önermez (raf-toplu.js)
+  const ok=document.getElementById('edit-okundu-'+bookId);
+  if(ok){ if(ok.checked) book.okundu=true; else delete book.okundu; }
   saveDb();renderShelf();
 }
 
@@ -681,7 +684,7 @@ function renderShelf(){
     return`<div style="padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.4rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0;margin-right:.2rem">
-          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}</div>
+          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${b.okundu?`<span title="Okudum (uygulamadan önce)" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
           ${b.author?`<div style="font-size:.78rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
           ${b.note?`<div style="font-size:.75rem;color:#555;font-style:italic;margin-top:.15rem">${b.note}</div>`:''}
           <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${lentBadge}</div>
@@ -708,6 +711,8 @@ function renderShelf(){
           <input id="edit-qty-${b.id}" class="book-input" type="number" min="1" max="99" value="${b.qty||1}" style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);max-width:80px"/>
           <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Not <span style="opacity:.6;text-transform:none;letter-spacing:0">(isteğe bağlı)</span></div>
           <input id="edit-note-${b.id}" class="book-input" type="text" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Hangi baskı, nereden aldım..." style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
+          <label style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--rust);display:flex;align-items:center;gap:.3rem;cursor:pointer;margin-top:.1rem">
+            <input id="edit-okundu-${b.id}" type="checkbox" ${b.okundu?'checked':''}/> ✓ Okudum <span style="opacity:.6">(Lucien önermez)</span></label>
           <div style="display:flex;gap:.3rem">
             <button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="saveShelfBookEdit('${b.id}')">💾 Kaydet</button>
             <button class="btn btn-sm" style="font-size:.65rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">İptal</button>
