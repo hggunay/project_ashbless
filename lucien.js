@@ -328,7 +328,10 @@ function lucienCiz(){
     </div>
     <div class="stats-acc-body${acik?' open':''}" id="body-lucien" style="padding-top:.3rem">
       <div style="display:flex;justify-content:space-between;align-items:center">
-        <div style="font-size:.76rem;color:var(--parchment);opacity:.8">Ne okusam? Topa dokun, Lucien raflara baksın.</div>
+        <div>
+          <div style="font-size:.76rem;color:var(--parchment);opacity:.8">Ne okusam? Topa dokun, Lucien raflara baksın.</div>
+          <div style="font-size:.66rem;color:var(--parchment);opacity:.55;font-style:italic;margin-top:.15rem">Rafların ne kadar doluysa, Lucien o kadar iyi seçer.</div>
+        </div>
         <button onclick="lucienSesAcKapa(this)" title="Sesi aç / kapat"
           style="background:transparent;border:1px solid rgba(201,162,39,.35);border-radius:6px;padding:.2rem .45rem;font-size:.72rem;color:var(--gold);cursor:pointer">${lucienSesAcikMi()?'🔊':'🔇'}</button>
       </div>
