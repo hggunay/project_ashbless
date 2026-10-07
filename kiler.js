@@ -135,6 +135,7 @@ function kilerSvg(){
   // Raflar (2026-10-07): çizilmiş dikdörtgen kavanozlar yerine Canva'dan iki ücretsiz görsel —
   // üst raf turuncu şişe/koli görselinin TEK rafı, alt raf yeşil kavanoz rafı (çizgiler kalınlaştırıldı);
   // ikisi de tek renk altına çevrildi, arka plan saydam (oyunlar/gorseller/kiler-raflar.png, 400×278).
+  // Alt raf çizgi kalınlaştırması 4→2 (Gökşin: "çok aralıksız"). Görsel değişince href'teki ?s= artmalı (önbellek).
   // Delik kodla çiziliyor, görselin parçası DEĞİL (id'si animasyonda kullanılıyor).
   return `<svg viewBox="0 0 160 150" width="150" height="140" aria-hidden="true" style="flex-shrink:0;display:block">
     <defs>
@@ -144,7 +145,7 @@ function kilerSvg(){
       </radialGradient>
     </defs>
     <rect x="8" y="6" width="144" height="140" rx="3" fill="rgba(201,162,39,.05)" stroke="rgba(201,162,39,.45)" stroke-width="2"/>
-    <image href="oyunlar/gorseller/kiler-raflar.png" x="19.6" y="9" width="120.8" height="84" preserveAspectRatio="xMidYMid meet"/>
+    <image href="oyunlar/gorseller/kiler-raflar.png?s=2"x="19.6" y="9" width="120.8" height="84" preserveAspectRatio="xMidYMid meet"/>
     <ellipse cx="80" cy="118" rx="44" ry="16" fill="rgba(0,0,0,.35)"/>
     <ellipse id="kilerDelik" cx="80" cy="116" rx="36" ry="12" fill="url(#kilerDelikG)" stroke="rgba(201,162,39,.35)" stroke-width="1"/>
   </svg>`;
