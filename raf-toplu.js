@@ -241,6 +241,62 @@ function rafTopluKaynagiKullan(i){
   r.ad = r.kaynakAd; if(r.kaynakYazar) r.yazar = r.kaynakYazar; r.durum = 'bulundu';
   rafTopluCiftleriIsaretle(); rafTopluTaslakKaydet(); rafTopluCiz();
 }
+/* 📷 Satır başına barkod (Gökşin'in fikri, 07.10): yanlış okunan satırı barkodla düzelt; AI'nın
+   göremediği kitap için "+ Satır ekle" → yeni satırın 📷'si (ayrı "barkodla ekle" düğmesi YOK).
+   Türkçe ISBN'lerin çoğu kaynaklarda yok (Fizik Üzerine Yedi Kısa Ders 9789750736940: Google+OL boş)
+   → bulunamazsa satırdaki ad SİLİNMEZ, uyarı çıkar. ISBN her durumda satıra (ve rafa) yazılır.
+   Tarayıcı index.html'deki ortak barcodeModal + _barcodeReader (shelf.js ile aynı). */
+let _rtBarkodSatir = null;
+function rafTopluBarkod(i){
+  if(_rt.araniyor || _rtBarkodSatir!==null) return;
+  const r = _rt.satirlar[i]; if(!r) return;
+  const modal = document.getElementById('barcodeModal');
+  const status = document.getElementById('barcodeStatus');
+  if(!modal) return;
+  if(typeof ZXing==='undefined'){ if(typeof mesajGoster==='function') mesajGoster('Barkod okuyucu yüklenemedi.', 'uyari'); return; }
+  modal.style.display = 'flex';
+  if(status) status.textContent = 'Kamera başlatılıyor...';
+  try{
+    _barcodeReader = new ZXing.BrowserMultiFormatReader();
+    _barcodeReader.decodeFromVideoDevice(null, 'barcodeVideo', (sonuc) => {
+      if(!sonuc) return;
+      const isbn = String(sonuc.getText()||'').replace(/[^0-9X]/gi, '');
+      closeBarcodeScanner();
+      if(isbn) rafTopluBarkodAra(r, isbn);
+    });
+    if(status) status.textContent = 'Barkodu kameraya göster';
+  }catch(e){ if(status) status.textContent = '⚠️ Kamera açılamadı.'; }
+}
+async function rafTopluBarkodAra(r, isbn){
+  _rtBarkodSatir = r;
+  r.isbn = isbn; r.durum = 'bekliyor';
+  rafTopluCiz();
+  let info = null;
+  try{ info = (typeof fetchBookInfo==='function') ? await fetchBookInfo('', '', isbn) : null; }catch(e){}
+  _rtBarkodSatir = null;
+  if(!_rt.satirlar.includes(r)){ rafTopluCiz(); return; }   // bu arada satır silindiyse
+  if(info && info.title_clean){
+    if(!rafTopluAyniAd(r.ad, info.title_clean)) r.ad = info.title_clean;   // "Kisa" ↔ "Kısa": seninki kalır
+    const y = rafTopluKaynakYazar(info.author_clean);
+    if(y && !rafTopluYazarUyar(r.yazar, y)) r.yazar = y;                  // barkod kesin: farklıysa kaynağınki
+    else if(y && !r.yazar) r.yazar = y;
+    r.durum = 'barkod'; r.supheli = false; r.ekle = true;
+  } else {
+    r.durum = 'barkodYok';
+  }
+  // Tek satır için "zaten rafta" / "kitaplığında okunmuş" (tüm listeyi baştan işaretleme: kullanıcının
+  // kaldırdığı işaretleri geri koyardı)
+  const n = rafTopluKatla(r.ad);
+  r.cift = ((typeof myShelf==='function' ? myShelf().books : []) || []).some(b => rafTopluKatla(b.title)===n);
+  if(r.cift) r.ekle = false;
+  const kitaplar = (typeof db!=='undefined' && db.books && db.books[me]) || [];
+  r.kitaplikta = kitaplar.some(b => rafTopluKatla(b.title)===n &&
+    (b.readingStatus==='new' || b.readingStatus==='past' || !!(b.endDate||b.yearOnly)) && b.readingStatus!=='reading');
+  if(r.kitaplikta) r.okudum = true;
+  rafTopluTaslakKaydet();
+  rafTopluCiz();
+}
+
 function rafTopluSil(i){ _rt.satirlar.splice(i, 1); rafTopluTaslakKaydet(); rafTopluCiz(); }
 function rafTopluSatirEkle(){
   _rt.satirlar.push({ ham:'', ad:'', yazar:'', kaynakAd:'', kaynakYazar:'', durum:'elle', supheli:false, ekle:true, okudum:false });
@@ -261,14 +317,14 @@ function rafTopluSayaciGuncelle(){
 }
 
 async function rafTopluKaydet(){
-  if(_rt.araniyor) return;
+  if(_rt.araniyor || _rtBarkodSatir!==null) return;   // barkod araması sürerken kaydetme
   const secilen = rafTopluSecilenler();
   if(!secilen.length) return;
   const s = myShelf(); if(!s.books) s.books = [];
   const t = Date.now(), simdi = new Date().toISOString();
   const yeniler = secilen.map((r,i) => {
     const k = { id:'sb_'+t+'_'+i, title:String(r.ad).trim(), author:String(r.yazar||'').trim(), publisher:'',
-                qty:(r.adet>1 ? r.adet : null), shelfId:_rt.rafId||null, isbn:null, addedAt:simdi, lent:null };
+                qty:(r.adet>1 ? r.adet : null), shelfId:_rt.rafId||null, isbn:r.isbn||null, addedAt:simdi, lent:null };
     if(r.okudum) k.okundu = true;
     return k;
   });
@@ -300,6 +356,8 @@ const RAF_TOPLU_DURUM = {
   farkli:  { simge:'⚠️', yazi:'kaynak başka kitap buldu', renk:'#e0b65a' },
   yok:     { simge:'⚠️', yazi:'bulunamadı — elle düzelt', renk:'#e0b65a' },
   elle:    { simge:'✏️', yazi:'elle eklendi',          renk:'var(--parchment)' },
+  barkod:  { simge:'✓',  yazi:'barkodla bulundu',      renk:'#8fc68a' },
+  barkodYok:{ simge:'⚠️', yazi:'barkod kaynaklarda yok — adı elle düzelt', renk:'#e0b65a' },
 };
 function rafTopluCiz(){
   const kutu = document.getElementById('rafTopluKutu');
@@ -371,7 +429,10 @@ function rafTopluCiz(){
           </div>
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap">
-          <input id="rtAd_${i}" class="book-input" value="${e(r.ad)}" placeholder="Kitap adı" style="flex:2;min-width:150px;font-size:.85rem;padding:.35rem .6rem" oninput="rafTopluDegis(${i},'ad',this.value)">
+          <div style="flex:2;min-width:150px;display:flex;gap:.3rem">
+            <input id="rtAd_${i}" class="book-input" value="${e(r.ad)}" placeholder="Kitap adı" style="flex:1;min-width:0;font-size:.85rem;padding:.35rem .6rem" oninput="rafTopluDegis(${i},'ad',this.value)">
+            <button type="button" onclick="rafTopluBarkod(${i})" title="Barkodla düzelt" ${_rt.araniyor?'disabled':''} style="flex-shrink:0;padding:.3rem .5rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.3);border-radius:2px;color:var(--gold);cursor:pointer;font-size:.85rem">📷</button>
+          </div>
           <input class="book-input" value="${e(r.yazar)}" placeholder="Yazar" style="flex:1;min-width:110px;font-size:.85rem;padding:.35rem .6rem" oninput="rafTopluDegis(${i},'yazar',this.value)">
           ${r.adet>1 ? `<label style="${kucuk};color:var(--parchment);display:flex;align-items:center;gap:.25rem">adet
             <input class="book-input" type="number" min="1" max="99" value="${r.adet}" style="width:58px;font-size:.85rem;padding:.35rem .4rem" oninput="rafTopluDegis(${i},'adet',Math.max(1,parseInt(this.value)||1))"></label>` : ''}

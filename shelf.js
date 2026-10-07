@@ -363,6 +363,7 @@ function toggleShelfAddSection(forceOpen){
   // Toplu ekleme kutusu max-height'ı 'none' yapıyor (raf-toplu.js rafTopluAc); kapanışta
   // sıfırlanmazsa gövde görünmez ama yer kaplar → upuzun boş çerçeve (Gökşin, 07.10)
   if(!willOpen){
+    window._shelfIsbn=null;
     body.style.maxHeight='';
     const tk=document.getElementById('rafTopluKutu'); if(tk) tk.style.display='none';
   }
@@ -438,7 +439,8 @@ async function addShelfBook(){
     if(info?.author_clean&&!author) authorEl.value=info.author_clean;
   }
   const qty=Math.max(1,parseInt(document.getElementById('shelfBookQty')?.value)||1);
-  const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,qty:qty>1?qty:null,shelfId:shelfId||null,isbn:isbn||null,addedAt:new Date().toISOString(),lent:null};
+  // Barkod kaynaklarda bulunamayıp ad elle yazıldıysa okutulan ISBN yine de kayda girsin (searchShelfBook)
+  const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,qty:qty>1?qty:null,shelfId:shelfId||null,isbn:isbn||window._shelfIsbn||null,addedAt:new Date().toISOString(),lent:null};
 
   // Duplicate kontrol
   const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
@@ -482,6 +484,7 @@ async function addShelfBook(){
 
   s.books.push(book);
   saveDb();
+  window._shelfIsbn=null;
   if(titleEl) titleEl.value='';
   if(authorEl) authorEl.value='';
   if(pubEl) pubEl.value='';
@@ -677,6 +680,12 @@ async function searchShelfBook(){
     }
   } else if(info?.title_clean){
     if(preview){preview.style.display='block';preview.textContent=`✓ ${info.title_clean}${info.author_clean?' — '+info.author_clean:''}`;}
+  } else if(looksIsbn){
+    // Türkçe ISBN'lerin çoğu kaynaklarda yok (07.10, Fizik Üzerine Yedi Kısa Ders) → kutuda anlamsız
+    // rakam kalmasın; ISBN saklanır (ekleyince kayda yazılır), ad araması çoğu zaman buluyor.
+    window._shelfIsbn=isbn;
+    if(titleEl){titleEl.value='';titleEl.focus();}
+    if(preview){preview.style.display='block';preview.textContent='⚠️ Barkod kaynaklarda yok. Kitabın adını yaz ve 🔍\'ye bas.';}
   } else {
     if(preview){preview.style.display='block';preview.textContent='⚠️ Kitap bulunamadı — bilgileri elle girin.';}
   }
@@ -696,6 +705,7 @@ function openShelfBarcodeScanner(){
       if(result){
         const isbn=result.getText();
         closeBarcodeScanner();
+        window._shelfIsbn=null;   // yeni okutma: önceki bulunamayan ISBN'i unut
         document.getElementById('shelfBookTitle').value=isbn;
         searchShelfBook();
       }
