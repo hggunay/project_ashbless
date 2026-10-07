@@ -196,13 +196,19 @@ function lucienSonaEkle(anahtar){
   const s = lucienSonlar().filter(x => x!==anahtar); s.push(anahtar);
   try{ localStorage.setItem(LUCIEN_SON_ANAHTAR, JSON.stringify(s.slice(-5))); }catch(e){}
 }
+/* "Son 5 tekrar etmez" kitabın ADINA göre (07.10): aynı kitap seri ('k…'/'s…') ve raf ('r…')
+   çekmecesinde farklı anahtarla duruyor → Mülksüzler üst üste iki gerekçeyle çıkabiliyordu. */
+function lucienTekrarAnahtar(a){
+  if(!a || a.mistik) return a ? a.anahtar : '';
+  return 't:' + String(a.ad||'').toLocaleLowerCase('tr').replace(/[âàá]/g,'a').replace(/[îíì]/g,'i').replace(/[ûúù]/g,'u').replace(/\s+/g,' ').trim();
+}
 function lucienCek(adaylar){
   const son = lucienSonlar();
   const rastgele = d => d[Math.floor(Math.random()*d.length)];
   // Önce "son 5"i dışarıda bırakarak dene; olmazsa (az kitap) tekrar serbest
   for(const tekrarSerbest of [false, true]){
     const dolu = LUCIEN_CEKMECELER
-      .map(cek => ({ cek, liste: adaylar[cek.ad].filter(a => tekrarSerbest || !son.includes(a.anahtar)) }))
+      .map(cek => ({ cek, liste: adaylar[cek.ad].filter(a => tekrarSerbest || !son.includes(lucienTekrarAnahtar(a))) }))
       .filter(x => x.liste.length);
     // Mistik payı SABİT ~%10: boş çekmecelerin payı yalnız kitap çekmecelerine dağılır.
     // (Sınamada Nimet'te — seri/yarım/ikinci şans boş — mistik %35'e çıkıyordu.)
@@ -389,7 +395,7 @@ function lucienSalla(){
 
   const adaylar = lucienAdaylar();
   const cevap = lucienCek(adaylar);
-  lucienSonaEkle(cevap.anahtar);
+  lucienSonaEkle(lucienTekrarAnahtar(cevap));
   lucienSesCal();
 
   /* CAM KÜRE — yazılar cam bir kürenin YÜZEYİNE yapışık (Gökşin, 2026-10-05).
