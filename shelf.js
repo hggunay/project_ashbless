@@ -746,11 +746,48 @@ function renderShelf(){
     katla(b.author).includes(search)||
     katla(b.publisher).includes(search)
   );
+  /* Seri bilgisi (07.10): rafta seri alanı YOK → önce Seriler sekmesindeki listeler (elle düzenlenmiş,
+     kitaplıkta olmayan kitapları da kapsar), sonra Kitaplarım'daki series alanı. Aynı adla eşlenir.
+     İkisinde de yoksa seri bilinmez → "serisiz". Kaynak araması BİLEREK yok (yavaş + yanlış seri). */
+  const kitaplar=((db.books&&db.books[target])||[]).filter(Boolean);
+  const seriAd=new Map();
+  Object.values(((db.seriesData&&db.seriesData[target])||{}).series||{}).forEach(ser=>{
+    if(!ser||!ser.name) return;
+    (ser.books||[]).filter(Boolean).forEach(bk=>{
+      const t=bk.bookId?(kitaplar.find(k=>k.id===bk.bookId)||{}).title:bk.manualTitle;
+      const n=rafKitaplikAdi(t);
+      if(n&&!seriAd.has(n)) seriAd.set(n,{ad:ser.name,no:parseFloat(bk.num)});
+    });
+  });
+  kitaplar.forEach(k=>{
+    const n=rafKitaplikAdi(k.title);
+    if(k.series&&n&&!seriAd.has(n)) seriAd.set(n,{ad:k.series,no:parseFloat(k.seriesNum)});
+  });
+  const seriOf=b=>seriAd.get(rafKitaplikAdi(b.title))||null;
+  const okundu=b=>!!(b.okundu||bitmisAdlar.has(rafKitaplikAdi(b.title)));
+  /* Çoklu sıralama yerine her seçim kendi içinde akıllı (Gökşin onayı, 07.10 — işaretli kutular
+     reddedildi: öncelik sırası ekranda anlatılamıyor). Boş değerler (yazarsız, yayınevsiz) EN ALTA. */
+  const tr=(x,y)=>String(x||'').localeCompare(String(y||''),'tr');
+  const bosSona=(x,y)=>(!x&&y)?1:(x&&!y)?-1:tr(x,y);
+  const ad=(a,b_)=>tr(a.title,b_.title);
+  const seriIci=(a,b_)=>{   // aynı seri → numara; yoksa seri adı / kitap adı yan yana dizilir
+    const sa=seriOf(a), sb=seriOf(b_);
+    const k=tr(sa?sa.ad:a.title, sb?sb.ad:b_.title); if(k) return k;
+    if(sa&&sb) return (isNaN(sa.no)?999:sa.no)-(isNaN(sb.no)?999:sb.no) || ad(a,b_);
+    return ad(a,b_);
+  };
+  const yazarSonra=(a,b_)=>bosSona(a.author,b_.author)||seriIci(a,b_);
   books.sort((a,b_)=>{
-    if(sortMode==='author') return (a.author||'').localeCompare(b_.author||'','tr');
-    if(sortMode==='publisher') return (a.publisher||'').localeCompare(b_.publisher||'','tr');
+    if(sortMode==='author') return yazarSonra(a,b_);
+    if(sortMode==='publisher') return bosSona(a.publisher,b_.publisher)||bosSona(a.author,b_.author)||ad(a,b_);
+    if(sortMode==='series'){
+      const sa=seriOf(a), sb=seriOf(b_);
+      if(!!sa!==!!sb) return sa?-1:1;
+      return sa?seriIci(a,b_):bosSona(a.author,b_.author)||ad(a,b_);
+    }
+    if(sortMode==='read') return (okundu(b_)-okundu(a))||bosSona(a.author,b_.author)||ad(a,b_);
     if(sortMode==='added') return (b_.addedAt||'').localeCompare(a.addedAt||'');
-    return (a.title||'').localeCompare(b_.title||'','tr');
+    return ad(a,b_);
   });
 
   function prefs2(k){try{return JSON.parse(localStorage.getItem('aa-acc')||'{}')?.[k]||0;}catch(e){return 0;}}
@@ -780,6 +817,7 @@ function renderShelf(){
         <div style="flex:1;min-width:0;margin-right:.2rem">
           <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:${RAF_RENKLER[b.renk]||'var(--ink)'};display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${(b.okundu||bitmisAdlar.has(rafKitaplikAdi(b.title)))?`<span title="Okudum" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
           ${b.author?`<div style="font-size:.78rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
+          ${sortMode==='series'&&seriOf(b)?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);opacity:.7;margin-top:.1rem">📚 ${escapeHtml(seriOf(b).ad)}${isNaN(seriOf(b).no)?'':' #'+seriOf(b).no}</div>`:''}
           ${b.note?`<div style="font-size:.75rem;color:#555;font-style:italic;margin-top:.15rem">${b.note}</div>`:''}
           <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${lentBadge}</div>
         </div>
