@@ -130,8 +130,12 @@ function kilerRastgeleGun(veri){
 
 /* ── ÇİZİM ─────────────────────────────────────────────────────────────── */
 function kilerSvg(){
-  // Kiler: kapı kasası, iki raf (kavanoz, konserve), zeminde delik.
+  // Kiler: kapı kasası, iki raf, zeminde delik.
   // Renkler var(--gold) tonlarında — panel zemini KOYU (arayüz kalıpları notu).
+  // Raflar (2026-10-07): çizilmiş dikdörtgen kavanozlar yerine Canva'dan iki ücretsiz görsel —
+  // üst raf turuncu şişe/koli görselinin TEK rafı, alt raf yeşil kavanoz rafı (çizgiler kalınlaştırıldı);
+  // ikisi de tek renk altına çevrildi, arka plan saydam (oyunlar/gorseller/kiler-raflar.png, 400×278).
+  // Delik kodla çiziliyor, görselin parçası DEĞİL (id'si animasyonda kullanılıyor).
   return `<svg viewBox="0 0 160 150" width="150" height="140" aria-hidden="true" style="flex-shrink:0;display:block">
     <defs>
       <radialGradient id="kilerDelikG" cx="50%" cy="45%" r="55%">
@@ -140,17 +144,7 @@ function kilerSvg(){
       </radialGradient>
     </defs>
     <rect x="8" y="6" width="144" height="140" rx="3" fill="rgba(201,162,39,.05)" stroke="rgba(201,162,39,.45)" stroke-width="2"/>
-    <line x1="14" y1="40" x2="146" y2="40" stroke="rgba(201,162,39,.55)" stroke-width="3"/>
-    <line x1="14" y1="72" x2="146" y2="72" stroke="rgba(201,162,39,.55)" stroke-width="3"/>
-    <g fill="rgba(201,162,39,.28)" stroke="rgba(201,162,39,.6)" stroke-width="1">
-      <rect x="22" y="20" width="14" height="19" rx="3"/><rect x="21" y="17" width="16" height="4" rx="1"/>
-      <rect x="42" y="24" width="12" height="15" rx="2"/>
-      <rect x="60" y="18" width="16" height="21" rx="3"/><rect x="59" y="15" width="18" height="4" rx="1"/>
-      <rect x="96" y="26" width="11" height="13"/><rect x="110" y="26" width="11" height="13"/><rect x="124" y="22" width="14" height="17" rx="2"/>
-      <rect x="26" y="56" width="10" height="15"/><rect x="39" y="56" width="10" height="15"/>
-      <rect x="70" y="52" width="16" height="19" rx="3"/>
-      <rect x="112" y="55" width="22" height="16" rx="2"/>
-    </g>
+    <image href="oyunlar/gorseller/kiler-raflar.png" x="19.6" y="9" width="120.8" height="84" preserveAspectRatio="xMidYMid meet"/>
     <ellipse cx="80" cy="118" rx="44" ry="16" fill="rgba(0,0,0,.35)"/>
     <ellipse id="kilerDelik" cx="80" cy="116" rx="36" ry="12" fill="url(#kilerDelikG)" stroke="rgba(201,162,39,.35)" stroke-width="1"/>
   </svg>`;
