@@ -139,7 +139,8 @@ function lucienAdaylar(){
   // (raf kaydı kitaba bağlı değil): bitmiş / okunuyor / yarım → atlanır (yarım kendi çekmecesinde);
   // Tsundoku'daysa o kitap kaydıyla, kitaplıkta yoksa "Kitaplığıma ekle" ile. Ödünçteki atlanır.
   try{
-    const ad = t => String(t||'').toLocaleLowerCase('tr').replace(/\s+/g,' ').trim();
+    // â/î/û katlanır: rafta "İmkânsız Kale", kitaplıkta "İmkansız Kale" → okunmuş kitap önerilmesin (07.10)
+    const ad = t => String(t||'').toLocaleLowerCase('tr').replace(/[âàá]/g,'a').replace(/[îíì]/g,'i').replace(/[ûúù]/g,'u').replace(/\s+/g,' ').trim();
     const rafKitaplari = ((db.shelf && db.shelf[me] && db.shelf[me].books) || [])
       // okundu: rafta "✓ okudum" işaretli (uygulamadan önce okunmuş, kitaplıkta kaydı yok)
       .filter(r => r && r.title && !r.lent && !r.okundu && !String(r.title).startsWith('ISBN:'));

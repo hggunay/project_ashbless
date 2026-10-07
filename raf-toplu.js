@@ -198,10 +198,10 @@ async function rafTopluAra(){
 // Listede birden çok geçenler (07.10): TEK satırda birleşir, adet = kaç kez geçtiği → rafa qty
 // olarak gider. Yapay zekâ yanlışlıkla iki kez yazabilir (Gemini "Korku") → satırda uyarı + adet kutusu.
 function rafTopluCiftleriIsaretle(){
-  const raftaki = new Set(((typeof myShelf==='function' ? myShelf().books : []) || []).map(b => rafTopluNorm(b.title)));
+  const raftaki = new Set(((typeof myShelf==='function' ? myShelf().books : []) || []).map(b => rafTopluKatla(b.title)));
   const ilk = new Map();
   _rt.satirlar = _rt.satirlar.filter(r => {
-    const n = rafTopluNorm(r.ad);
+    const n = rafTopluKatla(r.ad);
     if(n && ilk.has(n)){
       const a = ilk.get(n);
       a.adet = (a.adet||1) + (r.adet||1);
@@ -222,9 +222,10 @@ function rafTopluCiftleriIsaretle(){
 function rafTopluOkunanlariIsaretle(){
   const kitaplar = (typeof db!=='undefined' && db.books && db.books[me]) || [];
   const bitmis = b => b && (b.readingStatus==='new' || b.readingStatus==='past' || !!(b.endDate||b.yearOnly)) && b.readingStatus!=='reading';
-  const okunan = new Set(kitaplar.filter(bitmis).map(b => rafTopluNorm(b.title)));
+  // Katla: "İmkânsız Kale" (raf) = "İmkansız Kale" (kitaplık) — şapka farkı eşleşmeyi kaçırıyordu (07.10)
+  const okunan = new Set(kitaplar.filter(bitmis).map(b => rafTopluKatla(b.title)));
   _rt.satirlar.forEach(r => {
-    r.kitaplikta = okunan.has(rafTopluNorm(r.ad));
+    r.kitaplikta = okunan.has(rafTopluKatla(r.ad));
     if(r.kitaplikta) r.okudum = true;
   });
 }

@@ -599,7 +599,8 @@ function addShelfBookToLibrary(bookId){
   const book=(s.books||[]).find(b=>b.id===bookId);
   if(!book) return;
   // Zaten Kitaplarım'daysa forma gönderme (çift kayıt olmasın)
-  const ad=t=>String(t||'').toLocaleLowerCase('tr').replace(/\s+/g,' ').trim();
+  // â/î/û katlanır: rafta "İmkânsız Kale", kitaplıkta "İmkansız Kale" (07.10)
+  const ad=t=>String(t||'').toLocaleLowerCase('tr').replace(/[âàá]/g,'a').replace(/[îíì]/g,'i').replace(/[ûúù]/g,'u').replace(/\s+/g,' ').trim();
   if(((db.books&&db.books[me])||[]).some(k=>ad(k.title)===ad(book.title))){
     if(typeof mesajGoster==='function') mesajGoster(`"${book.title}" zaten Kitaplarım'da kayıtlı.`,'uyari');
     return;
