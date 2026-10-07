@@ -150,6 +150,7 @@ async function rafTopluAra(){
   await Promise.all([isci(), isci(), isci()]);
   _rt.araniyor = false;
   rafTopluCiftleriIsaretle();
+  rafTopluOkunanlariIsaretle();
   rafTopluTaslakKaydet();
   rafTopluCiz();
 }
@@ -163,6 +164,18 @@ function rafTopluCiftleriIsaretle(){
     if(raftaki.has(n) || gorulen.has(n)){ r.cift = true; r.ekle = false; }
     else r.cift = false;
     gorulen.add(n);
+  });
+}
+
+// Kitaplarım'da bitmiş olarak kayıtlı olanlar "okudum" işaretli gelir (Gökşin, 07.10) —
+// yalnız arama bitince BİR KEZ; kullanıcı sonra kaldırabilir. Bitmiş ölçüsü Lucien'inkiyle aynı.
+function rafTopluOkunanlariIsaretle(){
+  const kitaplar = (typeof db!=='undefined' && db.books && db.books[me]) || [];
+  const bitmis = b => b && (b.readingStatus==='new' || b.readingStatus==='past' || !!(b.endDate||b.yearOnly)) && b.readingStatus!=='reading';
+  const okunan = new Set(kitaplar.filter(bitmis).map(b => rafTopluNorm(b.title)));
+  _rt.satirlar.forEach(r => {
+    r.kitaplikta = okunan.has(rafTopluNorm(r.ad));
+    if(r.kitaplikta) r.okudum = true;
   });
 }
 
@@ -286,6 +299,7 @@ function rafTopluCiz(){
       `<span style="${kucuk};color:${d.renk}">${d.simge} ${d.yazi}</span>`,
       r.supheli ? `<span style="${kucuk};color:#e0b65a">❓ yapay zekâ emin değil</span>` : '',
       r.cift ? `<span style="${kucuk};color:#e0b65a">⧉ zaten rafta / listede</span>` : '',
+      r.kitaplikta ? `<span style="${kucuk};color:#8fc68a">📗 kitaplığında okunmuş</span>` : '',
     ].filter(Boolean).join(' · ');
     const okunan = r.ham && rafTopluNorm(r.ham)!==rafTopluNorm(r.ad + (r.yazar?' '+r.yazar:''))
       ? `<div style="${kucuk};color:var(--parchment);opacity:.55;margin-top:.2rem">Okunan: ${e(r.ham)}</div>` : '';

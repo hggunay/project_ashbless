@@ -327,6 +327,20 @@ function shelfShowMore(shelfId,count){
   renderShelf();
 }
 
+/* Düzenle modu + kitap adı rengi (Gökşin, 07.10)
+   Satır düğmeleri (taşı/ödünç/✏️/📖/🗑) yalnız ✏️ Düzenle açıkken görünür → kitap adı satırı kaplar.
+   Renk: yalnız adı boyar, başka işlevi yok; herkese görünür (raf ziyaretinde de). Anahtar saklanır,
+   renk kodu değil → palet değişirse eski kayıtlar bozulmaz. Renkler AÇIK parşömen kartta okunur seçildi. */
+let _rafDuzenle=false;
+const RAF_RENKLER={kirmizi:'#a8322d',turuncu:'#b35a14',hardal:'#8a6a00',yesil:'#3d7a36',
+                   petrol:'#1d6d77',mavi:'#2c5394',mor:'#6a3d9e',pembe:'#a6366f'};
+function shelfDuzenleModu(){
+  _rafDuzenle=!_rafDuzenle;
+  const b=document.getElementById('shelfEditModeBtn');
+  if(b){ b.textContent=_rafDuzenle?'✓ Bitti':'✏️ Düzenle'; b.style.background=_rafDuzenle?'rgba(201,162,39,.3)':'rgba(201,162,39,.1)'; }
+  renderShelf();
+}
+
 function toggleShelfAddSection(forceOpen){
   const body=document.getElementById('shelfAddAccBody');
   const btn=document.getElementById('shelfAddToggleBtn');
@@ -334,6 +348,12 @@ function toggleShelfAddSection(forceOpen){
   const willOpen=typeof forceOpen==='boolean'?forceOpen:!body.classList.contains('open');
   body.classList.toggle('open',willOpen);
   if(btn) btn.style.display=willOpen?'none':'';
+  // Toplu ekleme kutusu max-height'ı 'none' yapıyor (raf-toplu.js rafTopluAc); kapanışta
+  // sıfırlanmazsa gövde görünmez ama yer kaplar → upuzun boş çerçeve (Gökşin, 07.10)
+  if(!willOpen){
+    body.style.maxHeight='';
+    const tk=document.getElementById('rafTopluKutu'); if(tk) tk.style.display='none';
+  }
 }
 function toggleMagAddSection(forceOpen){
   const body=document.getElementById('magAddAccBody');
@@ -549,6 +569,8 @@ function saveShelfBookEdit(bookId){
   // "Okudum" (2026-10-06): uygulamadan önce okunmuş raf kitabı — Lucien önermez (raf-toplu.js)
   const ok=document.getElementById('edit-okundu-'+bookId);
   if(ok){ if(ok.checked) book.okundu=true; else delete book.okundu; }
+  const rk=document.querySelector(`input[name="edit-renk-${bookId}"]:checked`);
+  if(rk){ if(RAF_RENKLER[rk.value]) book.renk=rk.value; else delete book.renk; }
   saveDb();renderShelf();
 }
 
@@ -564,11 +586,23 @@ function addShelfBookToLibrary(bookId){
   const s=myShelf();
   const book=(s.books||[]).find(b=>b.id===bookId);
   if(!book) return;
+  // Zaten Kitaplarım'daysa forma gönderme (çift kayıt olmasın)
+  const ad=t=>String(t||'').toLocaleLowerCase('tr').replace(/\s+/g,' ').trim();
+  if(((db.books&&db.books[me])||[]).some(k=>ad(k.title)===ad(book.title))){
+    if(typeof mesajGoster==='function') mesajGoster(`"${book.title}" zaten Kitaplarım'da kayıtlı.`,'uyari');
+    return;
+  }
   document.getElementById('bookTitle').value=book.title||'';
   document.getElementById('bookAuthor').value=book.author||'';
   document.getElementById('bookPublisher').value=book.publisher||'';
   showPanel('myBooks',document.querySelector('.nav-tab[onclick*="myBooks"]'));
-  notify('📖 Kitaplığıma Ekle',`"${book.title}" bilgileri forma aktarıldı.`);
+  // Ekleme menüsü kapalıyken form görünmüyordu → "ne oldu?" (Gökşin, 07.10): aç + göster.
+  // Ad/yazar alanları okuma durumu seçilince açılan iç kısımda; değerler orada bekliyor.
+  setTimeout(()=>{
+    if(typeof toggleAddBookSection==='function') toggleAddBookSection(true);
+    document.getElementById('addBookSection')?.scrollIntoView({behavior:'smooth',block:'start'});
+  },80);
+  notify('📖 Kitaplarım\'a ekle',`"${book.title}" — okuma durumunu seç, ad ve yazar hazır. Sonra Kaydet'e bas.`);
 }
 
 async function searchShelfBook(){
@@ -666,6 +700,8 @@ function renderShelf(){
   // Ziyaretçi banner
   const shelfBanner=document.getElementById('shelfViewingBanner');
   const shelfViewText=document.getElementById('shelfViewingText');
+  const duzBtn=document.getElementById('shelfEditModeBtn');
+  if(duzBtn) duzBtn.style.display=viewing?'none':'';
   if(shelfBanner){
     shelfBanner.style.display=viewing?'':'none';
     if(viewing&&shelfViewText){
@@ -684,12 +720,12 @@ function renderShelf(){
     return`<div style="padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.4rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0;margin-right:.2rem">
-          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:var(--ink);display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${b.okundu?`<span title="Okudum (uygulamadan önce)" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
+          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:${RAF_RENKLER[b.renk]||'var(--ink)'};display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${b.okundu?`<span title="Okudum (uygulamadan önce)" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
           ${b.author?`<div style="font-size:.78rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
           ${b.note?`<div style="font-size:.75rem;color:#555;font-style:italic;margin-top:.15rem">${b.note}</div>`:''}
           <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${lentBadge}</div>
         </div>
-        ${isMe?`<div style="display:flex;gap:.25rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center">
+        ${isMe&&_rafDuzenle?`<div style="display:flex;gap:.25rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center">
           ${moveSelect}
           ${b.lent
             ?`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓</button>`
@@ -713,6 +749,11 @@ function renderShelf(){
           <input id="edit-note-${b.id}" class="book-input" type="text" value="${(b.note||'').replace(/"/g,'&quot;')}" placeholder="Hangi baskı, nereden aldım..." style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
           <label style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--rust);display:flex;align-items:center;gap:.3rem;cursor:pointer;margin-top:.1rem">
             <input id="edit-okundu-${b.id}" type="checkbox" ${b.okundu?'checked':''}/> ✓ Okudum <span style="opacity:.6">(Lucien önermez)</span></label>
+          <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em;margin-top:.2rem">Ad rengi</div>
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;align-items:center">
+            <label title="Renksiz" style="cursor:pointer;display:flex"><input type="radio" name="edit-renk-${b.id}" value="" ${!RAF_RENKLER[b.renk]?'checked':''} style="position:absolute;opacity:0;width:0;height:0"><span class="raf-renk-nokta" style="background:var(--ink);opacity:.35"></span></label>
+            ${Object.entries(RAF_RENKLER).map(([k,v])=>`<label title="${k}" style="cursor:pointer;display:flex"><input type="radio" name="edit-renk-${b.id}" value="${k}" ${b.renk===k?'checked':''} style="position:absolute;opacity:0;width:0;height:0"><span class="raf-renk-nokta" style="background:${v}"></span></label>`).join('')}
+          </div>
           <div style="display:flex;gap:.3rem">
             <button class="btn btn-sm btn-primary" style="font-size:.65rem" onclick="saveShelfBookEdit('${b.id}')">💾 Kaydet</button>
             <button class="btn btn-sm" style="font-size:.65rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">İptal</button>

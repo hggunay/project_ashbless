@@ -234,6 +234,8 @@ select.book-input option{background:#2a1a08;color:var(--parchment);}
    geçiş süresi boyunca gerçekten kayarak açılma hissi veriyor. */
 .add-acc-body{overflow:hidden;transition:max-height .4s ease,opacity .3s ease;max-height:0;opacity:0;}
 .add-acc-body.open{max-height:2000px;opacity:1;overflow:visible;}
+.raf-renk-nokta{display:inline-block;width:20px;height:20px;border-radius:50%;border:2px solid transparent;box-shadow:0 0 0 1px rgba(26,18,8,.2)}
+input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 /* card-header içindeki accordion */
 .card-header.acc-header{cursor:pointer;}
 /* stats bölüm accordion */
@@ -1754,6 +1756,8 @@ try{
             <option value="publisher">🏢 Yayınevi</option>
             <option value="added">📅 Eklenme</option>
           </select>
+          <!-- Düzenle modu (2026-10-07): kitap satırlarındaki düğmeler yalnız bu açıkken görünür — shelf.js -->
+          <button type="button" id="shelfEditModeBtn" class="btn btn-sm" onclick="shelfDuzenleModu()" style="font-size:.72rem;padding:.3rem .6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35)">✏️ Düzenle</button>
         </div>
       </div>
       <div id="specialShelvesContainer"></div>
@@ -2161,8 +2165,8 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20260919b"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261006a"></script>
-<script src="raf-toplu.js?s=20261006a"></script>
+<script src="shelf.js?s=20261007a"></script>
+<script src="raf-toplu.js?s=20261007a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
 <script src="diyarlar-katalog.js?s=20260919b"></script>
