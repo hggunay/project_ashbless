@@ -144,7 +144,30 @@ function lucienAdaylar(){
     const rafKitaplari = ((db.shelf && db.shelf[me] && db.shelf[me].books) || [])
       // okundu: rafta "✓ okudum" işaretli (uygulamadan önce okunmuş, kitaplıkta kaydı yok)
       .filter(r => r && r.title && !r.lent && !r.okundu && !String(r.title).startsWith('ISBN:'));
+    /* Seri sırası (Gökşin, 07.10): raf çekmecesi seriye bakmıyordu → Neanderthal #1 okunmuş,
+       #2 ve #3 rafta → #3 de önerilebiliyordu. Kural: aynı seriden RAFTA olan, sırada daha önce
+       gelen OKUNMAMIŞ kitap varsa bu kitap atlanır. Rafta olmayan önceki kitaplar engel DEĞİL
+       (Hainli: elde yalnız Mülksüzler → önerilmeye devam). Seri = Seriler sekmesi + kitaplıktaki
+       series alanı, aynı adla eşlenir. Öneri dokununca, animasyondan ÖNCE hesaplanıyor. */
+    const ns = s => (typeof normalizeSeries==='function' ? normalizeSeries(s) : String(s||'').toLowerCase().trim());
+    const seriYeri = new Map();                        // kitap adı → { seri, no }
+    const yerEkle = (t, seri, no) => { const n = ad(t); if(n && seri && !seriYeri.has(n)) seriYeri.set(n, { seri:ns(seri), no:parseFloat(no) }); };
+    Object.values((typeof mySeriesData==='function' ? mySeriesData().series : {}) || {}).forEach(ser => {
+      if(!ser || !ser.name) return;
+      (ser.books||[]).filter(Boolean).forEach(bk => {
+        const t = bk.bookId ? (kitaplar.find(b => b.id===bk.bookId) || {}).title : bk.manualTitle;
+        yerEkle(t, ser.name, bk.num);
+      });
+    });
+    kitaplar.forEach(b => yerEkle(b.title, b.series, b.seriesNum));
+    const okunmus = r => { const k = kitaplar.find(b => ad(b.title)===ad(r.title)); return !!(k && lucienBitmisMi(k)); };
+    const raftaOkunmamis = rafKitaplari.filter(r => !okunmus(r));
+    const oncesiRaftaBekliyor = r => {
+      const y = seriYeri.get(ad(r.title)); if(!y || isNaN(y.no)) return false;
+      return raftaOkunmamis.some(o => { const z = seriYeri.get(ad(o.title)); return z && z.seri===y.seri && !isNaN(z.no) && z.no < y.no; });
+    };
     for(const r of rafKitaplari){
+      if(oncesiRaftaBekliyor(r)) continue;
       const k = kitaplar.find(b => ad(b.title)===ad(r.title));
       if(!k) c.raf.push({ anahtar:'r'+r.id, ad:r.title, yazar:r.author||'', rafId:r.id, eylem:'rafEkle' });
       else if(k.readingStatus==='wishlist' || k.readingStatus==='planned') c.raf.push(kitapAday(k,'basla'));
