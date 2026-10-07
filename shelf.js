@@ -594,28 +594,67 @@ function moveShelfBook(bookId, shelfId){
   saveDb();renderShelf();
 }
 
+/* 📖 Kitaplarım'a ekle — YOL B (Gökşin, 07.10): sayfa değiştirmeden, rafta kitabın altında
+   okuma durumu seçilir → kitap DOĞRUDAN kaydedilir. Kayıt elle eklemenin aynısı olsun diye
+   (rozet, seri, okuma olayı, diyar…) index.html addBook() kullanılır: gizli formu doldurup çağırırız.
+   ❌ Önceki yol (formu doldurup Kitaplarım'a götürmek): form kapalıydı, ad görünmüyordu,
+   "Kitaplarım'a ekle" bildirimi "eklendi" sanıldı → hiçbir şey kaydedilmedi. */
+const RAF_KITAPLIK_DURUM=[['new','✅ Okudum'],['past','📦 Eskiden okudum'],['reading','📖 Okuyorum'],['wishlist','🔖 Listeye ekle']];
+function rafKitaplikAdi(t){   // â/î/û katlanır: rafta "İmkânsız Kale", kitaplıkta "İmkansız Kale"
+  return String(t||'').toLocaleLowerCase('tr').replace(/[âàá]/g,'a').replace(/[îíì]/g,'i').replace(/[ûúù]/g,'u').replace(/\s+/g,' ').trim();
+}
+function rafKitaplikta(book){
+  return ((db.books&&db.books[me])||[]).some(k=>rafKitaplikAdi(k.title)===rafKitaplikAdi(book.title));
+}
 function addShelfBookToLibrary(bookId){
-  const s=myShelf();
-  const book=(s.books||[]).find(b=>b.id===bookId);
+  const book=(myShelf().books||[]).find(b=>b.id===bookId);
   if(!book) return;
-  // Zaten Kitaplarım'daysa forma gönderme (çift kayıt olmasın)
-  // â/î/û katlanır: rafta "İmkânsız Kale", kitaplıkta "İmkansız Kale" (07.10)
-  const ad=t=>String(t||'').toLocaleLowerCase('tr').replace(/[âàá]/g,'a').replace(/[îíì]/g,'i').replace(/[ûúù]/g,'u').replace(/\s+/g,' ').trim();
-  if(((db.books&&db.books[me])||[]).some(k=>ad(k.title)===ad(book.title))){
+  if(rafKitaplikta(book)){
     if(typeof mesajGoster==='function') mesajGoster(`"${book.title}" zaten Kitaplarım'da kayıtlı.`,'uyari');
     return;
   }
-  document.getElementById('bookTitle').value=book.title||'';
-  document.getElementById('bookAuthor').value=book.author||'';
-  document.getElementById('bookPublisher').value=book.publisher||'';
+  const row=document.getElementById('kitaplik-row-'+bookId);
+  if(row) row.style.display=row.style.display==='none'?'flex':'none';
+}
+let _rafKitaplikMesgul=false;
+async function rafKitapligaKaydet(bookId,durum){
+  if(_rafKitaplikMesgul) return;
+  const book=(myShelf().books||[]).find(b=>b.id===bookId);
+  if(!book||!RAF_KITAPLIK_DURUM.some(d=>d[0]===durum)) return;
+  if(rafKitaplikta(book)){ if(typeof mesajGoster==='function') mesajGoster(`"${book.title}" zaten Kitaplarım'da kayıtlı.`,'uyari'); return; }
+  const chip=document.querySelector(`#readingTimeChips .chip[data-val="${durum}"]`);
+  const alan=id=>document.getElementById(id);
+  if(!chip||!alan('bookTitle')||typeof addBook!=='function') return;
+  _rafKitaplikMesgul=true;
+  const row=alan('kitaplik-row-'+bookId);
+  if(row) row.innerHTML='<span style="font-family:\'Space Mono\',monospace;font-size:.62rem;color:var(--rust)">Kaydediliyor…</span>';
+  const once=(db.books[me]||[]).length;
+  try{
+    alan('bookTitle').value=book.title||'';
+    alan('bookAuthor').value=book.author||'';
+    alan('bookPublisher').value=book.publisher||'';
+    if(alan('bookSeries')) alan('bookSeries').value='';
+    if(alan('bookEndDate')) alan('bookEndDate').value='';   // tarihsiz: "Eskiden okudum" = tarih bilinmiyor
+    if(typeof setTodayDate==='function') setTodayDate();
+    selectReadingTime(chip);
+    await addBook();
+  }catch(e){ console.warn('raf → kitaplık:',e); }
+  _rafKitaplikMesgul=false;
+  const eklendi=(db.books[me]||[]).length>once && rafKitaplikta(book);
+  if(eklendi){
+    if(typeof mesajGoster==='function') mesajGoster(`✓ "${book.title}" Kitaplarım'a eklendi.`);
+    renderShelf();
+    return;
+  }
+  // addBook bir onay istediyse (ör. seri adı farklı yazılmış) o çubuk Kitaplarım'da açık bekliyor → oraya götür
   showPanel('myBooks',document.querySelector('.nav-tab[onclick*="myBooks"]'));
-  // Ekleme menüsü kapalıyken form görünmüyordu → "ne oldu?" (Gökşin, 07.10): aç + göster.
-  // Ad/yazar alanları okuma durumu seçilince açılan iç kısımda; değerler orada bekliyor.
   setTimeout(()=>{
     if(typeof toggleAddBookSection==='function') toggleAddBookSection(true);
+    document.getElementById('addBookFormBody')?.classList.add('open');
     document.getElementById('addBookSection')?.scrollIntoView({behavior:'smooth',block:'start'});
   },80);
-  notify('📖 Kitaplarım\'a ekle',`"${book.title}" — okuma durumunu seç, ad ve yazar hazır. Sonra Kaydet'e bas.`);
+  if(typeof mesajGoster==='function') mesajGoster(`"${book.title}" henüz eklenmedi — formdaki soruyu yanıtla.`,'uyari');
+  renderShelf();
 }
 
 async function searchShelfBook(){
@@ -745,11 +784,16 @@ function renderShelf(){
             :`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤</button>`}
           <button class="btn btn-sm" title="Ad rengi" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="rafRenkAc('${b.id}')">🎨</button>
           <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>
-          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
+          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" title="Kitaplarım'a ekle" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
           <button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
         </div>`:''}
       </div>
-      ${isMe?`<div id="renk-row-${b.id}" style="display:none;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
+      ${isMe?`<div id="kitaplik-row-${b.id}" style="display:none;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
+        <span style="font-family:'Space Mono',monospace;font-size:.6rem;color:var(--rust);width:100%">Kitaplarım'a ekle:</span>
+        ${RAF_KITAPLIK_DURUM.map(([v,l])=>`<button type="button" class="btn btn-sm" onclick="rafKitapligaKaydet('${b.id}','${v}')" style="font-size:.65rem;padding:.25rem .5rem;background:rgba(74,103,65,.12);color:var(--moss);border:1px solid rgba(74,103,65,.3)">${l}</button>`).join('')}
+        <button type="button" class="btn btn-sm" onclick="addShelfBookToLibrary('${b.id}')" style="font-size:.65rem;padding:.25rem .5rem;background:rgba(138,69,19,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)">İptal</button>
+      </div>
+      <div id="renk-row-${b.id}" style="display:none;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
         <button type="button" title="Renksiz" onclick="rafRenkSec('${b.id}','')" style="background:none;border:none;padding:0;cursor:pointer;display:flex"><span class="raf-renk-nokta" style="background:var(--ink);opacity:.35"></span></button>
         ${Object.entries(RAF_RENKLER).map(([k,v])=>`<button type="button" title="${k}" onclick="rafRenkSec('${b.id}','${k}')" style="background:none;border:none;padding:0;cursor:pointer;display:flex"><span class="raf-renk-nokta" style="background:${v}${b.renk===k?';box-shadow:0 0 0 2px var(--ink);border-color:#fff':''}"></span></button>`).join('')}
       </div>
