@@ -562,15 +562,20 @@ function hesapVaktiCiz(){
        ${alt?`<div style="font-size:.58rem;opacity:.5;color:var(--parchment)">${alt}</div>`:''}
      </div>`;
 
+  /* Açık/kapalı tercihi (2026-10-07, Gökşin: "kapatsam bile hep açık geliyor"): toggleSection
+     tercihi aa-acc'ye YAZIYORDU ama çizim "open"ı sabit koyuyordu → hiç okunmuyordu.
+     Tercih yoksa (ilk kez) açık gelir, eskisi gibi. */
+  let acik = true;
+  try{ const p = JSON.parse(localStorage.getItem('aa-acc')||'{}'); if(p['hesap-vakti']===false) acik = false; }catch(e){}
   const bolum = document.createElement('div');
   bolum.className = 'stats-section';
   bolum.id = 'hesapVaktiBolum';
   bolum.innerHTML = `
     <div class="stats-acc-header" onclick="hesapVaktiAcKapa()">
       <div class="stats-section-title" style="margin-bottom:0">⚖️ Hesap Vakti</div>
-      <span class="acc-arrow open" id="arr-hesap-vakti">▶</span>
+      <span class="acc-arrow${acik?' open':''}" id="arr-hesap-vakti">▶</span>
     </div>
-    <div class="stats-acc-body open" id="body-hesap-vakti" style="padding-top:.5rem">
+    <div class="stats-acc-body${acik?' open':''}" id="body-hesap-vakti" style="padding-top:.5rem">
       <div style="font-family:'Space Mono',monospace;font-size:.62rem;color:var(--gold);opacity:.85;margin-bottom:.6rem;letter-spacing:.03em">
         ${v.ay} ayının hesabı
       </div>
@@ -831,13 +836,17 @@ const HV_MELEK_TESEKKUR = [
   'Rica ederim.',
   'Ne demek. Ben buradayım.',
   /* Gökşin'in eklemesi (2026-09-17): "uzun süre girmeme" senaryosunda
-     40 gündür okumamış birine düz "okuyan sensin" ters düşüyordu. Havuz
-     BÜTÜN senaryolarda ortak — ek hepsinde geçerli, bilerek.
+     40 gündür okumamış birine düz "okuyan sensin" ters düşüyordu.
      " | " → iki ayrı balon (bkz. melegiKapat). Gökşin tek balonlu hâli değil
-     bunu seçti. */
+     bunu seçti. ❌ Eskiden ek BÜTÜN senaryolarda çıkıyordu → 2026-10-06'dan beri
+     ikinci balon yalnız HV_YANI_SENARYOLARI'nda (okumayan); diğerlerinde tek balon. */
   'Sen kendine teşekkür et, okuyan sensin. | ...yani... anladın sen onu.',
   'Bir şey yapmadım ki, sadece doğruyu söyledim.'
 ];
+/* "...yani..." balonunun çıktığı senaryolar — kişi aslında OKUMAMIŞ, Melek
+   "okuyan sensin" deyip toparlıyor. Gökşin seçti (2026-10-06). tsundoku-t3
+   kararsızdı (geçen ay 0 ya da 1 kitap) → "liste şişmiş" bağlamında iğne yerinde. */
+const HV_YANI_SENARYOLARI = ['uzun-yokluk','hic-okumama','gun-60','gun-30','seri-s2','tsundoku-t3'];
 const HV_MELEK_SOZ = [
   'Doğru karar. O zaten kendi sözüne bile inanmıyor.',
   'Sana inanıyorum. Bunu unutma.',
@@ -1797,7 +1806,10 @@ async function hesapVaktiSohbetOynat(senaryoId, veri){
     /* Cevap " | " içeriyorsa parçalar AYRI balon, araya yeniden "yazıyor…"
        giriyor (2026-09-17, Gökşin iki balonlu hâli seçti). Aradaki duraksama
        espriyi taşıyor: "okuyan sensin." … "...yani... anladın sen onu." */
-    const kapanis=hvRastgele(cevap==='tesekkur'?HV_MELEK_TESEKKUR:HV_MELEK_SOZ).split(' | ');
+    let kapanis=hvRastgele(cevap==='tesekkur'?HV_MELEK_TESEKKUR:HV_MELEK_SOZ).split(' | ');
+    /* "...yani... anladın sen onu." yalnız OKUMAYAN senaryolarda (Gökşin, 2026-10-06):
+       Nimet'in "her şey mükemmel"inde çıkınca anlamsız kaldı. Diğerlerinde ilk balon yeter. */
+    if(kapanis.length>1 && !(senaryo && HV_YANI_SENARYOLARI.includes(senaryo.id))) kapanis=kapanis.slice(0,1);
     for(const parca of kapanis){
       await hvYaziyor(kap,'melek',false);
       await hvBalon(kap,'melek', parca);
