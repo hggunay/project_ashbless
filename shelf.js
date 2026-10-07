@@ -729,16 +729,22 @@ function renderShelf(){
   renderShelfSelect();
   const shelves=Object.values(s.shelves||{});
   const allBooks=s.books||[];
-  const search=viewing?'':(document.getElementById('shelfSearch')?.value||'').toLowerCase().trim();
+  const katla=s=>(typeof aramaKatla==='function'?aramaKatla(s):String(s||'').toLowerCase().trim());
+  const search=viewing?'':katla(document.getElementById('shelfSearch')?.value||'');
+  // "✓ okudum" rozeti: elle işaret (b.okundu) YA DA Kitaplarım'da bitmiş kayıt (07.10 — Kâinat
+  // kitaplığa "eskiden okudum" eklendi ama rafta rozet çıkmadı). Ölçü Lucien'inkiyle aynı.
+  const bitmisAdlar=new Set(((db.books&&db.books[target])||[])
+    .filter(k=>k&&(k.readingStatus==='new'||k.readingStatus==='past'||!!(k.endDate||k.yearOnly))&&k.readingStatus!=='reading')
+    .map(k=>rafKitaplikAdi(k.title)));
   const sortMode=document.getElementById('shelfSort')?.value||'title';
   const container=document.getElementById('shelfContainer');
   if(!container) return;
 
   let books=[...allBooks];
   if(search) books=books.filter(b=>
-    (b.title||'').toLowerCase().includes(search)||
-    (b.author||'').toLowerCase().includes(search)||
-    (b.publisher||'').toLowerCase().includes(search)
+    katla(b.title).includes(search)||
+    katla(b.author).includes(search)||
+    katla(b.publisher).includes(search)
   );
   books.sort((a,b_)=>{
     if(sortMode==='author') return (a.author||'').localeCompare(b_.author||'','tr');
@@ -772,7 +778,7 @@ function renderShelf(){
     return`<div style="padding:.6rem 0;border-bottom:1px solid rgba(201,162,39,.08)">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.4rem;flex-wrap:wrap">
         <div style="flex:1;min-width:0;margin-right:.2rem">
-          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:${RAF_RENKLER[b.renk]||'var(--ink)'};display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${b.okundu?`<span title="Okudum (uygulamadan önce)" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
+          <div style="font-family:'Crimson Pro',serif;font-size:.92rem;font-weight:600;color:${RAF_RENKLER[b.renk]||'var(--ink)'};display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">${b.title||'İsimsiz'} ${countBadge}${(b.okundu||bitmisAdlar.has(rafKitaplikAdi(b.title)))?`<span title="Okudum" style="font-family:'Space Mono',monospace;font-size:.58rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3);border-radius:20px;padding:.05rem .4rem">✓ okudum</span>`:''}</div>
           ${b.author?`<div style="font-size:.78rem;color:var(--rust)">${b.author}${b.publisher?' · '+b.publisher:''}</div>`:''}
           ${b.note?`<div style="font-size:.75rem;color:#555;font-style:italic;margin-top:.15rem">${b.note}</div>`:''}
           <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${lentBadge}</div>
