@@ -194,16 +194,27 @@ async function rafTopluAra(){
   rafTopluCiz();
 }
 
-// Rafta zaten olanlar + listede iki kez geçenler: "ekle" kutusu boş gelir
+// Rafta zaten olanlar: "ekle" kutusu boş gelir (aynı rafı iki kez çekince ikiye katlanmasın).
+// Listede birden çok geçenler (07.10): TEK satırda birleşir, adet = kaç kez geçtiği → rafa qty
+// olarak gider. Yapay zekâ yanlışlıkla iki kez yazabilir (Gemini "Korku") → satırda uyarı + adet kutusu.
 function rafTopluCiftleriIsaretle(){
   const raftaki = new Set(((typeof myShelf==='function' ? myShelf().books : []) || []).map(b => rafTopluNorm(b.title)));
-  const gorulen = new Set();
-  _rt.satirlar.forEach(r => {
+  const ilk = new Map();
+  _rt.satirlar = _rt.satirlar.filter(r => {
     const n = rafTopluNorm(r.ad);
-    if(raftaki.has(n) || gorulen.has(n)){ r.cift = true; r.ekle = false; }
+    if(n && ilk.has(n)){
+      const a = ilk.get(n);
+      a.adet = (a.adet||1) + (r.adet||1);
+      if(r.okudum) a.okudum = true;
+      if(!a.yazar && r.yazar) a.yazar = r.yazar;
+      return false;
+    }
+    if(n) ilk.set(n, r);
+    if(raftaki.has(n)){ r.cift = true; r.ekle = false; }
     else r.cift = false;
-    gorulen.add(n);
+    return true;
   });
+  _rt.gorunen = Math.min(Math.max(_rt.gorunen, RAF_TOPLU_ILK), Math.max(_rt.satirlar.length, RAF_TOPLU_ILK));
 }
 
 // Kitaplarım'da bitmiş olarak kayıtlı olanlar "okudum" işaretli gelir (Gökşin, 07.10) —
@@ -256,7 +267,7 @@ async function rafTopluKaydet(){
   const t = Date.now(), simdi = new Date().toISOString();
   const yeniler = secilen.map((r,i) => {
     const k = { id:'sb_'+t+'_'+i, title:String(r.ad).trim(), author:String(r.yazar||'').trim(), publisher:'',
-                qty:null, shelfId:_rt.rafId||null, isbn:null, addedAt:simdi, lent:null };
+                qty:(r.adet>1 ? r.adet : null), shelfId:_rt.rafId||null, isbn:null, addedAt:simdi, lent:null };
     if(r.okudum) k.okundu = true;
     return k;
   });
@@ -337,7 +348,8 @@ function rafTopluCiz(){
     const etiketler = [
       `<span style="${kucuk};color:${d.renk}">${d.simge} ${d.yazi}</span>`,
       r.supheli ? `<span style="${kucuk};color:#e0b65a">❓ yapay zekâ emin değil</span>` : '',
-      r.cift ? `<span style="${kucuk};color:#e0b65a">⧉ zaten rafta / listede</span>` : '',
+      r.cift ? `<span style="${kucuk};color:#e0b65a">⧉ zaten rafta</span>` : '',
+      r.adet>1 ? `<span style="${kucuk};color:#e0b65a">×${r.adet} — listede ${r.adet} kez geçiyor. Gerçekten ${r.adet} tane mi? Değilse adedi düzelt.</span>` : '',
       r.kitaplikta ? `<span style="${kucuk};color:#8fc68a">📗 kitaplığında okunmuş</span>` : '',
     ].filter(Boolean).join(' · ');
     const okunan = r.ham && rafTopluNorm(r.ham)!==rafTopluNorm(r.ad + (r.yazar?' '+r.yazar:''))
@@ -360,6 +372,8 @@ function rafTopluCiz(){
         <div style="display:flex;gap:.35rem;flex-wrap:wrap">
           <input id="rtAd_${i}" class="book-input" value="${e(r.ad)}" placeholder="Kitap adı" style="flex:2;min-width:150px;font-size:.85rem;padding:.35rem .6rem" oninput="rafTopluDegis(${i},'ad',this.value)">
           <input class="book-input" value="${e(r.yazar)}" placeholder="Yazar" style="flex:1;min-width:110px;font-size:.85rem;padding:.35rem .6rem" oninput="rafTopluDegis(${i},'yazar',this.value)">
+          ${r.adet>1 ? `<label style="${kucuk};color:var(--parchment);display:flex;align-items:center;gap:.25rem">adet
+            <input class="book-input" type="number" min="1" max="99" value="${r.adet}" style="width:58px;font-size:.85rem;padding:.35rem .4rem" oninput="rafTopluDegis(${i},'adet',Math.max(1,parseInt(this.value)||1))"></label>` : ''}
         </div>
         ${oneri}${okunan}
       </div>`;
