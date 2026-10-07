@@ -109,6 +109,14 @@ function rafTopluYazarUyar(a, b){
   return uzun.includes(kisa[kisa.length-1]);
 }
 
+/* Kaynağın getirdiği yazarı temizle (07.10): "derleyen Frederick H. Martens" → ön ek atılır;
+   Latin dışı harfle gelen ("Джозеф Джекобс") kullanılmaz, boş kalır — çoğu üye okuyamaz,
+   doğru mu diye de denetlenemez. */
+function rafTopluKaynakYazar(s){
+  s = String(s||'').replace(/^\s*(?:derleyen|derleyenler|çeviren|çevirmen|hazırlayan|hazırlayanlar|editör|ed\.|yayına hazırlayan)\s*:?\s+/i, '').trim();
+  return /[^\p{Script=Latin}\p{N}\s.,'’&()\-]/u.test(s) ? '' : s;
+}
+
 /* ── AKIŞ ─────────────────────────────────────────────────────────────── */
 function rafTopluAc(){
   const kutu = document.getElementById('rafTopluKutu');
@@ -158,6 +166,7 @@ async function rafTopluAra(){
       const r = _rt.satirlar[sira++];
       try{
         const info = (typeof fetchBookInfo==='function') ? await fetchBookInfo(r.ad, r.yazar, '') : null;
+        if(info) info.author_clean = rafTopluKaynakYazar(info.author_clean);
         // fetchBookInfo bulamayınca girilen adı geri veriyor → "bulundu" için gerçek veri ara
         const buldu = info && (info.pages || info.pub_year || (info.genres && info.genres.length) ||
                                (info.title_clean && info.title_clean!==r.ad));

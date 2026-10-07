@@ -341,6 +341,18 @@ function shelfDuzenleModu(){
   renderShelf();
 }
 
+// 🎨 hızlı renk (07.10): ✏️ formunun dibindeki "Ad rengi" bulunamadı → tek dokunuşla boya, anında kaydet
+function rafRenkAc(bookId){
+  const row=document.getElementById('renk-row-'+bookId);
+  if(row) row.style.display=row.style.display==='none'?'flex':'none';
+}
+function rafRenkSec(bookId,renk){
+  const book=(myShelf().books||[]).find(b=>b.id===bookId);
+  if(!book) return;
+  if(RAF_RENKLER[renk]) book.renk=renk; else delete book.renk;
+  saveDb();renderShelf();
+}
+
 function toggleShelfAddSection(forceOpen){
   const body=document.getElementById('shelfAddAccBody');
   const btn=document.getElementById('shelfAddToggleBtn');
@@ -730,12 +742,17 @@ function renderShelf(){
           ${b.lent
             ?`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓</button>`
             :`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤</button>`}
+          <button class="btn btn-sm" title="Ad rengi" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="rafRenkAc('${b.id}')">🎨</button>
           <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>
           <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
           <button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" onclick="deleteShelfBook('${b.id}')">🗑</button>
         </div>`:''}
       </div>
-      ${isMe?`<div id="edit-row-${b.id}" style="display:none;margin-top:.4rem;padding:.5rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.15)">
+      ${isMe?`<div id="renk-row-${b.id}" style="display:none;gap:.4rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
+        <button type="button" title="Renksiz" onclick="rafRenkSec('${b.id}','')" style="background:none;border:none;padding:0;cursor:pointer;display:flex"><span class="raf-renk-nokta" style="background:var(--ink);opacity:.35"></span></button>
+        ${Object.entries(RAF_RENKLER).map(([k,v])=>`<button type="button" title="${k}" onclick="rafRenkSec('${b.id}','${k}')" style="background:none;border:none;padding:0;cursor:pointer;display:flex"><span class="raf-renk-nokta" style="background:${v}${b.renk===k?';box-shadow:0 0 0 2px var(--ink);border-color:#fff':''}"></span></button>`).join('')}
+      </div>
+      <div id="edit-row-${b.id}" style="display:none;margin-top:.4rem;padding:.5rem;background:rgba(201,162,39,.05);border-radius:4px;border:1px solid rgba(201,162,39,.15)">
         <div style="display:flex;flex-direction:column;gap:.3rem">
           <div style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust);text-transform:uppercase;letter-spacing:.06em">Kitap Adı</div>
           <input id="edit-title-${b.id}" class="book-input" type="text" value="${(b.title||'').replace(/"/g,'&quot;')}" placeholder="Kitap adı" style="font-size:.82rem;padding:.3rem .6rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)"/>
