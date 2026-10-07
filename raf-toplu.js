@@ -21,9 +21,9 @@
 // Barkodla satır ekleme 2. adıma bırakıldı (Gökşin onayı).
 
 const RAF_TOPLU_KOMUT =
-`Bu fotoğraftaki kitap sırtlarını soldan sağa, yukarıdan aşağı oku. Her satıra bir kitap yaz, şu biçimde:
+`Bu fotoğraftaki kitap sırtlarını soldan sağa, yukarıdan aşağı oku. Alt alta bir liste yaz: her kitap AYRI SATIRDA olsun, şu biçimde:
 Kitap Adı — Yazar
-Yazarı göremiyorsan yalnızca kitap adını yaz. Okuyamadığın ya da emin olmadığın satırın başına ? koy. Başka hiçbir şey yazma: açıklama, numara, madde işareti yok.`;
+Kitap adlarını ve yazarları Türkçe harfleriyle (ç, ğ, ı, ö, ş, ü) yaz. Yazarı göremiyorsan yalnızca kitap adını yaz. Okuyamadığın ya da emin olmadığın satırın başına ? koy. Fotoğrafta göremediğin bir kitabı tahminle ekleme. Başka hiçbir şey yazma: açıklama, numara, madde işareti yok.`;
 
 const RAF_TOPLU_ILK = 5, RAF_TOPLU_ADIM = 10;   // uzun liste kuralı: 5 görünür, her basışta 10 daha
 let _rt = { satirlar: [], rafId: '', gorunen: RAF_TOPLU_ILK, araniyor: false, bitti: 0, vazgecOnay: false };
@@ -89,6 +89,26 @@ function rafTopluBenzer(a, b){
   return adaylar.some(y => y===x || oran(x, y) >= .85);
 }
 
+// Büyük/küçük harf + Türkçe harf farkını yok say: "Çirkin Gece Kuşu" = "Cirkin gece Kusu"
+function rafTopluKatla(s){
+  return rafTopluNorm(s).replace(/[çğıöşüâîû]/g, c => ({ç:'c',ğ:'g',ı:'i',ö:'o',ş:'s',ü:'u',â:'a',î:'i',û:'u'})[c])
+    .normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+// Okunan ad, kaynak adının kendisi ya da alt başlıksız/parantezsiz hâliyle harf biçimi dışında aynı mı?
+function rafTopluAyniAd(a, b){
+  const x = rafTopluKatla(a), ham = String(b||'');
+  return !!x && [ham, ham.replace(/\([^)]*\)/g, ''), ...ham.split(/[:：]/)].some(y => rafTopluKatla(y)===x);
+}
+/* Yazarlar uyuşuyor mu? Biri boşsa evet. Değilse kısa olanın SOYADI öbüründe geçmeli:
+   "Miguel de Cervantes" ↔ "Miguel de Cervantes Saavedra" evet; "Stefan Zweig" ↔ "Thomas Humeau"
+   hayır (Satranç'ın yazarı sessizce değişmişti, 07.10) → satır "kaynak başka kitap buldu" olur. */
+function rafTopluYazarUyar(a, b){
+  const x = rafTopluKatla(a).split(' ').filter(Boolean), y = rafTopluKatla(b).split(' ').filter(Boolean);
+  if(!x.length || !y.length) return true;
+  const [kisa, uzun] = x.length <= y.length ? [x, y] : [y, x];
+  return uzun.includes(kisa[kisa.length-1]);
+}
+
 /* ── AKIŞ ─────────────────────────────────────────────────────────────── */
 function rafTopluAc(){
   const kutu = document.getElementById('rafTopluKutu');
@@ -117,6 +137,12 @@ async function rafTopluAra(){
   if(_rt.araniyor) return;
   const metin = document.getElementById('rafTopluMetin')?.value || '';
   _rt.rafId = document.getElementById('rafTopluRaf')?.value || '';
+  // ChatGPT'den kopyalanan liste tek satır geldi (07.10): "Ad — Yazar Ad — Yazar…" güvenle bölünemez
+  const satirSayisi = metin.split('\n').filter(s => s.trim()).length;
+  if(satirSayisi===1 && (metin.match(/\s[—–-]\s/g) || []).length >= 3){
+    if(typeof mesajGoster==='function') mesajGoster('Liste tek satır geldi. Yapay zekâdan her kitabı ayrı satıra yazmasını iste.', 'uyari');
+    return;
+  }
   const liste = rafTopluAyikla(metin);
   if(!liste.length){ if(typeof mesajGoster==='function') mesajGoster('Liste boş. Yapay zekâdan gelen listeyi kutuya yapıştır.', 'uyari'); return; }
 
@@ -136,8 +162,12 @@ async function rafTopluAra(){
         const buldu = info && (info.pages || info.pub_year || (info.genres && info.genres.length) ||
                                (info.title_clean && info.title_clean!==r.ad));
         if(!buldu) r.durum = 'yok';
-        else if(rafTopluBenzer(r.ad, info.title_clean)){
-          r.durum = 'bulundu'; r.ad = info.title_clean; r.yazar = info.author_clean || r.yazar;
+        else if(rafTopluBenzer(r.ad, info.title_clean) && rafTopluYazarUyar(r.yazar, info.author_clean)){
+          r.durum = 'bulundu';
+          // Kaynak çoğu zaman Türkçe harfsiz/küçük harfli ("Cirkin gece Kusu") → yapay zekânın yazdığı
+          // ad, kaynaktakinden yalnız harf biçimiyle ayrılıyorsa KALIR; yazım hatasıysa kaynağınki gelir.
+          if(!rafTopluAyniAd(r.ad, info.title_clean)) r.ad = info.title_clean;
+          if(!r.yazar) r.yazar = info.author_clean || '';
         } else {
           // Kaynak başka bir kitap getirmiş olabilir → kullanıcının satırı kalsın, öneri gösterilsin
           r.durum = 'farkli'; r.kaynakAd = info.title_clean; r.kaynakYazar = info.author_clean || '';
