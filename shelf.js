@@ -28,13 +28,18 @@ function addToShelfFromLibrary(bookId){
   footer.parentNode.insertBefore(bar,footer.nextSibling);
 }
 
+/* Raf/dergi tekrar kontrolündeki ad karşılaştırması (08.10). Eski hâl yalnız a-z0-9 bırakıyordu:
+   "Beş" → "be" ama "Bes" → "bes" (aynı kitap ayrı sayılıyordu), "Şiir" → "iir". aramaKatla Türkçe
+   harfi ve şapkayı düz harfe katlıyor (index.html). */
+function rafAdNorm(t){ return aramaKatla(t).replace(/[^a-z0-9]/g,''); }
+
 function confirmAddToShelf(bookId){
   const book=(db.books[me]||[]).find(b=>b.id===bookId);
   if(!book) return;
   const shelfId=document.getElementById('shelfPickerSel')?.value||'';
   const s=myShelf();
   if(!s.books) s.books=[];
-  const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const norm=rafAdNorm;
   const dup=s.books.find(b=>norm(b.title)===norm(book.title)&&b.shelfId===(shelfId||null));
   if(dup){
     dup.qty=(dup.qty||1)+1;
@@ -103,7 +108,7 @@ function addMag(){
   if(!title){notify('⚠️','Dergi adı gerekli.');return;}
   const s=myMags();
   if(!s.mags) s.mags=[];
-  const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const norm=rafAdNorm;
   const sameShelfDup=s.mags.find(b=>norm(b.title)===norm(title)&&b.shelfId===(shelfId||null));
   const otherDups=s.mags.filter(b=>norm(b.title)===norm(title)&&b.shelfId!==(shelfId||null));
   if(sameShelfDup&&!window._skipMagDup){
@@ -364,6 +369,7 @@ function toggleShelfAddSection(forceOpen){
   // sıfırlanmazsa gövde görünmez ama yer kaplar → upuzun boş çerçeve (Gökşin, 07.10)
   if(!willOpen){
     window._shelfIsbn=null;
+    rafOnizlemeTemizle();
     body.style.maxHeight='';
     const tk=document.getElementById('rafTopluKutu'); if(tk) tk.style.display='none';
   }
@@ -435,15 +441,21 @@ async function addShelfBook(){
   if(st) st.textContent='Kitap aranıyor...';
   if(looksIsbn||(!author&&!publisher)){
     const info=await fetchBookInfo(looksIsbn?'':rawTitle,author,isbn);
-    if(info?.title_clean) title=info.title_clean;
-    if(info?.author_clean&&!author) authorEl.value=info.author_clean;
+    if(looksIsbn){
+      if(info?.title_clean) title=info.title_clean;
+      if(info?.author_clean&&!author) authorEl.value=info.author_clean;
+    } else if(info?.title_clean&&rafTopluBenzer(rawTitle,info.title_clean)&&!author){
+      // Yazılan ad KALIR (bkz. searchShelfBook); kaynak aynı kitabı bulduysa yalnız boş yazar doldurulur
+      const ky=rafTopluKaynakYazar(info.author_clean);
+      if(ky) authorEl.value=ky;
+    }
   }
   const qty=Math.max(1,parseInt(document.getElementById('shelfBookQty')?.value)||1);
   // Barkod kaynaklarda bulunamayıp ad elle yazıldıysa okutulan ISBN yine de kayda girsin (searchShelfBook)
   const book={id:'sb_'+Date.now(),title,author:authorEl?.value||author,publisher,qty:qty>1?qty:null,shelfId:shelfId||null,isbn:isbn||window._shelfIsbn||null,addedAt:new Date().toISOString(),lent:null};
 
   // Duplicate kontrol
-  const norm=t=>(t||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  const norm=rafAdNorm;
   const allDups=(s.books||[]).filter(b=>{
     if(isbn&&b.isbn&&b.isbn===isbn) return true;
     if(norm(title)&&norm(b.title)===norm(title)) return true;
@@ -671,6 +683,29 @@ async function searchShelfBook(){
   const isbn=looksIsbn?raw.replace(/[^0-9X]/gi,''):'';
   if(preview){preview.style.display='block';preview.textContent='🔍 Aranıyor...';}
   const info=await fetchBookInfo(looksIsbn?'':raw,authorEl?.value||'',isbn);
+  window._shelfOneri=null;
+  /* ADLA ARAMADA YAZILAN AD KALIR (08.10). Kaynak "Fizik Üzerine Yedi Kısa Ders" için İngilizce adı,
+     "Yörüngede" için "Takma Dişli Uzaylılar Yörüngede"yi getirip kutuya yazmıştı. Toplu eklemedeki
+     kural (raf-toplu.js): aynı ad (harf biçimi farkı dahil) → kutu aynen kalır, boş yazar dolar;
+     değilse kaynağınki yalnız ÖNERİ olur. Barkodla aramada kutuda rakam olduğu için eski davranış. */
+  if(!looksIsbn&&info?.title_clean){
+    const yazar=(authorEl?.value||'').trim();
+    const ky=rafTopluKaynakYazar(info.author_clean);
+    const yazarUyar=rafTopluYazarUyar(yazar,ky);
+    if(rafTopluAyniAd(raw,info.title_clean)&&yazarUyar){
+      if(authorEl&&!yazar&&ky) authorEl.value=ky;
+      if(preview){preview.style.display='block';preview.textContent=`✓ Bulundu${ky?' — '+ky:''}`;}
+    } else {
+      if(authorEl&&!yazar&&ky&&rafTopluBenzer(raw,info.title_clean)) authorEl.value=ky;   // küçük yazım farkı: yazar büyük ihtimalle doğru
+      window._shelfOneri={ad:info.title_clean, yazar:ky};
+      if(preview){
+        preview.style.display='block';
+        preview.innerHTML=`<span style="color:var(--parchment)">Kaynakta: <b>${escapeHtml(info.title_clean)}</b>${ky?' — '+escapeHtml(ky):''}</span> `+
+          `<button type="button" onclick="rafOneriyiKullan()" style="margin-left:.3rem;padding:.15rem .5rem;background:rgba(201,162,39,.15);border:1px solid rgba(201,162,39,.4);border-radius:3px;color:var(--gold);cursor:pointer;font-size:.75rem">bunu kullan</button>`;
+      }
+    }
+    return;
+  }
   if(info?.title_clean&&info.title_clean!==raw){
     if(titleEl) titleEl.value=info.title_clean;
     if(authorEl&&info.author_clean) authorEl.value=info.author_clean;
@@ -690,6 +725,26 @@ async function searchShelfBook(){
     if(preview){preview.style.display='block';preview.textContent='⚠️ Kitap bulunamadı — bilgileri elle girin.';}
   }
 }
+
+function rafOneriyiKullan(){
+  const o=window._shelfOneri; if(!o) return;
+  const t=document.getElementById('shelfBookTitle'), a=document.getElementById('shelfBookAuthor');
+  if(t) t.value=o.ad;
+  if(a&&o.yazar) a.value=o.yazar;
+  rafOnizlemeTemizle();
+}
+/* Yeşil önizleme yazısı kutular değişince silinsin (07.10): ad/yazar boşaltılsa da eski
+   "✓ …" yazısı kalıyordu. Programla yazılan değer `input` olayı tetiklemez, yani aramanın
+   kendi yazdığı sonuç silinmez. Barkodun saklanan ISBN'ine dokunmaz. */
+function rafOnizlemeTemizle(){
+  window._shelfOneri=null;
+  const p=document.getElementById('shelfBookPreview');
+  if(p){p.style.display='none';p.textContent='';}
+}
+document.addEventListener('input',e=>{
+  const id=e.target&&e.target.id;
+  if(id==='shelfBookTitle'||id==='shelfBookAuthor') rafOnizlemeTemizle();
+});
 
 function openShelfBarcodeScanner(){
   // Barkod okuyunca shelfBookTitle'a yaz ve bilgi çek
