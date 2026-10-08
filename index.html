@@ -5897,44 +5897,92 @@ function openBarcodeScanner(){
       hatası alabiliyor. Kapatırken akışın izleri ELLE de durduruluyor.
    `_barkodOturum`: kapatıldıktan sonra gelen gecikmiş sonuç/hata işlenmesin diye. */
 let _barkodOturum=0;
+/* İKİ OKUYUCU (2026-10-08, ikinci tur). Gökşin'in denemesi: kamera hiç kapanmadan
+   Yörüngede, Fizik Üzerine Yedi Kısa Ders, Âdem'den Önce okunmadı, Geçmiş Günlerin
+   Hikâyesi anında okundu → sorun 2. açılış değil, ZXing'in bazı barkodları
+   seçememesi. Telefonun YERLEŞİK okuyucusu (BarcodeDetector — Android Chrome/Brave)
+   varsa o kullanılıyor; yoksa ZXing, ama yalnız kitap barkodu türleri + "daha çok
+   uğra" ipucuyla. İkisinde de kamera yüksek çözünürlük + sürekli odak isteniyor
+   (eski hâl tarayıcının varsayılanını alıyordu, çoğu telefonda 640×480).
+   Durum yazısının sonundaki (telefon)/(yedek) hangi yolun çalıştığını gösterir. */
+const BARKOD_KAMERA={video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080},advanced:[{focusMode:'continuous'}]}};
+async function yerelBarkodVarMi(){
+  try{
+    if(!('BarcodeDetector' in window)) return false;
+    const t=await BarcodeDetector.getSupportedFormats();
+    return t.includes('ean_13');
+  }catch(e){ return false; }
+}
 async function barkodTarayiciBaslat(sonucFn){
   const status=document.getElementById('barcodeStatus');
   const yaz=m=>{ if(status) status.textContent=m; };
   if(_barcodeReader){ kameraAkisiniDurdur(); await new Promise(r=>setTimeout(r,300)); }
   const oturum=++_barkodOturum;
-  const dene=async kalan=>{
-    const okuyucu=new ZXing.BrowserMultiFormatReader();
+  const yerel=await yerelBarkodVarMi();
+  let bitti=false;
+  const bulundu=metin=>{
+    if(bitti||oturum!==_barkodOturum) return;
+    bitti=true;
+    setTimeout(()=>{ closeBarcodeScanner(); sonucFn(metin); },0);
+  };
+  const v=document.getElementById('barcodeVideo');
+
+  const yerelBaslat=async()=>{
+    const akis=await navigator.mediaDevices.getUserMedia(BARKOD_KAMERA);
+    if(oturum!==_barkodOturum){ akis.getTracks().forEach(t=>t.stop()); return false; }
+    v.srcObject=akis;
+    try{ await v.play(); }catch(e){}
+    const dedektor=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+    const tara=async()=>{
+      if(bitti||oturum!==_barkodOturum) return;
+      try{
+        if(v.readyState>=2){
+          const kodlar=await dedektor.detect(v);
+          const k=kodlar.find(x=>x.rawValue);
+          if(k){ bulundu(k.rawValue); return; }
+        }
+      }catch(e){}
+      setTimeout(tara,120);
+    };
+    tara();
+    return true;
+  };
+  const zxingBaslat=async()=>{
+    const ipucu=new Map();
+    ipucu.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.EAN_13,ZXing.BarcodeFormat.EAN_8,ZXing.BarcodeFormat.UPC_A,ZXing.BarcodeFormat.UPC_E]);
+    ipucu.set(ZXing.DecodeHintType.TRY_HARDER,true);
+    const okuyucu=new ZXing.BrowserMultiFormatReader(ipucu);
     _barcodeReader=okuyucu;
-    let bitti=false;
+    await okuyucu.decodeFromConstraints(BARKOD_KAMERA,'barcodeVideo',result=>{
+      if(result) bulundu(result.getText());
+    });
+    // Kamera açılırken ✕'ye basıldıysa akış kapatmadan SONRA bağlanmış olur → şimdi kapat
+    if(oturum!==_barkodOturum){
+      try{ okuyucu.reset(); }catch(e){}
+      if(v&&v.srcObject){ try{ v.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){} v.srcObject=null; }
+      return false;
+    }
+    return true;
+  };
+
+  for(let deneme=0; deneme<2; deneme++){
     try{
-      await okuyucu.decodeFromVideoDevice(null,'barcodeVideo',result=>{
-        if(!result||bitti||oturum!==_barkodOturum) return;
-        bitti=true;
-        const metin=result.getText();
-        setTimeout(()=>{ closeBarcodeScanner(); sonucFn(metin); },0);
-      });
-      // Kamera açılırken ✕'ye basıldıysa akış kapatmadan SONRA bağlanmış olur → şimdi kapat
-      if(oturum!==_barkodOturum){
-        try{ okuyucu.reset(); }catch(e){}
-        const v=document.getElementById('barcodeVideo');
-        if(v&&v.srcObject){ try{ v.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){} v.srcObject=null; }
-        return;
-      }
-      if(!bitti) yaz('Barkodu kameraya göster');
+      const acildi = yerel ? await yerelBaslat() : await zxingBaslat();
+      if(acildi && !bitti) yaz('Barkodu kameraya göster '+(yerel?'(telefon)':'(yedek)'));
+      return;
     }catch(e){
       if(oturum!==_barkodOturum) return;   // bu arada kapatıldı
       kameraAkisiniDurdur();
-      if(kalan>0){
+      if(deneme===0){
         yaz('Kamera hazırlanıyor...');
         await new Promise(r=>setTimeout(r,700));
-        if(oturum===_barkodOturum) return dene(kalan-1);
-        return;
+        if(oturum!==_barkodOturum) return;
+        continue;
       }
       console.warn('barkod:',e);
       yaz('⚠️ Kamera açılamadı ('+((e&&e.name)||e)+'). Kapatıp yeniden dene.');
     }
-  };
-  await dene(1);
+  }
 }
 function kameraAkisiniDurdur(){
   if(_barcodeReader){ try{_barcodeReader.reset();}catch(e){} _barcodeReader=null; }
