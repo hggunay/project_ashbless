@@ -2809,7 +2809,7 @@ async function loadDb(fbOnly){
       // bu oturumdaki İLK saveDb() çağrısı, hiçbir şey gerçekten değişmemiş olsa bile
       // (ör. sadece kitap sayfası girildiğinde) çakışma kontrolünü gereksiz yere tetikliyordu.
       {
-        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,onayli:_on,...freshRest}={...db};
+        const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,kullaniciAdlari:_ka,onayli:_on,...freshRest}={...db};
         _lastOtherFieldsSnapshot=JSON.stringify(freshRest);
       }
       return;
@@ -2994,7 +2994,7 @@ async function _saveDbNow(){
            kitabı yok eden kalıbın aynısı.
        Onay listesi zaten kendi granüler yoluna yazılıyor (uye-onay.js →
        `aa-v4/onayli/<kişi>`), tıpkı uidMap gibi. */
-    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,girisAdresleri,onayli,...restFields}={...db};
+    const {shelf,notifications,readingSessions,books,savedAt,reactions,realmEvents,uidMap,girisAdresleri,kullaniciAdlari,onayli,...restFields}={...db};
     const otherSnapshot=JSON.stringify(restFields);
     if(otherSnapshot!==_lastOtherFieldsSnapshot){
       // "Diğer alanlar" (users/badges/streaks/settings vb.) son kayıttan beri gerçekten
@@ -3030,7 +3030,7 @@ async function _saveDbNow(){
         // Güncellemezsek bir sonraki kayıt, çoktan çözülmüş bu farkı tekrar tekrar
         // sunucuya sorup gereksiz yere aynı çakışma kontrolüne düşerdi.
         {
-          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,onayli:_on,...adoptedRest}={...db};
+          const {shelf:_s,notifications:_n,readingSessions:_rs,books:_b,savedAt:_sa,reactions:_rx,realmEvents:_re,uidMap:_um,girisAdresleri:_ga,kullaniciAdlari:_ka,onayli:_on,...adoptedRest}={...db};
           _lastOtherFieldsSnapshot=JSON.stringify(adoptedRest);
         }
         renderSafe();
@@ -3291,10 +3291,19 @@ function girisGecmisiOku(){
   try{ const g=JSON.parse(localStorage.getItem(GIRIS_GECMISI)||'{}'); return (g&&typeof g==='object')?g:{}; }
   catch(e){ return {}; }
 }
-function girisGecmisineYaz(u){
+/* E-posta da CİHAZDA tutuluyor (2026-10-08, son güvenlik maddesi). Önceden
+   kullanıcı adı → e-posta çevirisi herkese açık `girisAdresleri` listesinden
+   yapılıyordu; kullanıcı adını bilen biri e-postayı öğrenebiliyordu. Artık
+   adresi yalnızca o kişinin kendi cihazı biliyor. Yeni bir cihazda bir kez
+   e-postayla girmek gerekiyor — Gökşin bunu kabul etti.
+   Elde yeni adres yoksa eskisi korunuyor: `db.users` okunamadığı anda çağrılırsa
+   bildiğimiz adresi silmesin. */
+function girisGecmisineYaz(u, eposta){
   try{
     const g=girisGecmisiOku(), k=(db.users&&db.users[u])||{};
-    g[u]={ad:k.displayName||u, avatar:k.avatar||'📚', ts:Date.now()};
+    const e=eposta||k.email||(g[u]&&g[u].e)||null;
+    g[u]={ad:k.displayName||(g[u]&&g[u].ad)||u, avatar:k.avatar||(g[u]&&g[u].avatar)||'📚', ts:Date.now()};
+    if(e) g[u].e=e;
     const sirali=Object.entries(g)
       .sort((a,b)=>(b[1].ts||0)-(a[1].ts||0))
       .slice(0,GIRIS_GECMISI_ENCOK);
@@ -3306,6 +3315,39 @@ function girisGecmisineYaz(u){
    çalışmayan bir kullanıcı adını dolduruyordu. Geçmiş cihaza özel olduğu için
    yalnızca silmenin yapıldığı cihazda temizleniyor — başka cihazda kalan rozet
    tıklanırsa giriş reddedilir, zararsız. */
+function girisGecmisiEposta(u){
+  const g=girisGecmisiOku();
+  return (g[u]&&g[u].e)||null;
+}
+/* "BU AD ALINMIŞ" İŞARETİ (2026-10-08). Kayıt ekranı, giriş yapmamış biri için
+   "bu kullanıcı adı boşta mı?" diye sorabilmeli — eskiden bunu herkese açık
+   `girisAdresleri` listesine bakarak yapıyordu, o liste e-posta içeriyordu.
+   Yeni düğüm `aa-v4/kullaniciAdlari/<ad> = true` yalnızca adın varlığını
+   söylüyor; kural da `true`dan başka değer kabul etmiyor.
+   Herkes girişte kendi satırını yazıyor — zaten varsa fazladan istek atılmasın
+   diye önce bakılıyor. Sessiz: başarısızlık kullanıcıyı ilgilendirmiyor.
+   ⚠️ `aa-v4` altında yeni düğüm → saveDb'nin üç destructure'ı + deleteAllUserData
+   güncellendi. */
+async function kullaniciAdiniIsaretle(u){
+  try{
+    if(!(await fbGet('aa-v4/kullaniciAdlari/'+u)))
+      await fbSet('aa-v4/kullaniciAdlari/'+u, true, true);
+  }catch(e){}
+}
+/* Kurallar yayınlandığı an eski liste dışarıya kapanıyor, yenisi ise üyeler
+   tek tek girene kadar boş kalırdı — o arada biri var olan bir adla (ör.
+   "ozgur") kayıt olabilirdi. Kapatmak için sahip uygulamayı açtığında eksik
+   satırları HERKES için yazıyor (kural sahibe buna izin veriyor). Eski
+   kurallarda yazma reddedilir — sessiz, bir sonraki açılışta yine denenir.
+   Yalnızca `db.users` doluyken: boşsa "okuyamadım" demektir, "üye yok" değil. */
+async function kullaniciAdlariniTamamla(){
+  if(me!==SAHIP || !db.users || !Object.keys(db.users).length) return;
+  try{
+    const mevcut=(await fbGet('aa-v4/kullaniciAdlari'))||{};
+    for(const u of Object.keys(db.users))
+      if(!mevcut[u]) await fbSet('aa-v4/kullaniciAdlari/'+u, true, true);
+  }catch(e){}
+}
 function girisGecmisindenSil(u){
   try{ const g=girisGecmisiOku(); delete g[u]; localStorage.setItem(GIRIS_GECMISI, JSON.stringify(g)); }catch(e){}
 }
@@ -3396,14 +3438,8 @@ async function _girisYap(){
           if(await fbPatch('aa-v4/users/'+kullanici,{password:ozet})) db.users[kullanici].password=ozet;
         }
       }catch(e){}
-      /* Giriş adresi listesi burada da kendini onarıyor — bkz. kullanıcı adı
-         dalındaki aynı blok. E-postayla giren biri listesini doldurmazsa,
-         kurallar kilitlendikten sonra KULLANICI ADIYLA giremez hale gelirdi. */
-      try{
-        if(!(await fbGet('aa-v4/girisAdresleri/'+kullanici)))
-          await fbSet('aa-v4/girisAdresleri/'+kullanici, u.trim(), true);
-      }catch(e){}
-      girisGecmisineYaz(kullanici);   // hızlı giriş rozeti bu cihazda dursun
+      kullaniciAdiniIsaretle(kullanici);   // bkz. işlevin yorumu
+      girisGecmisineYaz(kullanici, u.trim());   // rozet + e-posta bu cihazda dursun
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
       _alohomoraOynat=true;
       enterApp();
@@ -3428,10 +3464,20 @@ async function _girisYap(){
      Liste yoksa eski yola düşüyor — böylece bu kod HEM eski HEM yeni kurallarla
      çalışıyor ve kodu kurallardan ÖNCE deploy edebiliyoruz. Sıra bu; tersi
      yapılırsa açık kalmış her sekme anında kilitlenir. */
-  let eposta=null, listedeVar=false;
-  try{ eposta=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){}
-  if(eposta) listedeVar=true;   // aşağıdaki onarım fazladan bir istek atmasın diye
+  /* ═══ 2026-10-08: ADRES ÖNCE CİHAZDAN ═══════════════════════════════════════
+     Yukarıdaki liste herkese açık olduğu için kapatılıyor (son güvenlik
+     maddesi). Sıra: önce bu cihazın hatırladığı adres, yoksa eski liste (yeni
+     kurallar yayınlanana kadar hâlâ okunuyor, sonra sessizce boş döner), o da
+     yoksa `db.users`. Hiçbiri yoksa kişiye bir kez e-postasıyla girmesi
+     söyleniyor — "şifre hatalı" demek yanlış iz sürdürürdü. */
+  let eposta=girisGecmisiEposta(u);
+  if(!eposta){ try{ eposta=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){} }
   if(!eposta && db.users[u]) eposta=db.users[u].email||null;
+  if(!eposta && !db.users[u]){
+    err.style.display='block';
+    err.textContent='Bu cihaz seni henüz tanımıyor — bir kez kullanıcı adı yerine e-postanı yazarak gir, sonra kullanıcı adın yeter.';
+    return;
+  }
 
   let match=false, needsMigration=false;
 
@@ -3507,23 +3553,14 @@ async function _girisYap(){
           db.users[u].password=ozet;
       }
     }catch(e){}
-    /* KENDİ KENDİNİ ONARAN GİRİŞ ADRESİ. Zaten taşınmış üyeler taşıma formunu
-       bir daha çalıştırmayacağı için listeleri boş kalırdı — ve okuma
-       kilitlendiğinde kullanıcı adıyla giremezlerdi. Elle veri yazmak yerine
-       herkes bir kez girdiğinde kendi satırını dolduruyor.
-       ⚠️ Bu yüzden KURALLAR KİLİTLENMEDEN ÖNCE herkesin bir kez girmesi gerekiyor;
-       giren kalmazsa o kişi kullanıcı adıyla giriş yolunu kaybeder (e-postayla
-       yine girebilir, orada listeye ihtiyaç yok). */
-    try{
-      if(eposta && !listedeVar) await fbSet('aa-v4/girisAdresleri/'+u, eposta, true);
-    }catch(e){}
+    kullaniciAdiniIsaretle(u);   // bkz. işlevin yorumu
   }
 
   err.style.display='none';me=u;viewing=null;
   if(needsMigration){
     try{ db.users[u].password=await hashPassword(p); saveDb(); }catch(e){}
   }
-  girisGecmisineYaz(u);   // hızlı giriş rozeti bu cihazda dursun
+  girisGecmisineYaz(u, biletHazir?eposta:null);   // rozet + (doğrulanmışsa) e-posta bu cihazda dursun
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
   }
@@ -3536,11 +3573,12 @@ async function _girisYap(){
    sonra o kişi hiçbir şey okuyamaz ve hiçbir şey kaydedemezdi — üstelik sebebini
    de göremezdi, çünkü kurallar sessizce reddediyor.
    Yeni sıra ve NEDEN bu sıra:
-     1) kullanıcı adı boşta mı  → herkese açık `girisAdresleri` satırından
+     1) kullanıcı adı boşta mı  → herkese açık `kullaniciAdlari` satırından
         sorulur; `db.users` artık giriş öncesi okunamıyor
      2) Firebase hesabı açılır  → kimliğin tek kaynağı burası
      3) uidMap yazılır          → kural, aşağıdaki her yazma için buraya bakıyor
-     4) girisAdresleri yazılır  → kullanıcı adıyla giriş bunu kullanacak
+     4) kullaniciAdlari yazılır → ad artık "alınmış" görünsün (2026-10-08'e
+        kadar burada e-posta yazılıyordu, bkz. kullaniciAdiniIsaretle)
      5) kişisel kayıt yazılır   → ancak 3. adımdan sonra izin veriliyor
    3. adım başarısız olursa geri kalanı denemenin anlamı yok; kullanıcıya
    söylenip duruluyor, yarım bir hesap bırakılmıyor. */
@@ -3565,7 +3603,9 @@ async function register(){
   try{
     if(db.users&&db.users[u]) return hata('Bu kullanıcı adı alınmış.');
     let alinmis=null;
-    try{ alinmis=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){}
+    try{ alinmis=await fbGet('aa-v4/kullaniciAdlari/'+u); }catch(e){}
+    // Eski liste: yeni kurallar yayınlanana kadar hâlâ okunuyor, sonra boş döner.
+    if(!alinmis){ try{ alinmis=await fbGet('aa-v4/girisAdresleri/'+u); }catch(e){} }
     if(alinmis) return hata('Bu kullanıcı adı alınmış.');
 
     try{
@@ -3582,7 +3622,7 @@ async function register(){
       authCikis();
       return hata('Kayıt tamamlanamadı, tekrar dener misin?');
     }
-    await fbSet('aa-v4/girisAdresleri/'+u, email, true);
+    await fbSet('aa-v4/kullaniciAdlari/'+u, true, true);
 
     const kayit={displayName:dn,avatar:av,password:await hashPassword(p),hint:hint||null,email:email};
     if(!(await fbPatch('aa-v4/users/'+u, kayit))){
@@ -3593,7 +3633,7 @@ async function register(){
     db.users[u]=kayit; db.books[u]=[];
     _guvenliGirisKullanici=u;
     err.style.display='none'; me=u; viewing=null;
-    girisGecmisineYaz(u);
+    girisGecmisineYaz(u, email);
     try{ localStorage.setItem('aa-session',u); }catch(e){}
     _alohomoraOynat=true;
     enterApp();
@@ -3797,6 +3837,7 @@ async function deleteAllUserData(u){
      yazmayı unutmuştum; `aa-v4` altına yeni düğüm eklerken bakılacak DÖRDÜNCÜ
      yer burası — diğer üçü saveDb'nin destructure'ları.) */
   await fbSet('aa-v4/girisAdresleri/'+u, null, true);
+  await fbSet('aa-v4/kullaniciAdlari/'+u, null, true);   // ad yeniden serbest kalsın
   /* Onay kaydı da gitmeli (2026-09-10). Kalırsa şu delik açılıyor: hesap
      silinince kullanıcı adı yeniden serbest kalıyor, o adı alan bir YABANCI
      `onayli/<ad>` hâlâ true olduğu için kendiliğinden onaylı üye oluyor.
@@ -4151,7 +4192,10 @@ async function hesabimiTasi(){
        uidMap'e bakıyor, tersi sırada yazma reddedilirdi.
        Başarısız olursa taşıma yine de geçerli — kişi e-postasıyla girebilir,
        yalnızca kullanıcı adıyla giriş kurallar kilitlendikten sonra çalışmaz. */
-    try{ await fbSet('aa-v4/girisAdresleri/'+me, eposta.trim(), true); }catch(e){}  // sessiz: form kendi durumunu zaten yazıyor
+    /* 2026-10-08: adres artık herkese açık listeye DEĞİL bu cihaza yazılıyor;
+       listede yalnızca "ad alınmış" işareti var. */
+    kullaniciAdiniIsaretle(me);
+    girisGecmisineYaz(me, eposta.trim());
 
     _guvenliGirisKullanici=me;
     renderGuvenliGiris();
@@ -4958,6 +5002,7 @@ function enterApp(){
   _guvenliGirisSorgulandi=false;
   _tasimaListesiSorgulandi=false;
   renderTasimaSeridi();   // cevaplar gelene kadar gizli tutar
+  kullaniciAdlariniTamamla();   // yalnız sahipte çalışır, bkz. işlevin yorumu
   guvenliGirisDurumu()
     .then(k=>{ _guvenliGirisKullanici=k; })
     .catch(()=>{})
