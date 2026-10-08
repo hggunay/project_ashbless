@@ -2167,8 +2167,8 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20260919b"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261008a"></script>
-<script src="raf-toplu.js?s=20261007e"></script>
+<script src="shelf.js?s=20261008b"></script>
+<script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
 <script src="diyarlar-katalog.js?s=20260919b"></script>
@@ -5883,27 +5883,72 @@ function openBarcodeScanner(){
     if(status) status.textContent='⚠️ Tarayıcı yüklenemedi. ISBN\'yi elle girin.';
     return;
   }
-  try{
-    _barcodeReader=new ZXing.BrowserMultiFormatReader();
-    _barcodeReader.decodeFromVideoDevice(null,'barcodeVideo',(result,err)=>{
-      if(result){
-        const isbn=result.getText();
-        closeBarcodeScanner();
-        fillFormFromISBN(isbn);
+  barkodTarayiciBaslat(isbn=>fillFormFromISBN(isbn));
+}
+/* ═══ ORTAK BARKOD TARAYICI (2026-10-08) ═══════════════════════════════════════
+   Gökşin bildirdi: kitap bulunamayınca İKİNCİ okutma çalışmıyor. Aynı kod üç yerde
+   kopyaydı (burası, shelf.js, raf-toplu.js) ve üç sessiz zayıflığı vardı:
+   1) Kapatma ZXing'in KENDİ geri çağrısının içinden yapılıyordu — okuyucu kendi
+      döngüsünün ortasında sıfırlanıyordu. Artık bir sonraki tura (setTimeout) atılıyor.
+   2) `decodeFromVideoDevice` bir Promise döndürüyor; kamera açılamazsa hata
+      try/catch'e DÜŞMÜYORDU, ekranda "Barkodu kameraya göster" yazıp öylece
+      kalıyordu. Artık yakalanıyor: bir kez yeniden deneniyor, olmazsa sebep yazılıyor.
+   3) Telefonlar kamerayı hemen bırakmayabiliyor; ikinci açılış "kamera meşgul"
+      hatası alabiliyor. Kapatırken akışın izleri ELLE de durduruluyor.
+   `_barkodOturum`: kapatıldıktan sonra gelen gecikmiş sonuç/hata işlenmesin diye. */
+let _barkodOturum=0;
+async function barkodTarayiciBaslat(sonucFn){
+  const status=document.getElementById('barcodeStatus');
+  const yaz=m=>{ if(status) status.textContent=m; };
+  if(_barcodeReader){ kameraAkisiniDurdur(); await new Promise(r=>setTimeout(r,300)); }
+  const oturum=++_barkodOturum;
+  const dene=async kalan=>{
+    const okuyucu=new ZXing.BrowserMultiFormatReader();
+    _barcodeReader=okuyucu;
+    let bitti=false;
+    try{
+      await okuyucu.decodeFromVideoDevice(null,'barcodeVideo',result=>{
+        if(!result||bitti||oturum!==_barkodOturum) return;
+        bitti=true;
+        const metin=result.getText();
+        setTimeout(()=>{ closeBarcodeScanner(); sonucFn(metin); },0);
+      });
+      // Kamera açılırken ✕'ye basıldıysa akış kapatmadan SONRA bağlanmış olur → şimdi kapat
+      if(oturum!==_barkodOturum){
+        try{ okuyucu.reset(); }catch(e){}
+        const v=document.getElementById('barcodeVideo');
+        if(v&&v.srcObject){ try{ v.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){} v.srcObject=null; }
+        return;
       }
-    });
-    if(status) status.textContent='Barkodu kameraya göster';
-  }catch(e){
-    if(status) status.textContent='⚠️ Kamera açılamadı. ISBN\'yi elle girin.';
+      if(!bitti) yaz('Barkodu kameraya göster');
+    }catch(e){
+      if(oturum!==_barkodOturum) return;   // bu arada kapatıldı
+      kameraAkisiniDurdur();
+      if(kalan>0){
+        yaz('Kamera hazırlanıyor...');
+        await new Promise(r=>setTimeout(r,700));
+        if(oturum===_barkodOturum) return dene(kalan-1);
+        return;
+      }
+      console.warn('barkod:',e);
+      yaz('⚠️ Kamera açılamadı ('+((e&&e.name)||e)+'). Kapatıp yeniden dene.');
+    }
+  };
+  await dene(1);
+}
+function kameraAkisiniDurdur(){
+  if(_barcodeReader){ try{_barcodeReader.reset();}catch(e){} _barcodeReader=null; }
+  const v=document.getElementById('barcodeVideo');
+  if(v&&v.srcObject){
+    try{ v.srcObject.getTracks().forEach(t=>t.stop()); }catch(e){}
+    v.srcObject=null;
   }
 }
 function closeBarcodeScanner(){
+  _barkodOturum++;
   const modal=document.getElementById('barcodeModal');
   if(modal) modal.style.display='none';
-  if(_barcodeReader){
-    try{_barcodeReader.reset();}catch(e){}
-    _barcodeReader=null;
-  }
+  kameraAkisiniDurdur();
 }
 async function fillFormFromISBN(isbn){
   const titleEl=document.getElementById('bookTitle');

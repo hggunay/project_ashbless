@@ -754,19 +754,12 @@ function openShelfBarcodeScanner(){
   const status=document.getElementById('barcodeStatus');
   if(status) status.textContent='Kamera başlatılıyor...';
   if(typeof ZXing==='undefined'){if(status)status.textContent='⚠️ Tarayıcı yüklenemedi.';return;}
-  try{
-    _barcodeReader=new ZXing.BrowserMultiFormatReader();
-    _barcodeReader.decodeFromVideoDevice(null,'barcodeVideo',(result,err)=>{
-      if(result){
-        const isbn=result.getText();
-        closeBarcodeScanner();
-        window._shelfIsbn=null;   // yeni okutma: önceki bulunamayan ISBN'i unut
-        document.getElementById('shelfBookTitle').value=isbn;
-        searchShelfBook();
-      }
-    });
-    if(status) status.textContent='Barkodu kameraya göster';
-  }catch(e){if(status)status.textContent='⚠️ Kamera açılamadı.';}
+  // Ortak tarayıcı: index.html barkodTarayiciBaslat (2. okutma sorunu, 08.10)
+  barkodTarayiciBaslat(isbn=>{
+    window._shelfIsbn=null;   // yeni okutma: önceki bulunamayan ISBN'i unut
+    document.getElementById('shelfBookTitle').value=isbn;
+    searchShelfBook();
+  });
 }
 
 function renderShelf(){

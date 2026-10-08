@@ -256,16 +256,11 @@ function rafTopluBarkod(i){
   if(typeof ZXing==='undefined'){ if(typeof mesajGoster==='function') mesajGoster('Barkod okuyucu yüklenemedi.', 'uyari'); return; }
   modal.style.display = 'flex';
   if(status) status.textContent = 'Kamera başlatılıyor...';
-  try{
-    _barcodeReader = new ZXing.BrowserMultiFormatReader();
-    _barcodeReader.decodeFromVideoDevice(null, 'barcodeVideo', (sonuc) => {
-      if(!sonuc) return;
-      const isbn = String(sonuc.getText()||'').replace(/[^0-9X]/gi, '');
-      closeBarcodeScanner();
-      if(isbn) rafTopluBarkodAra(r, isbn);
-    });
-    if(status) status.textContent = 'Barkodu kameraya göster';
-  }catch(e){ if(status) status.textContent = '⚠️ Kamera açılamadı.'; }
+  // Ortak tarayıcı: index.html barkodTarayiciBaslat (2. okutma sorunu, 08.10)
+  barkodTarayiciBaslat(metin => {
+    const isbn = String(metin||'').replace(/[^0-9X]/gi, '');
+    if(isbn) rafTopluBarkodAra(r, isbn);
+  });
 }
 async function rafTopluBarkodAra(r, isbn){
   _rtBarkodSatir = r;
