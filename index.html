@@ -5082,7 +5082,7 @@ function enterApp(){
      olduğumuzdan bağımsız. Kendi kopya kontrolü var, iki kez eklenmiyor. */
   if(typeof sezonDuyuruCiz==='function') sezonDuyuruCiz();
   setTimeout(()=>loadAccordionPrefs(['currentlyReading','pausedReading','readBooks','wishlist','storyWishlist'],true),50);
-  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-danger','set-avatargrid'],false),50);
+  setTimeout(()=>loadAccordionPrefs(['set-password','set-privacy','set-members','set-backup','set-avatargrid'],false),50);
   // İlk state'i kaydet
   history.replaceState({panel:targetPanel},'',location.pathname+(targetPanel!=='myBooks'?'#'+targetPanel:''));
   // Geri tuşu dinleyicisi — sadece bir kez ekle
@@ -5105,6 +5105,7 @@ function enterApp(){
 // üçü de bunu kullanır. Önceden üç ayrı kopya vardı, ikisi birbirinden eksikti
 // (biri 'shelf'i, diğeri 'myBadges'i unutmuştu) — Ö37.
 function renderPanelContent(id){
+  tehlikeliAlaniKapat();
   if(id==='settings') renderSettings();
   else if(id==='stats'){ renderStatsPanel(); }   // taşımayı renderStatsPanel kendi sonunda yapıyor
   else if(id==='eglence'){ renderEglencePanel(); }
@@ -5116,6 +5117,14 @@ function renderPanelContent(id){
   else if(id==='shelf'){renderShelf();}
   else if(id==='myBadges'){render();setTimeout(()=>shimmerEarnedBadges(),400);}
   else render();
+}
+
+/* Tehlikeli Alan her sekme geçişinde kapanır, açık hâli hatırlanmaz
+   (2026-10-09, Gökşin: "klavyeye kedi oturması gibi durumlar").
+   Diğer akordeonların tercihi aa-acc'te saklanmaya devam ediyor. */
+function tehlikeliAlaniKapat(){
+  document.getElementById('body-set-danger')?.classList.remove('open');
+  document.getElementById('arr-set-danger')?.classList.remove('open');
 }
 
 function _showPanelNoHistory(id, el){
@@ -5436,7 +5445,8 @@ function toggleSection(key){
   const isOpen=body.classList.contains('open');
   body.classList.toggle('open',!isOpen);
   if(arrow) arrow.classList.toggle('open',!isOpen);
-  // Tercihi kaydet
+  // Tercihi kaydet (Tehlikeli Alan hariç — o hep kapalı başlar)
+  if(key==='set-danger') return;
   try{
     const prefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');
     prefs[key]=!isOpen;
