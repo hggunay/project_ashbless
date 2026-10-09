@@ -979,9 +979,8 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
       <button class="auth-tab" id="tabRegister" onclick="showAuthTab('register')">Kayıt Ol</button>
     </div>
     <div id="loginForm">
-      <div class="auth-field"><label class="auth-label">Kullanıcı Adı <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">veya e-posta</span></label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi" oninput="checkHintAvailable()" onkeyup="checkHintAvailable()" onblur="checkHintAvailable()"/></div>
+      <div class="auth-field"><label class="auth-label">Kullanıcı Adı <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">veya e-posta</span></label><input class="auth-input" id="loginUsername" type="text" placeholder="kullanici_adi"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="loginPassword" type="password" placeholder="şifreni gir..." onkeydown="if(event.key==='Enter')login()"/><button class="pw-toggle" type="button" onclick="togglePw('loginPassword',this)">👁</button></div></div>
-      <div id="hintBox" style="display:none;background:rgba(201,162,39,.1);border:1px solid rgba(201,162,39,.3);border-radius:2px;padding:.5rem .75rem;margin-bottom:.5rem;font-family:'Crimson Pro',serif;font-size:.9rem;color:var(--gold)"></div>
       <!-- G11 (2026-08-31): buradaki "e-postana kod gönderelim" akışı kaldırıldı.
            Kodu tarayıcı üretip yine tarayıcı doğruluyordu (koruma değil, koruma
            görüntüsü) ve altı hesabın dördünde kayıtlı e-posta olmadığı için
@@ -996,7 +995,6 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
           <input type="checkbox" id="rememberMe" style="cursor:pointer"/>
           <label for="rememberMe" style="cursor:pointer">Oturumu açık tut</label>
         </div>
-        <button id="hintBtn" type="button" onclick="showHint()" style="display:none;background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--gold);cursor:pointer;opacity:.7;text-decoration:underline">💡 İpucumu göster</button>
         <button type="button" onclick="showForgotFlow()" style="background:none;border:none;font-family:'Space Mono',monospace;font-size:.65rem;color:var(--rust);cursor:pointer;opacity:.6;text-decoration:underline">🔑 Şifremi unuttum</button>
       </div>
       <button class="auth-btn" id="loginBtn" onclick="login()">GİRİŞ YAP →</button>
@@ -1012,7 +1010,6 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
       <div class="auth-field"><label class="auth-label">E-posta <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(giriş ve şifre sıfırlama için — zorunlu)</span></label><input class="auth-input" id="regEmail" type="email" placeholder="ornek@gmail.com"/></div>
       <div class="auth-field"><label class="auth-label">Avatar Emoji</label><input class="auth-input" id="regAvatar" type="text" placeholder="🧙‍♂️" maxlength="4"/></div>
       <div class="auth-field"><label class="auth-label">Şifre</label><div class="pw-wrap"><input class="auth-input" id="regPassword" type="password" placeholder="şifre belirle..." onkeydown="if(event.key==='Enter')register()"/><button class="pw-toggle" type="button" onclick="togglePw('regPassword',this)">👁</button></div></div>
-      <div class="auth-field"><label class="auth-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(isteğe bağlı — şifreni unutursan hatırlatır)</span></label><input class="auth-input" id="regHint" type="text" placeholder="örn: evcil hayvanımın adı"/></div>
       <div class="auth-error" id="registerError"></div>
       <button class="auth-btn" id="registerBtn" onclick="register()">KAYIT OL →</button>
     </div>
@@ -1913,18 +1910,11 @@ try{
                   <div class="detail-field" style="flex:1;min-width:180px">
                     <label class="detail-field-label">Yeni Şifre</label>
                     <div class="pw-wrap">
-                      <input class="detail-input" id="settingPw" type="password" placeholder="En az 3 karakter..." onkeydown="if(event.key==='Enter')changePassword()"/>
+                      <input class="detail-input" id="settingPw" type="password" placeholder="En az 6 karakter..." onkeydown="if(event.key==='Enter')changePassword()"/>
                       <button class="pw-toggle" type="button" id="settingPwGoz" onclick="togglePw('settingPw',this)">👁</button>
                     </div>
                   </div>
                   <button class="btn btn-primary btn-sm" id="settingPwBtn" style="margin-bottom:.1rem" onclick="changePassword()">🔒 Şifreyi Güncelle</button>
-                </div>
-                <div class="detail-field">
-                  <label class="detail-field-label">Şifre İpucu <span style="opacity:.5;font-weight:400;text-transform:none;letter-spacing:0">(giriş ekranında gösterilir)</span></label>
-                  <div style="display:flex;gap:.5rem;align-items:center">
-                    <input class="detail-input" id="settingHint" type="text" placeholder="örn: evcil hayvanımın adı" style="flex:1"/>
-                    <button class="btn btn-primary btn-sm" onclick="saveHint()">💾</button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -1993,12 +1983,6 @@ try{
                      üye hiçbir veri okuyamıyor. Onayı geri almak erişimi kesiyor,
                      yani çıkarma aracı da bu. Ayrıntı: uye-onay.js -->
                 <div id="onayPaneli"></div>
-
-                <div style="margin-top:1.25rem;padding-top:.85rem;border-top:1px solid rgba(201,162,39,.15)">
-                  <div style="font-family:'Space Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.08em;color:var(--gold);opacity:.8;margin-bottom:.4rem">🔑 Şifre sıfırlama</div>
-                  <div style="font-size:.8rem;opacity:.6;font-style:italic;margin-bottom:.75rem">Burada yalnızca <b>girişini henüz güvenli hale getirmemiş</b> üyeler görünür. Taşınmış üyeler şifrelerini kendileri sıfırlıyor — giriş ekranındaki "Şifremi unuttum" bağlantısı onlara e-posta gönderiyor.</div>
-                  <div id="adminMemberList"></div>
-                </div>
               </div>
             </div>
           </div>
@@ -3372,13 +3356,6 @@ function renderPills(){
     `<span class="member-pill" data-u="${escapeHtml(u)}" onclick="pillSec(this.dataset.u)">`+
     `${avatarHtml(kaynak[u].avatar,'1.1rem')} ${escapeHtml(kaynak[u].ad)}</span>`).join('');
 }
-// Şifreyi login()'in kullandığı algoritmayla aynı şekilde SHA-256 hash'ler
-async function hashPassword(p){
-  try{
-    const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
-    return [...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
-  }catch(e){ return p; } // crypto.subtle desteklenmeyen çok eski bir ortamda düz metne düş
-}
 /* ═══ GİRİŞ DÜĞMESİ: DURUM GÖSTERİMİ + ÇİFT TIKLAMA KORUMASI (2026-09-03) ══════
    Gökşin bildirdi: "butona bastığımda uzun süre hiç tepki vermiyor, 2-3 kez
    tıkladıktan sonra açılıyor." İlk tıklama ZATEN algılanıyordu — görünmüyordu.
@@ -3427,17 +3404,6 @@ async function _girisYap(){
       }
       err.style.display='none'; me=kullanici; viewing=null;
       _guvenliGirisKullanici=kullanici;
-      /* Uygulama şifresini bu şifreye eşitle. Gerekçe: e-postadan şifre
-         sıfırlayan biri Firebase şifresini değiştirir ama uygulamanınki eski
-         kalırdı — o kişi bir daha KULLANICI ADIYLA giremezdi ve sebebini
-         anlayamazdı. İlk e-posta girişinde ikisi kendiliğinden hizalanıyor. */
-      try{
-        const mevcut=(db.users[kullanici]||{}).password;
-        const ozet=await hashPassword(p);
-        if(mevcut!==ozet){
-          if(await fbPatch('aa-v4/users/'+kullanici,{password:ozet})) db.users[kullanici].password=ozet;
-        }
-      }catch(e){}
       kullaniciAdiniIsaretle(kullanici);   // bkz. işlevin yorumu
       girisGecmisineYaz(kullanici, u.trim());   // rozet + e-posta bu cihazda dursun
       if(document.getElementById('rememberMe').checked){ try{localStorage.setItem('aa-session',me);}catch(e){} }
@@ -3479,10 +3445,12 @@ async function _girisYap(){
     return;
   }
 
-  let match=false, needsMigration=false;
+  let match=false;
 
-  /* 1) ASIL YETKİLİ FIREBASE. Adres bulunduysa önce ona sorulur; kabul ederse
-        şifre doğrudur ve uygulamanın kendi özetine hiç bakılmaz.
+  /* TEK YETKİLİ FIREBASE. Adres bulunduysa ona sorulur; kabul ederse şifre
+     doğrudur. (2026-10-09: uygulamanın kendi şifre özetine düşen eski yol ve
+     profillerdeki `password` / `hint` alanları kaldırıldı — dört üyenin dördü
+     de taşınmıştı, özet yalnızca veritabanını okuyabilene şifre ipucu veriyordu.)
         ⚠️ uidMap kontrolü ŞART: adres gerçekten bu hesaba mı ait? Bakılmazsa
         başkasının kimliğiyle bu kullanıcı adına girilebilirdi. */
   let biletHazir=false;
@@ -3495,50 +3463,12 @@ async function _girisYap(){
     }catch(e){ authCikis(); }
   }
 
-  /* 2) Firebase kullanılamadıysa (hesap taşınmamış, ya da kurallar hâlâ eski ve
-        liste boş) uygulamanın kendi özetine düşülür. Kurallar kilitlendikten
-        sonra bu yol yalnızca taşınmamış hesaplarda kalır — onlar zaten veriyi
-        okuyamayacağı için pratikte kapanmış olur. */
-  if(!match){
-    if(!db.users[u]){err.style.display='block';err.textContent='Kullanıcı adı veya şifre hatalı.';return;}
-    const stored=db.users[u].password;
-    // Hash'li şifre (64 karakter hex) ise girilen şifreyi hash'le, değilse düz karşılaştır
-    if(stored&&stored.length===64&&/^[0-9a-f]+$/.test(stored)){
-      try{
-        const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(p));
-        const hash=[...new Uint8Array(buf)].map(x=>x.toString(16).padStart(2,'0')).join('');
-        match=hash===stored;
-      }catch(e){match=stored===p;}
-    } else {
-      match=stored===p;
-      if(match) needsMigration=true; // düz metin şifreyle başarılı giriş — sessizce hash'e geçir
-    }
-  }
-  if(!match){err.style.display='block';return;}
-
-  /* ═══ G9: ÖZETLE GİRENE DE BİLET AL (2026-09-01) ══════════════════════════════
-     Yukarıdaki 1. adım Firebase'e soramadıysa buraya düşülür (liste boş, eski
-     kurallar). Bilet alınmazsa sessiz bir tuzak olurdu: kullanıcı uygulamayı
-     normal kullanır ama HİÇBİR ŞEY KAYDEDİLMEZ, hata da görmez.
-     Başarısız olursa giriş yine de yapılıyor — kullanıcıyı dışarıda
-     bırakmıyoruz — ama uyarı gösteriliyor. */
-  if(eposta && !biletHazir){
-    try{
-      await authGirisYap(eposta, p);
-      const kullanici=await fbGet('aa-v4/uidMap/'+authUid());
-      _guvenliGirisKullanici = (kullanici===u)?u:null;
-      if(kullanici===u) biletHazir=true; else authCikis();   // adres başka hesaba bağlıysa bırak
-    }catch(e){
-      authCikis(); _guvenliGirisKullanici=null;
-      setTimeout(()=>mesajGoster('Güvenli girişin doğrulanamadı — kaydetmede sorun yaşarsan Ayarlar → 🔐 bölümünden şifreni yenile.','uyari'),1200);
-    }
-  }
+  if(!match){err.style.display='block';err.textContent='Kullanıcı adı veya şifre hatalı.';return;}
 
   /* ═══ G9 2. AŞAMA: VERİYİ BİLETLE ŞİMDİ YÜKLE ════════════════════════════════
      Okuma kilitlendikten sonra açılıştaki loadDb() yetkisiz olduğu için boş
      dönüyor; asıl yükleme burası. Eski kurallarda da zararsız — sadece taze
-     veri gelir. Ardından uygulamanın özeti Firebase şifresine eşitleniyor:
-     e-postadan sıfırlayan biri Firebase'i değiştirir, özet eski kalırdı. */
+     veri gelir. */
   if(biletHazir){
     /* Veri zaten yüklüyse TEKRAR ÇEKME. Kurallar hâlâ açıkken açılıştaki
        loadDb() veriyi getirmiş oluyor; burada bir daha çekmek girişe ~8 istek
@@ -3546,21 +3476,11 @@ async function _girisYap(){
        Okuma kilitlendikten sonra db boş geleceği için koşul kendiliğinden
        doğru olacak ve yükleme burada yapılacak. */
     if(!(db.users && db.users[u])){ try{ await loadDb(); }catch(e){} }
-    try{
-      if(db.users[u]){
-        const ozet=await hashPassword(p);
-        if(db.users[u].password!==ozet && await fbPatch('aa-v4/users/'+u,{password:ozet}))
-          db.users[u].password=ozet;
-      }
-    }catch(e){}
     kullaniciAdiniIsaretle(u);   // bkz. işlevin yorumu
   }
 
   err.style.display='none';me=u;viewing=null;
-  if(needsMigration){
-    try{ db.users[u].password=await hashPassword(p); saveDb(); }catch(e){}
-  }
-  girisGecmisineYaz(u, biletHazir?eposta:null);   // rozet + (doğrulanmışsa) e-posta bu cihazda dursun
+  girisGecmisineYaz(u, eposta);   // rozet + (doğrulanmışsa) e-posta bu cihazda dursun
   if(document.getElementById('rememberMe').checked){
     try{localStorage.setItem('aa-session',u);}catch(e){}
   }
@@ -3587,7 +3507,6 @@ async function register(){
         dn=document.getElementById('regDisplayName').value.trim(),
         av=document.getElementById('regAvatar').value.trim()||'📚',
         p=document.getElementById('regPassword').value,
-        hint=document.getElementById('regHint').value.trim(),
         email=document.getElementById('regEmail').value.trim(),
         err=document.getElementById('registerError');
   const hata=m=>{ err.style.display='block'; err.textContent=m; };
@@ -3624,7 +3543,7 @@ async function register(){
     }
     await fbSet('aa-v4/kullaniciAdlari/'+u, true, true);
 
-    const kayit={displayName:dn,avatar:av,password:await hashPassword(p),hint:hint||null,email:email};
+    const kayit={displayName:dn,avatar:av,email:email};
     if(!(await fbPatch('aa-v4/users/'+u, kayit))){
       return hata('Hesabın açıldı ama profilin kaydedilemedi. Giriş yapıp tekrar dene.');
     }
@@ -3645,12 +3564,6 @@ async function register(){
 function showForgotFlow(){
   const u=document.getElementById('loginUsername').value.trim();
   const forgotBox=document.getElementById('forgotBox');
-  // Önce ipucunu göster
-  if(u&&db.users[u]&&db.users[u].hint){
-    const box=document.getElementById('hintBox');
-    box.style.display='block';
-    box.textContent='💡 İpucu: '+db.users[u].hint;
-  }
   /* G9 (2026-09-01): artık GERÇEK bir sıfırlama var — Firebase e-posta yolluyor.
      G11'de kaldırılan akıştan farkı: kodu tarayıcı üretmiyor, bağlantı
      e-postaya gidiyor. Hesabını taşımamış üye için (Firebase hesabı yok)
@@ -3702,25 +3615,6 @@ async function sifreSifirlamaIste(){
 // (adminResetPassword). EmailJS kütüphanesi de bu yüzden kaldırıldı.
 // ─────────────────────────────────────────────────────────────
 
-function checkHintAvailable(){
-  const u=document.getElementById('loginUsername').value.trim();
-  const btn=document.getElementById('hintBtn');
-  const box=document.getElementById('hintBox');
-  box.style.display='none';
-  // db henüz yüklenmemişse bekle
-  if(!db||!db.users){btn.style.display='none';return;}
-  if(u&&db.users[u]&&db.users[u].hint){btn.style.display='block';}
-  else{btn.style.display='none';}
-}
-
-function showHint(){
-  const u=document.getElementById('loginUsername').value.trim();
-  const box=document.getElementById('hintBox');
-  if(u&&db.users[u]&&db.users[u].hint){
-    box.style.display='block';
-    box.textContent='💡 İpucu: '+db.users[u].hint;
-  }
-}
 
 function updateProfile(field, value){
   if(!value.trim()) return;
@@ -3750,24 +3644,21 @@ async function authSifreDegistir(yeniSifre){
    dokunulmuyor, yoksa ikisi ayrışırdı. */
 async function changePassword(){
   const pw=document.getElementById('settingPw').value;
-  const enAz = authGirisliMi()&&_guvenliGirisKullanici===me ? 6 : 3;
-  if(!pw||pw.length<enAz){mesajGoster('Şifre en az '+enAz+' karakter olmalı.','uyari');return;}
-
-  if(authGirisliMi()&&_guvenliGirisKullanici===me){
-    try{
-      await authSifreDegistir(pw);
-    }catch(e){
-      const m=String(e.message||e);
-      mesajGoster(m.includes('WEAK_PASSWORD')?'Şifre çok zayıf, en az 6 karakter olmalı.'
-                 :'Şifre değiştirilemedi, eski şifren geçerli kalmaya devam ediyor.','uyari');
-      return;
-    }
+  if(!pw||pw.length<6){mesajGoster('Şifre en az 6 karakter olmalı.','uyari');return;}
+  /* 2026-10-09: şifre yalnızca Firebase'de. Uygulamanın kendi özeti kalktı. */
+  if(!(authGirisliMi()&&_guvenliGirisKullanici===me)){
+    mesajGoster('Şifre değiştirmek için çıkış yapıp yeniden gir.','uyari');
+    return;
   }
-
-  const ozet=await hashPassword(pw);
-  db.users[me].password=ozet;
+  try{
+    await authSifreDegistir(pw);
+  }catch(e){
+    const m=String(e.message||e);
+    mesajGoster(m.includes('WEAK_PASSWORD')?'Şifre çok zayıf, en az 6 karakter olmalı.'
+               :'Şifre değiştirilemedi, eski şifren geçerli kalmaya devam ediyor.','uyari');
+    return;
+  }
   document.getElementById('settingPw').value='';
-  saveDb();
   mesajGoster('Şifre güncellendi ✅');
 }
 
@@ -3908,8 +3799,6 @@ function renderSettings(){
   const removeBtn=document.getElementById('removeAvatarBtn');
   if(removeBtn) removeBtn.style.display=(user.avatar||'').startsWith('data:')?'':'none';
   document.getElementById('settingPw').value='';
-  const hintEl=document.getElementById('settingHint');
-  if(hintEl) hintEl.value=user.hint||'';
   // Harita avatarı grid
   setTimeout(()=>renderMapAvatarGrid(),50);
   // Public toggle
@@ -3963,26 +3852,6 @@ function renderSettings(){
   /* Onay paneli — yalnızca sahip görür, kendi içinde de kontrol ediyor.
      await edilmiyor: renderSettings senkron, panel hazır olunca kendini yazar. */
   if(typeof onayPaneliCiz==='function') onayPaneliCiz();
-
-  const adminList=document.getElementById('adminMemberList');
-  if(adminList){
-    // Listede yalnızca şifresini sıfırlamaya yetkili olduğun üyeler çıkar —
-    // yedek yetkili için bu tek kişi demek (sahip).
-    const others=Object.keys(db.users).filter(u=>sifreSifirlayabilirMi(u));
-    if(!others.length){adminList.innerHTML='<div style="font-size:.85rem;opacity:.5;font-style:italic">Başka üye yok.</div>';return;}
-    adminList.innerHTML=others.map(u=>{
-      const av=db.users[u].avatar||'📚';
-      const avD=av.startsWith('data:')||av.startsWith('avatar_')?'👤':av;
-      return`
-      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem;flex-wrap:wrap">
-        <span style="font-size:1.2rem">${avD}</span>
-        <span style="font-family:'Playfair Display',serif;font-size:.95rem;color:var(--ink);flex:1">${db.users[u].displayName} <span style="opacity:.5;font-size:.75rem">@${u}</span></span>
-        <div style="display:flex;gap:.4rem;align-items:center">
-          <input class="detail-input" type="text" id="newpw_${u}" placeholder="Yeni şifre..." style="width:130px;font-size:.85rem"/>
-          <button class="btn btn-sm btn-danger" onclick="adminResetPassword('${u}')">🔑 Sıfırla</button>
-        </div>
-      </div>`;}).join('');
-  }
 }
 
 
@@ -3991,17 +3860,6 @@ function getGBooksKey(){
 }
 
 
-function saveHint(){
-  const hint=document.getElementById('settingHint').value.trim();
-  if(!db.users[me]){notify('⚠️ Hata','Kullanıcı bulunamadı.');return;}
-  db.users[me].hint=hint||null;
-  saveDb();
-  // Alanı güncelle — kaydedildiğini göster
-  const hintEl=document.getElementById('settingHint');
-  if(hintEl) hintEl.style.borderColor='var(--moss)';
-  setTimeout(()=>{if(hintEl)hintEl.style.borderColor='';},2000);
-  notify('💡 İpucu Kaydedildi', hint?`"${hint}" olarak ayarlandı.`:'İpucu kaldırıldı.');
-}
 
 /* ═══ G9: HESAP TAŞIMA ════════════════════════════════════════════════════════
    Her üye kendi Firebase hesabını KENDİSİ oluşturur — şifresi ne Gökşin'den ne
@@ -4091,7 +3949,7 @@ function renderGuvenliGiris(){
   // Alt sınır taşınmışta 6 (Firebase'in şartı), taşınmamışta 3. Metin de
   // ona göre yazılıyor — Gökşin "3 karakter yazıyor ama 6 olmalı" diye bildirdi.
   const pw=document.getElementById('settingPw');
-  if(pw) pw.placeholder = tasindi?'En az 6 karakter...':'En az 3 karakter...';
+  if(pw) pw.placeholder = 'En az 6 karakter...';
 
   renderTasimaSeridi();
 
@@ -4179,9 +4037,8 @@ async function hesabimiTasi(){
        kaydedemez. deneme ve hggunay'da tesadüfen kayıtlıydı, nimet'te olmayacaktı. */
     let sifreEslesti=false;
     try{
-      const ozet=await hashPassword(s1);
-      sifreEslesti=await fbPatch('aa-v4/users/'+me,{password:ozet, email:eposta.trim()});
-      if(sifreEslesti){ db.users[me].password=ozet; db.users[me].email=eposta.trim(); }
+      sifreEslesti=await fbPatch('aa-v4/users/'+me,{email:eposta.trim()});
+      if(sifreEslesti){ db.users[me].email=eposta.trim(); }
     }catch(e){}
 
     /* ═══ G9 2. AŞAMA: HERKESE AÇIK GİRİŞ ADRESİ LİSTESİ (2026-09-03) ══════════
@@ -4213,26 +4070,9 @@ async function hesabimiTasi(){
   }
 }
 
-// G11 (2026-08-31): `updateAdminBadge` ve `adminResetFromForgot` kaldırıldı.
-// İkisi de `db.forgotRequests` üzerine kuruluydu; o listeye hiçbir kod satırı
-// istek yazmıyordu, dolayısıyla rozet hiç görünmüyor, ikinci sıfırlama yolu hiç
-// çalışmıyordu. Sıfırlamanın tek yolu artık aşağıdaki adminResetPassword.
-
-async function adminResetPassword(u){
-  // Yetki kontrolü arayüzde DEĞİL burada da yapılıyor: düğmeyi gizlemek yetmez,
-  // işlevi konsoldan çağırmak mümkün.
-  if(!sifreSifirlayabilirMi(u)){
-    mesajGoster('Bu üyenin şifresini sıfırlama yetkin yok.','uyari');
-    return;
-  }
-  const input=document.getElementById('newpw_'+u);
-  const pw=input.value.trim();
-  if(!pw||pw.length<3){notify('⚠️ Hata','Şifre en az 3 karakter olmalı.');return;}
-  db.users[u].password=await hashPassword(pw);
-  saveDb();
-  input.value='';
-  notify('✅ Şifre Sıfırlandı',`${db.users[u].displayName} için yeni şifre ayarlandı.`);
-}
+// 2026-10-09: üyenin şifresini sahibin sıfırladığı `adminResetPassword` kaldırıldı.
+// Yalnızca uygulamanın kendi özetini değiştiriyordu, giriş artık Firebase'den.
+// Şifresini unutan giriş ekranındaki "Şifremi unuttum" ile e-posta ister.
 
 // ── KİŞİSEL YEDEK (G5/G6) ────────────────────────────────────────────
 // ESKİDEN: "Yedek Al" HERKESİN verisini tek dosyaya yazıyor, "İçe Aktar" da
@@ -4261,36 +4101,8 @@ const KISISEL_DUGUMLER=['users','books','badgeEvents','countryEvents','notificat
 // "herkesin verisi" butonuna denk gelmemesi.
 const SAHIP='hggunay';
 
-// ── ŞİFRE SIFIRLAMA YETKİSİ ──────────────────────────────────────────
-// BUGÜNKÜ KURGU (2026-09-01):
-//   sahip          → yalnızca TAŞINMAMIŞ üyelerin şifresini sıfırlayabilir
-//   taşınmış üye   → şifresini kendisi sıfırlar (giriş ekranı → Şifremi unuttum,
-//                    Firebase e-posta gönderiyor)
-//   diğer herkes   → bölümü hiç göremez
-//
-// (tarihsel) 2026-08-26'da bölüm giriş yapan HERKESE görünüyordu ve herkes
-// herkesin şifresini sıfırlayabiliyordu — sahibinki dahil. Önce SAHIP +
-// YEDEK_YETKILI ikilisine daraltıldı; YEDEK_YETKILI 2026-09-01'de kalktı.
-// Artık bu bir PERDE değil GERÇEK kilit: veritabanı kuralları da
-// `users/<kişi>` yazmasını sahibe ve kişinin kendisine sınırlıyor (G9).
-/* ⚠️ YEDEK_YETKILI KALDIRILDI (2026-09-01). kitaptamircisi7'nin sahibin şifresini
-   sıfırlama yetkisi vardı; gerekçesi "Gökşin şifresini unutursa kurtarma yolu"ydu.
-   Artık Gökşin kendi e-postasından gerçek sıfırlama yapabiliyor, o yola gerek yok.
-
-   ⚠️ VE ASIL SEBEP: bu panel yalnızca UYGULAMANIN şifresini değiştiriyor,
-   Firebase'inkini değil. Taşınmış bir üyenin şifresi buradan sıfırlanırsa o kişi
-   yeni şifreyle GİRER ama bilet alamaz ve hiçbir şey kaydedemez — üstelik şerit
-   ona "bu cihazda tekrar gir" der, o da işe yaramaz. Yani panel taşınmış üyeler
-   için yardımcı değil, ZARARLI. Gökşin fark etti.
-   Bu yüzden panel artık yalnızca TAŞINMAMIŞ üyeleri listeliyor
-   (renderSettings). Herkes taşınınca kendiliğinden boşalıyor. */
+// Üye Yönetimi bölümü (onay paneli) yalnızca sahibe görünür.
 function uyeYonetimiGorunur(){ return me===SAHIP; }
-function sifreSifirlayabilirMi(hedef){
-  if(hedef===me) return false;              // kendi şifren için "Şifre Değiştir" var
-  if(me!==SAHIP) return false;
-  // Taşınmış üyenin şifresi buradan sıfırlanamaz — yukarıdaki gerekçe.
-  return !(_tasinanKullanicilar && _tasinanKullanicilar.indexOf(hedef)>-1);
-}
 
 // ── G13: uygulanamayan değişikliklerin görüntüleyicisi ──────────────────────
 // Bu bölüm bilerek "göster + tek tek geri ekle" olarak tasarlandı, "hepsini
@@ -4577,12 +4389,10 @@ async function kisiselYedegiUygula(data,yaz){
   try{
     const simdi=Date.now();
 
-    // ŞİFRE KORUNUYOR. Yedek dosyası üye kaydını, o da şifre özetini içeriyor.
-    // Eski bir dosya yüklendiğinde eski şifre geri gelseydi üye, bildiği
-    // şifreyle kendi hesabına giremez hale gelirdi.
-    const mevcutSifre=db.users[me]&&db.users[me].password;
+    // Eski yedek dosyaları şifre özeti + ipucu içerebilir; 2026-10-09'da
+    // kaldırılan bu alanlar geri yüklemeyle geri gelmesin.
     const yeniKayit={...data.users[me]};
-    if(mevcutSifre!==undefined) yeniKayit.password=mevcutSifre;
+    delete yeniKayit.password; delete yeniKayit.hint;
     db.users[me]=yeniKayit;
 
     for(const d of KISISEL_DUGUMLER){
@@ -10954,7 +10764,6 @@ async function init(){
     }
   }catch(e){}
   renderPills();
-  setTimeout(checkHintAvailable, 500);
   // Sekmeye dönünce sessiz senkronizasyon
   document.addEventListener('visibilitychange',async()=>{
     if(document.visibilityState==='visible'&&me){
