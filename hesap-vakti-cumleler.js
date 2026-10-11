@@ -3,7 +3,7 @@
 //   node "Masaüstü/project_ashbless/cumle-uret.js"  (depo dışında, denetleyicinin yanında)
 // Cümleleri değiştirmek isteyen ÖNCE planı düzeltmeli — plan tek doğru kaynak,
 // bu dosya onun kopyası. (2026-09-04; üreteç 2026-09-17'de geçici klasörden taşındı)
-// Sayım: Şeytan 46 cümle, Melek 60 cümle, 12 senaryo.
+// Sayım: Şeytan 49 cümle, Melek 60 cümle, 12 senaryo.
 const HV_CUMLELER = {
   "hic-okumama": {
     "seytan": [
@@ -21,6 +21,18 @@ const HV_CUMLELER = {
       },
       {
         "metin": "0 kitap... Yazıyla: sıfır. Sıfır (0) kavramının tarihi farklı dönemlerde yaşamış uygarlıklara dayanır: Sümerler, Hintliler, Harazmi... bir de sen.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Rozetlerine bakıyorum. Gri, gri, gri... Ruhun gibi.",
+        "ton": null,
+        "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Kitap kulübüne üye oldun, uygulamayı telefonuna kurdun, rozetlere baktın, haritayı inceledin, oyunları oynadın... Okumamak için bu kadar emek veren başka birini tanımıyorum.",
         "ton": null,
         "baglamGerek": false,
         "efekt": null
@@ -194,9 +206,15 @@ const HV_CUMLELER = {
         "efekt": null
       },
       {
-        "metin": "📠 Sen yokken biraz hesap kitap yaptım. Bu hızla okumaya devam edersen tsundoku kitaplarını bitireceğin yaş: 666 😈",
+        "metin": "📠 Sen yokken biraz hesap kitap yaptım. Bu hızla okumaya devam edersen tsundoku kitaplarını bitireceğin yaş: 666 😈 Okuma Odası'na bir uğra, Magnus'a sor. Onun hesabı da 666 çıkmıştı.",
         "ton": null,
         "baglamGerek": false,
+        "efekt": null
+      },
+      {
+        "metin": "Okuma Odası'ndaki hayaleti tanıyor musun? Magnus. O da 'bu hafta başlarım' derdi. Acele etme, sana da bir sandalye ayırdım. 😈",
+        "ton": null,
+        "baglamGerek": true,
         "efekt": null
       }
     ],
