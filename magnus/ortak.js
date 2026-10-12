@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "22";
+const SURUM_YAZI = "23";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -249,6 +249,14 @@ function donguSes(CAPRAZ = 3){
   const a = [new Audio(), new Audio()]; a.forEach(x => x.preload = "auto");
   let akt = 0, usta = 0, karisim = [1, 0], caprazda = false, zaman = null, kes = [0, 0];
   const uygula = () => a.forEach((x, i) => x.volume = Math.max(0, Math.min(1, usta * karisim[i] * D.genel)));
+  // YEDEK: etkin kopya geçiş tetiklenmeden sonuna geldiyse (timeupdate kaçtı, süre bilinmiyordu…)
+  // susmasın, diğer kopya hemen baştan girsin.
+  a.forEach((x, i) => x.addEventListener("ended", () => {
+    if (i !== akt || caprazda) return;
+    const d = 1 - akt, y = a[d];
+    y.currentTime = kes[0]; karisim[d] = 1; karisim[akt] = 0; uygula();
+    y.play().catch(() => {}); akt = d;
+  }));
   a.forEach((x, i) => x.addEventListener("timeupdate", () => {
     if (i !== akt || caprazda || x.paused || !x.duration) return;
     if (x.currentTime < kes[0] - 0.5) { x.currentTime = kes[0]; return; }   // baştaki açılmayı atla
@@ -284,8 +292,14 @@ function donguSes(CAPRAZ = 3){
     // Moladan dönüşte kopya dosyanın son saniyelerinde kalmışsa (Gökşin, 12 Ekim: 60 sn'lik saat.wav
     // 1 dk'lık odağın sonunda durdu, 2. turda kalan 0,04 sn'yi çalıp bitti, geçiş hiç tetiklenmedi →
     // sessizlik) kaldığı yerden değil baştan başla.
-    play(){ const x = a[akt];
-            if (x.ended || (x.duration && x.duration - kes[1] - x.currentTime <= CAPRAZ)) x.currentTime = kes[0];
+    // Her başlatmada durumu SIFIRLA (Gökşin, 12 Ekim: Herbert'te turlar bitince Dune 7 açıldı,
+    // daktilo hiç gelmedi; kapatıp açmak da işe yaramadı) — yarım kalmış geçişin karışımı/zamanlayıcısı
+    // ya da diğer kopya ne hâlde kalmış olursa olsun: yalnız etkin kopya, tam karışımla çalar.
+    play(){ clearInterval(zaman); caprazda = false;
+            const y = a[1 - akt]; if (!y.paused) y.pause();
+            karisim[akt] = 1; karisim[1 - akt] = 0; uygula();
+            const x = a[akt], son = isFinite(x.duration) ? x.duration : 0;
+            if (x.ended || (son && son - kes[1] - x.currentTime <= CAPRAZ)) x.currentTime = kes[0];
             return x.play(); },
     pause(){ clearInterval(zaman); caprazda = false; karisim[1 - akt] = 0; karisim[akt] = 1;
              a.forEach(x => x.pause()); uygula(); },
