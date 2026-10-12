@@ -5,7 +5,7 @@
    · Sayfa/kod (html, js, manifest): ÖNCE AĞ — güncelleme varsa hemen gelsin; ağ yoksa kayıt.
    · Resim ve müzik: ÖNCE KAYIT. Müzik ilk çalındığında TAMAMI indirilip saklanır; tarayıcı
      parça parça (Range) isteyince saklanan dosyadan dilim kesilip verilir.
-   Değişiklikte SURUM'u artır → eski kayıt silinir. */
+   Değişiklikte SURUM'u artır → eski kayıt silinir. (Müzik/ses HARİÇ: onlar SES_KAYIT'ta, sürümle silinmez.) */
 // 2: müzik önbellekte yoksa BEKLETMEDEN ağdan (Gökşin'in telefonunda kesiliyordu)
 // 3: kod HER SEFERİNDE sitede tazelenir (no-cache) + NoSleep. ortak.js SURUM_YAZI ile birlikte artır.
 // 4: ses karıştırıcı (13 yeni ortam sesi, saat.wav)
@@ -24,7 +24,12 @@
 // 17: hazır karışıma dokununca "açık ama çalmayan" sesler de başlar (Dune 7 bazen çalmıyordu)
 // 18: pomodoroya "Kaç tur?" (boş = sınırsız); son turun odağı bitince durur
 // 19: döngü sesi moladan dönüşte dosya sonunda kalmışsa baştan başlar (saat 2. turda susuyordu)
-const SURUM = "magnus-19";
+// 20: müzik/ses ayrı kayıtta (SES_KAYIT) → kod güncellenince şarkılar silinip yeniden inmiyor
+//     (Gökşin, 12 Ekim: 18 ve 19'dan hemen sonra müzik birkaç saniye susup yeniden başladı)
+const SURUM = "magnus-20";
+// "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
+// değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
+const SES_KAYIT = "magnusses-1";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "herbert.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
@@ -70,7 +75,7 @@ async function onceKayit(istek){
   return y;
 }
 async function muzik(e, istek, url){
-  const c = await caches.open(SURUM);
+  const c = await caches.open(SES_KAYIT);
   const anahtar = url.origin + url.pathname;
   const k = await c.match(anahtar);
   if (!k){
