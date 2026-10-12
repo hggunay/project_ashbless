@@ -534,16 +534,18 @@ function dongu(ms){
   try { ciz(((ms - bas) / 1000) % T); } catch (e) {}
   requestAnimationFrame(dongu);
 }
+/* Ekran kapanıp açılınca telefon bellekteki yardımcı tuvalleri SİLEBİLİYOR (Gökşin, 12 Ekim:
+   ekran açılınca kütüphanede Magnus yoktu, mum ve kitaplar duruyordu). Boyut değişmese de
+   her dönüşte hepsi yeniden kuruluyor (ucuz). */
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  const d = Math.min(window.devicePixelRatio || 1, 2);
-  if (c.width !== Math.round(innerWidth * d) || c.height !== Math.round(innerHeight * d)) boyutlandir();
+  boyutlandir();
 });
 boyutlandir();
 addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=21"></script>
+<script src="ortak.js?s=22"></script>
 </body>
 </html>

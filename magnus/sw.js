@@ -27,7 +27,8 @@
 // 20: müzik/ses ayrı kayıtta (SES_KAYIT) → kod güncellenince şarkılar silinip yeniden inmiyor
 //     (Gökşin, 12 Ekim: 18 ve 19'dan hemen sonra müzik birkaç saniye susup yeniden başladı)
 // 21: tur başında "Okuma vakti · 1 / 2", moladan dönüşte "Okumaya dönme vakti · 2 / 2"; turlar bitince SESSİZ bitiş hâli (▶ hepsini geri getirir)
-const SURUM = "magnus-21";
+// 22: ekran kapanıp açılınca yardımcı tuvaller yeniden kurulur (kütüphanede Magnus kayboluyordu); tur numarası mesajın alt satırında
+const SURUM = "magnus-22";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

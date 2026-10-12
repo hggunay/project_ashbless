@@ -175,15 +175,16 @@ function boyutlandir(){
 /* ── MAGNUS: oturuyor, nefes alıyor; sayfalar ara sıra kendiliğinden dönüyor ── */
 const RESIM = new Image();
 let resimHazir = false, TEMIZ = null;
-RESIM.onload = () => {
+function temizYap(){
   // alt kenardaki açık gri gölge şeridi siyahta pus gibi duruyordu → yumuşakça sönsün
   const o = document.createElement("canvas"); o.width = 520; o.height = 315;
   const x = o.getContext("2d"); x.drawImage(RESIM, 0, 0);
   const g = x.createLinearGradient(0, 270, 0, 315);
   g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "#000");
   x.globalCompositeOperation = "destination-out"; x.fillStyle = g; x.fillRect(0, 270, 520, 45);
-  TEMIZ = o; resimHazir = true; if (DONUK !== null) ciz(DONUK);
-};
+  TEMIZ = o;
+}
+RESIM.onload = () => { temizYap(); resimHazir = true; if (DONUK !== null) ciz(DONUK); };
 RESIM.src = "gorsel/hayalet-okuyan.png";
 const SIRT = [233, 162], SAG_UC = [285, 137], SOL_UC = [197, 130];   // kitap (tablo pikseli)
 const SAYFALAR = [18, 44, 45.6, 77, 104, 131];                      // dönüş başlangıçları (sn)
@@ -344,10 +345,13 @@ function dongu(ms){
   requestAnimationFrame(dongu);
 }
 // Arka plandan dönünce boyut değişmişse sahneyi yeniden kur (gizliyken gelen 0 boyutlar yok sayılıyor)
+/* Ekran kapanıp açılınca telefon bellekteki yardımcı tuvalleri SİLEBİLİYOR (Gökşin, 12 Ekim:
+   ekran açılınca kütüphanede Magnus yoktu, mum ve kitaplar duruyordu). Boyut değişmese de
+   her dönüşte hepsi yeniden kuruluyor (ucuz). */
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState !== "visible") return;
-  const d = Math.min(window.devicePixelRatio || 1, 2);
-  if (c.width !== Math.round(innerWidth * d) || c.height !== Math.round(innerHeight * d)) boyutlandir();
+  boyutlandir();
+  if (resimHazir) temizYap();
 });
 boyutlandir();
 addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
@@ -357,6 +361,6 @@ if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=21"></script>
+<script src="ortak.js?s=22"></script>
 </body>
 </html>

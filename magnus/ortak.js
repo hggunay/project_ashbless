@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "21";
+const SURUM_YAZI = "22";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -163,7 +163,7 @@ css.textContent = `
 .m-ana{padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid rgba(255,220,170,.14)}
 .m-ana label{display:grid;grid-template-columns:1fr 150px;align-items:center;gap:8px;padding:4px 0;color:#e9dcc0}
 .m-ana input{width:150px;accent-color:#ffc46b}
-#mMesaj{position:fixed;left:50%;top:18%;transform:translateX(-50%);color:#ffdca0;
+#mMesaj{white-space:pre-line;text-align:center;position:fixed;left:50%;top:18%;transform:translateX(-50%);color:#ffdca0;
   font:24px/1.3 Georgia,serif;letter-spacing:.5px;text-shadow:0 0 18px rgba(255,170,70,.5);
   opacity:0;transition:opacity 1.2s;pointer-events:none;z-index:7;text-align:center}
 body.sakin{cursor:none}`;
@@ -608,7 +608,7 @@ $("mPom").onclick = () => { sesPanel.classList.remove("acik"); panel.classList.t
 $("mPomKapat").onclick = () => panel.classList.remove("acik");
 $("mPomBasla").onclick = () => {
   if (D.pom){ pomBitir(); mesaj("Pomodoro durdu"); }
-  else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); mesaj(`Okuma vakti · ${turYazi()}`); }
+  else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); mesaj(`Okuma vakti\n${turYazi()}`); }
   panelDoldur();
 };
 function evreBasla(mod, tur, toplam){
@@ -654,14 +654,14 @@ function pomTik(){
       if (!muzik.paused) sus(muzik, 800);
       ortamSustur(800);
       $("mPomSure").textContent = ""; dugmeler(); panelDoldur();
-      mesaj(`Bitti! ${n} tur tamamlandı 🎉 · Sesler için ▶`);
+      mesaj(`Bitti! ${n} tur tamamlandı 🎉\nSesler için ▶`);
     } else if (D.pom.mod === "odak"){
       const uzun = D.pom.tur % 4 === 0;
       mesaj(uzun ? "Uzun mola zamanı" : "Mola zamanı");
       evreBasla(uzun ? "uzun" : "mola", D.pom.tur, D.pom.toplam);
     } else {
       evreBasla("odak", D.pom.tur + 1, D.pom.toplam);
-      mesaj(`Okumaya dönme vakti · ${turYazi()}`);
+      mesaj(`Okumaya dönme vakti\n${turYazi()}`);
     }
     return;
   }
