@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "20";
+const SURUM_YAZI = "21";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -377,6 +377,7 @@ const elle = () => { if (!hazirUyguluyor) D.hazir = null; };
 function sesAc(id, v, onizle){
   const t = sesTanim(id); if (!t) return;
   D.sesler[id] = v; elle(); yaz(D);
+  if (D.bitti){ bitisiBitir(); ortamBaslat(); }
   if (t.tur === "dongu" && !sustur) cal(donguAl(id), v);
   if (t.tur === "ara"){ baglam(); tamponYukle(id); araPlanla(); if (onizle) tekCal(id); }
   dugmeler();
@@ -448,6 +449,7 @@ function karisimlar(){
           ...D.karisimlar.map((k, i) => ({ ...k, sira: i }))];
 }
 function karisimUygula(k){
+  bitisiBitir();
   hazirUyguluyor = true;
   Object.keys(D.sesler).forEach(id => { if (!(id in k.sesler)) sesKapat(id); });
   for (const [id, v] of Object.entries(k.sesler)){
@@ -557,6 +559,7 @@ $("mOynat").onclick = async () => {
   if (muzikIstek && !muzik.paused){ muzikIstek = false; sus(muzik, 900); }
   else {
     muzikIstek = true;
+    if (D.bitti){ bitisiBitir(); ortamBaslat(); }      // turlar bittiyse ▶ HER ŞEYİ geri getirir
     if (sustur){ mesaj("Mola sürüyor — müzik odakla başlayacak"); dugmeler(); return; }
     await cal(muzik, muzikHedef());
   }
@@ -605,10 +608,11 @@ $("mPom").onclick = () => { sesPanel.classList.remove("acik"); panel.classList.t
 $("mPomKapat").onclick = () => panel.classList.remove("acik");
 $("mPomBasla").onclick = () => {
   if (D.pom){ pomBitir(); mesaj("Pomodoro durdu"); }
-  else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); }
+  else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); mesaj(`Okuma vakti · ${turYazi()}`); }
   panelDoldur();
 };
 function evreBasla(mod, tur, toplam){
+  D.bitti = false;
   const dakika = mod === "odak" ? D.sure.odak : mod === "uzun" ? D.sure.uzun : D.sure.mola;
   D.pom = { mod, tur, toplam: toplam || 0, bitis: Date.now() + dakika * 60000, kisildi: false }; yaz(D);
   if (mod === "odak"){
@@ -621,8 +625,14 @@ function evreBasla(mod, tur, toplam){
   }
   dugmeler(); panelDoldur();
 }
+// "2 / 4" (tur sayısı verildiyse) ya da "3. tur" (sınırsız) — Gökşin, 12 Ekim
+const turYazi = () => D.pom.toplam ? `${D.pom.tur} / ${D.pom.toplam}` : `${D.pom.tur}. tur`;
+function bitisiBitir(){
+  if (!D.bitti) return;
+  D.bitti = false; yaz(D); sustur = false;
+}
 function pomBitir(){
-  D.pom = null; yaz(D); sustur = false;
+  D.pom = null; D.bitti = false; yaz(D); sustur = false;
   $("mPomSure").textContent = ""; dugmeler();
 }
 function pomTik(){
@@ -636,17 +646,22 @@ function pomTik(){
   if (kalan <= 0){
     zil();
     if (D.pom.mod === "odak" && D.pom.toplam && D.pom.tur >= D.pom.toplam){
-      // son turun odağı bitti: boşuna mola başlatma, dur (sesler zaten azalarak sustu)
+      // son turun odağı bitti: boşuna mola başlatma. BİTİŞ HÂLİ (Gökşin, 12 Ekim, seçenek B):
+      // bütün sesler susar (sayfa çevirme dahil), animasyon sessizce sürer; ▶, bir sese dokunmak
+      // ya da yeni pomodoro sesleri geri getirir. Sahne değişse de sessiz kalır (D.bitti kayıtlı).
       const n = D.pom.toplam;
-      pomBitir(); panelDoldur();
-      mesaj(`Bitti! ${n} tur tamamlandı 🎉`);
+      D.pom = null; D.bitti = true; yaz(D); sustur = true;
+      if (!muzik.paused) sus(muzik, 800);
+      ortamSustur(800);
+      $("mPomSure").textContent = ""; dugmeler(); panelDoldur();
+      mesaj(`Bitti! ${n} tur tamamlandı 🎉 · Sesler için ▶`);
     } else if (D.pom.mod === "odak"){
       const uzun = D.pom.tur % 4 === 0;
       mesaj(uzun ? "Uzun mola zamanı" : "Mola zamanı");
       evreBasla(uzun ? "uzun" : "mola", D.pom.tur, D.pom.toplam);
     } else {
-      mesaj("Okumaya dönme vakti");
       evreBasla("odak", D.pom.tur + 1, D.pom.toplam);
+      mesaj(`Okumaya dönme vakti · ${turYazi()}`);
     }
     return;
   }
@@ -716,7 +731,7 @@ parcaYukle(D.parca, devam && devam.zaman);
 if (D.pom){
   sustur = D.pom.mod !== "odak";
   if (D.pom.bitis - Date.now() < -60000){ pomBitir(); }             // çoktan bitmiş eski sayaç
-}
+} else if (D.bitti) sustur = true;                                  // turlar bitmişti: sessiz kal
 if (devam && devam.caliyor && !sustur){
   muzikIstek = true;
   cal(muzik, muzikHedef()).then(ok => {

@@ -26,7 +26,8 @@
 // 19: döngü sesi moladan dönüşte dosya sonunda kalmışsa baştan başlar (saat 2. turda susuyordu)
 // 20: müzik/ses ayrı kayıtta (SES_KAYIT) → kod güncellenince şarkılar silinip yeniden inmiyor
 //     (Gökşin, 12 Ekim: 18 ve 19'dan hemen sonra müzik birkaç saniye susup yeniden başladı)
-const SURUM = "magnus-20";
+// 21: tur başında "Okuma vakti · 1 / 2", moladan dönüşte "Okumaya dönme vakti · 2 / 2"; turlar bitince SESSİZ bitiş hâli (▶ hepsini geri getirir)
+const SURUM = "magnus-21";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
