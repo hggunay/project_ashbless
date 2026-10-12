@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "18";
+const SURUM_YAZI = "19";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -281,7 +281,12 @@ function donguSes(CAPRAZ = 3){
                 const ad = (s.split("/").pop() || "").replace(/\.(mp3|wav)$/, "");
                 kes = KESIT[ad] || [0, 0];
                 a.forEach(x => { x.pause(); x.src = s; }); uygula(); },
-    play(){ return a[akt].play(); },
+    // Moladan dönüşte kopya dosyanın son saniyelerinde kalmışsa (Gökşin, 12 Ekim: 60 sn'lik saat.wav
+    // 1 dk'lık odağın sonunda durdu, 2. turda kalan 0,04 sn'yi çalıp bitti, geçiş hiç tetiklenmedi →
+    // sessizlik) kaldığı yerden değil baştan başla.
+    play(){ const x = a[akt];
+            if (x.ended || (x.duration && x.duration - kes[1] - x.currentTime <= CAPRAZ)) x.currentTime = kes[0];
+            return x.play(); },
     pause(){ clearInterval(zaman); caprazda = false; karisim[1 - akt] = 0; karisim[akt] = 1;
              a.forEach(x => x.pause()); uygula(); },
   };
