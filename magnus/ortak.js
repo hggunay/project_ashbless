@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "17";
+const SURUM_YAZI = "18";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
@@ -78,7 +78,7 @@ function yaz(d){ try { localStorage.setItem(DEPO, JSON.stringify(d)); } catch (e
 /* genel / muzikDuzey (29 Eylül, Gökşin: "yeni sahne açınca hem lofi hem ortam sesleri aniden yüksek
    başlıyor, bilgisayarın ses ayarından kısmak zorunda kalıyorum") → sahnenin KENDİ ses ayarı, hatırlanır.
    hazir: en son uygulanan HAZIR karışım {sahne, ad, genel?}; kullanıcı elle değiştirince null (kendi karışımı). */
-let D = Object.assign({ parca: 0, sesler: {}, karisimlar: [], sure: { odak: 25, mola: 5, uzun: 15 }, pom: null,
+let D = Object.assign({ parca: 0, sesler: {}, karisimlar: [], sure: { odak: 25, mola: 5, uzun: 15, tur: 0 }, pom: null,
                         genel: 1, muzikDuzey: 0.8, hazir: null }, oku());
 // eski tek düğmeli yağmur (sürüm 1-3): 1 = yağmur, 2 = yağmur + kedi → karıştırıcıya
 if (D.yagmur){ D.sesler[D.yagmur === 2 ? "yagmur-kedi" : "yagmur"] = 0.4; delete D.yagmur; }
@@ -192,6 +192,7 @@ panel.innerHTML = `
   <label>Odak (dk) <input id="mOdak" type="number" min="1" max="180"></label>
   <label>Mola (dk) <input id="mMola" type="number" min="1" max="60"></label>
   <label>Uzun mola, 4 turda bir (dk) <input id="mUzun" type="number" min="1" max="90"></label>
+  <label>Kaç tur? (boş = sınırsız) <input id="mTur" type="number" min="1" max="12" placeholder="∞"></label>
   <div class="alt"><button id="mPomBasla" class="ana">Başlat</button><button id="mPomKapat">Kapat</button></div>
   <div class="durum" id="mPomDurum"></div>
   <div class="durum" style="opacity:.5;font-size:11px">sürüm ${SURUM_YAZI}</div>`;
@@ -579,28 +580,32 @@ function zil(){
 const dk = n => Math.max(1, Math.min(180, Math.round(Number(n) || 1)));
 function panelDoldur(){
   $("mOdak").value = D.sure.odak; $("mMola").value = D.sure.mola; $("mUzun").value = D.sure.uzun;
+  $("mTur").value = D.sure.tur || "";
   panel.querySelectorAll(".hazir button").forEach(b =>
     b.classList.toggle("secili", +b.dataset.o === D.sure.odak && +b.dataset.m === D.sure.mola && +b.dataset.u === D.sure.uzun));
   $("mPomBasla").textContent = D.pom ? "Durdur" : "Başlat";
-  $("mPomDurum").textContent = D.pom ? `${D.pom.tur}. tur · ${D.pom.mod === "odak" ? "odak" : "mola"}` : "";
+  $("mPomDurum").textContent = D.pom ? `${D.pom.tur}${D.pom.toplam ? " / " + D.pom.toplam : ""}. tur · ${D.pom.mod === "odak" ? "odak" : "mola"}` : "";
 }
+// Tur sayısı (Gökşin, 12 Ekim): boş = sınırsız (eski davranış). Uzun mola yine 4 turda bir, sabit.
+const turSay = v => { const n = Math.round(Number(v)); return n >= 1 ? Math.min(12, n) : 0; };
 function sureleriAl(){
-  D.sure = { odak: dk($("mOdak").value), mola: dk($("mMola").value), uzun: dk($("mUzun").value) }; yaz(D); panelDoldur();
+  D.sure = { odak: dk($("mOdak").value), mola: dk($("mMola").value), uzun: dk($("mUzun").value), tur: turSay($("mTur").value) };
+  yaz(D); panelDoldur();
 }
-["mOdak", "mMola", "mUzun"].forEach(id => $(id).addEventListener("change", sureleriAl));
+["mOdak", "mMola", "mUzun", "mTur"].forEach(id => $(id).addEventListener("change", sureleriAl));
 panel.querySelectorAll(".hazir button").forEach(b => b.onclick = () => {
-  D.sure = { odak: +b.dataset.o, mola: +b.dataset.m, uzun: +b.dataset.u }; yaz(D); panelDoldur();
+  D.sure = { odak: +b.dataset.o, mola: +b.dataset.m, uzun: +b.dataset.u, tur: D.sure.tur || 0 }; yaz(D); panelDoldur();
 });
 $("mPom").onclick = () => { sesPanel.classList.remove("acik"); panel.classList.toggle("acik"); panelDoldur(); uyan(); };
 $("mPomKapat").onclick = () => panel.classList.remove("acik");
 $("mPomBasla").onclick = () => {
   if (D.pom){ pomBitir(); mesaj("Pomodoro durdu"); }
-  else { sureleriAl(); evreBasla("odak", 1); }
+  else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); }
   panelDoldur();
 };
-function evreBasla(mod, tur){
+function evreBasla(mod, tur, toplam){
   const dakika = mod === "odak" ? D.sure.odak : mod === "uzun" ? D.sure.uzun : D.sure.mola;
-  D.pom = { mod, tur, bitis: Date.now() + dakika * 60000, kisildi: false }; yaz(D);
+  D.pom = { mod, tur, toplam: toplam || 0, bitis: Date.now() + dakika * 60000, kisildi: false }; yaz(D);
   if (mod === "odak"){
     sustur = false; muzikIstek = true;                 // okumaya başlarken ses yavaşça açılır
     cal(muzik, muzikHedef()).then(dugmeler);
@@ -625,13 +630,18 @@ function pomTik(){
   }
   if (kalan <= 0){
     zil();
-    if (D.pom.mod === "odak"){
+    if (D.pom.mod === "odak" && D.pom.toplam && D.pom.tur >= D.pom.toplam){
+      // son turun odağı bitti: boşuna mola başlatma, dur (sesler zaten azalarak sustu)
+      const n = D.pom.toplam;
+      pomBitir(); panelDoldur();
+      mesaj(`Bitti! ${n} tur tamamlandı 🎉`);
+    } else if (D.pom.mod === "odak"){
       const uzun = D.pom.tur % 4 === 0;
       mesaj(uzun ? "Uzun mola zamanı" : "Mola zamanı");
-      evreBasla(uzun ? "uzun" : "mola", D.pom.tur);
+      evreBasla(uzun ? "uzun" : "mola", D.pom.tur, D.pom.toplam);
     } else {
       mesaj("Okumaya dönme vakti");
-      evreBasla("odak", D.pom.tur + 1);
+      evreBasla("odak", D.pom.tur + 1, D.pom.toplam);
     }
     return;
   }

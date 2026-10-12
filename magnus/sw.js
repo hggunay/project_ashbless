@@ -22,7 +22,8 @@
 // 15: genel ses + müzik kaydırıcısı (hatırlanır), sahne değişince o sahnenin hazır karışımı
 // 16: Herbert'te daktilo sesinin sert anında (ara sıra) kâğıda "imdat" — ortak.js ses zamanını bildirir
 // 17: hazır karışıma dokununca "açık ama çalmayan" sesler de başlar (Dune 7 bazen çalmıyordu)
-const SURUM = "magnus-17";
+// 18: pomodoroya "Kaç tur?" (boş = sınırsız); son turun odağı bitince durur
+const SURUM = "magnus-18";
 const CEKIRDEK = [
   "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "herbert.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
