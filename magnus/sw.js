@@ -29,7 +29,8 @@
 // 21: tur başında "Okuma vakti · 1 / 2", moladan dönüşte "Okumaya dönme vakti · 2 / 2"; turlar bitince SESSİZ bitiş hâli (▶ hepsini geri getirir)
 // 22: ekran kapanıp açılınca yardımcı tuvaller yeniden kurulur (kütüphanede Magnus kayboluyordu); tur numarası mesajın alt satırında
 // 23: döngü çalar her başlatmada durumunu sıfırlar + kopya sonuna gelirse diğeri girer (Herbert: bitişten sonra daktilo gelmiyordu)
-const SURUM = "magnus-23";
+// 24: üç yeni parça (Ink and Moonlight, Pages Past Midnight, Sunlight on the Shelves) + kapakları
+const SURUM = "magnus-24";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
@@ -38,7 +39,8 @@ const CEKIRDEK = [
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
   "gorsel/magnus-fener.png", "gorsel/herbert.png", "gorsel/herbert-aura.png", "gorsel/kagitlar.png", "gorsel/kagit-ucan.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
-      "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"].map(a => `muzik/${a}-kapak.jpg`)
+      "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
+      "Ink_and_Moonlight", "Pages_Past_Midnight", "Sunlight_on_the_Shelves"].map(a => `muzik/${a}-kapak.jpg`)
 ];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(SURUM).then(c => c.addAll(CEKIRDEK)).then(() => self.skipWaiting()));

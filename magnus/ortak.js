@@ -12,10 +12,12 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "23";
+const SURUM_YAZI = "24";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
-  "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies"
+  "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
+  // 24 (14 Ekim, Gökşin seçti): üç yeni Gemini parçası
+  "Ink_and_Moonlight", "Pages_Past_Midnight", "Sunlight_on_the_Shelves"
 ];
 /* ── ORTAM SESLERİ (25 Eylül, Gökşin: "istediklerimizi üst üste aynı anda çalabilir miyiz …
    custom ses kombinleri kaydedebiliyorduk"). Sesler Pixabay/Freesound (Gökşin indirdi),
