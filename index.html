@@ -605,7 +605,7 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 /* RAFLARIM — RAF GÖRÜNÜMÜ (15 Ekim): koyu ahşap kitaplık; her satırın altında raf tahtası
    (satır 100px + tahta 16px = 116px döngü — .raf-yuva yüksekliği ve row-gap bununla eş kalmalı) */
 .raf-kitaplik{position:relative;border-radius:4px;padding:10px 12px 0;background:linear-gradient(180deg,#3a2414,#2b1a0e);box-shadow:inset 0 0 18px rgba(0,0,0,.55);margin:.2rem 0 .3rem;}
-.raf-satirlar{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;row-gap:16px;padding-bottom:16px;
+.raf-satirlar{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;row-gap:16px;padding-bottom:16px;touch-action:pan-y;   /* pan-y: dikey kaydırma sayfanın, yatay parmak hareketi rafın → kitaplar sırayla zıplar (yoksa tarayıcı ilk kitaptan sonra hareketi kaydırmaya çeviriyordu) */
   background-image:repeating-linear-gradient(180deg,transparent 0 100px,#7a4f2c 100px,#a06c3e 102px,#6b4423 106px,#4a2e16 116px);background-size:100% 116px;}
 .raf-yuva{height:100px;display:flex;align-items:flex-end;}
 .raf-sirt{position:relative;border-radius:2px 4px 4px 2px;cursor:pointer;box-shadow:2px 0 4px rgba(0,0,0,.45);transition:transform .18s cubic-bezier(.3,1.6,.5,1);}
@@ -626,6 +626,10 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 /* seçili kitap: ad/yazar tam genişlikte, düğmeler (açılınca) ALTINDA sıralanır — telefonda ad sıkışmasın */
 .raf-secim > div > div:first-child{flex-direction:column;align-items:stretch !important;}
 .raf-secim > div > div:first-child > div:last-child{justify-content:flex-start !important;margin-top:.35rem;}
+@keyframes rafSecimAc{from{opacity:0;filter:blur(6px)}60%{filter:blur(2px)}to{opacity:1;filter:none}}   /* yükseklik shelf.js'te (gerçek boya kayar) */
+@keyframes rafSecimDegis{from{opacity:.25;filter:blur(3px)}to{opacity:1;filter:none}}
+.raf-secim.acilis{animation:rafSecimAc .7s ease-out backwards;}
+.raf-secim.degis{animation:rafSecimDegis .45s ease-out backwards;}
 .raf-secim-btn{font-size:.65rem;margin:.1rem 0 .5rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35);}
 .spine-add-btn{width:clamp(24px,5vw,32px);min-width:clamp(24px,5vw,32px);height:84px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
@@ -2206,7 +2210,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261015c"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261015b"></script>
+<script src="shelf.js?s=20261015c"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->

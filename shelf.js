@@ -354,7 +354,40 @@ function rafGorunumDegistir(){
   try{localStorage.setItem('aa-rafgorunum',_rafGorunum);}catch(e){}
   renderShelf();
 }
-function rafSec(id){ _rafSecili=_rafSecili===id?null:id; _rafSecimDuzen=false; renderShelf(); }
+/* Açılış/kapanış (Gökşin, 15 Ekim: "kayarak aşağı açılsın, kapanırken Okuyucu Falı gibi"):
+   · ilk açılış: yukarıdan aşağı kayar, yazı bulanıktan netleşir (CSS .raf-secim.acilis)
+   · aynı kitaba yeniden dokununca: falKapat'ın aynısı — yazı 1,6 sn'de bulanıklaşıp söner, 1,2. sn'de kutu 0,8 sn'de kapanır
+   · başka kitaba geçince: kutu açık kalır, yalnız içerik yumuşakça değişir (.degis) — her seferinde 2 sn beklenmesin */
+let _rafSecimAnim='', _rafKapaniyor=false;
+function rafSec(id){
+  if(_rafKapaniyor) return;
+  _rafRenkAcik=null;
+  _rafSecimDuzen=false;
+  if(_rafSecili===id){
+    const el=document.querySelector('.raf-secim');
+    if(!el){ _rafSecili=null; renderShelf(); return; }
+    _rafKapaniyor=true;
+    document.querySelector('.raf-sirt.secili')?.classList.remove('secili');
+    el.classList.remove('acilis','degis'); el.getBoundingClientRect();   // önce mevcut durum otursun, yoksa solma atlanıyor
+    el.style.transition='opacity 1.6s ease, filter 1.6s ease'; el.style.opacity='0'; el.style.filter='blur(6px)';
+    setTimeout(()=>{
+      el.style.overflow='hidden'; el.style.maxHeight=el.scrollHeight+'px'; el.getBoundingClientRect();
+      el.style.transition='max-height .8s ease, padding .8s ease, margin .8s ease, border-width .8s ease';
+      el.style.maxHeight='0'; el.style.paddingTop=el.style.paddingBottom='0'; el.style.marginTop='0'; el.style.borderWidth='0';
+    },1200);
+    setTimeout(()=>{ _rafKapaniyor=false; _rafSecili=null; renderShelf(); },2100);
+    return;
+  }
+  const ilk=!_rafSecili;
+  _rafSecimAnim=ilk?'acilis':'degis';
+  _rafSecili=id; renderShelf(); _rafSecimAnim='';
+  if(ilk){   // kayarak açılış: kutunun GERÇEK yüksekliğine (CSS'te sabit sınır olunca kayma görünmüyordu)
+    const el=document.querySelector('.raf-secim'); if(!el) return;
+    const h=el.scrollHeight; el.style.overflow='hidden'; el.style.maxHeight='0'; el.getBoundingClientRect();
+    el.style.transition='max-height .6s ease'; el.style.maxHeight=h+'px';
+    setTimeout(()=>{ el.style.maxHeight=el.style.overflow=el.style.transition=''; },650);
+  }
+}
 // seçili kitabın satırında işlem düğmeleri gizli; tek "✏️ Düzenle" açar (Gökşin, 15 Ekim — telefonda
 // düğmeler adı sıkıştırıyordu, "Karısını / Şapka / Sanan / Adam")
 let _rafSecimDuzen=false;
@@ -386,14 +419,21 @@ function shelfDuzenleModu(){
 }
 
 // 🎨 hızlı renk (07.10): ✏️ formunun dibindeki "Ad rengi" bulunamadı → tek dokunuşla boya, anında kaydet
+// renk satırı seçimden sonra AÇIK kalır (Gökşin, 15 Ekim: "beğendiğim rengi bulana kadar aç-kapa"):
+// renderShelf satırı yeniden çizince _rafRenkAcik'a bakıp yeniden açar; 🎨'ye tekrar basınca kapanır
+let _rafRenkAcik=null;
 function rafRenkAc(bookId){
   const row=document.getElementById('renk-row-'+bookId);
-  if(row) row.style.display=row.style.display==='none'?'flex':'none';
+  if(!row) return;
+  const ac=row.style.display==='none';
+  row.style.display=ac?'flex':'none';
+  _rafRenkAcik=ac?bookId:null;
 }
 function rafRenkSec(bookId,renk){
   const book=(myShelf().books||[]).find(b=>b.id===bookId);
   if(!book) return;
   if(RAF_RENKLER[renk]) book.renk=renk; else delete book.renk;
+  _rafRenkAcik=bookId;
   saveDb();renderShelf();
 }
 
@@ -993,7 +1033,7 @@ function renderShelf(){
   function rafKitaplik(liste){
     const sec=liste.find(b=>b.id===_rafSecili);
     return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="rafDokun(event)">${liste.map(b=>rafSirtHtml(b,okundu(b),rafYeni.has(b.id))).join('')}</div></div>
-      ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
+      ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}${_rafSecimAnim?' '+_rafSecimAnim:''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
         ${!viewing?`<button type="button" class="btn btn-sm raf-secim-btn" onclick="rafSecimDuzenle()">${_rafSecimDuzen?'✓ Bitti':'✏️ Düzenle'}</button>`:''}</div>`:''}`;
   }
 
@@ -1058,5 +1098,6 @@ function renderShelf(){
     html='<div class="empty-state">Arama sonucu bulunamadı.</div>';
   }
   container.innerHTML=html;
+  if(_rafRenkAcik){ const r=document.getElementById('renk-row-'+_rafRenkAcik); if(r) r.style.display='flex'; }
 }
 
