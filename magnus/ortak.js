@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "27";
+const SURUM_YAZI = "28";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -57,7 +57,8 @@ const HAZIR_KARISIM = {
               { ad: "Dere kenarı", sesler: { nehir: 0.7, "gece-ormani": 0.5 } }],
   herbert:   [{ ad: "Dune 7", sesler: { daktilo: 0.45, saat: 0.5 } },
               { ad: "Yağmurlu gece mesaisi", sesler: { daktilo: 0.4, yagmur2: 0.4 } }],
-  oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4 } }],
+  // 15 Ekim (Gökşin): + sayfa (Magnus'un sayfasıyla eş) + çay dökme (hayalet demlikle eş)
+  oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4, sayfa: 0.8, caydanlik: 0.6 } }],
 };
 const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
 const SAHNE = document.body.dataset.sahne || "orman";
@@ -446,8 +447,10 @@ const araZaman = {};
 function araPlanla(){
   for (const t of SESLER){
     if (t.tur !== "ara") continue;
-    // kütüphane ve odada sayfa sesi Magnus'un sayfasıyla eş → rastgele çalmaz
-    const kapali = D.sesler[t.id] == null || ((SAHNE === "kutuphane" || SAHNE === "oda") && t.id === "sayfa");
+    // kütüphane ve odada sayfa sesi Magnus'un sayfasıyla eş → rastgele çalmaz; odada çay sesi de
+    // hayalet demlikle eş (15 Ekim)
+    const kapali = D.sesler[t.id] == null || ((SAHNE === "kutuphane" || SAHNE === "oda") && t.id === "sayfa")
+                || (SAHNE === "oda" && t.id === "caydanlik");
     if (kapali){ clearTimeout(araZaman[t.id]); araZaman[t.id] = null; continue; }
     if (araZaman[t.id]) continue;
     const [a, b] = t.aralik;
@@ -461,6 +464,8 @@ window.magnusSesZamani = id => { const d = dongular[id]; return d && !d.paused &
 // sahneler kendi küçük mesajlarını gösterebilsin (oda: kediye dokununca adı — 15 Ekim)
 window.magnusMesaj = t => mesaj(t, true);
 window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
+// Oda: hayalet demlik çayı döktüğü AN (oda.html çağırır)
+window.magnusCaySesi = () => { if (D.sesler.caydanlik != null) tekCal("caydanlik"); };
 
 /* ── panel ── */
 function karisimlar(){

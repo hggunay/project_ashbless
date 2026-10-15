@@ -471,8 +471,9 @@ function kediCiz(t){
   // Kıvrılmış uyuyan kedi — Felix Lee'nin klasik ASCII kedisinden uyarlandı. ",4-" kapalı göz.
   const sanat = [
     (kulak ? "  |/" : "  |\\") + (nefes ? "      _,,,----,_" : "      _,,,---,,_") + "      ",
-    "  /,`.-'`'    -.  ;-;;,_",
-    "  |," + (uyanik ? "o " : "4-") + "  ) )-,_. ,\\ (  `'-" + (kuyruk === "," ? "," : "'"),
+    // 15 Ekim: uyanık göz BAŞIN üst kısmında (eskiden "4-" yerindeydi; Gökşin: "gözü değil ağzı açılıyor")
+    "  /," + (uyanik ? "o" : "`") + ".-'`'    -.  ;-;;,_",
+    "  |," + (uyanik ? "  " : "4-") + "  ) )-,_. ,\\ (  `'-" + (kuyruk === "," ? "," : "'"),
     " '---''(_/--'  `-'\\_)",
   ];
   /* TURUNCU TEKİR, 1,5 kat iri (Gökşin: kara kedi siyah zeminde seçilmiyordu, "kara kedi gibi
@@ -489,7 +490,7 @@ function kediCiz(t){
       if (k === " ") return;
       let renk = (i + y) % 3 === 0 && y < 3 ? "rgb(165,92,40)" : "rgb(222,142,70)";   // tekir çizgileri
       if (i >= son - 1) renk = "rgb(255,200,130)";                      // ateş tarafı: kenar ışığı
-      if (uyanik && y === 2 && i === 4) renk = "rgb(170,235,70)";       // göz
+      if (uyanik && y === 1 && i === 4) renk = "rgb(170,235,70)";       // göz
       ctx.fillStyle = renk;
       ctx.fillText(k, x0 + i * kcw + kcw / 2, y0 + y * kch + kch / 2);
     });
@@ -497,11 +498,53 @@ function kediCiz(t){
 }
 
 /* ── ÇAY BUHARI: fincandan yükselip savrulan, sönen kıvrımlar ── */
+/* ── HAYALET ÇAY (15 Ekim, Gökşin onayladı): Magnus hayalet olduğu için demlik dokunulmadan
+   havalanır: fincanın sol üstünde belirir, eğilip fincana çay döker, düzelir, söner. Döngüde bir
+   kez (CAY_BAS. saniyede). Dökme anı çay sesiyle eş (ortak.js magnusCaySesi — oda'da çay sesi
+   rastgele çalmaz, sayfa sesi gibi). Ses dosyası ~3,7 sn → dökme 4 sn. ── */
+const CAY_BAS = 30, CAY_SURE = 10;
+let _caySes = false;
+function cayEvre(t){ const tt = ((t % T) + T) % T - CAY_BAS; return tt >= 0 && tt < CAY_SURE ? tt : null; }
+function cayCiz(t){
+  const e = cayEvre(t);
+  const dokuyor = e !== null && e >= 3 && e < 7;
+  if (dokuyor !== _caySes){ _caySes = dokuyor; if (dokuyor && DONUK === null && window.magnusCaySesi) window.magnusCaySesi(); }
+  if (e === null) return;
+  const K = L.K, kcw = cw * K, kch = ch * K;
+  const cx = L.sehpa.x + 4.5 * K, cy = L.sehpa.y - 10 * K;                 // fincanın ağzı (hücre)
+  const gor = e < 1.5 ? e / 1.5 : e > 8.5 ? (CAY_SURE - e) / 1.5 : 1;      // belir / sön
+  const yuk = e < 2 ? (1 - e / 2) * 2 : e > 8 ? (e - 8) * 1 : 0;           // aşağıdan yükselir, inerken söner
+  const egim = e < 2 ? 0 : e < 3 ? (e - 2) * 0.38 : e < 7 ? 0.38 + 0.03 * Math.sin(e * 5) : e < 8 ? (8 - e) * 0.38 : 0;
+  const bx = (cx - 4.6 * K) * cw + cw / 2, by = (cy - 3.4 * K + yuk) * ch + ch / 2;   // demlik gövde ortası (px)
+  const DEMLIK = ["  _^_     ", " (   )__/ ", "(     )   ", " `---'    "];
+  ctx.save();
+  ctx.globalAlpha = 0.9 * gor;
+  ctx.shadowColor = "rgba(255,240,210,.7)"; ctx.shadowBlur = 10;           // hayalet ışıltısı
+  ctx.translate(bx, by); ctx.rotate(egim);
+  ctx.font = `bold ${yazi(K)}`; ctx.fillStyle = "rgb(236,228,210)";
+  DEMLIK.forEach((s, y) => [...s].forEach((k, i) => { if (k !== " ") ctx.fillText(k, (i - 3.5) * kcw, (y - 1.5) * kch); }));
+  ctx.restore();
+  if (dokuyor){
+    // akış: emziğin ucundan (yerel +4,5 / −0,5 karakter) fincana
+    const ux = bx + Math.cos(egim) * 4.5 * kcw - Math.sin(egim) * -0.5 * kch, uy = by + Math.sin(egim) * 4.5 * kcw + Math.cos(egim) * -0.5 * kch;
+    const hx = cx * cw + cw / 2, hy = cy * ch + ch / 2, n = 7;
+    ctx.font = `bold ${yazi(K)}`;
+    ctx.shadowColor = "rgba(255,170,80,.6)"; ctx.shadowBlur = 6;
+    for (let i = 0; i <= n; i++){
+      const u = i / n, x = ux + (hx - ux) * u * u, y = uy + (hy - uy) * u;   // emzikten çıkıp aşağı kıvrılır
+      ctx.fillStyle = `rgba(232,150,64,${0.95 - 0.3 * (((i + Math.floor(e * 10)) % 3) === 0)})`;
+      ctx.fillText("|", x, y);
+    }
+    ctx.shadowBlur = 0;
+  }
+}
 function buharCiz(t){
   const K = L.K;
   ctx.font = yazi(K);
-  for (let i = 0; i < 3; i++){
-    const u = ((t * 0.35 + i / 3) % 1);                                 // 0 → 1: yükseliş
+  // çay dökülürken ve hemen sonra buhar çoğalır
+  const e = cayEvre(t), cok = e !== null && e >= 3 && e < CAY_SURE;
+  for (let i = 0; i < (cok ? 6 : 3); i++){
+    const u = ((t * 0.35 + i / (cok ? 6 : 3)) % 1);                     // 0 → 1: yükseliş
     // fincan: sehpanın sağ yarısında, üst kenarı tabla + 5 satır yukarıda (sehpa K kat büyük)
     const x = L.sehpa.x + (4 + i * 1.4 + Math.sin(u * 6 + i) * 0.8) * K, y = L.sehpa.y - (11 + u * 4) * K;
     hk(x, y, u < 0.5 ? "(" : ")", `rgba(230,230,230,${0.45 * (1 - u)})`);
@@ -675,6 +718,7 @@ function ciz(t){
   kediCiz(t);
   sepetCiz(t);
   buharCiz(t);
+  cayCiz(t);
   magnusCiz(t);                                        // Magnus kendi renginde
   if (simsekMi(t)){ ctx.fillStyle = "rgba(200,210,255,.10)"; ctx.fillRect(0, 0, W, H); }
 }
@@ -704,6 +748,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=27"></script>
+<script src="ortak.js?s=28"></script>
 </body>
 </html>
