@@ -25,6 +25,21 @@ const SATIR = Math.max(50, Math.min(72, Math.round(innerHeight / 12)));
 const c = document.getElementById("c"), ctx = c.getContext("2d");
 const P = new URLSearchParams(location.search);
 const DONUK = P.has("t") ? parseFloat(P.get("t")) : null;
+/* KAR (15 Ekim, Gökşin'in fikri): hava kar yağışlıysa pencere manzarası karlı. Ashbless açılınca
+   hava kodunu localStorage 'lastWeatherCode'a yazıyor (aynı site → Magnus da okur); Magnus kendisi
+   de aynı yolla (ipapi → open-meteo, izin istemez) tazeler. Test: adrese ?kar=1. */
+const KAR_KODLARI = [71, 73, 75, 77, 85, 86];
+let KAR = P.has("kar");
+if (!KAR && DONUK === null){
+  try { KAR = KAR_KODLARI.includes(parseInt(localStorage.getItem("lastWeatherCode"))); } catch (e) {}
+  fetch("https://ipapi.co/json/").then(r => r.json())
+    .then(l => l.latitude && l.longitude && fetch(`https://api.open-meteo.com/v1/forecast?latitude=${l.latitude}&longitude=${l.longitude}&current=weather_code&timezone=auto`))
+    .then(r => r && r.json())
+    .then(d => { const k = d && d.current && d.current.weather_code; if (k === undefined) return;
+      try { localStorage.setItem("lastWeatherCode", k); } catch (e) {}
+      KAR = KAR_KODLARI.includes(k); })
+    .catch(() => {});
+}
 const dalga = (k, t, faz = 0) => Math.sin(2 * Math.PI * k * t / T_KUCUK + faz);
 function rastgele(tohum){ return () => { tohum |= 0; tohum = tohum + 0x6D2B79F5 | 0;
   let x = Math.imul(tohum ^ tohum >>> 15, 1 | tohum); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
@@ -290,7 +305,7 @@ function atesCiz(t){
 
 /* ── PENCERE: gece, çapraz yağmur, sallanan dal, seyrek şimşek ── */
 const SIMSEK = [[70, 70.12], [70.3, 70.42]];                            // T içinde (sn)
-const simsekMi = t => SIMSEK.some(([a, b]) => t % T >= a && t % T < b);
+const simsekMi = t => !KAR && SIMSEK.some(([a, b]) => t % T >= a && t % T < b);   // karda şimşek yok
 function pencereCiz(t){
   const Pn = L.pencere, sm = simsekMi(t);
   const x0 = (Pn.x0 + 1) * cw, y0 = (Pn.ust + 1) * ch, w = (Pn.x1 - Pn.x0 - 1) * cw, h = (Pn.alt - Pn.ust - 1) * ch;
@@ -305,7 +320,8 @@ function pencereCiz(t){
     { x: Pn.x0 + 1, y: Pn.ust + 5, yon:  1, boy: 12, egim: 0.18, k: 7, faz: 1.7 },
     { x: Pn.x1 - 1, y: Pn.ust + 11, yon: -1, boy: 10, egim: -0.12, k: 6, faz: 3.1 },
   ];
-  const yaprakRenk = sm ? "#fff" : "rgba(125,145,120,.85)", dalRenk = sm ? "#fff" : "rgba(115,105,95,.85)";
+  // karda yaprak kümeleri yerine dallarda kar
+  const yaprakRenk = sm ? "#fff" : KAR ? "rgba(232,238,250,.9)" : "rgba(125,145,120,.85)", dalRenk = sm ? "#fff" : "rgba(115,105,95,.85)";
   const RY = rastgele(41);
   for (const d of dallar){
     const sal = 0.10 * dalga(d.k, t, d.faz) + 0.04 * dalga(d.k * 3, t, d.faz + 1);
@@ -322,7 +338,7 @@ function pencereCiz(t){
   }
   /* ŞİMŞEK (15 Ekim, Gökşin): iki çakmada; ilkinde zikzağın ÜST yarısı, ikincisinde ALT yarısı.
      Sol üstten sağ ortaya iner. Kaydın (+) arkasında kalır (kayıt sonra çiziliyor). */
-  const si = SIMSEK.findIndex(([a, b]) => t % T >= a && t % T < b);
+  const si = KAR ? -1 : SIMSEK.findIndex(([a, b]) => t % T >= a && t % T < b);
   if (si >= 0){
     const pw = Pn.x1 - Pn.x0, ph = Pn.alt - Pn.ust;
     const YOL = [[[0.06, 0.03], [0.28, 0.18], [0.22, 0.24], [0.50, 0.36]],
@@ -338,6 +354,7 @@ function pencereCiz(t){
     }
     ctx.restore();
   }
+  if (KAR) karManzara(t); else {
   /* yağmur çizgileri — 15 Ekim (Gökşin): yönü şimşekle aynı (sol üstten sağ alta "\"), daha sık
      ve belirgin. Eskiden "/" ile sağdan sola yağıyordu. */
   const R = rastgele(9), pg = Pn.x1 - Pn.x0 + 8;
@@ -349,23 +366,87 @@ function pencereCiz(t){
   }
   /* CAMDAN SÜZÜLEN DAMLALAR: camın iç yüzünde yavaşça (ara ara durup) inen damlalar, arkalarında
      ince iz. Her damla kendi temposunda; alta varınca yukarıda yeniden belirir. */
-  const RD = rastgele(77);
-  for (let i = 0; i < 7; i++){
-    const dx = Pn.x0 + 1.5 + RD() * (Pn.x1 - Pn.x0 - 3), hiz = 0.25 + RD() * 0.35, faz = RD() * 50;
-    const boy = Pn.alt - Pn.ust - 2, ilerle = t * hiz + faz;
+  /* 15 Ekim (Gökşin): damla kayda (+) gelince kaybolur, kendi BÖLMESİNİN üstünden yeniden başlar —
+     kaydın üstünden geçince "evin içinde" gibi duruyordu. Dikey kayda da denk gelmez. */
+  const RD = rastgele(77), kx = Math.round((Pn.x0 + Pn.x1) / 2), ky = Math.round((Pn.ust + Pn.alt) / 2);
+  for (let i = 0; i < 8; i++){                                          // her bölmeye ikişer
+    const sol = i % 2 === 0, bx0 = sol ? Pn.x0 + 1.5 : kx + 1.5, bx1 = sol ? kx - 1.5 : Pn.x1 - 1.5;
+    const ustte = Math.floor(i / 2) % 2 === 0, ust = ustte ? Pn.ust + 1 : ky + 1.2, alt = ustte ? ky - 1.2 : Pn.alt - 1;
+    const dx = bx0 + RD() * (bx1 - bx0), hiz = 0.25 + RD() * 0.35, faz = RD() * 50;
+    const boy = alt - ust, ilerle = t * hiz + faz;
     const dur = Math.floor(ilerle) + Math.min(1, (ilerle % 1) * 2.2);  // her birimde yarı yol kayar, sonra bekler
-    const dy = Pn.ust + 1 + (dur * 0.9) % boy;
-    for (let k = 1; k <= 2; k++) hk(dx, dy - k * 0.8, k === 1 ? ":" : "'", `rgba(200,220,245,${0.45 - k * 0.15})`);
+    const dy = ust + (dur * 0.9) % boy;
+    for (let k = 1; k <= 2; k++) if (dy - k * 0.8 >= ust) hk(dx, dy - k * 0.8, k === 1 ? ":" : "'", `rgba(200,220,245,${0.45 - k * 0.15})`);   // iz de bölmede kalır
     hk(dx, dy, "o", sm ? "#fff" : "rgba(215,232,255,.9)");
   }
+  }                                                                       // (yağmur sonu)
   ctx.restore();
   // + KAYIT: camın üstünde, ahşap (ışıkla boyanmaz: ateşten sonra çiziliyor → sıcak ton elle)
   const pcx = Math.round((Pn.x0 + Pn.x1) / 2), pcy = Math.round((Pn.ust + Pn.alt) / 2), kr = "rgb(196,140,88)";
   ctx.font = `bold ${yazi()}`;
   // 15 Ekim (Gökşin: "+ biraz daha kalın"): dikey kayıt iki çizgi, yatay kayıt iki sıra
+  // OPAK kayıt (15 Ekim, Gökşin): önce ahşap zemin → yağmur, damla, kar hep ARKASINDA kalır
+  ctx.fillStyle = "rgb(92,62,38)";
+  ctx.fillRect((pcx - 0.45) * cw, (Pn.ust + 0.5) * ch, 1.9 * cw, (Pn.alt - Pn.ust - 1) * ch);
+  ctx.fillRect((Pn.x0 + 0.5) * cw, (pcy - 0.25) * ch, (Pn.x1 - Pn.x0 - 1) * cw, 1.5 * ch);
   for (let y = Pn.ust + 1; y < Pn.alt; y++){ hk(pcx - 0.22, y, "|", kr); hk(pcx + 0.22, y, "|", kr); }
   for (let x = Pn.x0 + 1; x < Pn.x1; x++){ hk(x, pcy - 0.2, "=", kr); hk(x, pcy + 0.2, "=", kr); }
   hk(pcx, pcy, "#", "rgb(230,180,120)");
+  if (KAR)                                                                // yatay kaydın üstünde biriken kar
+    for (let x = Pn.x0 + 1; x < Pn.x1; x++) hk(x, pcy - 0.85, (x * 7) % 5 ? "~" : "^", "rgba(240,244,252,.95)");
+}
+
+/* ── KARLI MANZARA (15 Ekim): yağmur + damlaların yerine. pencereCiz'in cam kırpmasının İÇİNDE
+   çağrılır. Lapa lapa kar, alt bölmelerde kar yığını, sol alt bölmede kardan adam, köşelerde kırağı. ── */
+function karManzara(t){
+  const Pn = L.pencere, kx = Math.round((Pn.x0 + Pn.x1) / 2), ky = Math.round((Pn.ust + Pn.alt) / 2);
+  ctx.font = `bold ${yazi()}`;
+  // kırağı: dört köşede seyrek buz kristalleri
+  const RK = rastgele(23);
+  for (let i = 0; i < 46; i++){
+    const kose = i % 4, d = Math.pow(RK(), 1.8) * 5, a = RK() * Math.PI / 2;
+    const x = kose % 2 ? Pn.x1 - 1 - Math.cos(a) * d * 1.6 : Pn.x0 + 1 + Math.cos(a) * d * 1.6;
+    const y = kose < 2 ? Pn.ust + 1 + Math.sin(a) * d : Pn.alt - 1 - Math.sin(a) * d;
+    hk(x, y, "*:.,"[i % 4], `rgba(225,235,250,${0.18 + RK() * 0.22})`);
+  }
+  /* KARDAN ADAM (15 Ekim, Gökşin: "sol alt köşeye, tamamen beyaz, Magnus gibi * ile dolu"): üç top
+     hücre hücre doldurulur (hücre eni 0,6 → daireler en/boy düzeltmeli); şapka, kömür gözler, havuç
+     burun, düğmeler, dal kollar üstüne. Ayakları kar yığınına gömülü (yığın sonra çiziliyor). */
+  const ax = (Pn.x0 + kx) / 2, taban = Pn.alt - 0.3, BEYAZ = "rgb(244,247,255)";
+  const TOP = [[taban - 1.8, 1.8], [taban - 4.6, 1.3], [taban - 6.75, 1.0]];      // üç ayrı top, belli boğumlar   // [merkez y, yarıçap (satır)]
+  const hy = TOP[2][0], my2 = TOP[1][0];
+  const YUZ = [[ax - 0.9, hy - 0.25, "o", "rgb(45,45,60)"], [ax + 0.9, hy - 0.25, "o", "rgb(45,45,60)"],   // kömür gözler
+               [ax, hy + 0.45, ">", "rgb(235,120,30)"],                                                 // havuç
+               [ax, my2 - 0.5, "o", "rgb(70,70,85)"], [ax, my2 + 0.6, "o", "rgb(70,70,85)"]];          // düğmeler
+  // İNCE ızgara (Magnus gibi, yarım hücre): kaba ızgarada toplar köşeli ve boşluklu görünüyordu
+  ctx.font = `bold ${yazi(0.7)}`;
+  for (let y = taban - 7.8; y <= taban + 0.01; y += 0.42)
+    for (let x = ax - 7; x <= ax + 7; x += 0.45){
+      if (!TOP.some(([my, r]) => ((x - ax) * 0.55 / r) ** 2 + ((y - my) / r) ** 2 <= 1)) continue;
+      if (YUZ.some(([fx, fy]) => Math.abs(fx - x) < 0.6 && Math.abs(fy - y) < 0.45)) continue;   // yüz/düğme boşluğu
+      hk(x, y, "*", BEYAZ);
+    }
+  ctx.font = `bold ${yazi()}`;
+  YUZ.forEach(([x, y, k, r]) => hk(x, y, k, r));
+  [0, 1].forEach(j => hk(ax - 3.3 - j, my2 - 0.5 - j * 0.8, "\\", "rgb(150,105,65)"));           // sol dal kol
+  [0, 1].forEach(j => hk(ax + 3.3 + j, my2 - 0.5 - j * 0.8, "/", "rgb(150,105,65)"));            // sağ dal kol
+  const sap = "rgb(150,150,175)";                                                             // şapka
+  for (let x = -1.8; x <= 1.8; x += 0.6) hk(ax + x, hy - 1.05, "_", sap);
+  hk(ax - 0.7, hy - 1.6, "[", sap); hk(ax, hy - 1.6, "_", sap); hk(ax + 0.7, hy - 1.6, "]", sap);
+  ctx.font = `bold ${yazi()}`;
+  // lapa lapa kar: yavaş, sallanarak
+  const R = rastgele(9), h = Pn.alt - Pn.ust + 3;
+  for (let i = 0; i < 55; i++){
+    const hiz = 1.1 + R() * 1.8, yy = ((t * hiz + R() * 100) % h) + Pn.ust - 1;
+    const xx = Pn.x0 + R() * (Pn.x1 - Pn.x0) + Math.sin(t * (0.6 + R()) + i) * 0.9;
+    hk(xx, yy, R() < 0.3 ? "*" : R() < 0.6 ? "." : "o", `rgba(240,245,255,${0.55 + R() * 0.4})`);
+  }
+  // kar yığını: alt bölmelerin dibinde dalgalı beyaz tümsek (kardan adamın ayağını örter)
+  ctx.fillStyle = "rgba(228,235,248,.95)";
+  for (let x = Pn.x0 + 1; x < Pn.x1; x += 0.5){
+    const yuk = 1.1 + 0.6 * Math.sin(x * 0.45) + 0.3 * Math.sin(x * 1.3 + 1);
+    ctx.fillRect(x * cw, (Pn.alt - yuk) * ch, cw * 0.5 + 1, yuk * ch);
+  }
 }
 
 /* ── PERDE (14 Ekim, Gökşin: "hafifçe sallanan; pencere boyunu geçsin ama yere kadar inmesin"):
@@ -546,11 +627,15 @@ function kediCiz(t){
    rastgele çalmaz, sayfa sesi gibi). Ses dosyası ~3,7 sn → dökme 4 sn. ── */
 const CAY_BAS = 30, CAY_SURE = 10;
 let _caySes = false;
+setTimeout(() => window.magnusSesHazirla && window.magnusSesHazirla("caydanlik"), 2000);
 function cayEvre(t){ const tt = ((t % T) + T) % T - CAY_BAS; return tt >= 0 && tt < CAY_SURE ? tt : null; }
 function cayCiz(t){
   const e = cayEvre(t);
   const dokuyor = e !== null && e >= 3 && e < 7;
-  if (dokuyor !== _caySes){ _caySes = dokuyor; if (dokuyor && DONUK === null && window.magnusCaySesi) window.magnusCaySesi(); }
+  /* 15 Ekim (Gökşin: "ses animasyon bitmek üzereyken başlıyor"): ses dökmeden ~2 sn ÖNCE tetiklenir
+     (dosyanın başında boşluk + ilk çalışta yükleme gecikmesi); ses dosyası açılışta önceden yüklenir. */
+  const sesAni = e !== null && e >= 1 && e < 7;
+  if (sesAni !== _caySes){ _caySes = sesAni; if (sesAni && DONUK === null && window.magnusCaySesi) window.magnusCaySesi(); }
   if (e === null) return;
   const K = L.K, kcw = cw * K, kch = ch * K;
   const cx = L.sehpa.x + 4.5 * K, cy = L.sehpa.y - 10 * K;                 // fincanın ağzı (hücre)
@@ -791,6 +876,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=30"></script>
+<script src="ortak.js?s=31"></script>
 </body>
 </html>

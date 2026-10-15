@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "30";
+const SURUM_YAZI = "31";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -466,6 +466,8 @@ window.magnusMesaj = t => mesaj(t, true);
 window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
 // Oda: hayalet demlik çayı döktüğü AN (oda.html çağırır)
 window.magnusCaySesi = () => { if (D.sesler.caydanlik != null) tekCal("caydanlik"); };
+// sahne bir sesi önceden yükletebilsin (ilk çalışta gecikmesin — oda: çay)
+window.magnusSesHazirla = id => { tamponYukle(id).catch(() => {}); };
 
 /* ── panel ── */
 function karisimlar(){
