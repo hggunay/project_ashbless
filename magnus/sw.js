@@ -34,7 +34,8 @@
 // 26: oda — kalın pencere çerçevesi + camın üstünde "+" kayıt, sallanan bordo perde + korniş, kedinin oyuncak sepeti
 // 27: odada kediye dokununca gözlerini açar, adı belirir (Ayraç); sepette tüylü olta
 // 28: oda — hayalet demlik çay döker (çay sesi onunla eş), Şömine başına sayfa + çay sesi, Ayraç'ın gözü başında
-const SURUM = "magnus-28";
+// 29: oda — saatin 12'si bir boşluk sağda, kol 12'ye bakınca kısalır; Ayraç uyanınca İKİ virgül-göz yeşil "o" (ağız "4" yerinde), döngüde bir kez göz kırpar + bir kez pembe esner (o→O→o); şimşekte zikzak (1. çakış üst yarı, 2. alt yarı); buhar fincanın üstüne
+const SURUM = "magnus-29";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

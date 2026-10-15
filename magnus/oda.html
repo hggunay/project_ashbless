@@ -131,7 +131,7 @@ function arkaKur(){
   // SAAT: büyük, üstü KEMERLİ şömine saati, düz taban (Gökşin'in çizimi). Akrep/yelkovan her karede.
   const sx = L.saat.x, sy = L.saat.y;
   [ "   .-~~~~~-.   ",
-    "  /  12     \\  ",
+    "  /   12    \\  ",                     // 15 Ekim: 12 bir boşluk sağa (sola kayık duruyordu)
     " /           \\ ",
     "|9     .     3|",
     "|             |",
@@ -294,7 +294,7 @@ const simsekMi = t => SIMSEK.some(([a, b]) => t % T >= a && t % T < b);
 function pencereCiz(t){
   const Pn = L.pencere, sm = simsekMi(t);
   const x0 = (Pn.x0 + 1) * cw, y0 = (Pn.ust + 1) * ch, w = (Pn.x1 - Pn.x0 - 1) * cw, h = (Pn.alt - Pn.ust - 1) * ch;
-  ctx.fillStyle = sm ? "rgba(210,220,255,.55)" : "rgba(10,14,26,.9)"; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = sm ? "rgba(200,212,255,.62)" : "rgba(10,14,26,.9)";   // çakarken biraz daha koyu: şimşeğin zikzağı seçilsin ctx.fillRect(x0, y0, w, h);
   ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
   ctx.font = yazi();
   /* DALLAR (Gökşin: "daha fazla ve yapraklı"): üç dal, farklı kenarlardan uzanıyor, her biri
@@ -318,6 +318,24 @@ function pencereCiz(t){
     }
     const ux = d.x + d.yon * d.boy * 0.9, uy = d.y + d.boy * d.egim + Math.sin(sal * 6 + 1) * 2.4;
     for (let j = 0; j < 7; j++) hk(ux + (RY() - 0.5) * 4, uy + (RY() - 0.5) * 2.5, "&%*&"[j % 4], yaprakRenk);   // uçta dolgun küme
+  }
+  /* ŞİMŞEK (15 Ekim, Gökşin): iki çakmada; ilkinde zikzağın ÜST yarısı, ikincisinde ALT yarısı.
+     Sol üstten sağ ortaya iner. Kaydın (+) arkasında kalır (kayıt sonra çiziliyor). */
+  const si = SIMSEK.findIndex(([a, b]) => t % T >= a && t % T < b);
+  if (si >= 0){
+    const pw = Pn.x1 - Pn.x0, ph = Pn.alt - Pn.ust;
+    const YOL = [[[0.06, 0.03], [0.28, 0.18], [0.22, 0.24], [0.50, 0.36]],
+                 [[0.50, 0.36], [0.42, 0.46], [0.70, 0.55], [0.64, 0.60], [0.96, 0.66]]][si];
+    ctx.save(); ctx.font = `bold ${yazi(1.25)}`; ctx.shadowColor = "rgba(200,220,255,1)"; ctx.shadowBlur = 18;
+    for (let k = 0; k < YOL.length - 1; k++){
+      const [ax, ay] = YOL[k], [bx2, by2] = YOL[k + 1];
+      const x0 = Pn.x0 + ax * pw, y0 = Pn.ust + ay * ph, x1 = Pn.x0 + bx2 * pw, y1 = Pn.ust + by2 * ph;
+      const dx = x1 - x0, dy = y1 - y0, n = Math.max(2, Math.ceil(Math.hypot(dx * 0.6, dy) * 2));
+      const egim = dy / (Math.abs(dx) * 0.6 + 1e-6);                     // hücre en/boy farkı hesaba katılır
+      const kr = Math.abs(egim) > 2.2 ? "|" : Math.abs(egim) < 0.22 ? "-" : (dx > 0) === (dy > 0) ? "\\" : "/";
+      for (let j = 0; j <= n; j++) hk(x0 + dx * j / n, y0 + dy * j / n, kr, "rgb(255,255,245)");
+    }
+    ctx.restore();
   }
   // yağmur çizgileri
   const R = rastgele(9);
@@ -435,6 +453,8 @@ function sepetCiz(t){
 function saatCiz(){
   const n = new Date(), dk = n.getMinutes() + n.getSeconds() / 60, sa = (n.getHours() % 12) + dk / 60;
   const kol = (aci, boy, kalin) => {
+    // 15 Ekim (Gökşin): kol 12'ye bakarken bir çizgi kısa — rakamın üstüne binip karışmasın
+    if (Math.cos(aci) > 0.85) boy -= 1;
     for (let i = 1; i <= boy; i++){
       const x = L.saat.x + Math.sin(aci) * i * 1.4, y = L.saat.y - Math.cos(aci) * i * 0.8;
       const a = ((aci % Math.PI) + Math.PI) % Math.PI;
@@ -451,7 +471,9 @@ function saatCiz(){
 /* ── KARA KEDİ: halıda kıvrılmış uyuyor. Koyu gri gövde + ateş tarafında turuncu kenar
    ışığı. Nefes (sırt kabarır), kulak seğirmesi, kuyruk ucu; T içinde bir kez gözlerini
    açıp bakar (sarı-yeşil). ── */
-const KEDI_UYANIK = [80, 86];
+/* 15 Ekim (Gökşin): döngüde bir kez GÖZ KIRPMA (, o , o , o ,) ve bir kez ESNEME ("4" pembe "o",
+   esnerken gözler kapalı). Dokununca ise 3 sn boyunca gözler açık bakar. */
+const KEDI_KIRP = 80, KEDI_ESNE = [112, 114.5];
 /* KEDİYE DOKUNUNCA (15 Ekim, Gökşin): gözlerini açar ve adı belirir — keşif, hiçbir yerde
    anlatılmıyor. Kedinin adı AYRAÇ: Magnus'un açık bıraktığı kitapların üstüne yattığı için. */
 let kediDokunus = -1e9;
@@ -464,16 +486,20 @@ c.addEventListener("pointerdown", e => {
   if (window.magnusMesaj) window.magnusMesaj("Ayraç · Favori uyku mekânı Magnus'un\naçık bıraktığı kitaplar olduğu için bu adı aldı.");
 });
 function kediCiz(t){
-  const tt = t % T, uyanik = (tt >= KEDI_UYANIK[0] && tt < KEDI_UYANIK[1]) || performance.now() - kediDokunus < 3000;
+  const tt = t % T, kd = tt - KEDI_KIRP;
+  const kirpiyor = kd >= 0 && kd < 2.1 && Math.floor(kd / 0.35) % 2 === 0;   // ~0,35 sn açık / kapalı, üç kez
+  const esniyor = tt >= KEDI_ESNE[0] && tt < KEDI_ESNE[1];
+  const uyanik = (kirpiyor || performance.now() - kediDokunus < 3000) && !esniyor;
   const nefes = dalga(24, t) > 0;                                       // ~3 sn'de bir
   const kulak = Math.abs((t * 0.37) % 11 - 5) < 0.12;                   // arada bir seğirir
   const kuyruk = dalga(7, t) > 0.6 ? "," : "~";
   // Kıvrılmış uyuyan kedi — Felix Lee'nin klasik ASCII kedisinden uyarlandı. ",4-" kapalı göz.
   const sanat = [
     (kulak ? "  |/" : "  |\\") + (nefes ? "      _,,,----,_" : "      _,,,---,,_") + "      ",
-    // 15 Ekim: uyanık göz BAŞIN üst kısmında (eskiden "4-" yerindeydi; Gökşin: "gözü değil ağzı açılıyor")
-    "  /," + (uyanik ? "o" : "`") + ".-'`'    -.  ;-;;,_",
-    "  |," + (uyanik ? "  " : "4-") + "  ) )-,_. ,\\ (  `'-" + (kuyruk === "," ? "," : "'"),
+    /* 15 Ekim (Gökşin): gözler alt alta duran iki ","; "4" ağız. Uyanınca İKİ virgül yeşil "o" olur,
+       ağız yerinde kalır (eskiden "4" yeşil o oluyordu → esniyor gibiydi). */
+    "  /" + (uyanik ? "o" : ",") + "`.-'`'    -.  ;-;;,_",
+    "  |" + (uyanik ? "o" : ",") + (esniyor ? ((tt - KEDI_ESNE[0]) > 0.8 && (tt - KEDI_ESNE[0]) < 2.0 ? "O" : "o") : "4") + "-  ) )-,_. ,\\ (  `'-" + (kuyruk === "," ? "," : "'"),
     " '---''(_/--'  `-'\\_)",
   ];
   /* TURUNCU TEKİR, 1,5 kat iri (Gökşin: kara kedi siyah zeminde seçilmiyordu, "kara kedi gibi
@@ -490,7 +516,8 @@ function kediCiz(t){
       if (k === " ") return;
       let renk = (i + y) % 3 === 0 && y < 3 ? "rgb(165,92,40)" : "rgb(222,142,70)";   // tekir çizgileri
       if (i >= son - 1) renk = "rgb(255,200,130)";                      // ateş tarafı: kenar ışığı
-      if (uyanik && y === 1 && i === 4) renk = "rgb(170,235,70)";       // göz
+      if (uyanik && (y === 1 || y === 2) && i === 3) renk = "rgb(170,235,70)";   // gözler
+      if (esniyor && y === 2 && i === 4) renk = "rgb(240,140,160)";                // esneyen ağız (pembe)
       ctx.fillStyle = renk;
       ctx.fillText(k, x0 + i * kcw + kcw / 2, y0 + y * kch + kch / 2);
     });
@@ -546,7 +573,8 @@ function buharCiz(t){
   for (let i = 0; i < (cok ? 6 : 3); i++){
     const u = ((t * 0.35 + i / (cok ? 6 : 3)) % 1);                     // 0 → 1: yükseliş
     // fincan: sehpanın sağ yarısında, üst kenarı tabla + 5 satır yukarıda (sehpa K kat büyük)
-    const x = L.sehpa.x + (4 + i * 1.4 + Math.sin(u * 6 + i) * 0.8) * K, y = L.sehpa.y - (11 + u * 4) * K;
+    // 15 Ekim (Gökşin): buhar Magnus'la fincanın arasından çıkıyordu → fincanın üstüne (sola) alındı
+    const x = L.sehpa.x + (2.6 + i * (cok ? 0.7 : 1.4) + Math.sin(u * 6 + i) * 0.8) * K, y = L.sehpa.y - (11 + u * 4) * K;
     hk(x, y, u < 0.5 ? "(" : ")", `rgba(230,230,230,${0.45 * (1 - u)})`);
   }
 }
@@ -748,6 +776,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=28"></script>
+<script src="ortak.js?s=29"></script>
 </body>
 </html>
