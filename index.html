@@ -602,6 +602,27 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 /* +0,3 sn: ekleme penceresinin kapanış solması (0,25 sn) bitsin, animasyon arkada kalmasın */
 .book-spine.yeni-bedside{animation:spYerAc .6s .3s ease-out backwards,spSus 1.15s .75s cubic-bezier(.25,.8,.35,1) backwards,spLamba 2.4s 1.25s ease-out backwards;}
 .book-spine.yeni-forbidden{animation:spYerAc .6s .3s ease-out backwards,spGlitch 1.5s .8s steps(1) backwards;}
+/* RAFLARIM — RAF GÖRÜNÜMÜ (15 Ekim): koyu ahşap kitaplık; her satırın altında raf tahtası
+   (satır 100px + tahta 16px = 116px döngü — .raf-yuva yüksekliği ve row-gap bununla eş kalmalı) */
+.raf-kitaplik{position:relative;border-radius:4px;padding:10px 12px 0;background:linear-gradient(180deg,#3a2414,#2b1a0e);box-shadow:inset 0 0 18px rgba(0,0,0,.55);margin:.2rem 0 .3rem;}
+.raf-satirlar{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;row-gap:16px;padding-bottom:16px;
+  background-image:repeating-linear-gradient(180deg,transparent 0 100px,#7a4f2c 100px,#a06c3e 102px,#6b4423 106px,#4a2e16 116px);background-size:100% 116px;}
+.raf-yuva{height:100px;display:flex;align-items:flex-end;}
+.raf-sirt{position:relative;border-radius:2px 4px 4px 2px;cursor:pointer;box-shadow:2px 0 4px rgba(0,0,0,.45);transition:transform .18s cubic-bezier(.3,1.6,.5,1);}
+.raf-sirt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.05) 22%,rgba(0,0,0,0) 50%,rgba(0,0,0,.22) 80%,rgba(0,0,0,.4) 100%),
+             repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px);}
+.rs-bant{position:absolute;left:3px;right:3px;height:3px;border-top:1px solid var(--b);border-bottom:1px solid var(--b);opacity:.75;pointer-events:none;}
+.rs-bant.u{top:8px}.rs-bant.a{bottom:8px}
+.rs-ad{position:absolute;inset:13px 2px;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-family:'Crimson Pro',serif;font-weight:600;text-align:center;overflow:hidden;line-height:1.05;word-break:normal;overflow-wrap:normal;}
+.rs-ok{position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);font-size:8px;color:#9fd18f;text-shadow:0 0 3px #000;pointer-events:none;}
+.rs-odunc{position:absolute;left:50%;top:-1px;transform:translateX(-50%);font-size:8px;color:#f0c27a;text-shadow:0 0 3px #000;pointer-events:none;}
+.raf-sirt:hover,.raf-sirt.zipla{transform:translateY(-7px);}
+.raf-sirt.secili{transform:translateY(-12px);box-shadow:0 0 0 2px var(--gold),2px 6px 10px rgba(0,0,0,.5);}
+@keyframes rafBelir{from{opacity:0;transform:scale(.6) translateY(-10px)}60%{opacity:1;transform:scale(1.06)}to{opacity:1;transform:none}}
+.raf-sirt.yeni{animation:rafBelir .7s .3s ease-out backwards;}
+.raf-secim{margin-top:.5rem;padding:.1rem .7rem;border:1px solid rgba(201,162,39,.35);border-radius:4px;background:rgba(201,162,39,.06);}
+.raf-secim > div{border-bottom:none !important;}
 .spine-add-btn{width:clamp(24px,5vw,32px);min-width:clamp(24px,5vw,32px);height:84px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
 .special-shelf-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:thin;scrollbar-color:rgba(201,162,39,.4) transparent;}
@@ -1785,6 +1806,8 @@ try{
           </select>
           <!-- Düzenle modu (2026-10-07): kitap satırlarındaki düğmeler yalnız bu açıkken görünür — shelf.js -->
           <button type="button" id="shelfEditModeBtn" class="btn btn-sm" onclick="shelfDuzenleModu()" style="font-size:.72rem;padding:.3rem .6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35)">✏️ Düzenle</button>
+          <!-- Liste / Raf görünümü (2026-10-15): cihazda hatırlanır — shelf.js rafGorunumDegistir -->
+          <button type="button" id="shelfGorunumBtn" class="btn btn-sm" onclick="rafGorunumDegistir()" style="font-size:.72rem;padding:.3rem .6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35)">📚 Raf</button>
         </div>
       </div>
       <div id="specialShelvesContainer"></div>
@@ -2179,7 +2202,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261015c"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261008b"></script>
+<script src="shelf.js?s=20261015a"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
