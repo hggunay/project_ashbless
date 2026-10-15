@@ -126,15 +126,21 @@ function renderSpecialShelves(){
   const bedsideBadge=allBadges.find(b=>b.id==='secret_bedside');
   const forbiddenBadge=allBadges.find(b=>b.id==='secret_forbidden');
   const targetBooks2=(db.books[target]||[]).filter(b=>b.title&&!b.title.startsWith('ISBN:')&&b.readingStatus!=='wishlist'&&((b.readingStatus!=='reading'&&b.readingStatus!=='paused')||!!(b.endDate||b.yearOnly)));
-  const showBedside=bedsideBadge?bstat(bedsideBadge,targetBooks2).earned:false;
-  const showForbidden=forbiddenBadge?bstat(forbiddenBadge,targetBooks2).earned:false;
+  const kazandiB=bedsideBadge?bstat(bedsideBadge,targetBooks2).earned:false;
+  const kazandiY=forbiddenBadge?bstat(forbiddenBadge,targetBooks2).earned:false;
+  /* YÖNETİCİ ÖNİZLEMESİ (15 Ekim, Gökşin: "bende gizli raflar keşfedilmiş değil, açıp bakamıyorum"):
+     yalnız hggunay, kendi sayfasında ve YALNIZ adres ?rafonizle ile açılınca, rozet kazanılmamış olsa
+     da iki rafı görür; başlıkta "önizleme" etiketi. Gökşin rafları kendisi de keşfetmek istiyor →
+     normal açılışta onun için de gizli. Diğer üyeler için HİÇBİR ŞEY değişmez. */
+  const onizleme=me==='hggunay'&&!viewing&&/[?&]rafonizle\b/.test(location.search);
+  const showBedside=kazandiB||onizleme, showForbidden=kazandiY||onizleme;
   let html='';
-  if(showBedside) html+=renderSpecialShelfHtml('bedside');
-  if(showForbidden) html+=renderSpecialShelfHtml('forbidden');
+  if(showBedside) html+=renderSpecialShelfHtml('bedside',onizleme&&!kazandiB);
+  if(showForbidden) html+=renderSpecialShelfHtml('forbidden',onizleme&&!kazandiY);
   container.innerHTML=html;
 }
 
-function renderSpecialShelfHtml(type){
+function renderSpecialShelfHtml(type,onizlemeMi){
   const isBedside=type==='bedside';
   const shelf=getSpecialShelf(type);
   const books=shelf.books||[];
@@ -145,7 +151,8 @@ function renderSpecialShelfHtml(type){
   const bgCss=isBedside?'background-color:#1a0f00;':'background-color:#0d0010;';
   const titleColor=isBedside?'var(--gold)':'#c084fc';
   const accentColor=isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)';
-  const title=isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf';
+  const title=(isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf')
+    +(onizlemeMi?'<span style="font-family:\'Space Mono\',monospace;font-size:.55rem;font-weight:400;opacity:.7;margin-left:.5rem;padding:.1rem .35rem;border:1px solid currentColor;border-radius:3px">önizleme · yalnız sen</span>':'');
   const sub=isBedside?'Yastığının altındaki kitaplar':'Yasak bilginin saklandığı yer';
   /* 15 Ekim (Gökşin onayladı, raf-deneme sayfasında denendi): gerçekçi kitap sırtları. Boy ve kalınlık
      kitap adından hesaplanır (aynı kitap hep aynı boyda); uzun adlara kalın sırt; yuvarlak sırt
