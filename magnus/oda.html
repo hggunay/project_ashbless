@@ -378,11 +378,33 @@ function sepetCiz(t){
   if (x0 < 0) return;
   ctx.font = `bold ${yazi(K)}`;
   const IP = "rgb(206,92,64)";
+  const arka = py => py + kch / 2 < (L.duvarAlt + 0.5) * ch ? DUVAR_RENK : ZEMIN_RENK;
+  // 1) satırların arkası (duvar/zemin deseni görünmesin)
   SEPET.forEach((s, y) => {
-    const ilk = s.search(/\S/), son = s.length - [...s].reverse().join("").search(/\S/) - 1;
+    const ilk = s.search(/\S/), son = s.length - [...s].reverse().join("").search(/\S/) - 1, py = y0 + y * kch;
+    ctx.fillStyle = arka(py); ctx.fillRect(x0 + ilk * kcw, py, (son - ilk + 1) * kcw + 1, kch + 1);
+  });
+  /* 2) OLTA (15 Ekim, Gökşin): yumakla ayıcığın arasından çıkan, ayıcığın başının ARKASINDAN
+     geçen eğik sopa; altta kalın tutma yeri, sonra ince; ucunda minik top, topun ucunda sallanan
+     tüy (Dobby'nin oltası). Ayıcıktan önce çizilir, ayıcığın arkası yeniden boyanınca arkada kalır. */
+  const ox = (c, r) => x0 + c * kcw + kcw / 2, oy = r => y0 + r * kch + kch / 2;
+  // ince kısım (tutma yeri yumağın ÖNÜNDE, karakterlerden sonra çiziliyor — aşağıda)
+  ctx.font = yazi(K);
+  ctx.fillStyle = "rgb(190,145,95)";
+  const A = [10.4, 0.9], B = [18.2, -3.4];
+  for (let u = 0; u <= 1.0001; u += 0.07) ctx.fillText("/", ox(A[0] + (B[0] - A[0]) * u, 0), oy(A[1] + (B[1] - A[1]) * u));
+  ctx.font = `bold ${yazi(K * 1.7)}`;                                                                    // top: büyükçe
+  ctx.fillStyle = "rgb(120,175,215)"; ctx.fillText("o", ox(B[0] + 0.45, 0), oy(B[1] - 0.45));
+  ctx.font = `bold ${yazi(K)}`;
+  const sal = 0.7 * dalga(9, t, 1) + 0.25 * dalga(23, t, 2);
+  ctx.fillStyle = "rgb(150,205,225)";
+  [[")", 0.9], ["{", 1.6], [",", 2.2]].forEach(([k, d], j) =>                                            // tüy, aşağı sallanır
+    ctx.fillText(k, ox(B[0] + 0.5 + sal * (j + 1) * 0.45, 0), oy(B[1] + d - 0.3)));
+  // ayıcığın arkası yeniden: sopa başının arkasında kalsın
+  for (let y = 0; y <= 2; y++){ const py = y0 + y * kch; ctx.fillStyle = arka(py); ctx.fillRect(x0 + 11.6 * kcw, py, 5.8 * kcw, kch + 1); }
+  // 3) karakterler
+  SEPET.forEach((s, y) => {
     const py = y0 + y * kch;
-    ctx.fillStyle = py + kch / 2 < (L.duvarAlt + 0.5) * ch ? DUVAR_RENK : ZEMIN_RENK;   // arkası görünmesin
-    ctx.fillRect(x0 + ilk * kcw, py, (son - ilk + 1) * kcw + 1, kch + 1);
     [...s].forEach((k, i) => {
       if (k === " ") return;
       let r;
@@ -395,6 +417,12 @@ function sepetCiz(t){
       ctx.fillText(k, x0 + i * kcw + kcw / 2, py + kch / 2);
     });
   });
+  // oltanın kalın TUTMA YERİ: yumağın önünden çaprazlama (Gökşin: "kalın ucu yumağın önüne gelsin")
+  for (let j = 0; j <= 4; j++){
+    const r = 2.35 - j * 0.38, c = 8.4 + j * 0.42;
+    ctx.fillStyle = arka(oy(r) - kch / 2); ctx.fillRect(ox(c, 0) - 0.45 * kcw, oy(r) - 0.45 * kch, 0.9 * kcw, 0.9 * kch);   // arkasındaki yumak görünmesin
+    ctx.fillStyle = "rgb(150,100,60)"; ctx.fillText("#", ox(c, 0), oy(r));
+  }
   // yumağın ipi: ağızdan sepetin önüne, oradan yere kadar sarkar; aşağı indikçe daha çok sallanır
   ctx.fillStyle = IP;
   for (let j = 0; j < 7; j++){
@@ -424,8 +452,19 @@ function saatCiz(){
    ışığı. Nefes (sırt kabarır), kulak seğirmesi, kuyruk ucu; T içinde bir kez gözlerini
    açıp bakar (sarı-yeşil). ── */
 const KEDI_UYANIK = [80, 86];
+/* KEDİYE DOKUNUNCA (15 Ekim, Gökşin): gözlerini açar ve adı belirir — keşif, hiçbir yerde
+   anlatılmıyor. Kedinin adı AYRAÇ: Magnus'un açık bıraktığı kitapların üstüne yattığı için. */
+let kediDokunus = -1e9;
+c.addEventListener("pointerdown", e => {
+  if (!L) return;
+  const d = W / innerWidth, px = e.clientX * d, py = e.clientY * d;
+  const kcw = cw * 1.5, kch = ch * 1.5, x0 = L.kedi.x * cw - 12 * kcw, y0 = (L.kedi.y + 1) * ch - 4 * kch;
+  if (px < x0 || px > x0 + 25 * kcw || py < y0 - kch || py > y0 + 4 * kch) return;
+  kediDokunus = performance.now();
+  if (window.magnusMesaj) window.magnusMesaj("Ayraç · Favori uyku mekânı Magnus'un\naçık bıraktığı kitaplar olduğu için bu adı aldı.");
+});
 function kediCiz(t){
-  const tt = t % T, uyanik = tt >= KEDI_UYANIK[0] && tt < KEDI_UYANIK[1];
+  const tt = t % T, uyanik = (tt >= KEDI_UYANIK[0] && tt < KEDI_UYANIK[1]) || performance.now() - kediDokunus < 3000;
   const nefes = dalga(24, t) > 0;                                       // ~3 sn'de bir
   const kulak = Math.abs((t * 0.37) % 11 - 5) < 0.12;                   // arada bir seğirir
   const kuyruk = dalga(7, t) > 0.6 ? "," : "~";
@@ -665,6 +704,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=26"></script>
+<script src="ortak.js?s=27"></script>
 </body>
 </html>

@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "26";
+const SURUM_YAZI = "27";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -168,6 +168,7 @@ css.textContent = `
 #mMesaj{white-space:pre-line;text-align:center;position:fixed;left:50%;top:18%;transform:translateX(-50%);color:#ffdca0;
   font:24px/1.3 Georgia,serif;letter-spacing:.5px;text-shadow:0 0 18px rgba(255,170,70,.5);
   opacity:0;transition:opacity 1.2s;pointer-events:none;z-index:7;text-align:center}
+#mMesaj.kucuk{font-size:17px;max-width:92vw}  /* sahnelerin küçük notları (oda: Ayraç) */
 body.sakin{cursor:none}`;
 document.head.appendChild(css);
 
@@ -218,8 +219,9 @@ const mesajKutu = document.createElement("div");
 mesajKutu.id = "mMesaj";
 document.body.appendChild(mesajKutu);
 let mesajZ = null;
-function mesaj(t){
+function mesaj(t, kucuk){
   mesajKutu.textContent = t; mesajKutu.style.opacity = 1;
+  mesajKutu.classList.toggle("kucuk", !!kucuk);
   clearTimeout(mesajZ); mesajZ = setTimeout(() => mesajKutu.style.opacity = 0, 5000);
 }
 const $ = id => document.getElementById(id);
@@ -456,6 +458,8 @@ function araPlanla(){
 // Herbert: daktilo sesi döngünün neresinde (çalmıyorsa null) — hırslı anda "imdat" yazsın diye
 window.magnusSesZamani = id => { const d = dongular[id]; return d && !d.paused && !sustur ? d.zaman : null; };
 // Kütüphane: Magnus'un sayfası döndüğü AN (kutuphane.html çağırır)
+// sahneler kendi küçük mesajlarını gösterebilsin (oda: kediye dokununca adı — 15 Ekim)
+window.magnusMesaj = t => mesaj(t, true);
 window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
 
 /* ── panel ── */
