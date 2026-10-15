@@ -133,7 +133,7 @@ function arkaKur(){
   [ "   .-~~~~~-.   ",
     "  /   12    \\  ",                     // 15 Ekim: 12 bir boşluk sağa (sola kayık duruyordu)
     " /           \\ ",
-    "|9     .     3|",
+    "| 9    .    3 |",                     // 15 Ekim: 3 ve 9 bir boşluk içeride (kasa çizgisine yapışıktı)
     "|             |",
     " \\     6     / ",
     "  |_________|  ",
@@ -294,7 +294,8 @@ const simsekMi = t => SIMSEK.some(([a, b]) => t % T >= a && t % T < b);
 function pencereCiz(t){
   const Pn = L.pencere, sm = simsekMi(t);
   const x0 = (Pn.x0 + 1) * cw, y0 = (Pn.ust + 1) * ch, w = (Pn.x1 - Pn.x0 - 1) * cw, h = (Pn.alt - Pn.ust - 1) * ch;
-  ctx.fillStyle = sm ? "rgba(200,212,255,.62)" : "rgba(10,14,26,.9)";   // çakarken biraz daha koyu: şimşeğin zikzağı seçilsin ctx.fillRect(x0, y0, w, h);
+  // çakarken cam açık mavi (zikzak üstünde parlasın), normalde gece laciverdi
+  ctx.fillStyle = sm ? "rgba(88,104,158,.9)" : "rgba(10,14,26,.9)"; ctx.fillRect(x0, y0, w, h);
   ctx.save(); ctx.beginPath(); ctx.rect(x0, y0, w, h); ctx.clip();
   ctx.font = yazi();
   /* DALLAR (Gökşin: "daha fazla ve yapraklı"): üç dal, farklı kenarlardan uzanıyor, her biri
@@ -337,11 +338,25 @@ function pencereCiz(t){
     }
     ctx.restore();
   }
-  // yağmur çizgileri
-  const R = rastgele(9);
-  for (let i = 0; i < 26; i++){
-    const hiz = 9 + R() * 6, yy = ((t * hiz + R() * 100) % (Pn.alt - Pn.ust + 4)) + Pn.ust - 2;
-    hk(Pn.x0 + 1 + R() * (Pn.x1 - Pn.x0) - (yy - Pn.ust) * 0.35, yy, "/", sm ? "#fff" : "rgba(160,180,215,.55)");
+  /* yağmur çizgileri — 15 Ekim (Gökşin): yönü şimşekle aynı (sol üstten sağ alta "\"), daha sık
+     ve belirgin. Eskiden "/" ile sağdan sola yağıyordu. */
+  const R = rastgele(9), pg = Pn.x1 - Pn.x0 + 8;
+  ctx.font = `bold ${yazi()}`;
+  for (let i = 0; i < 40; i++){
+    const hiz = 10 + R() * 6, yy = ((t * hiz + R() * 100) % (Pn.alt - Pn.ust + 4)) + Pn.ust - 2;
+    const xx = Pn.x0 - 6 + ((R() * pg + (yy - Pn.ust) * 0.35) % pg);    // sağa kayarken taşan, soldan girer
+    hk(xx, yy, "\\", sm ? "#fff" : "rgba(175,195,230,.8)");
+  }
+  /* CAMDAN SÜZÜLEN DAMLALAR: camın iç yüzünde yavaşça (ara ara durup) inen damlalar, arkalarında
+     ince iz. Her damla kendi temposunda; alta varınca yukarıda yeniden belirir. */
+  const RD = rastgele(77);
+  for (let i = 0; i < 7; i++){
+    const dx = Pn.x0 + 1.5 + RD() * (Pn.x1 - Pn.x0 - 3), hiz = 0.25 + RD() * 0.35, faz = RD() * 50;
+    const boy = Pn.alt - Pn.ust - 2, ilerle = t * hiz + faz;
+    const dur = Math.floor(ilerle) + Math.min(1, (ilerle % 1) * 2.2);  // her birimde yarı yol kayar, sonra bekler
+    const dy = Pn.ust + 1 + (dur * 0.9) % boy;
+    for (let k = 1; k <= 2; k++) hk(dx, dy - k * 0.8, k === 1 ? ":" : "'", `rgba(200,220,245,${0.45 - k * 0.15})`);
+    hk(dx, dy, "o", sm ? "#fff" : "rgba(215,232,255,.9)");
   }
   ctx.restore();
   // + KAYIT: camın üstünde, ahşap (ışıkla boyanmaz: ateşten sonra çiziliyor → sıcak ton elle)
@@ -776,6 +791,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=29"></script>
+<script src="ortak.js?s=30"></script>
 </body>
 </html>
