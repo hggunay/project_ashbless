@@ -30,7 +30,8 @@
 // 22: ekran kapanıp açılınca yardımcı tuvaller yeniden kurulur (kütüphanede Magnus kayboluyordu); tur numarası mesajın alt satırında
 // 23: döngü çalar her başlatmada durumunu sıfırlar + kopya sonuna gelirse diğeri girer (Herbert: bitişten sonra daktilo gelmiyordu)
 // 24: üç yeni parça (Ink and Moonlight, Pages Past Midnight, Sunlight on the Shelves) + kapakları
-const SURUM = "magnus-24";
+// 25: odada Magnus + sandalye + sehpa 1,3 kat (yer varsa), halı sehpanın altında kesilmiyor, yatayda şömine biraz solda
+const SURUM = "magnus-25";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
