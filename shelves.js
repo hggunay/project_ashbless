@@ -93,6 +93,9 @@ function goToShelf(type){
 const SPINE_COLORS_BEDSIDE=['#d9b3ad','#adc4a5','#a9bfd6','#c2b3d9','#e3d1a4','#e6bea3','#a8cfc3','#cba8bb','#d6c6a8','#b6cbdf','#cfbadf','#e2c39f'];
 const SPINE_COLORS_FORBIDDEN=['#2a0a3a','#0a1a2a','#2a0a0a','#1a0a2a','#0a2a1a','#2a1a0a','#1a2a0a','#0a0a2a','#2a0a1a','#1a0a0a','#0a2a2a','#2a2a0a'];
 const SP_MAX={bedside:7,forbidden:20};
+/* ?rafonizle sayfa YÜKLENİRKEN okunur: uygulama sekme değiştirirken adresi temizliyor (replaceState →
+   yalnız #panel), sonradan bakınca bulunamıyordu → kitap eklenince raflar kayboldu (Gökşin, 15 Ekim). */
+const _RAF_ONIZLEME=/[?&]rafonizle\b/.test(location.search);
 let _spYeni=null;                  // {type, ids}: addSpecialBook'un az önce eklediği kitaplar (animasyon için)
 function _spOzet(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
 const SP_VISIBLE=10;
@@ -132,7 +135,7 @@ function renderSpecialShelves(){
      yalnız hggunay, kendi sayfasında ve YALNIZ adres ?rafonizle ile açılınca, rozet kazanılmamış olsa
      da iki rafı görür; başlıkta "önizleme" etiketi. Gökşin rafları kendisi de keşfetmek istiyor →
      normal açılışta onun için de gizli. Diğer üyeler için HİÇBİR ŞEY değişmez. */
-  const onizleme=me==='hggunay'&&!viewing&&/[?&]rafonizle\b/.test(location.search);
+  const onizleme=me==='hggunay'&&!viewing&&_RAF_ONIZLEME;
   const showBedside=kazandiB||onizleme, showForbidden=kazandiY||onizleme;
   let html='';
   if(showBedside) html+=renderSpecialShelfHtml('bedside',onizleme&&!kazandiB);
