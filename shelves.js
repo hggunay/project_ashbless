@@ -51,8 +51,9 @@ function _startBedsideAnim(shelf){
     sp.style.opacity='0';sp.style.transform='translateY(10px)';sp.style.transition='none';
     setTimeout(()=>{
       sp.style.transition='opacity 350ms ease, transform 350ms ease';
-      sp.style.opacity='1';sp.style.transform='translateY(0)';
+      sp.style.opacity='1';sp.style.transform='';   // '' → CSS'teki duruş geri gelir (son kitap yaslı kalsın)
     },1200+i*120);
+    setTimeout(()=>{sp.style.transition='';},1700+i*120);
   });
 
   // 3. 2400ms: yazı
@@ -88,9 +89,12 @@ function goToShelf(type){
 }
 
 // ── ÖZEL RAFLAR (Başucu & Yasaklı) ───────────────────────────
-const SPINE_COLORS_BEDSIDE=['#5c3a1e','#2d5a3d','#1e3a5c','#5c2d3a','#4a3d1e','#3d1e5c','#1e4a3d','#5c4a1e','#3a1e4a','#2d3a5c','#5c1e2d','#3d5c1e'];
+// 15 Ekim (Gökşin): Başucu yumuşak pastel (yazılar koyu kahve — CSS .special-shelf.basucu)
+const SPINE_COLORS_BEDSIDE=['#d9b3ad','#adc4a5','#a9bfd6','#c2b3d9','#e3d1a4','#e6bea3','#a8cfc3','#cba8bb','#d6c6a8','#b6cbdf','#cfbadf','#e2c39f'];
 const SPINE_COLORS_FORBIDDEN=['#2a0a3a','#0a1a2a','#2a0a0a','#1a0a2a','#0a2a1a','#2a1a0a','#1a2a0a','#0a0a2a','#2a0a1a','#1a0a0a','#0a2a2a','#2a2a0a'];
 const SP_MAX={bedside:7,forbidden:20};
+let _spYeni=null;                  // {type, ids}: addSpecialBook'un az önce eklediği kitaplar (animasyon için)
+function _spOzet(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619);}return h>>>0;}
 const SP_VISIBLE=10;
 
 function getSpecialShelf(type){
@@ -143,27 +147,34 @@ function renderSpecialShelfHtml(type){
   const accentColor=isBedside?'rgba(201,162,39,.3)':'rgba(192,132,252,.3)';
   const title=isBedside?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf';
   const sub=isBedside?'Yastığının altındaki kitaplar':'Yasak bilginin saklandığı yer';
+  /* 15 Ekim (Gökşin onayladı, raf-deneme sayfasında denendi): gerçekçi kitap sırtları. Boy ve kalınlık
+     kitap adından hesaplanır (aynı kitap hep aynı boyda); uzun adlara kalın sırt; yuvarlak sırt
+     ışığı + kumaş dokusu (CSS ::before); çift altın çizgi; altta küçük süs; Yasaklı'da bazılarında
+     kilit; rafın son kitabı yanındakine yaslanır. Başucu renkleri yumuşak pastel. Yeni eklenen kitap
+     (_spYeni) animasyonla gelir: Başucu'nda süzülüp oturur + lamba ışığı, Yasaklı'da glitch. */
   const spineColors=isBedside?SPINE_COLORS_BEDSIDE:SPINE_COLORS_FORBIDDEN;
-  const bandColors=['rgba(201,162,39,.8)','rgba(255,255,255,.5)','rgba(180,140,60,.9)','rgba(220,180,80,.7)','rgba(255,220,100,.6)','rgba(160,120,40,.9)','rgba(240,200,100,.7)'];
-  const textures=[
-    'linear-gradient(180deg,rgba(255,255,255,.12) 0%,transparent 40%,rgba(0,0,0,.15) 100%)',
-    'linear-gradient(180deg,rgba(255,255,255,.08) 0%,rgba(255,255,255,.04) 50%,rgba(0,0,0,.2) 100%)',
-    'linear-gradient(180deg,rgba(255,255,255,.15) 0%,transparent 30%,rgba(0,0,0,.1) 100%)',
-    'linear-gradient(180deg,rgba(255,255,255,.06) 0%,transparent 60%,rgba(0,0,0,.25) 100%)',
-  ];
-
+  const bantlar=isBedside?['#8a6420','#9a7428','#7a5a1c','#a07830']:['#a77bd6','#c084fc','#8f6bc4','#b48ae8'];
+  const SUSLER=['✦','❦','✧','◆','❧','·'];
+  const yeniler=(_spYeni&&_spYeni.type===type)?_spYeni.ids:[];
   const spinesHtml=books.map((b,i)=>{
-    const col=spineColors[i%spineColors.length];
-    const band=bandColors[i%bandColors.length];
-    const tex=textures[i%textures.length];
-    const safeTitle=(b.title||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return`<div class="book-spine" style="background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}" data-band="${band}" data-tex="${tex}">
-      <div style="position:absolute;inset:0;background:${tex};border-radius:inherit;pointer-events:none;z-index:0"></div>
-      <div style="position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(180deg,${band},transparent);border-radius:3px 6px 0 0;z-index:2"></div>
-      <div style="position:absolute;bottom:0;left:0;right:0;height:6px;background:linear-gradient(0deg,${band},transparent);border-radius:0 0 6px 6px;z-index:2"></div>
-      <span class="book-spine-title">${b.title||'?'}</span>
+    const ad=b.title||'?', h=_spOzet(ad);
+    // ×0,88: kitaplar raf görselinin ortasındaki boş alana sığsın (Gökşin: "görselin önünü kapatıyor")
+    const uzun=ad.length, boy=Math.round((84+h%22)*.88), en=Math.round(Math.max(26+(h>>>5)%14, uzun>24?50:uzun>15?42:0)*.88);
+    const col=spineColors[(h>>>9)%spineColors.length], band=bantlar[(h>>>13)%bantlar.length];
+    const kilit=!isBedside&&(h>>>17)%3===0;
+    // yazı boyu: en uzun KELİME sırtın boyuna sığsın (kelime ortadan bölünmesin — "Fahrenhei t" oluyordu)
+    const enUzunKelime=Math.max(...ad.split(/\s+/).map(k=>k.length)), yer=boy-(kilit?40:26);
+    const fs=Math.max(7,Math.min(13,en*.38,yer/(enUzunKelime*.56)));
+    const safeTitle=ad.replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+    const kls=['book-spine',i===books.length-1&&books.length>1?'yasli':'',yeniler.includes(b.id)?'yeni-'+type:''].join(' ');
+    return`<div class="${kls}" style="--w:${en}px;--b:${band};width:${en}px;min-width:${en}px;height:${boy}px;background:${col}" onclick="openSpecialBook('${type}','${b.id}')" title="${safeTitle}">
+      <div class="sp-bant ust"></div><div class="sp-bant alt"></div>
+      ${kilit?`<svg class="sp-kilit" viewBox="0 0 10 12"><path d="M2.5 5V3.5a2.5 2.5 0 015 0V5" fill="none" stroke="${band}" stroke-width="1.3"/><rect x="1" y="5" width="8" height="6.5" rx="1" fill="${band}"/></svg>`:''}
+      <span class="book-spine-title" style="font-size:${fs}px;${kilit?'top:34px':''}">${ad}</span>
+      <div class="sp-sus">${SUSLER[(h>>>21)%SUSLER.length]}</div>
     </div>`;
   }).join('');
+  _spYeni=null;                    // animasyon yalnız bu çizimde: sonraki yeniden çizimlerde tekrar oynamasın
 
   const addBtn=canAdd?`<button class="spine-add-btn" onclick="openAddSpecialBook('${type}')" title="Kitap ekle">+</button>`:'';
 
@@ -174,7 +185,7 @@ function renderSpecialShelfHtml(type){
     ?`<div class="bedside-lamp-overlay"></div><div class="bedside-corner-text">Burası senin köşen.</div>`
     :'';
 
-  return`<div class="special-shelf">
+  return`<div class="special-shelf ${isBedside?'basucu':'yasakli'}">
     <div class="special-shelf-bg" style="${bgCss}background-image:url('${bgImg}');background-size:100% 100%;background-position:center;background-repeat:no-repeat;width:100%;">
       ${extraOverlay}
       <div style="position:relative;z-index:1;display:flex;flex-direction:column;min-height:180px;width:100%;">
@@ -182,8 +193,10 @@ function renderSpecialShelfHtml(type){
           ${titleEl}
           <div class="special-shelf-sub" style="color:${isBedside?'#d4a96a':'#c084fc'}">${sub}</div>
         </div>
-        <div style="display:flex;align-items:center;justify-content:center;padding:.5rem 0;min-height:110px;">
-          <div class="special-shelf-scroll" style="display:flex;gap:6px;align-items:center;width:min(420px,75%);padding:.2rem .4rem;flex-shrink:0;">            ${spinesHtml}${addBtn}
+        <!-- kitaplar raf görselinin ORTASINDAKİ boş alanda: Başucu lamba ile masal kitapları arası (%31–63),
+             Yasaklı kitap yığını ile mum arası (%33–69); fazlası yatay kaydırılır (Gökşin, 15 Ekim) -->
+        <div style="display:flex;justify-content:flex-start;padding:.3rem 0 .5rem ${isBedside?31:33}%;min-height:110px;">
+          <div class="special-shelf-scroll" style="display:flex;gap:4px;align-items:flex-end;width:${isBedside?32:36}%;padding:30px .2rem 0;flex-shrink:0;">            ${spinesHtml}${addBtn}
           </div>
         </div>
       </div>
@@ -325,15 +338,25 @@ function addSpecialBook(type){
   const readBooks=spReadBooks();
   const existing=new Set((shelf.books||[]).map(b=>b.libId).filter(Boolean));
   let added=0;
+  const yeniIdler=[];
   checked.forEach((id,i)=>{
     const lb=readBooks.find(b=>String(b.id)===id);
     if(!lb||existing.has(String(lb.id))) return;
-    shelf.books.push({id:'sp_'+Date.now()+'_'+i,title:lb.title,author:lb.author||'',why:checked.length===1?why:'',libId:String(lb.id),addedAt:new Date().toISOString()});
+    const yid='sp_'+Date.now()+'_'+i;
+    shelf.books.push({id:yid,title:lb.title,author:lb.author||'',why:checked.length===1?why:'',libId:String(lb.id),addedAt:new Date().toISOString()});
+    yeniIdler.push(yid);
     added++;
   });
   saveSpecialShelf(type,shelf);
   closeModal();
+  _spYeni={type,ids:yeniIdler};
   renderSpecialShelves();
+  // yeni kitap görünsün (Gökşin: dolu rafta her eklemede liste başa dönüyordu): raf sona kayar, sayfa rafı gösterir
+  const yeniEl=document.querySelector('#specialShelvesContainer .book-spine.yeni-'+type);
+  if(yeniEl){
+    const sc=yeniEl.closest('.special-shelf-scroll'); if(sc) sc.scrollLeft=sc.scrollWidth;
+    yeniEl.closest('.special-shelf')?.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }
   notify(type==='bedside'?'🌙 Başucu Kitaplığı':'⛓️ Yasaklı Raf',`${added} kitap eklendi`);
 }
 

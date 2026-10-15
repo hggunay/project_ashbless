@@ -577,12 +577,34 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .special-shelf-bg{position:relative;min-height:160px;background-size:100% 100%;background-position:center;background-repeat:no-repeat;display:flex;flex-direction:column;justify-content:space-between;}
 .special-shelf-title{font-family:'Playfair Display',serif;font-size:1.1rem;font-weight:700;margin-bottom:.15rem;display:flex;align-items:center;gap:.5rem;}
 .special-shelf-sub{font-family:'Crimson Pro',serif;font-style:italic;font-size:.82rem;opacity:.75;margin-bottom:.75rem;}
-.book-spine{width:clamp(24px,5vw,36px);min-width:clamp(24px,5vw,36px);height:100px;border-radius:3px 6px 6px 3px;cursor:pointer;position:relative;display:flex;align-items:center;justify-content:center;transition:transform .15s,box-shadow .15s;box-shadow:2px 2px 6px rgba(0,0,0,.35),inset -3px 0 6px rgba(0,0,0,.3),inset 2px 0 4px rgba(255,255,255,.1);flex-shrink:0;}
-.book-spine:hover{transform:translateY(-6px);box-shadow:2px 8px 16px rgba(0,0,0,.45),inset -3px 0 6px rgba(0,0,0,.3),inset 2px 0 4px rgba(255,255,255,.15);}
-.book-spine-title{writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);font-family:'Crimson Pro',serif;font-size:clamp(.45rem,.7rem,1rem);font-weight:600;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.8);padding:10px 3px;width:100%;height:100%;display:flex;align-items:center;justify-content:center;text-align:center;overflow:hidden;word-break:break-word;line-height:1.2;position:relative;z-index:1;}
-.spine-add-btn{width:clamp(24px,5vw,36px);min-width:clamp(24px,5vw,36px);height:100px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
+/* KİTAP SIRTLARI (15 Ekim, Gökşin onayladı): boy/kalınlık/renk shelves.js'te kitap adından; burada
+   yuvarlak sırt ışığı, kumaş dokusu, çift altın çizgi, süs, kilit, yaslanan son kitap, ekleme animasyonu. */
+.book-spine{--egik:translateY(0);position:relative;flex-shrink:0;border-radius:3px 5px 5px 3px;cursor:pointer;box-shadow:2px 2px 6px rgba(0,0,0,.45);transition:transform .15s,box-shadow .15s;}
+.book-spine::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.06) 22%,rgba(0,0,0,0) 50%,rgba(0,0,0,.22) 80%,rgba(0,0,0,.42) 100%),
+             repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px);}
+.book-spine:hover{transform:translateY(-6px);box-shadow:2px 8px 16px rgba(0,0,0,.5);}
+.book-spine.yasli{--egik:rotate(-6deg);transform:rotate(-6deg);transform-origin:bottom left;margin-left:10px;}
+.book-spine.yasli:hover{transform:rotate(-6deg) translateY(-4px);}
+.sp-bant{position:absolute;left:3px;right:3px;height:4px;border-top:1px solid var(--b);border-bottom:1px solid var(--b);opacity:.85;pointer-events:none;}
+.sp-bant.ust{top:9px}.sp-bant.alt{bottom:9px}
+.sp-sus{position:absolute;left:0;right:0;bottom:2px;text-align:center;font-size:7px;color:var(--b);opacity:.9;pointer-events:none;}
+.sp-kilit{position:absolute;left:50%;top:22px;transform:translateX(-50%);width:9px;opacity:.8;pointer-events:none;}
+.book-spine-title{position:absolute;inset:13px 2px;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-family:'Crimson Pro',serif;font-weight:600;color:#f5ead2;text-shadow:0 1px 3px rgba(0,0,0,.9);text-align:center;overflow:hidden;word-break:normal;overflow-wrap:normal;line-height:1.1;}
+.special-shelf.basucu .book-spine-title{color:#4a3424;text-shadow:0 1px 0 rgba(255,255,255,.35);}
+.special-shelf.yasakli .book-spine{box-shadow:2px 2px 6px rgba(0,0,0,.6),0 0 10px rgba(192,132,252,.18);}
+.special-shelf.yasakli .book-spine-title{color:#e9d8ff;}
+@keyframes spYerAc{from{width:0;min-width:0;margin-left:-4px}to{width:var(--w);min-width:var(--w);margin-left:0}}
+@keyframes spSus{0%{transform:translateY(-130px) rotate(-4deg);opacity:0}55%{transform:translateY(4px) rotate(1deg);opacity:1}72%{transform:translateY(-5px) rotate(-.5deg)}86%{transform:translateY(1px)}100%{transform:var(--egik)}}   /* son kitap animasyondan sonra da yaslı kalsın */
+@keyframes spLamba{0%,40%{box-shadow:2px 2px 6px rgba(0,0,0,.45),0 0 0 rgba(255,190,80,0)}60%{box-shadow:2px 2px 6px rgba(0,0,0,.45),0 0 22px 6px rgba(255,190,80,.85)}100%{box-shadow:2px 2px 6px rgba(0,0,0,.45),0 0 0 rgba(255,190,80,0)}}
+@keyframes spGlitch{0%{opacity:0;transform:translateX(0);filter:none}10%{opacity:1;transform:translateX(-5px);filter:hue-rotate(80deg) brightness(1.6)}20%{opacity:.2;transform:translateX(4px)}30%{opacity:1;transform:translateX(-2px);filter:hue-rotate(-60deg) brightness(1.3)}45%{opacity:.4;transform:translateX(3px)}60%{opacity:1;transform:translateX(0);filter:brightness(1.5)}75%{opacity:.7;filter:hue-rotate(40deg)}100%{opacity:1;transform:var(--egik);filter:none}}
+/* backwards: animasyon bitince CSS'teki duruş (yaslı son kitap: eğim + aralık) geri gelir */
+/* +0,3 sn: ekleme penceresinin kapanış solması (0,25 sn) bitsin, animasyon arkada kalmasın */
+.book-spine.yeni-bedside{animation:spYerAc .6s .3s ease-out backwards,spSus 1.15s .75s cubic-bezier(.25,.8,.35,1) backwards,spLamba 2.4s 1.25s ease-out backwards;}
+.book-spine.yeni-forbidden{animation:spYerAc .6s .3s ease-out backwards,spGlitch 1.5s .8s steps(1) backwards;}
+.spine-add-btn{width:clamp(24px,5vw,32px);min-width:clamp(24px,5vw,32px);height:84px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
-.special-shelf-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:thin;scrollbar-color:rgba(201,162,39,.4) transparent;}
+.special-shelf-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:thin;scrollbar-color:rgba(201,162,39,.4) transparent;}
 .special-shelf-scroll::-webkit-scrollbar{height:4px;}
 .special-shelf-scroll::-webkit-scrollbar-track{background:transparent;}
 .special-shelf-scroll::-webkit-scrollbar-thumb{background:rgba(201,162,39,.4);border-radius:2px;}
@@ -2155,7 +2177,7 @@ try{
 <script src="badges.js?s=20260930n"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
 <script src="sezonluk.js?s=20260919b"></script>
-<script src="shelves.js?s=20260919b"></script>
+<script src="shelves.js?s=20261015a"></script>
 <script src="avatar.js?s=20260919b"></script>
 <script src="shelf.js?s=20261008b"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
