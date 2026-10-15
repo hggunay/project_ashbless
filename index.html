@@ -630,6 +630,29 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 @keyframes rafSecimDegis{from{opacity:.25;filter:blur(3px)}to{opacity:1;filter:none}}
 .raf-secim.acilis{animation:rafSecimAc .7s ease-out backwards;}
 .raf-secim.degis{animation:rafSecimDegis .45s ease-out backwards;}
+/* TEMA · DAYANAK · SÜRÜKLE (15 Ekim) */
+.raf-arac{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin:.1rem 0 .45rem;font-size:.8rem}
+.raf-arac select,.raf-arac button{font-family:'Space Mono',monospace;font-size:.62rem;padding:.2rem .45rem;border-radius:3px;border:1px solid rgba(201,162,39,.4);background:rgba(201,162,39,.1);color:var(--rust);cursor:pointer}
+.raf-arac-ipucu{font-family:'Space Mono',monospace;font-size:.56rem;color:var(--rust);opacity:.65}
+.raf-sirt,.raf-dayanak{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+.raf-dayanak{position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center}
+.raf-dayanak svg{display:block;filter:drop-shadow(1px 1px 2px rgba(0,0,0,.6))}
+.raf-dayanak.secili svg{filter:drop-shadow(0 0 4px var(--gold))}
+.rd-etiket{position:absolute;bottom:-11px;font-family:'Space Mono',monospace;font-size:7px;line-height:1;color:#f0d68a;max-width:36px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;text-shadow:0 1px 2px #000}
+.raf-hayalet{position:fixed!important;z-index:400;pointer-events:none;transform:rotate(-4deg) scale(1.08)!important;box-shadow:6px 10px 18px rgba(0,0,0,.55)!important;transition:none!important;animation:none!important}
+.raf-surukleniyor{opacity:.25}
+.raf-yer{width:4px;height:84px;border-radius:2px;background:var(--gold);box-shadow:0 0 10px var(--gold);align-self:flex-end;margin:0 2px}
+.raf-dmenu{padding:.5rem .7rem;font-size:.85rem;color:var(--rust)}
+.rd-baslik{font-weight:600;color:var(--ink)}
+.rd-etk{display:flex;gap:.4rem;align-items:center;margin:.3rem 0;font-family:'Space Mono',monospace;font-size:.62rem}
+.rd-etk input{font-family:'Crimson Pro',serif;font-size:.9rem;padding:.2rem .4rem;border:1px solid rgba(201,162,39,.4);border-radius:3px;width:9em;background:var(--cream);color:var(--ink)}
+.rd-cesitler{display:flex;flex-wrap:wrap;gap:.3rem;margin:.3rem 0 .4rem}
+.rd-cesit{display:flex;flex-direction:column;align-items:center;gap:2px;padding:.25rem .3rem;min-width:52px;border-radius:4px;border:1px solid rgba(201,162,39,.4);background:rgba(201,162,39,.08);color:var(--rust);font-family:'Space Mono',monospace;font-size:.5rem;cursor:pointer}
+.rd-cesit.sec{background:var(--gold);color:var(--ink)}
+.rd-mini{height:34px;display:flex;align-items:flex-end}
+.rd-ipucu{font-family:'Space Mono',monospace;font-size:.55rem;opacity:.75;margin-top:.1rem}
+.rd-cesit.sec.ters .rd-mini{transform:scaleX(-1)}
+.rd-mini svg{transform:scale(.58);transform-origin:bottom center;height:58px;margin:-24px -6px 0}
 .raf-secim-btn{font-size:.65rem;margin:.1rem 0 .5rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35);}
 .spine-add-btn{width:clamp(24px,5vw,32px);min-width:clamp(24px,5vw,32px);height:84px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
@@ -1804,13 +1827,14 @@ try{
       <div class="card" style="margin-bottom:.75rem">
         <div class="card-body" style="padding:.6rem .75rem;display:flex;gap:.4rem;flex-wrap:wrap;align-items:center">
           <input class="book-input" id="shelfSearch" type="text" placeholder="🔍 Ara..." style="flex:1;min-width:140px;font-size:.85rem;padding:.4rem .7rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35)" oninput="renderShelf()"/>
-          <select class="book-input" id="shelfSort" onchange="renderShelf()" style="font-size:.75rem;padding:.3rem .5rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);max-width:130px">
+          <select class="book-input" id="shelfSort" onchange="try{localStorage.setItem('aa-rafsira',this.value)}catch(e){};renderShelf()" style="font-size:.75rem;padding:.3rem .5rem;background:rgba(26,18,8,.07);color:var(--ink);border-color:rgba(201,162,39,.35);max-width:130px">
             <option value="title">🔤 Başlık</option>
             <option value="author">✍️ Yazar</option>
             <option value="publisher">🏢 Yayınevi</option>
             <option value="added">📅 Eklenme</option>
             <option value="series">📚 Seri</option>
             <option value="read">✓ Okunanlar önce</option>
+            <option value="kendi">✋ Kendi düzenim</option>
           </select>
           <!-- Düzenle modu (2026-10-07): kitap satırlarındaki düğmeler yalnız bu açıkken görünür — shelf.js -->
           <button type="button" id="shelfEditModeBtn" class="btn btn-sm" onclick="shelfDuzenleModu()" style="font-size:.72rem;padding:.3rem .6rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35)">✏️ Düzenle</button>
@@ -2210,7 +2234,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261015c"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261015c"></script>
+<script src="shelf.js?s=20261015d"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->

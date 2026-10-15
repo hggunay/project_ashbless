@@ -360,7 +360,9 @@ function rafGorunumDegistir(){
    · başka kitaba geçince: kutu açık kalır, yalnız içerik yumuşakça değişir (.degis) — her seferinde 2 sn beklenmesin */
 let _rafSecimAnim='', _rafKapaniyor=false;
 function rafSec(id){
+  if(_rafSurukBitti){ _rafSurukBitti=false; return; }   // sürükleme bitti, bu bir dokunuş değil
   if(_rafKapaniyor) return;
+  _rafDSecili=null;
   _rafRenkAcik=null;
   _rafSecimDuzen=false;
   if(_rafSecili===id){
@@ -398,18 +400,169 @@ function rafDokun(e){
   if(el&&!el.classList.contains('zipla')){ el.classList.add('zipla'); setTimeout(()=>el.classList.remove('zipla'),260); }
 }
 function _rafAcikMi(hex){ const n=parseInt(hex.slice(1),16); return ((n>>16)*299+((n>>8)&255)*587+(n&255)*114)/1000>150; }
-function rafSirtHtml(b,okunduMu,yeniMi){
-  const ad=b.title||'İsimsiz', h=(typeof _spOzet==='function'?_spOzet(ad):0), uzun=ad.length;
+/* TEMALAR · DAYANAKLAR · SÜRÜKLE-BIRAK (15 Ekim, Gökşin onayladı — scratchpad duzen-deneme.html'de denendi)
+   · Tema raf başına (sh.tema): renk vermediğin kitaplar temanın paletinden; kitabın kendi ad rengi temanın üstüne geçer.
+   · Dayanaklar raf başına (sh.dayanaklar = {id:{d:çeşit,e:etiket,ters}}), sıraları sh.duzen içinde 'd:<id>' olarak.
+   · "Kendi düzenim" sıralaması: sh.duzen = [kitap id | 'd:<id>', ...]; listede olmayan kitaplar sona (başlığa göre).
+     Dayanaklar YALNIZ bu sıralamada görünür (başka sıralamada aralarına düşecek kitap belli değil).
+   · Basılı tut (0,45 sn) → kalkar → sürükle → bırak. Başka sıralamadayken basılı tutmak önce "Kendi düzenim"e geçirir.
+   · Yalnız kendi rafında ve raf görünümünde; Rafsız Kitaplar'da yok. */
+const RAF_TEMALAR={
+  klasik:{ad:'Klasik',r:RAF_KLASIK},
+  akademik:{ad:'Akademik',r:['#4a1414','#14213d','#1b3a26','#1a1a1a','#3b2314','#2c1f3d','#5a1e1e','#0f2a2a'],bant:'#d8b24a',yazi:'#e8d18a'},
+  pastel:{ad:'Pastel',r:['#d9b3ad','#adc4a5','#a9bfd6','#c2b3d9','#e3d1a4','#e6bea3','#a8cfc3','#cba8bb','#d6c6a8','#b6cbdf']},
+  toprak:{ad:'Toprak',r:['#8a4b2a','#a0522d','#b8862b','#6b4a2b','#7a6a3a','#9c6b4a','#5e3b25','#c08a4f']},
+  gece:{ad:'Gece',r:['#1b1f3b','#2a2350','#3d2c5c','#1c2a44','#2b3d5c','#4a3a6b','#14182b','#3b3f66'],bant:'#b8bfd6',yazi:'#dfe3f0'},
+  deniz:{ad:'Deniz',r:['#1d4e5f','#2a6f78','#3b8b8f','#1f3d57','#5aa3a8','#2b5d73','#a9cfcf','#e0e9e3']},
+};
+const RAF_DAYANAK_TURLER=['ahsap','altin','metal','yildiz','ay','kedi','kedi2','kopek'];
+const RAF_DAYANAK_AD={ahsap:'Ahşap',altin:'Altın yıldızlı',metal:'Metal L',yildiz:'Yıldız',ay:'Ay dede',kedi:'Kara kedi',kedi2:'Kitap tutan kedi',kopek:'Kitap tutan köpek'};
+const RAF_DAYANAK_SVG={
+  ahsap:`<svg width="22" height="58" viewBox="0 0 22 58"><defs><linearGradient id="rdA" x1="0" x2="1"><stop offset="0" stop-color="#c99358"/><stop offset=".55" stop-color="#8a5a2b"/><stop offset="1" stop-color="#5a3816"/></linearGradient></defs><path d="M4 54 V15 Q4 4 11 4 Q18 4 18 15 V54 Z" fill="url(#rdA)"/><path d="M8 50 Q7 30 9 12 M13 50 Q14 32 12 14" stroke="#6b4320" stroke-width=".6" fill="none" opacity=".7"/><rect x="0" y="53" width="22" height="5" rx="1.5" fill="#4a2c10"/></svg>`,
+  altin:`<svg width="22" height="58" viewBox="0 0 22 58"><defs><linearGradient id="rdY" x1="0" x2="1"><stop offset="0" stop-color="#f6dc8a"/><stop offset=".55" stop-color="#c9a227"/><stop offset="1" stop-color="#7a5a10"/></linearGradient></defs><path d="M4 54 V20 Q4 12 11 12 Q18 12 18 20 V54 Z" fill="url(#rdY)"/><rect x="0" y="53" width="22" height="5" rx="1.5" fill="#6b4e0c"/><polygon points="11,1 12.9,6 18,6.2 14,9.3 15.4,14.2 11,11.4 6.6,14.2 8,9.3 4,6.2 9.1,6" fill="#fff3c4" stroke="#c9a227" stroke-width=".6"/></svg>`,
+  metal:`<svg width="26" height="58" viewBox="0 0 26 58"><defs><linearGradient id="rdM" x1="0" x2="1"><stop offset="0" stop-color="#f2f2f5"/><stop offset=".6" stop-color="#a3a3ad"/><stop offset="1" stop-color="#5c5c66"/></linearGradient></defs><rect x="3" y="6" width="5" height="50" rx="1.2" fill="url(#rdM)"/><rect x="3" y="52" width="23" height="5" rx="1.2" fill="#8a8a94"/><circle cx="5.5" cy="12" r="1" fill="#555"/></svg>`,
+  yildiz:`<svg width="30" height="58" viewBox="0 0 30 58"><polygon points="15,2 18.5,11 28,11.5 20.5,17.5 23,27 15,21.5 7,27 9.5,17.5 2,11.5 11.5,11" fill="#f2d27a" stroke="#a07c12" stroke-width="1"/><rect x="13.5" y="24" width="3" height="29" fill="#a07c12"/><rect x="6" y="52" width="18" height="5" rx="1.5" fill="#7a5a10"/></svg>`,
+  ay:`<svg width="30" height="58" viewBox="0 0 30 58"><path d="M21 4 A13 13 0 1 0 21 26 Q16.5 25.2 13.2 21.6 L11.7 20.1 L12.9 18.9 Q11.8 18.1 11.5 17.2 L14 15.4 L11.3 13.4 Q10.8 9.6 13.8 7 Q17 4.6 21 4 Z" fill="#f3d77e" stroke="#b08a20" stroke-width="1" stroke-linejoin="round"/><path d="M6.6 11.4 Q8.4 10 10 11.4" stroke="#5a400c" stroke-width="1.2" fill="none" stroke-linecap="round"/><circle cx="7.4" cy="16.6" r="1.7" fill="#f0a070" opacity=".55"/><rect x="13.5" y="26.5" width="3" height="26.5" fill="#b08a20"/><rect x="6" y="52" width="18" height="5" rx="1.5" fill="#7a5a10"/></svg>`,
+  kedi:`<svg width="30" height="58" viewBox="0 0 30 58"><path d="M24 50 Q30 46 27 38 Q26 35 28 33" stroke="#151515" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="14" cy="43" rx="10" ry="13" fill="#151515" stroke="#5a5a5a" stroke-width=".8"/><circle cx="14" cy="23" r="8" fill="#151515" stroke="#5a5a5a" stroke-width=".8"/><polygon points="7,19 8,9 13,16" fill="#151515" stroke="#5a5a5a" stroke-width=".8"/><polygon points="21,19 20,9 15,16" fill="#151515" stroke="#5a5a5a" stroke-width=".8"/><circle cx="11" cy="23" r="1.5" fill="#e8d050"/><circle cx="17" cy="23" r="1.5" fill="#e8d050"/><rect x="2" y="54" width="24" height="3" rx="1" fill="#2a2a2a"/></svg>`,
+  kedi2:`<svg width="30" height="58" viewBox="0 0 30 58"><path d="M8 50 Q0 46 3 38 Q4 34 2 31" stroke="#c8742a" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="12" cy="40" rx="7" ry="13" fill="#d9822e"/><path d="M8 34 Q12 33 16 34 M7 40 Q12 39 17 40 M8 46 Q12 45 16 46" stroke="#a0561a" stroke-width="1.2" fill="none"/><rect x="14" y="27" width="14" height="4" rx="2" fill="#d9822e"/><rect x="14" y="33" width="13" height="4" rx="2" fill="#d9822e"/><circle cx="14" cy="19" r="7" fill="#d9822e"/><polygon points="8.5,16 9,6 13.5,12.5" fill="#d9822e"/><polygon points="14.5,12.5 18.5,6 19.5,15.5" fill="#d9822e"/><circle cx="17" cy="18" r="1.3" fill="#1a1a1a"/><path d="M20 21 L23 21" stroke="#a0561a" stroke-width=".8"/><rect x="6" y="51" width="13" height="4" rx="2" fill="#d9822e"/><rect x="2" y="54" width="26" height="3" rx="1" fill="#5a3214"/></svg>`,
+  kopek:`<svg width="32" height="58" viewBox="0 0 32 58"><path d="M7 46 Q1 44 2 37" stroke="#8a5a32" stroke-width="3" fill="none" stroke-linecap="round"/><ellipse cx="13" cy="42" rx="9" ry="12" fill="#a06a3c"/><rect x="17" y="31" width="13" height="4.5" rx="2.2" fill="#a06a3c"/><rect x="15" y="44" width="5" height="10" rx="2" fill="#8a5a32"/><circle cx="15" cy="21" r="7.5" fill="#a06a3c"/><ellipse cx="23" cy="23" rx="5" ry="3.6" fill="#a06a3c"/><circle cx="27" cy="22" r="1.6" fill="#1a1a1a"/><path d="M11 16 Q7 20 9 29 Q12 27 13 18 Z" fill="#6b4220"/><circle cx="17" cy="19" r="1.3" fill="#1a1a1a"/><rect x="2" y="54" width="28" height="3" rx="1" fill="#4a2c10"/></svg>`,
+};
+function rafSirtHtml(b,okunduMu,yeniMi,tema,shId){
+  const ad=b.title||'İsimsiz', h=(typeof _spOzet==='function'?_spOzet(ad):0), uzun=ad.length, T=RAF_TEMALAR[tema]||RAF_TEMALAR.klasik;
   const boy=70+h%26, en=Math.max(20+(h>>>5)%12, uzun>22?44:uzun>15?36:0);
-  const zemin=RAF_RENKLER[b.renk]||RAF_KLASIK[(h>>>9)%RAF_KLASIK.length], acik=_rafAcikMi(zemin);
+  const zemin=RAF_RENKLER[b.renk]||T.r[(h>>>9)%T.r.length], acik=_rafAcikMi(zemin);
   const kelime=Math.max(...ad.split(/\s+/).map(x=>x.length)), fs=Math.max(7,Math.min(12,en*.4,(boy-24)/(kelime*.56)));
   const kls=['raf-sirt',_rafSecili===b.id?'secili':'',yeniMi?'yeni':''].join(' ');
   const ipucu=(ad+(b.author?' — '+b.author:'')).replace(/"/g,'&quot;');
-  return `<div class="raf-yuva"><div class="${kls}" onclick="rafSec('${b.id}')" title="${ipucu}"
-    style="width:${en}px;height:${boy}px;background:${zemin};--b:${acik?'#7a5a1e':'#d8b24a'}">
+  const yazi=acik?'#3a2a18':(T.yazi||'#f5ead2'), bant=acik?'#7a5a1e':(T.bant||'#d8b24a');
+  return `<div class="raf-yuva" data-anahtar="${b.id}"${shId?` onpointerdown="rafBas(event,'${shId}','${b.id}')"`:''}><div class="${kls}" onclick="rafSec('${b.id}')" title="${ipucu}"
+    style="width:${en}px;height:${boy}px;background:${zemin};--b:${bant}">
     <div class="rs-bant u"></div><div class="rs-bant a"></div>
-    <span class="rs-ad" style="font-size:${fs}px;color:${acik?'#3a2a18':'#f5ead2'};text-shadow:${acik?'none':'0 1px 2px rgba(0,0,0,.8)'}">${ad}</span>
+    <span class="rs-ad" style="font-size:${fs}px;color:${yazi};text-shadow:${acik?'none':'0 1px 2px rgba(0,0,0,.8)'}">${ad}</span>
     ${okunduMu?'<span class="rs-ok" title="Okudum">✓</span>':''}${b.lent?'<span class="rs-odunc" title="Ödünçte">↗</span>':''}</div></div>`;
+}
+function rafDayanakSekil(o){ const svg=RAF_DAYANAK_SVG[o.d]||RAF_DAYANAK_SVG.ahsap; return o.ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg; }
+function rafDayanakHtml(id,o,shId,sahip){
+  const sec=_rafDSecili&&_rafDSecili.sh===shId&&_rafDSecili.id===id;
+  return `<div class="raf-yuva" data-anahtar="d:${id}"${sahip?` onpointerdown="rafBas(event,'${shId}','d:${id}')"`:''}>
+    <div class="raf-dayanak${sec?' secili':''}" onclick="rafDayanakSec('${shId}','${id}')" title="Kitap dayanağı${o.e?': '+escapeHtml(o.e):''}">${rafDayanakSekil(o)}${o.e?`<div class="rd-etiket">${escapeHtml(o.e)}</div>`:''}</div></div>`;
+}
+// "Kendi düzenim": rafın öğeleri sırasıyla — [{k:kitap}|{d:id,o:dayanak}]
+function rafKendiSira(liste,sh,dayanakla){
+  const duzen=(sh&&sh.duzen)||[], kim=new Map(liste.map(b=>[b.id,b])), cikti=[], gorulen=new Set();
+  duzen.forEach(a=>{
+    if(String(a).startsWith('d:')){ const id=a.slice(2), o=sh.dayanaklar&&sh.dayanaklar[id]; if(o&&dayanakla) cikti.push({d:id,o}); }
+    else if(kim.has(a)&&!gorulen.has(a)){ cikti.push({k:kim.get(a)}); gorulen.add(a); }
+  });
+  liste.filter(b=>!gorulen.has(b.id)).sort((x,y)=>String(x.title||'').localeCompare(String(y.title||''),'tr')).forEach(b=>cikti.push({k:b}));
+  // duzen'e hiç girmemiş dayanaklar (yeni eklenen) sona
+  if(dayanakla&&sh&&sh.dayanaklar) Object.keys(sh.dayanaklar).forEach(id=>{ if(!duzen.includes('d:'+id)) cikti.push({d:id,o:sh.dayanaklar[id]}); });
+  return cikti;
+}
+function _rafSiraKendi(){ return (document.getElementById('shelfSort')?.value)==='kendi'; }
+function _rafSiraYap(deger){
+  const sel=document.getElementById('shelfSort'); if(sel) sel.value=deger;
+  try{localStorage.setItem('aa-rafsira',deger);}catch(e){}
+}
+function _rafRafi(shId){ const s=myShelf(); return s.shelves&&s.shelves[shId]; }
+// o an ekranda görünen sıra (kitap + dayanak anahtarları) — sürükleme ve "Kendi düzenim"e geçiş bunu temel alır
+function _rafEkranSirasi(shId){ return [...document.querySelectorAll(`.raf-satirlar[data-raf="${shId}"] .raf-yuva`)].map(y=>y.dataset.anahtar); }
+function rafTemaSec(shId,tema){ const sh=_rafRafi(shId); if(!sh) return; if(tema==='klasik') delete sh.tema; else sh.tema=tema; saveDb(); renderShelf(); }
+/* ── DAYANAK: ekle / seç / etiket / çeşit / çevir / kaldır ── */
+let _rafDSecili=null, _rafDDuzen=false, _rafDSilOnay=false;
+function rafDayanakEkle(shId){
+  const sh=_rafRafi(shId); if(!sh) return;
+  if(!_rafSiraKendi()){ if(!sh.duzen||!sh.duzen.length) sh.duzen=_rafEkranSirasi(shId); _rafSiraYap('kendi'); }
+  if(!sh.dayanaklar) sh.dayanaklar={};
+  const id='d'+Date.now().toString(36), say=Object.keys(sh.dayanaklar).length;
+  sh.dayanaklar[id]={d:RAF_DAYANAK_TURLER[say%RAF_DAYANAK_TURLER.length],e:''};
+  if(!sh.duzen) sh.duzen=[]; sh.duzen.push('d:'+id);
+  _rafSecili=null; _rafDSecili={sh:shId,id}; _rafDDuzen=false; _rafDSilOnay=false;
+  saveDb(); renderShelf();
+}
+function rafDayanakSec(shId,id){
+  if(_rafSurukBitti){ _rafSurukBitti=false; return; }
+  if(viewing) return;
+  const ayni=_rafDSecili&&_rafDSecili.sh===shId&&_rafDSecili.id===id;
+  _rafDSecili=ayni?null:{sh:shId,id}; _rafSecili=null; _rafDDuzen=false; _rafDSilOnay=false; renderShelf();
+}
+function _rafDO(){ const sh=_rafDSecili&&_rafRafi(_rafDSecili.sh); return sh&&sh.dayanaklar&&sh.dayanaklar[_rafDSecili.id]; }
+function rafDayanakEtiket(v,kaydet){
+  const o=_rafDO(); if(!o) return; o.e=String(v||'').slice(0,10);
+  const el=document.querySelector(`.raf-satirlar[data-raf="${_rafDSecili.sh}"] .raf-yuva[data-anahtar="d:${_rafDSecili.id}"] .raf-dayanak`);
+  if(el) el.innerHTML=rafDayanakSekil(o)+(o.e?`<div class="rd-etiket">${escapeHtml(o.e)}</div>`:'');
+  if(kaydet) saveDb();
+}
+function rafDayanakTur(t){
+  const o=_rafDO(); if(!o) return;
+  if(o.d!==t){ o.d=t; delete o.ters; }
+  else if(!o.ters) o.ters=true;
+  else { _rafDSilOnay=true; return rafDayanakKaldir(); }   // üçüncü dokunuş: kaldır
+  saveDb(); renderShelf();
+}
+function rafDayanakCevir(){ const o=_rafDO(); if(!o) return; if(o.ters) delete o.ters; else o.ters=true; saveDb(); renderShelf(); }
+function rafDayanakDuzen(){ _rafDDuzen=!_rafDDuzen; _rafDSilOnay=false; renderShelf(); }
+function rafDayanakKaldir(){
+  if(!_rafDSilOnay){ _rafDSilOnay=true; renderShelf(); setTimeout(()=>{ if(_rafDSilOnay){ _rafDSilOnay=false; renderShelf(); } },2500); return; }
+  const sh=_rafRafi(_rafDSecili.sh), id=_rafDSecili.id;
+  if(sh){ if(sh.dayanaklar) delete sh.dayanaklar[id]; sh.duzen=(sh.duzen||[]).filter(a=>a!=='d:'+id); }
+  _rafDSecili=null; _rafDSilOnay=false; saveDb(); renderShelf();
+}
+function rafDayanakMenu(shId){
+  if(!_rafDSecili||_rafDSecili.sh!==shId) return '';
+  const o=_rafDO(); if(!o) return '';
+  return `<div class="raf-secim raf-dmenu"><div class="rd-baslik">Kitap dayanağı</div>
+    <label class="rd-etk">Etiket <input maxlength="10" value="${escapeHtml(o.e||'')}" placeholder="ör. WWW" oninput="rafDayanakEtiket(this.value)" onchange="rafDayanakEtiket(this.value,true)"></label>
+    <div class="rd-cesitler">${RAF_DAYANAK_TURLER.map(t=>`<button type="button" class="rd-cesit${o.d===t?' sec':''}${o.d===t&&o.ters?' ters':''}" onclick="rafDayanakTur('${t}')" title="${RAF_DAYANAK_AD[t]}"><span class="rd-mini">${RAF_DAYANAK_SVG[t]}</span><span>${RAF_DAYANAK_AD[t]}</span></button>`).join('')}</div>
+    <div class="rd-ipucu">Bir resme dokun: o dayanak olur · aynı resme tekrar: yönü döner${o.ters?' · <b>bir daha: kaldırılır</b>':' · bir daha: kaldırılır'}</div></div>`;
+}
+/* ── BASILI TUT + SÜRÜKLE ── */
+let _rafSurukle=null, _rafBekle=null, _rafSurukBitti=false; let _rafSiraYuklendi=false;
+document.addEventListener('touchmove',e=>{ if(_rafSurukle) e.preventDefault(); },{passive:false});   // sürüklerken sayfa kaymasın
+function rafBas(e,shId,anahtar){
+  if(viewing||_rafGorunum!=='raf'||_rafSurukle) return;
+  const sx=e.clientX, sy=e.clientY, y=e.currentTarget;
+  clearTimeout(_rafBekle);
+  const kip=ev=>{ if(Math.hypot(ev.clientX-sx,ev.clientY-sy)>10) bitir(); };
+  const bitir=()=>{ clearTimeout(_rafBekle); document.removeEventListener('pointermove',kip); document.removeEventListener('pointerup',bitir); document.removeEventListener('pointercancel',bitir); };
+  document.addEventListener('pointermove',kip); document.addEventListener('pointerup',bitir); document.addEventListener('pointercancel',bitir);
+  _rafBekle=setTimeout(()=>{ bitir(); rafSurukBasla(y,shId,anahtar,sx,sy); },450);
+}
+function rafSurukBasla(y,shId,anahtar,x,yk){
+  const sh=_rafRafi(shId); if(!sh) return;
+  if(!_rafSiraKendi()){   // önce "Kendi düzenim"e geç, ekrandaki sıra başlangıç olsun
+    if(!sh.duzen||!sh.duzen.length){ sh.duzen=_rafEkranSirasi(shId); saveDb(); }
+    _rafSiraYap('kendi'); _rafSurukBitti=true; setTimeout(()=>{ _rafSurukBitti=false; },400); renderShelf();
+    if(typeof mesajGoster==='function') mesajGoster('Sıralama: Kendi düzenim — şimdi kitabı basılı tutup taşıyabilirsin');
+    return;
+  }
+  const el=y.firstElementChild, r=el.getBoundingClientRect(), h=el.cloneNode(true);
+  h.classList.add('raf-hayalet'); h.classList.remove('secili','yeni','zipla');
+  Object.assign(h.style,{width:r.width+'px',height:r.height+'px',left:r.left+'px',top:r.top+'px'});
+  document.body.appendChild(h); el.classList.add('raf-surukleniyor');
+  _rafSurukle={shId,anahtar,h,dx:x-r.left,dy:yk-r.top,hedef:null};
+  if(navigator.vibrate) navigator.vibrate(15);
+  document.addEventListener('pointermove',rafTasi); document.addEventListener('pointerup',rafBirak,{once:true}); document.addEventListener('pointercancel',rafBirak,{once:true});
+}
+function rafTasi(e){
+  const S=_rafSurukle; if(!S) return;
+  S.h.style.left=(e.clientX-S.dx)+'px'; S.h.style.top=(e.clientY-S.dy)+'px';
+  const yuvalar=[...document.querySelectorAll(`.raf-satirlar[data-raf="${S.shId}"] .raf-yuva`)]; let en=null,ed=1e9;
+  yuvalar.forEach(y=>{ const r=y.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top+r.height/2, d=Math.hypot(e.clientX-cx,(e.clientY-cy)*1.6); if(d<ed){ ed=d; en={y,sag:e.clientX>cx}; } });
+  document.querySelector('.raf-yer')?.remove();
+  if(en){ const i=document.createElement('div'); i.className='raf-yer'; en.sag?en.y.after(i):en.y.before(i); S.hedef={anahtar:en.y.dataset.anahtar,sag:en.sag}; }
+}
+function rafBirak(){
+  document.removeEventListener('pointermove',rafTasi); document.removeEventListener('pointerup',rafBirak); document.removeEventListener('pointercancel',rafBirak);
+  const S=_rafSurukle; if(!S) return; _rafSurukle=null;
+  S.h.remove(); document.querySelector('.raf-yer')?.remove(); _rafSurukBitti=true; setTimeout(()=>{ _rafSurukBitti=false; },400);
+  const sh=_rafRafi(S.shId); if(!sh||!S.hedef){ renderShelf(); return; }
+  const sira=_rafEkranSirasi(S.shId).filter(a=>a!==S.anahtar);
+  let j=sira.indexOf(S.hedef.anahtar); if(j<0) j=sira.length; else if(S.hedef.sag) j++;
+  sira.splice(j,0,S.anahtar);
+  // aramayla gizlenen kitaplar düzenden düşmesin: eski düzende olup ekranda olmayanları sona ekle
+  (sh.duzen||[]).forEach(a=>{ if(!sira.includes(a)) sira.push(a); });
+  sh.duzen=sira; saveDb(); renderShelf();
 }
 function shelfDuzenleModu(){
   _rafDuzenle=!_rafDuzenle;
@@ -873,6 +1026,8 @@ function renderShelf(){
   const bitmisAdlar=new Set(((db.books&&db.books[target])||[])
     .filter(k=>k&&(k.readingStatus==='new'||k.readingStatus==='past'||!!(k.endDate||k.yearOnly))&&k.readingStatus!=='reading')
     .map(k=>rafKitaplikAdi(k.title)));
+  // sıralama seçimi cihazda hatırlanır (15 Ekim — "Kendi düzenim" yeniden açılışta kaybolmasın)
+  if(!_rafSiraYuklendi){ _rafSiraYuklendi=true; try{ const v=localStorage.getItem('aa-rafsira'); const sel=document.getElementById('shelfSort'); if(v&&sel&&[...sel.options].some(o=>o.value===v)) sel.value=v; }catch(e){} }
   const sortMode=document.getElementById('shelfSort')?.value||'title';
   const container=document.getElementById('shelfContainer');
   if(!container) return;
@@ -1030,9 +1185,16 @@ function renderShelf(){
   }
 
   // raf görünümünde bir rafın gövdesi: ahşap kitaplık + seçilen kitabın satırı (işlemleriyle)
-  function rafKitaplik(liste){
+  function rafKitaplik(liste,sh){
     const sec=liste.find(b=>b.id===_rafSecili);
-    return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="rafDokun(event)">${liste.map(b=>rafSirtHtml(b,okundu(b),rafYeni.has(b.id))).join('')}</div></div>
+    const sahip=!viewing&&!!sh, kendi=sortMode==='kendi'&&!!sh, tema=(sh&&sh.tema)||'klasik';
+    // dayanaklar yalnız "Kendi düzenim"de ve arama yokken (arama kitapları gizler, dayanaklar anlamsız kalır)
+    const ogeler=kendi?rafKendiSira(liste,sh,!search):liste.map(b=>({k:b}));
+    const arac=sahip&&_rafDuzenle?`<div class="raf-arac">🎨 <select onchange="rafTemaSec('${sh.id}',this.value)" title="Raf teması">${Object.entries(RAF_TEMALAR).map(([k,v])=>`<option value="${k}"${k===tema?' selected':''}>${v.ad}</option>`).join('')}</select>
+      <button type="button" onclick="rafDayanakEkle('${sh.id}')">+ Dayanak</button>
+      <span class="raf-arac-ipucu">${kendi?'Taşımak için basılı tut':'Basılı tutunca "Kendi düzenim"e geçer'}</span></div>`:'';
+    return `${arac}<div class="raf-kitaplik"><div class="raf-satirlar"${sh?` data-raf="${sh.id}"`:''} onpointermove="rafDokun(event)" oncontextmenu="return false">${ogeler.map(o=>o.k?rafSirtHtml(o.k,okundu(o.k),rafYeni.has(o.k.id),tema,sahip?sh.id:null):rafDayanakHtml(o.d,o.o,sh.id,sahip)).join('')}</div></div>
+      ${sh?rafDayanakMenu(sh.id):''}
       ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}${_rafSecimAnim?' '+_rafSecimAnim:''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
         ${!viewing?`<button type="button" class="btn btn-sm raf-secim-btn" onclick="rafSecimDuzenle()">${_rafSecimDuzen?'✓ Bitti':'✏️ Düzenle'}</button>`:''}</div>`:''}`;
   }
@@ -1041,7 +1203,8 @@ function renderShelf(){
   let html='';
   let shelfPrefs={};try{shelfPrefs=JSON.parse(localStorage.getItem('aa-acc')||'{}');}catch(e){}
   shelves.forEach(sh=>{
-    const shBooks=books.filter(b=>b.shelfId===sh.id);
+    let shBooks=books.filter(b=>b.shelfId===sh.id);
+    if(sortMode==='kendi') shBooks=rafKendiSira(shBooks,sh,false).map(o=>o.k);   // listede de kendi sırası
     const totalQty=shBooks.reduce((s,b)=>s+(b.qty||1),0);
     const uniqueTitles=new Set(shBooks.map(b=>(b.title||'').toLowerCase().trim())).size;
     const countLabel=totalQty===uniqueTitles?`${totalQty} kitap`:`${totalQty} adet / ${uniqueTitles} başlık`;
@@ -1059,7 +1222,7 @@ function renderShelf(){
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${accKey}">
         <div class="card-body" style="padding:.5rem 1rem">
-          ${shBooks.length&&_rafGorunum==='raf'?rafKitaplik(shBooks):shBooks.length?`
+          ${(shBooks.length||(sh.dayanaklar&&Object.keys(sh.dayanaklar).length))&&_rafGorunum==='raf'?rafKitaplik(shBooks,sh):shBooks.length?`
             ${visible.map(b=>bookCard(b,!viewing)).join('')}
             <div style="display:flex;gap:.5rem;margin-top:.4rem;flex-wrap:wrap">
               ${hasMore?`<button class="btn btn-sm" style="font-size:.65rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="shelfShowMore('${sh.id}',${shownCount+SHELF_PAGE})">↓ Daha fazla (${shBooks.length-shownCount} kaldı)</button>`:''}
