@@ -31,7 +31,8 @@
 // 23: döngü çalar her başlatmada durumunu sıfırlar + kopya sonuna gelirse diğeri girer (Herbert: bitişten sonra daktilo gelmiyordu)
 // 24: üç yeni parça (Ink and Moonlight, Pages Past Midnight, Sunlight on the Shelves) + kapakları
 // 25: odada Magnus + sandalye + sehpa 1,3 kat (yer varsa), halı sehpanın altında kesilmiyor, yatayda şömine biraz solda
-const SURUM = "magnus-25";
+// 26: oda — kalın pencere çerçevesi + camın üstünde "+" kayıt, sallanan bordo perde + korniş, kedinin oyuncak sepeti
+const SURUM = "magnus-26";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

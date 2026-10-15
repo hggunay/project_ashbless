@@ -52,13 +52,16 @@ function yerlesim(){
     duvarAlt: Y(0.74),                                     // duvar/zemin sınırı
     somine: { x0: fx - X(0.12), x1: fx + X(0.12), ust: Y(0.42), alt: Y(0.80), cx: fx },
     ates:   { x0: fx - X(0.07), x1: fx + X(0.07), ust: Y(0.53), alt: Y(0.78) },
-    pencere:{ x0: X(0.05), x1: X(0.24), ust: Y(0.10), alt: Y(0.44) },
+    // 14 Ekim: biraz sola (0.05–0.24 → 0.04–0.22): sağdaki perde şöminenin rafına değmesin
+    pencere:{ x0: X(0.04), x1: X(0.22), ust: Y(0.10), alt: Y(0.44) },
     // portre (eskiden harita): DİKEY, rafın yanında ve daha aşağıda (Gökşin'in çizimi)
     harita: { x0: X(0.645), x1: X(0.775), ust: Y(0.13), alt: Y(0.47) },
     magnus: { x: mx, y: Y(0.93) },                         // sallanma merkezi: kızak ortası
     // sehpa Magnus'a BAĞLI: kucağının (~14 sütun solu) hemen solunda, her ekran oranında
     sehpa:  { x: mx - Math.round(25 * K), y: Y(0.92) },    // ayak uçları; tabla 7×K satır yukarıda
     kedi:   { x: X(0.25), y: Y(0.91) },
+    // kedinin oyuncak sepeti: pencerenin altında, yerde, duvara yaslı (taban orta)
+    sepet:  { x: Math.round((X(0.04) + X(0.22)) / 2), y: Y(0.74) + 3 },
     saat:   { x: fx, y: Y(0.42) - 6 },                 // kadran merkezi (kasa 8 satır, rafın üstünde)
   };
 }
@@ -136,11 +139,15 @@ function arkaKur(){
     "  |_________|  ",
     " [___________] " ].forEach((s, i) => yazS(sx - 7, sy - 3 + i, s, i < 6 ? 0.85 : 0.75));
   // PENCERE çerçevesi (içi her karede)
-  const Pn = L.pencere, pcx = Math.round((Pn.x0 + Pn.x1) / 2), pcy = Math.round((Pn.ust + Pn.alt) / 2);
-  for (let x = Pn.x0; x <= Pn.x1; x++){ koy(x, Pn.ust, "=", 0.75); koy(x, Pn.alt, "=", 0.75); koy(x, pcy, "-", 0.6); koy(x, Pn.alt + 1, "~", 0.45); }
-  for (let y = Pn.ust; y <= Pn.alt; y++){ koy(Pn.x0, y, "|", 0.75); koy(Pn.x1, y, "|", 0.75); koy(pcx, y, "|", 0.6); }
-  // perde kenarları
-  for (let y = Pn.ust - 1; y <= Pn.alt + 2; y++){ koy(Pn.x0 - 2, y, ")", 0.4); koy(Pn.x1 + 2, y, "(", 0.4); }
+  const Pn = L.pencere;
+  /* 14 Ekim (Gökşin: "çerçeveyi belirginleştir, ortaya + şeklinde kayıt"): ÇİFT çerçeve, köşelerde #.
+     Ortadaki + kayıt camın ÜSTÜNE pencereCiz'de çiziliyor — eskiden burada çiziliyordu ve
+     camın koyu dolgusu onu neredeyse tamamen örtüyordu. Perde de ayrı (perdeCiz, sallanıyor). */
+  for (let x = Pn.x0 - 1; x <= Pn.x1 + 1; x++){ koy(x, Pn.ust - 1, "=", 0.95); koy(x, Pn.alt + 1, "=", 0.95); }
+  for (let x = Pn.x0; x <= Pn.x1; x++){ koy(x, Pn.ust, "-", 0.8); koy(x, Pn.alt, "-", 0.8); }
+  for (let y = Pn.ust; y <= Pn.alt; y++){ koy(Pn.x0 - 1, y, "|", 0.95); koy(Pn.x1 + 1, y, "|", 0.95); koy(Pn.x0, y, "|", 0.8); koy(Pn.x1, y, "|", 0.8); }
+  [[Pn.x0 - 1, Pn.ust - 1], [Pn.x1 + 1, Pn.ust - 1], [Pn.x0 - 1, Pn.alt + 1], [Pn.x1 + 1, Pn.alt + 1]].forEach(([x, y]) => koy(x, y, "#", 1));
+  for (let x = Pn.x0 - 2; x <= Pn.x1 + 2; x++) koy(x, Pn.alt + 2, "~", 0.5);          // pervaz gölgesi
   // PORTRE: Magnus ve kedisi (Gökşin: haritanın harita olduğu belli değildi). Çift çerçeve.
   const M = L.harita;
   for (let x = M.x0; x <= M.x1; x++){ koy(x, M.ust, "=", 0.75); koy(x, M.alt, "=", 0.75); }
@@ -319,6 +326,81 @@ function pencereCiz(t){
     hk(Pn.x0 + 1 + R() * (Pn.x1 - Pn.x0) - (yy - Pn.ust) * 0.35, yy, "/", sm ? "#fff" : "rgba(160,180,215,.55)");
   }
   ctx.restore();
+  // + KAYIT: camın üstünde, ahşap (ışıkla boyanmaz: ateşten sonra çiziliyor → sıcak ton elle)
+  const pcx = Math.round((Pn.x0 + Pn.x1) / 2), pcy = Math.round((Pn.ust + Pn.alt) / 2), kr = "rgb(196,140,88)";
+  ctx.font = `bold ${yazi()}`;
+  // 15 Ekim (Gökşin: "+ biraz daha kalın"): dikey kayıt iki çizgi, yatay kayıt iki sıra
+  for (let y = Pn.ust + 1; y < Pn.alt; y++){ hk(pcx - 0.22, y, "|", kr); hk(pcx + 0.22, y, "|", kr); }
+  for (let x = Pn.x0 + 1; x < Pn.x1; x++){ hk(x, pcy - 0.2, "=", kr); hk(x, pcy + 0.2, "=", kr); }
+  hk(pcx, pcy, "#", "rgb(230,180,120)");
+}
+
+/* ── PERDE (14 Ekim, Gökşin: "hafifçe sallanan; pencere boyunu geçsin ama yere kadar inmesin"):
+   korniş + iki yanda kıvrımlı bordo kumaş. Üstten tutturulmuş: sallanma aşağı indikçe artar.
+   Işıktan ÖNCE çizilir → şöminenin ışığıyla boyanır. ── */
+function perdeCiz(t){
+  const Pn = L.pencere, ust = Pn.ust - 2, alt = Pn.alt + Math.round((L.duvarAlt - Pn.alt) * 0.45);
+  const GEN = 4, kivrim = ["(", "|", ")", "|"];
+  ctx.font = `bold ${yazi()}`;
+  // korniş
+  for (let x = Pn.x0 - GEN - 2; x <= Pn.x1 + GEN + 2; x++) hk(x, ust - 1, "=", "rgb(150,110,75)");
+  hk(Pn.x0 - GEN - 3, ust - 1, "o", "rgb(190,150,100)"); hk(Pn.x1 + GEN + 3, ust - 1, "o", "rgb(190,150,100)");
+  for (const [bas, yon] of [[Pn.x0 - GEN - 1, 1], [Pn.x1 + 2, -1]]){
+    for (let y = ust; y <= alt; y++){
+      const u = (y - ust) / (alt - ust);
+      const kay = u * u * (0.9 * dalga(5, t, bas) + 0.35 * dalga(13, t, bas + 2));   // üst sabit, uç salınır
+      const x0 = bas + kay;
+      ctx.fillStyle = "rgb(100,42,36)"; ctx.fillRect(x0 * cw, y * ch, GEN * cw + 1, ch + 1);   // arkası görünmesin
+      for (let i = 0; i < GEN; i++){
+        const k = y === alt ? "~" : kivrim[(i + (yon < 0 ? 1 : 0)) % 4];
+        hk(x0 + i, y, k, i % 2 ? "rgb(235,130,105)" : "rgb(195,88,74)");
+      }
+    }
+  }
+}
+
+/* ── OYUNCAK SEPETİ (14–15 Ekim, Gökşin'in tarifi): pencerenin hemen altında, yerde, duvara
+   yaslı büyükçe hasır sepet; iki yanında tutma sapları. İçinde kiremit-kırmızı bir yumak (ipi
+   sepetin önünden aşağı sarkıp sallanıyor) ve yanında yalnız başı + kolları görünen oyuncak
+   ayıcık. Kedi gibi kendi renginde (ışıktan sonra). Dikey ekranda sola taşacaksa çizilmez. ── */
+const SEPET = [
+  "            ()_()    ",
+  "    .@@@.   (o o)    ",
+  "   (@@@@@) c( - )o   ",
+  "  (|===============|)",
+  "   |\\/\\/\\/\\/\\/\\/\\/\\|  ",
+  "   |/\\/\\/\\/\\/\\/\\/\\/|  ",
+  "   '---------------'  ",
+];
+function sepetCiz(t){
+  const S = L.sepet, K = 1.5, kcw = cw * K, kch = ch * K;
+  const x0 = S.x * cw + cw / 2 - 10.5 * kcw, y0 = (S.y + 1) * ch - SEPET.length * kch;
+  if (x0 < 0) return;
+  ctx.font = `bold ${yazi(K)}`;
+  const IP = "rgb(206,92,64)";
+  SEPET.forEach((s, y) => {
+    const ilk = s.search(/\S/), son = s.length - [...s].reverse().join("").search(/\S/) - 1;
+    const py = y0 + y * kch;
+    ctx.fillStyle = py + kch / 2 < (L.duvarAlt + 0.5) * ch ? DUVAR_RENK : ZEMIN_RENK;   // arkası görünmesin
+    ctx.fillRect(x0 + ilk * kcw, py, (son - ilk + 1) * kcw + 1, kch + 1);
+    [...s].forEach((k, i) => {
+      if (k === " ") return;
+      let r;
+      if (y <= 2 && i >= 11) r = k === "o" && y === 1 ? "rgb(255,232,195)" : "rgb(205,160,110)";   // ayıcık
+      else if (k === "@" || (y <= 2 && "(.)".includes(k))) r = k === "." ? "rgb(240,140,100)" : IP;  // yumak
+      else if (y === 3) r = (k === "(" || k === ")") ? "rgb(185,130,75)" : "rgb(210,155,92)";     // saplar + ağız
+      else if (y === 6) r = "rgb(140,95,55)";
+      else r = "rgb(172,116,66)";                                                                 // örgü
+      ctx.fillStyle = r;
+      ctx.fillText(k, x0 + i * kcw + kcw / 2, py + kch / 2);
+    });
+  });
+  // yumağın ipi: ağızdan sepetin önüne, oradan yere kadar sarkar; aşağı indikçe daha çok sallanır
+  ctx.fillStyle = IP;
+  for (let j = 0; j < 7; j++){
+    const u = j / 6, dx = u * u * 0.9 * dalga(11, t, 0.5);
+    ctx.fillText(j % 2 ? "(" : ")", x0 + (6 + dx) * kcw + kcw / 2, y0 + (3 + j * 0.85) * kch + kch / 2);
+  }
 }
 
 /* ── SAAT: GERÇEK saati gösterir (açtığın an kaçsa o) ── */
@@ -547,10 +629,12 @@ function ciz(t){
   ctx.drawImage(ARKA, 0, 0);
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
   saatCiz();
+  perdeCiz(t);
   isik(t);                                             // oda (saat dahil) ateşle boyanır
   pencereCiz(t);
   atesCiz(t);
   kediCiz(t);
+  sepetCiz(t);
   buharCiz(t);
   magnusCiz(t);                                        // Magnus kendi renginde
   if (simsekMi(t)){ ctx.fillStyle = "rgba(200,210,255,.10)"; ctx.fillRect(0, 0, W, H); }
@@ -581,6 +665,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=25"></script>
+<script src="ortak.js?s=26"></script>
 </body>
 </html>
