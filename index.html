@@ -623,6 +623,10 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .raf-sirt.yeni{animation:rafBelir .7s .3s ease-out backwards;}
 .raf-secim{margin-top:.5rem;padding:.1rem .7rem;border:1px solid rgba(201,162,39,.35);border-radius:4px;background:rgba(201,162,39,.06);}
 .raf-secim > div{border-bottom:none !important;}
+/* seçili kitap: ad/yazar tam genişlikte, düğmeler (açılınca) ALTINDA sıralanır — telefonda ad sıkışmasın */
+.raf-secim > div > div:first-child{flex-direction:column;align-items:stretch !important;}
+.raf-secim > div > div:first-child > div:last-child{justify-content:flex-start !important;margin-top:.35rem;}
+.raf-secim-btn{font-size:.65rem;margin:.1rem 0 .5rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.35);}
 .spine-add-btn{width:clamp(24px,5vw,32px);min-width:clamp(24px,5vw,32px);height:84px;border-radius:3px 6px 6px 3px;border:2px dashed rgba(255,255,255,.3);background:rgba(255,255,255,.05);cursor:pointer;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.5);font-size:1.2rem;transition:all .15s;flex-shrink:0;}
 .spine-add-btn:hover{border-color:rgba(255,255,255,.6);color:rgba(255,255,255,.9);background:rgba(255,255,255,.1);}
 .special-shelf-scroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;touch-action:pan-x;scrollbar-width:thin;scrollbar-color:rgba(201,162,39,.4) transparent;}
@@ -2202,7 +2206,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261015c"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261015a"></script>
+<script src="shelf.js?s=20261015b"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->

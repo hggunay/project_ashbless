@@ -354,7 +354,11 @@ function rafGorunumDegistir(){
   try{localStorage.setItem('aa-rafgorunum',_rafGorunum);}catch(e){}
   renderShelf();
 }
-function rafSec(id){ _rafSecili=_rafSecili===id?null:id; renderShelf(); }
+function rafSec(id){ _rafSecili=_rafSecili===id?null:id; _rafSecimDuzen=false; renderShelf(); }
+// seçili kitabın satırında işlem düğmeleri gizli; tek "✏️ Düzenle" açar (Gökşin, 15 Ekim — telefonda
+// düğmeler adı sıkıştırıyordu, "Karısını / Şapka / Sanan / Adam")
+let _rafSecimDuzen=false;
+function rafSecimDuzenle(){ _rafSecimDuzen=!_rafSecimDuzen; renderShelf(); }
 // dokunmatikte :hover yok → parmak kitapların üstünden kayarken her biri sırayla zıplar
 function rafDokun(e){
   const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('.raf-sirt');
@@ -910,7 +914,8 @@ function renderShelf(){
   }
 
   // eylem: raf görünümünde seçilen kitabın satırında düğmeler Düzenle modu kapalıyken de görünsün —
-  // 🗑 SİL HARİÇ: o yalnız ✏️ Düzenle açıkken (7 Ekim kararı: kazara dokunma; kolcuAli uyarısı, 15 Ekim)
+  // eylem=true yalnız raf satırında AYRICA ✏️ Düzenle'ye basılınca gelir (sil dahil, iki dokunuşla) — 7 Ekim
+  // kazara dokunma kararı korunur (kolcuAli uyarısı + Gökşin'in tek-düğme önerisi, 15 Ekim)
   function bookCard(b,isMe=true,eylem=false){
     const countBadge=b.qty&&b.qty>1?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(201,162,39,.15);color:var(--leather);border:1px solid rgba(201,162,39,.3);border-radius:20px;padding:.1rem .4rem">×${b.qty}</span>`:'';
     const lentBadge=b.lent?`<span style="font-family:'Space Mono',monospace;font-size:.6rem;background:rgba(160,82,45,.15);color:var(--rust);border:1px solid rgba(160,82,45,.3);border-radius:20px;padding:.1rem .5rem">📤 ${b.lent.person} · ${b.lent.date}</span>`:'';
@@ -934,7 +939,7 @@ function renderShelf(){
           <button class="btn btn-sm" title="Ad rengi" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="rafRenkAc('${b.id}')">🎨</button>
           <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>
           <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" title="Kitaplarım'a ekle" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
-          ${_rafDuzenle?`<button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" onclick="deleteShelfBook('${b.id}')">🗑</button>`:''}
+          ${(_rafDuzenle||eylem)?`<button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" onclick="deleteShelfBook('${b.id}')">🗑</button>`:''}
         </div>`:''}
       </div>
       ${isMe?`<div id="kitaplik-row-${b.id}" style="display:none;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
@@ -988,7 +993,8 @@ function renderShelf(){
   function rafKitaplik(liste){
     const sec=liste.find(b=>b.id===_rafSecili);
     return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="rafDokun(event)">${liste.map(b=>rafSirtHtml(b,okundu(b),rafYeni.has(b.id))).join('')}</div></div>
-      ${sec?`<div class="raf-secim">${bookCard(sec,!viewing,true)}</div>`:''}`;
+      ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
+        ${!viewing?`<button type="button" class="btn btn-sm raf-secim-btn" onclick="rafSecimDuzenle()">${_rafSecimDuzen?'✓ Bitti':'✏️ Düzenle'}</button>`:''}</div>`:''}`;
   }
 
   const SHELF_PAGE=5;
@@ -1009,7 +1015,7 @@ function renderShelf(){
       <div class="card-header acc-header" onclick="toggleSection('${accKey}')" style="display:flex;align-items:center;justify-content:space-between;cursor:pointer;gap:.5rem">
         <span style="flex:1">🗄️ ${sh.name} <span style="font-family:'Space Mono',monospace;font-size:.65rem;opacity:.6">${countLabel}</span></span>
         <span class="acc-arrow ${isOpen?'open':''}" id="arr-${accKey}" onclick="event.stopPropagation()">▶</span>
-        ${!viewing?`<button id="del-shelf-btn-${sh.id}" class="btn btn-sm btn-danger" style="font-size:.6rem;min-width:28px;margin-left:.25rem" onclick="event.stopPropagation();deleteShelf('${sh.id}')">🗑</button>`:''}
+        ${!viewing&&_rafDuzenle?`<button id="del-shelf-btn-${sh.id}" class="btn btn-sm btn-danger" style="font-size:.6rem;min-width:28px;margin-left:.25rem" onclick="event.stopPropagation();deleteShelf('${sh.id}')">🗑</button>`:''}
       </div>
       <div class="acc-body ${isOpen?'open':''}" id="body-${accKey}">
         <div class="card-body" style="padding:.5rem 1rem">
