@@ -41,7 +41,8 @@
 // 33: oda — şimşek yeniden görünür (yağmurun ÜSTÜNDE, iki kat kalın; yağmur çakarken beyaza dönmez); sehpadaki kitap ile şömine rafındaki kitap kanat çırparak yer değiştirir (38. ve 104. sn)
 // 34: oda — kanat çırpma geri alındı (sakinliği bozdu): raftaki dik kitap ile sehpadaki yatık kitap 8 sn süzülüp havada dönerek duruş değiştirir
 // 35: YAĞMURLU PENCERE sahnesi (pencere.html): yarışan, birleşen, iz bırakan damlalar; odadaki pencereye dokununca yakınlaşarak gelinir, cama iki kez dokununca odaya dönülür
-const SURUM = "magnus-35";
+// 36: pencere — camın ardında rüzgârda sallanan bulanık ağaç dalları (karda üstleri karlı); yeni ses GÖK GÜRÜLTÜSÜ (gok.mp3): pencere ve odada şimşekten 1,5-4 sn sonra, başka sahnede rastgele
+const SURUM = "magnus-36";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

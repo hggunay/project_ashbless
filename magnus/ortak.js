@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "35";
+const SURUM_YAZI = "36";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -49,6 +49,12 @@ const SESLER = [
   { id: "sayfa",       ad: "Sayfa çevirme",     tur: "ara", ses: 0.8, aralik: [25, 75],
     olaylar: [[0, .5], [1.5, 2], [2.75, 3.25], [4, 4.5], [5.25, 5.75], [7.5, 7.75],
               [8.75, 9], [10, 10.25], [11.5, 11.75], [12.5, 12.8]] },
+  // gok.mp3 (16 Ekim): Gökşin'in indirdiği "dry thunder" kaydından sert çatırtısız üç uzak gürleme,
+  // eşit yükseklikte, sonları söner. Pencere ve odada şimşekten 1,5-4 sn sonra gelir (ışık önce),
+  // başka sahnede rastgele. gok2: enerjinin %72si hoparlörün veremediği 200 Hz altındaydı (Gökşin
+  // "sonuna kadar açtım hiç belli olmuyor") → orta sesler + üst tını eklendi, hoparlör aralığı +12 dB.
+  { id: "gok",         ad: "Gök gürültüsü",     tur: "ara", ses: 0.4, aralik: [70, 160], dosya: "gok2.mp3",
+    olaylar: [[0, 30.7], [31.3, 45.6], [46.2, 62.3]] },
 ];
 const HAZIR_KARISIM = {
   kutuphane: [{ ad: "Kütüphane", sesler: { saat: 0.6, sayfa: 0.8 } },
@@ -58,9 +64,9 @@ const HAZIR_KARISIM = {
   herbert:   [{ ad: "Dune 7", sesler: { daktilo: 0.45, saat: 0.5 } },
               { ad: "Yağmurlu gece mesaisi", sesler: { daktilo: 0.4, yagmur2: 0.4 } }],
   // 15 Ekim (Gökşin): + sayfa (Magnus'un sayfasıyla eş) + çay dökme (hayalet demlikle eş)
-  pencere:   [{ ad: "Yağmurlu pencere", sesler: { yagmur: 0.5, yagmur2: 0.3 } },
+  pencere:   [{ ad: "Yağmurlu pencere", sesler: { yagmur: 0.5, yagmur2: 0.3, gok: 0.4 } },
               { ad: "Yağmur + mırlama", sesler: { "yagmur-kedi": 0.5 } }],
-  oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4, sayfa: 0.8, caydanlik: 0.6 } }],
+  oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4, sayfa: 0.8, caydanlik: 0.6, gok: 0.4 } }],
 };
 const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
 const SAHNE = document.body.dataset.sahne || "orman";
@@ -453,7 +459,8 @@ function araPlanla(){
     // kütüphane ve odada sayfa sesi Magnus'un sayfasıyla eş → rastgele çalmaz; odada çay sesi de
     // hayalet demlikle eş (15 Ekim)
     const kapali = D.sesler[t.id] == null || ((SAHNE === "kutuphane" || SAHNE === "oda") && t.id === "sayfa")
-                || (SAHNE === "oda" && t.id === "caydanlik");
+                || (SAHNE === "oda" && t.id === "caydanlik")
+                || ((SAHNE === "oda" || SAHNE === "pencere") && t.id === "gok");   // şimşekle eş (16 Ekim)
     if (kapali){ clearTimeout(araZaman[t.id]); araZaman[t.id] = null; continue; }
     if (araZaman[t.id]) continue;
     const [a, b] = t.aralik;
@@ -469,6 +476,8 @@ window.magnusMesaj = t => mesaj(t, true);
 window.magnusSayfaSesi = () => { if (D.sesler.sayfa != null) tekCal("sayfa"); };
 // Oda: hayalet demlik çayı döktüğü AN (oda.html çağırır)
 window.magnusCaySesi = () => { if (D.sesler.caydanlik != null) tekCal("caydanlik"); };
+// Oda + pencere: şimşek çaktığı AN çağrılır; gök gürültüsü 1,5-4 sn sonra (önce ışık, sonra ses)
+window.magnusGokSesi = () => { if (D.sesler.gok != null) setTimeout(() => tekCal("gok"), 1500 + Math.random() * 2500); };
 // sahne bir sesi önceden yükletebilsin (ilk çalışta gecikmesin — oda: çay)
 window.magnusSesHazirla = id => { tamponYukle(id).catch(() => {}); };
 
