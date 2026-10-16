@@ -8,6 +8,8 @@
 <style>
 html,body{margin:0;height:100%;background:#000;overflow:hidden}
 canvas{display:block;width:100vw;height:100vh}
+canvas.yakin{transition:transform 1s ease-in,opacity .5s ease-in .55s}
+canvas.uzak{transition:transform 1s ease-out}
 body.sakin{cursor:none}
 </style>
 </head>
@@ -618,6 +620,31 @@ c.addEventListener("pointerdown", e => {
   kediDokunus = performance.now();
   if (window.magnusMesaj) window.magnusMesaj("Ayraç · Favori uyku mekânı Magnus'un\naçık bıraktığı kitaplar olduğu için bu adı aldı.");
 });
+/* PENCEREYE DOKUNUNCA (16 Ekim, Gökşin): kamera cama yaklaşır → Yağmurlu Pencere sahnesi.
+   Oradan cama iki kez dokununca buraya ?pencereden=1 ile dönülür ve kamera camdan geri uzaklaşır. */
+function pencereKamerasi(){                                             // css piksel: merkez + yakınlık
+  const Pn = L.pencere, d = W / innerWidth;
+  const x0 = Pn.x0 * cw / d, x1 = (Pn.x1 + 1) * cw / d, y0 = Pn.ust * ch / d, y1 = (Pn.alt + 1) * ch / d;
+  const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, k = Math.max(innerWidth / (x1 - x0), innerHeight / (y1 - y0)) * 1.05;
+  // pencere büyürken ekranın ORTASINA da kayar (yoksa soldaki pencere büyüyünce sağ taraf açıkta kalıyordu)
+  return { cx, cy, k, donus: `translate(${innerWidth / 2 - cx}px, ${innerHeight / 2 - cy}px) scale(${k})` };
+}
+let pencereyeGidiyor = false;
+c.addEventListener("pointerdown", e => {
+  if (!L || pencereyeGidiyor) return;
+  const d = W / innerWidth, gx = e.clientX * d / cw, gy = e.clientY * d / ch, Pn = L.pencere;
+  if (gx < Pn.x0 - 1 || gx > Pn.x1 + 1 || gy < Pn.ust - 1 || gy > Pn.alt + 1) return;
+  pencereyeGidiyor = true;
+  const k = pencereKamerasi();
+  c.style.transformOrigin = `${k.cx}px ${k.cy}px`; c.classList.add("yakin");
+  c.style.transform = k.donus; c.style.opacity = "0";
+  setTimeout(() => { if (window.magnusSahneGit) window.magnusSahneGit("pencere.html"); else location.href = "pencere.html"; }, 1000);
+});
+// tarayıcının "geri" tuşuyla dönülürse sayfa yakınlaşmış (kararmış) hâliyle geri gelmesin
+addEventListener("pageshow", e => {
+  if (!e.persisted) return;
+  c.classList.remove("yakin", "uzak"); c.style.transform = ""; c.style.opacity = ""; pencereyeGidiyor = false;
+});
 function kediCiz(t){
   const tt = t % T, kd = tt - KEDI_KIRP;
   const kirpiyor = kd >= 0 && kd < 2.1 && Math.floor(kd / 0.35) % 2 === 0;   // ~0,35 sn açık / kapalı, üç kez
@@ -971,10 +998,16 @@ document.addEventListener("visibilitychange", () => {
   boyutlandir();
 });
 boyutlandir();
+if (P.has("pencereden") && L){                                          // camdan geri uzaklaş
+  const k = pencereKamerasi();
+  c.style.transformOrigin = `${k.cx}px ${k.cy}px`; c.style.transform = k.donus;
+  requestAnimationFrame(() => requestAnimationFrame(() => { c.classList.add("uzak"); c.style.transform = "translate(0px, 0px) scale(1)"; }));
+  history.replaceState(null, "", "oda.html");                           // yenileyince yine yakınlaşmasın
+}
 addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK); });
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=34"></script>
+<script src="ortak.js?s=35"></script>
 </body>
 </html>

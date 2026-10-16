@@ -40,12 +40,13 @@
 // 32: karlı pencerede kardan adam: kar biriktirir, silkelenir (kar saçılır), iki kez göz kırpar
 // 33: oda — şimşek yeniden görünür (yağmurun ÜSTÜNDE, iki kat kalın; yağmur çakarken beyaza dönmez); sehpadaki kitap ile şömine rafındaki kitap kanat çırparak yer değiştirir (38. ve 104. sn)
 // 34: oda — kanat çırpma geri alındı (sakinliği bozdu): raftaki dik kitap ile sehpadaki yatık kitap 8 sn süzülüp havada dönerek duruş değiştirir
-const SURUM = "magnus-34";
+// 35: YAĞMURLU PENCERE sahnesi (pencere.html): yarışan, birleşen, iz bırakan damlalar; odadaki pencereye dokununca yakınlaşarak gelinir, cama iki kez dokununca odaya dönülür
+const SURUM = "magnus-35";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
 const CEKIRDEK = [
-  "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "herbert.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
+  "./", "index.html", "orman.html", "kutuphane.html", "oda.html", "pencere.html", "herbert.html", "ortak.js", "nosleep.min.js", "manifest.webmanifest",
   "gorsel/hayalet.png", "gorsel/hayalet-okuyan.png", "gorsel/mum.png", "ikon-192.png", "ikon-512.png",
   "gorsel/magnus-fener.png", "gorsel/herbert.png", "gorsel/herbert-aura.png", "gorsel/kagitlar.png", "gorsel/kagit-ucan.png",
   ...["Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",

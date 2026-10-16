@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "34";
+const SURUM_YAZI = "35";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -58,6 +58,8 @@ const HAZIR_KARISIM = {
   herbert:   [{ ad: "Dune 7", sesler: { daktilo: 0.45, saat: 0.5 } },
               { ad: "Yağmurlu gece mesaisi", sesler: { daktilo: 0.4, yagmur2: 0.4 } }],
   // 15 Ekim (Gökşin): + sayfa (Magnus'un sayfasıyla eş) + çay dökme (hayalet demlikle eş)
+  pencere:   [{ ad: "Yağmurlu pencere", sesler: { yagmur: 0.5, yagmur2: 0.3 } },
+              { ad: "Yağmur + mırlama", sesler: { "yagmur-kedi": 0.5 } }],
   oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4, sayfa: 0.8, caydanlik: 0.6 } }],
 };
 const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
@@ -65,7 +67,7 @@ const SAHNE = document.body.dataset.sahne || "orman";
 // Dört sahne (25 Eylül gecesi Oda, 29 Eylül Herbert = kütüphanenin başka bir günü):
 // düğme sıradakine geçer, simgesi SIRADAKİNİ gösterir
 const SAHNELER = [{ id: "kutuphane", ad: "Kütüphane" }, { id: "herbert", ad: "Herbert" },
-                  { id: "oda", ad: "Oda" }, { id: "orman", ad: "Orman" }];
+                  { id: "oda", ad: "Oda" }, { id: "pencere", ad: "Yağmurlu Pencere" }, { id: "orman", ad: "Orman" }];
 const _si = Math.max(0, SAHNELER.findIndex(s => s.id === SAHNE));
 const _sn = SAHNELER[(_si + 1) % SAHNELER.length];
 const DIGER = { href: _sn.id + ".html", ad: _sn.ad, id: _sn.id };
@@ -99,6 +101,7 @@ const SIMGE = {
     kutuphane: S('<path d="M4 5h3v14H4zM9 5h3v14H9zM14.5 5.5l2.8-.8 3.6 13.5-2.8.8z"/>'), // kitaplar
     orman: S('<path d="M12 3l6 9h-3l4 6H5l4-6H6z"/>'),                                    // çam
     herbert: S('<path d="M7 4h10v6H7zM3 10h18v9H3zM6 13h2M10 13h2M14 13h2M18 13h0M7 16h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>'), // daktilo
+    pencere: S('<path d="M5 3h14v18H5zM12 3v18M5 12h14" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 6.5v1.5M15.5 14v1.5M9 15v1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>'), // yağmurlu pencere
     oda: S('<path d="M3 20h18M5 20V9h14v11M3 9h18M12 18c-2.5 0-3-2-1.5-4 .2 1 1 1.2 1.2.3.4-1.5 2.8-.8 2.3 1.6-.3 1.3-1 2.1-2 2.1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>'), // şömine
   }[DIGER.id],
 };
@@ -725,16 +728,18 @@ function yanCevirKapat(){
   yanCevir.classList.add("gidiyor");
   setTimeout(() => { yanCevir.style.display = "none"; }, 800);
 }
-if (innerHeight > innerWidth && innerWidth < 700 && !ONIZLEME){
+if (innerHeight > innerWidth && innerWidth < 700 && !ONIZLEME && SAHNE !== "pencere"){   // cam dikte de ekranı doldurur
   yanCevir.style.display = "flex";
   yanCevir.addEventListener("pointerdown", yanCevirKapat);
   setTimeout(yanCevirKapat, 4000);
 }
 
 /* ── SAHNE geçişi + TAM EKRAN + ekran kararmasın ── */
-$("mSahne").onclick = () => {
+$("mSahne").onclick = () => window.magnusSahneGit(DIGER.href);
+/* Sahneler arası geçiş (müzik kaldığı yerden sürsün). Oda ↔ Yağmurlu Pencere yakınlaşması da bunu çağırır. */
+window.magnusSahneGit = (href) => {
   D.devam = { caliyor: muzikIstek && !muzik.paused, zaman: muzik.currentTime || 0 }; yaz(D);
-  location.href = DIGER.href;
+  location.href = href;
 };
 $("mTam").onclick = async () => {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch (e) {}
