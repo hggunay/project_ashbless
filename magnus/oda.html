@@ -132,7 +132,8 @@ function arkaKur(){
     }
     bx += gen;
   }
-  yazS(bx + 1, rafY - 1, "[=====]", 0.7);                               // yatık kitap
+  // yatık kitap: ARKA'ya çizilmez, UÇAN KİTAP olarak her karede (aşağıda kitapDurur/kitapUcar)
+  L.rafKitap = { x: (bx + 4) * cw + cw / 2, y: (rafY - 1) * ch + ch / 2, k: 1, v: 0.7 };
   // saksı + YUKARI açılan uzun yapraklı bitki (Gökşin: sarkan dallar hiç dikkat çekmiyordu)
   const px = S.x1 - 5;
   [ "\\   |   /",
@@ -223,6 +224,8 @@ function arkaKur(){
     if (i <= 5) sil(sehpaX(ilk) - cw * K / 2, sehpaX(son) + cw * K / 2, y - yy, y + yy);
     else for (let j = ilk; j <= son; j++) if (s[j] !== " ") sil(sehpaX(j) - cw * K / 2, sehpaX(j) + cw * K / 2, y - yy, y + yy);
   });
+  // sehpadaki en üst kitap (satır 2, sütun 1-7) da uçan kitap: tabloda boş bırakılır
+  L.sehpaKitap = { x: sehpaX(4), y: sehpaY(2), k: K, v: 0.8 };
   // çiz
   ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
   const x = ARKA.getContext("2d");
@@ -239,7 +242,7 @@ function arkaKur(){
   // SEHPA (K kat): ızgaradaki aynı parlaklıklarla
   x.font = `bold ${yazi(K)}`;
   SEHPA.forEach((s, i) => [...s].forEach((k, j) => {
-    if (k === " ") return;
+    if (k === " " || (i === 2 && j >= 1 && j <= 7)) return;                // uçan kitabın yeri
     const v = Math.min(255, Math.round(330 * (i < 5 ? 0.8 : 0.7)));
     x.fillStyle = `rgb(${v},${v},${v})`;
     x.fillText(k, sehpaX(j), sehpaY(i));
@@ -336,24 +339,6 @@ function pencereCiz(t){
     const ux = d.x + d.yon * d.boy * 0.9, uy = d.y + d.boy * d.egim + Math.sin(sal * 6 + 1) * 2.4;
     for (let j = 0; j < 7; j++) hk(ux + (RY() - 0.5) * 4, uy + (RY() - 0.5) * 2.5, "&%*&"[j % 4], yaprakRenk);   // uçta dolgun küme
   }
-  /* ŞİMŞEK (15 Ekim, Gökşin): iki çakmada; ilkinde zikzağın ÜST yarısı, ikincisinde ALT yarısı.
-     Sol üstten sağ ortaya iner. Kaydın (+) arkasında kalır (kayıt sonra çiziliyor). */
-  const si = KAR ? -1 : SIMSEK.findIndex(([a, b]) => t % T >= a && t % T < b);
-  if (si >= 0){
-    const pw = Pn.x1 - Pn.x0, ph = Pn.alt - Pn.ust;
-    const YOL = [[[0.06, 0.03], [0.28, 0.18], [0.22, 0.24], [0.50, 0.36]],
-                 [[0.50, 0.36], [0.42, 0.46], [0.70, 0.55], [0.64, 0.60], [0.96, 0.66]]][si];
-    ctx.save(); ctx.font = `bold ${yazi(1.25)}`; ctx.shadowColor = "rgba(200,220,255,1)"; ctx.shadowBlur = 18;
-    for (let k = 0; k < YOL.length - 1; k++){
-      const [ax, ay] = YOL[k], [bx2, by2] = YOL[k + 1];
-      const x0 = Pn.x0 + ax * pw, y0 = Pn.ust + ay * ph, x1 = Pn.x0 + bx2 * pw, y1 = Pn.ust + by2 * ph;
-      const dx = x1 - x0, dy = y1 - y0, n = Math.max(2, Math.ceil(Math.hypot(dx * 0.6, dy) * 2));
-      const egim = dy / (Math.abs(dx) * 0.6 + 1e-6);                     // hücre en/boy farkı hesaba katılır
-      const kr = Math.abs(egim) > 2.2 ? "|" : Math.abs(egim) < 0.22 ? "-" : (dx > 0) === (dy > 0) ? "\\" : "/";
-      for (let j = 0; j <= n; j++) hk(x0 + dx * j / n, y0 + dy * j / n, kr, "rgb(255,255,245)");
-    }
-    ctx.restore();
-  }
   if (KAR) karManzara(t); else {
   /* yağmur çizgileri — 15 Ekim (Gökşin): yönü şimşekle aynı (sol üstten sağ alta "\"), daha sık
      ve belirgin. Eskiden "/" ile sağdan sola yağıyordu. */
@@ -362,7 +347,7 @@ function pencereCiz(t){
   for (let i = 0; i < 40; i++){
     const hiz = 10 + R() * 6, yy = ((t * hiz + R() * 100) % (Pn.alt - Pn.ust + 4)) + Pn.ust - 2;
     const xx = Pn.x0 - 6 + ((R() * pg + (yy - Pn.ust) * 0.35) % pg);    // sağa kayarken taşan, soldan girer
-    hk(xx, yy, "\\", sm ? "#fff" : "rgba(175,195,230,.8)");
+    hk(xx, yy, "\\", sm ? "rgba(205,220,250,.55)" : "rgba(175,195,230,.8)");
   }
   /* CAMDAN SÜZÜLEN DAMLALAR: camın iç yüzünde yavaşça (ara ara durup) inen damlalar, arkalarında
      ince iz. Her damla kendi temposunda; alta varınca yukarıda yeniden belirir. */
@@ -378,6 +363,27 @@ function pencereCiz(t){
     const dy = ust + (dur * 0.9) % boy;
     for (let k = 1; k <= 2; k++) if (dy - k * 0.8 >= ust) hk(dx, dy - k * 0.8, k === 1 ? ":" : "'", `rgba(200,220,245,${0.45 - k * 0.15})`);   // iz de bölmede kalır
     hk(dx, dy, "o", sm ? "#fff" : "rgba(215,232,255,.9)");
+  }
+  /* 16 Ekim (Gökşin: "yıldırım yok olmuş, sadece ışık parlıyor"): yağmur da "\" olunca ve çakarken
+     bembeyaz olunca zikzak yağmurun içinde kayboluyordu; üstelik yağmur sonra çizilip onu örtüyordu.
+     Şimdi zikzak yağmur + damlalardan SONRA, iki kat kalın, sıcak beyaz; yağmur çakarken beyaza dönmez. */
+  /* ŞİMŞEK (15 Ekim, Gökşin): iki çakmada; ilkinde zikzağın ÜST yarısı, ikincisinde ALT yarısı.
+     Sol üstten sağ ortaya iner. Kaydın (+) arkasında kalır (kayıt sonra çiziliyor). */
+  const si = KAR ? -1 : SIMSEK.findIndex(([a, b]) => t % T >= a && t % T < b);
+  if (si >= 0){
+    const pw = Pn.x1 - Pn.x0, ph = Pn.alt - Pn.ust;
+    const YOL = [[[0.06, 0.03], [0.28, 0.18], [0.22, 0.24], [0.50, 0.36]],
+                 [[0.50, 0.36], [0.42, 0.46], [0.70, 0.55], [0.64, 0.60], [0.96, 0.66]]][si];
+    ctx.save(); ctx.font = `bold ${yazi(1.4)}`; ctx.shadowColor = "rgba(190,215,255,1)"; ctx.shadowBlur = 22;
+    for (let k = 0; k < YOL.length - 1; k++){
+      const [ax, ay] = YOL[k], [bx2, by2] = YOL[k + 1];
+      const x0 = Pn.x0 + ax * pw, y0 = Pn.ust + ay * ph, x1 = Pn.x0 + bx2 * pw, y1 = Pn.ust + by2 * ph;
+      const dx = x1 - x0, dy = y1 - y0, n = Math.max(2, Math.ceil(Math.hypot(dx * 0.6, dy) * 2));
+      const egim = dy / (Math.abs(dx) * 0.6 + 1e-6);                     // hücre en/boy farkı hesaba katılır
+      const kr = Math.abs(egim) > 2.2 ? "|" : Math.abs(egim) < 0.22 ? "-" : (dx > 0) === (dy > 0) ? "\\" : "/";
+      for (let j = 0; j <= n; j++) for (const o of [-0.12, 0.12]) hk(x0 + dx * j / n + o, y0 + dy * j / n, kr, "rgb(255,252,225)");   // iki kat: kalın
+    }
+    ctx.restore();
   }
   }                                                                       // (yağmur sonu)
   ctx.restore();
@@ -851,6 +857,58 @@ function isik(t){
   ctx.globalCompositeOperation = "source-over";
 }
 
+/* ── UÇAN KİTAPLAR (16 Ekim, Gökşin'in fikri): sehpadaki üst kitap ile şömine rafındaki yatık kitap
+   AYNI ANDA havalanır, kanat çırparak (açık kitap: kapaklar kanat) birbirinin yanından geçip yer
+   değiştirir; sonraki uçuşta geri dönerler. Biri yüksekten, öbürü alçaktan kavis çizer (çarpışmasın).
+   Dururken ateşle boyanır (ışıktan önce çizilir); uçarken en üstte, ateşe yaklaşınca turuncu parlar. ── */
+const KITAP_UCUS = [[38, 41.5], [104, 107.5]];                          // T içinde (sn): gidiş, dönüş
+const KANAT = [["\\     /", " \\_=_/ "], ["--=v=--"], [" /=^=\\ ", "/     \\"], ["--=v=--"]];
+function kitapHali(t){                                                  // [rafdaki, sehpadaki] nerede + uçuş ilerlemesi
+  const [g, d] = KITAP_UCUS;
+  if (t >= g[0] && t < g[1]) return { ucus: (t - g[0]) / (g[1] - g[0]), yer: 0 };
+  if (t >= d[0] && t < d[1]) return { ucus: (t - d[0]) / (d[1] - d[0]), yer: 1 };
+  return { ucus: -1, yer: t >= g[1] && t < d[0] ? 1 : 0 };              // 1 = yer değiştirmiş
+}
+function kitapYaz(x0, y0, satirlar, k, renk){
+  ctx.font = `bold ${yazi(k)}`; ctx.fillStyle = renk;
+  satirlar.forEach((s, r) => [...s].forEach((c, i) => {
+    if (c !== " ") ctx.fillText(c, x0 + (i - (s.length - 1) / 2) * cw * k, y0 + (r - (satirlar.length - 1) / 2) * ch * k);
+  }));
+}
+function kitapDurur(t){
+  if (!L.rafKitap || !L.sehpaKitap) return;
+  const h = kitapHali(t); if (h.ucus >= 0) return;
+  const A = L.rafKitap, B = L.sehpaKitap;
+  // yer değiştirince kitap yeni yerinin boyunda ve parlaklığında durur
+  for (const [yer, kaynak] of h.yer ? [[A, B], [B, A]] : [[A, A], [B, B]]){
+    const v = Math.min(255, Math.round(330 * yer.v));
+    kitapYaz(yer.x, yer.y, ["[=====]"], yer.k, `rgb(${v},${v},${v})`);
+  }
+}
+function kitapUcar(t){
+  if (!L.rafKitap || !L.sehpaKitap) return;
+  const h = kitapHali(t); if (h.ucus < 0) return;
+  const A = L.rafKitap, B = L.sehpaKitap, p = h.ucus;
+  const e = p * p * (3 - 2 * p);                                        // yumuşak kalkış/iniş
+  const fx = L.somine.cx * cw, fy = (L.ates.ust + ATES_H * 0.6) * ch;
+  ctx.save(); ctx.shadowColor = "rgba(20,12,8,.95)"; ctx.shadowBlur = 6;
+  // gidişte raf→sehpa yüksekten, sehpa→raf alçaktan; dönüşte tersi (yine çarpışmasınlar)
+  // biri rafın 10 satır üstünden, öbürü sehpanın 3 satır üstünden kavis çizer → ortada iyice ayrılırlar
+  [[A, B, true], [B, A, false]].forEach(([bas0, son0, yuksek], n) => {
+    const [bas, son] = h.yer ? [son0, bas0] : [bas0, son0];
+    const kx = (bas.x + son.x) / 2, ky = yuksek ? Math.min(bas.y, son.y) - 10 * ch : Math.max(bas.y, son.y) - 3 * ch;
+    const x = (1 - e) * (1 - e) * bas.x + 2 * (1 - e) * e * kx + e * e * son.x;
+    const y = (1 - e) * (1 - e) * bas.y + 2 * (1 - e) * e * ky + e * e * son.y;
+    const k = bas.k + (son.k - bas.k) * e;
+    const kapali = p < 0.1 || p > 0.9;                                  // kalkarken/konarken kapalı
+    const sekil = kapali ? ["[=====]"] : KANAT[(Math.floor(t * 7) + n * 2) % 4]   // biri kanadı kaldırırken öbürü indirir;
+    const yak = Math.max(0, 1 - Math.hypot(x - fx, y - fy) / (H * 0.35));   // ateşe yakınlık
+    const r = 240, gg = Math.round(222 - 70 * yak), b = Math.round(185 - 120 * yak);
+    kitapYaz(x, y, sekil, k, `rgb(${r},${gg},${b})`);
+  });
+  ctx.restore();
+}
+
 /* ── KARE ── */
 /* DUVAR/ZEMİN TONU (26 Eylül, Gökşin'in telefon/tablet görüntüleri): siyah zeminde çizgiler
    boşlukta yüzüyordu, parlaklık artışı fark edilmedi → tablodaki gibi koyu sıcak kahve duvar,
@@ -861,6 +919,7 @@ function ciz(t){
   ctx.fillStyle = DUVAR_RENK; ctx.fillRect(0, 0, W, (L.duvarAlt + 0.5) * ch);
   ctx.drawImage(ARKA, 0, 0);
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  kitapDurur(t);
   saatCiz();
   perdeCiz(t);
   isik(t);                                             // oda (saat dahil) ateşle boyanır
@@ -871,6 +930,8 @@ function ciz(t){
   buharCiz(t);
   cayCiz(t);
   magnusCiz(t);                                        // Magnus kendi renginde
+  ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  kitapUcar(t);
   if (simsekMi(t)){ ctx.fillStyle = "rgba(200,210,255,.10)"; ctx.fillRect(0, 0, W, H); }
 }
 
@@ -899,6 +960,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=32"></script>
+<script src="ortak.js?s=33"></script>
 </body>
 </html>

@@ -38,7 +38,8 @@
 // 30: oda — cam yeniden gece laciverdi (29'da dolgu yanlışlıkla yorum olmuştu), yağmur şimşekle aynı yönde ve belirgin, camdan süzülen damlalar, saatin 3/9'u içeride
 // 31: oda — opak + kayıt, damlalar her bölmede ikişer ve kayıtta kaybolur; çay sesi ~2 sn önce (önceden yüklenir); hava karlıysa (veya ?kar=1) karlı pencere: kar, yığın, sol altta * dolu kardan adam, kırağı, şimşek yok
 // 32: karlı pencerede kardan adam: kar biriktirir, silkelenir (kar saçılır), iki kez göz kırpar
-const SURUM = "magnus-32";
+// 33: oda — şimşek yeniden görünür (yağmurun ÜSTÜNDE, iki kat kalın; yağmur çakarken beyaza dönmez); sehpadaki kitap ile şömine rafındaki kitap kanat çırparak yer değiştirir (38. ve 104. sn)
+const SURUM = "magnus-33";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
