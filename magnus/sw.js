@@ -45,7 +45,8 @@
 // 37: oda — dik telefonda portre saatin üstündeki boş duvara, çizime göre genişlikte (saat ve vazoya biniyordu); oda yatay açılır (uygulama ya da tam ekranda ekran yana döner)
 // 38: Yağmurlu Pencere sahne düğmesi sırasından çıktı (yalnız odadaki pencereye dokunarak); pencere de oda gibi yatay kilitlenir
 // 39: tablette portre çerçevesi çizimden dardı (en az 25 sütun); ses/pomodoro paneli dışına dokununca kapanır (dokunuş sahneye geçmez)
-const SURUM = "magnus-39";
+// 40: pencerenin YAZ GECESİ hâli (Haziran–Ağustos, hava açıkken): yıldızlar, hilal, kayan yıldız, kuyruklu yıldız, uydular, yanıp sönen uçaklar, Starlink treni, ateş böcekleri, yapraklı dallar, çok nadir UFO; bazı uydular gökte belirip söner; "Yaz gecesi" ses karışımı
+const SURUM = "magnus-40";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

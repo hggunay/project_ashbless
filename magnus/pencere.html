@@ -27,6 +27,13 @@ body.sakin{cursor:none}
    · Dışarısı: bulanık gece ışıkları (bokeh), çapraz yağmur ("\", odadaki gibi), seyrek şimşek.
      Hava karlıysa (veya ?kar=1) kar taneleri, köşelerde kırağı, şimşek yok.
    · Ortadaki ahşap kayıt (+) opak: damlalar onun arkasında kalır, kayda gelen damla kaybolur.
+   · YAZ GECESİ (16 Ekim, Gökşin seçenek 1): Haziran–Ağustos'ta hava açıksa (kod 0–3 ya da bilinmiyorsa)
+     cam kuru ve berrak: titreşen yıldızlar, hilal, kayan yıldız, seyrek kuyruklu yıldız, uydular (bazen
+     Dünya'nın gölgesine girip söner), kırmızı ışığı yanıp sönen uçaklar (farklı hızda; bazen uyduyla
+     paralel gidip geçer, bazen çapraz kesişir), çok seyrek Starlink treni, ateş böcekleri, yapraklı dallar.
+     Gökşin: "her uydu boydan boya izlenmiyor" → bazıları gökte BELİRİP biraz gidip söner. Çok nadiren
+     bir UFO gelir: cama yaklaşır, bir süre durup bakınır (gözleri sağa sola), sonra fırlayıp gider.
+     ?yaz → zorla yaz · ?yagmur → yazın da yağmur · ?yaz&hepsi → hepsi aynı anda (resim için).
    · Test: ?t=SANİYE → o kadar saniye benzetilip dondurulur (tohumlu, her seferinde aynı). */
 const P = new URLSearchParams(location.search);
 const DONUK = P.has("t") ? parseFloat(P.get("t")) : null;
@@ -35,6 +42,15 @@ let KAR = P.has("kar");
 if (!KAR && DONUK === null){
   try { KAR = KAR_KODLARI.includes(parseInt(localStorage.getItem("lastWeatherCode"))); } catch (e) {}
 }
+const YAZ_KODLARI = [0, 1, 2, 3];                                       // açık / az bulutlu
+let YAZ = P.has("yaz");
+if (!YAZ && !KAR && DONUK === null && !P.has("yagmur")){
+  try {
+    const ay = new Date().getMonth(), k = localStorage.getItem("lastWeatherCode");
+    YAZ = ay >= 5 && ay <= 7 && (k === null || YAZ_KODLARI.includes(parseInt(k)));
+  } catch (e) {}
+}
+if (YAZ){ KAR = false; document.title = "Magnus · Yaz Gecesi"; }
 function rastgele(tohum){ return () => { tohum |= 0; tohum = tohum + 0x6D2B79F5 | 0;
   let x = Math.imul(tohum ^ tohum >>> 15, 1 | tohum); x = x + Math.imul(x ^ x >>> 7, 61 | x) ^ x;
   return ((x ^ x >>> 14) >>> 0) / 4294967296; }; }
@@ -44,7 +60,7 @@ const c = document.getElementById("c"), ctx = c.getContext("2d");
 let W, H, d, ch, cw, K = null;                      // K: kayıt + çerçeve ölçüleri (piksel)
 const yazi = (k = 1) => `bold ${Math.round(ch * 0.86 * k)}px Consolas, "Courier New", monospace`;
 
-let damlalar = [], ISIKLAR = [], simsekSonraki = 50, simsekBas = -99;
+let damlalar = [], ISIKLAR = [], YILDIZLAR = [], simsekSonraki = 50, simsekBas = -99;
 function boyutlandir(){
   if (innerWidth < 50 || innerHeight < 50) return;
   d = Math.min(window.devicePixelRatio || 1, 2);
@@ -60,6 +76,14 @@ function boyutlandir(){
     renk: RB() < 0.6 ? [255, 190, 110] : RB() < 0.5 ? [255, 236, 200] : [140, 200, 220],
     a: 0.14 + RB() * 0.2, faz: RB() * 6.28, hiz: 0.15 + RB() * 0.3 }));
   damlalar = damlalar.filter(a => a.x < W && a.y < H);
+  // yaz: sabit yıldızlar (gökyüzünün üst kısmında daha sık)
+  const RY = rastgele(77);
+  YILDIZLAR = Array.from({ length: Math.round(70 + 110 * W * H / (1366 * 640 * d * d)) }, () => {
+    const p = RY();
+    return { x: RY() * W, y: Math.pow(RY(), 1.5) * H * 0.8, k: p < 0.72 ? "." : p < 0.93 ? "+" : "*",
+             a: p < 0.72 ? 0.35 + RY() * 0.35 : 0.6 + RY() * 0.35, faz: RY() * 6.28, hiz: 0.6 + RY() * 2.2,
+             renk: RY() < 0.15 ? "255,226,190" : RY() < 0.2 ? "190,210,255" : "240,244,255" };
+  });
   dallariKur();
 }
 
@@ -94,6 +118,16 @@ function dallariKur(){
     for (const p of parcalar){ g.lineWidth = p[6] * 1.25; yol(p, p[6] * 0.2); }
     g.strokeStyle = "rgb(20,19,26)";
     for (const p of parcalar){ g.lineWidth = p[6]; yol(p, 0); }
+    if (YAZ){                                                           // yaz: uçlarda yaprak kümeleri
+      const RL = rastgele(90 + i);
+      for (const p of parcalar) if (p[6] < ch * 0.5){
+        for (let j = 0; j < 3; j++){
+          const u = 0.3 + RL() * 0.7, lx = p[0] + (p[4] - p[0]) * u + (RL() - 0.5) * ch * 1.6, ly = p[1] + (p[5] - p[1]) * u + (RL() - 0.5) * ch * 1.6;
+          g.fillStyle = RL() < 0.3 ? "rgba(70,72,40,.5)" : "rgb(16,24,20)";
+          g.beginPath(); g.ellipse(lx, ly, ch * (0.45 + RL() * 0.5), ch * (0.3 + RL() * 0.3), RL() * 3.14, 0, 6.28); g.fill();
+        }
+      }
+    }
     if (KAR){
       g.strokeStyle = "rgba(228,234,246,.5)";
       for (const p of parcalar) if (Math.abs(Math.sin(p[7])) < 0.6){ g.lineWidth = p[6] * 0.45; yol(p, -p[6] * 0.5); }
@@ -112,6 +146,171 @@ function camda(x, y, pay = 0){
 const KAY = 0.8, DUR = 0.6;                                             // kaymaya başlama / durma kütlesi
 const yaricap = m => ch * 0.24 * (0.7 + 0.55 * Math.sqrt(m));          // görünen boyla aynı (yazi ölçeği)
 
+/* ── YAZ GECESİ GÖKYÜZÜ ──
+   Her nesne ekranı bir uçtan öbürüne geçer: (cx, cy) gökte bir nokta, açı yön; ilerleme 0→1.
+   Gökşin'in gözlemi: uydu ve uçak aynı anda geçebilir; uçağın kırmızı ışığı yanıp söner, hızı farklıdır;
+   bazen bir süre paralel gidip biri ötekini geçer, bazen uydu söner, bazen yönleri çaprazdır. */
+let GOK = [], gokSonraki = null;
+function gecis(aci, sure, cx, cy){
+  const L = Math.hypot(W, H) / 2 + ch * 4, dx = Math.cos(aci), dy = Math.sin(aci);
+  if (cx === undefined){ cx = W * (0.15 + R() * 0.7); cy = H * (0.1 + R() * 0.45); }
+  return { x0: cx - dx * L, y0: cy - dy * L, dx: dx * 2 * L, dy: dy * 2 * L, sure, yas: 0, aci, cx, cy };
+}
+function gokEkle(tur, ilk = 0){
+  let o;
+  if (tur === "uydu"){
+    o = gecis(R() * 6.28, 35 + R() * 25);
+    const z = R();
+    if (z < 0.4){ o.cikar = 0.2 + R() * 0.3; o.soner = o.cikar + 0.12 + R() * 0.25; }   // gökte belirir, biraz gidip söner
+    else if (z < 0.65) o.soner = 0.35 + R() * 0.4;                      // Dünya'nın gölgesine girer
+  } else if (tur === "ucak"){
+    const uydu = GOK.find(g => g.tur === "uydu" && g.yas / g.sure < 0.5);
+    if (uydu && R() < 0.5){                                             // uyduyla neredeyse paralel, farklı hız
+      const kay = (R() < 0.5 ? -1 : 1) * ch * (2 + R() * 4);
+      o = gecis(uydu.aci + (R() - 0.5) * 0.12, uydu.sure * (R() < 0.5 ? 0.7 : 1.45),
+                uydu.cx - Math.sin(uydu.aci) * kay, uydu.cy + Math.cos(uydu.aci) * kay);
+    } else o = gecis(R() * 6.28, 45 + R() * 50);
+    o.faz = R();
+  } else if (tur === "kayan"){
+    o = gecis(0.35 + R() * 2.4, 0.5 + R() * 0.5);                       // çoğunlukla aşağı doğru
+    o.boy = ch * (5 + R() * 6);
+  } else if (tur === "kuyruklu"){
+    o = gecis(R() < 0.5 ? 0.15 + R() * 0.3 : Math.PI - 0.15 - R() * 0.3, 70 + R() * 30, W * (0.25 + R() * 0.5), H * (0.12 + R() * 0.2));
+    o.kuyruk = o.aci + Math.PI + (R() - 0.5) * 0.6;                     // kuyruk geldiği yöne doğru
+  } else if (tur === "tren"){
+    o = gecis(R() * 6.28, 30 + R() * 12);
+    o.n = 18 + Math.floor(R() * 8); o.ara = ch * (1.1 + R() * 0.5);
+    o.hiz = Math.hypot(o.dx, o.dy) / o.sure; o.sure += o.n * o.ara / o.hiz;   // son nokta da geçsin
+  } else if (tur === "ufo"){
+    const sag = R() < 0.5;
+    o = { sure: 15, x: W * (sag ? 0.62 + R() * 0.2 : 0.18 + R() * 0.2), y: H * (0.22 + R() * 0.2),
+          gx: W * (sag ? 0.95 : 0.05), gy: H * 0.04, cikis: sag ? 1 : -1 };
+  } else if (tur === "bocek"){
+    o = { x: W * R(), y: H * (0.6 + R() * 0.32), vx: 0, vy: 0, faz: R() * 10, periyot: 2.5 + R() * 3, sure: 1e9, yas: 0 };
+  }
+  o.tur = tur; o.yas = o.sure * ilk; GOK.push(o);
+}
+const ARALIK = { kayan: [25, 90], uydu: [40, 110], ucak: [50, 130], tren: [360, 720], kuyruklu: [420, 900], ufo: [1500, 3000] };
+function gokAdim(dt, t){
+  if (gokSonraki === null){
+    gokSonraki = { kayan: t + 8, uydu: t + 3, ucak: t + 20, tren: t + 150, kuyruklu: t + 240, ufo: t + 600 + R() * 900 };
+    for (let i = 0; i < 10; i++) gokEkle("bocek");
+  }
+  if (P.has("hepsi") && !gokSonraki.hepsi && (DONUK === null || t >= DONUK - 0.05)){   // resim için hepsi birden
+    gokSonraki.hepsi = true;
+    ["uydu", "kuyruklu", "tren"].forEach(k => gokEkle(k, 0.45)); gokEkle("ucak", 0.4); gokEkle("kayan", 0.5);
+    if (P.has("ufo") || DONUK !== null) gokEkle("ufo", DONUK !== null ? 0.45 : 0);
+  }
+  for (const k in ARALIK) if (t > gokSonraki[k]){
+    gokEkle(k); const [a, b] = ARALIK[k]; gokSonraki[k] = t + a + R() * (b - a);
+  }
+  for (const o of GOK){
+    o.yas += dt;
+    if (o.tur === "bocek"){                                             // ağır, kıvrak uçuş
+      o.vx += (R() - 0.5) * ch * 3 * dt; o.vy += (R() - 0.5) * ch * 3 * dt;
+      o.vx *= 0.97; o.vy *= 0.97; o.x += o.vx * dt; o.y += o.vy * dt;
+      if (o.y < H * 0.55) o.vy += ch * dt; if (o.y > H * 0.95) o.vy -= ch * dt;
+      if (o.x < 0) o.x += W; if (o.x > W) o.x -= W;
+    }
+  }
+  GOK = GOK.filter(o => o.yas < o.sure);
+}
+const konum = (o, p) => [o.x0 + o.dx * p, o.y0 + o.dy * p];
+function isik(x, y, r, renk, a){                                         // küçük parlayan nokta
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r * 4);
+  g.addColorStop(0, `rgba(${renk},${a})`); g.addColorStop(0.25, `rgba(${renk},${a * 0.6})`); g.addColorStop(1, `rgba(${renk},0)`);
+  ctx.fillStyle = g; ctx.fillRect(x - r * 4, y - r * 4, r * 8, r * 8);
+}
+function gokCiz(t){
+  // yıldızlar
+  ctx.font = yazi(0.8);
+  for (const Y of YILDIZLAR){
+    const a = Y.a * (0.55 + 0.45 * Math.sin(t * Y.hiz + Y.faz) * Math.sin(t * Y.hiz * 0.37 + Y.faz * 2));
+    hk(Y.x, Y.y, Y.k, `rgba(${Y.renk},${Math.max(0.08, a)})`);
+  }
+  // hilal (sağ üst camda)
+  const mx = W * 0.8, my = H * 0.17, mr = ch * 1.5;
+  const hl = ctx.createRadialGradient(mx, my, mr * 0.5, mx, my, mr * 5);
+  hl.addColorStop(0, "rgba(255,240,200,.16)"); hl.addColorStop(1, "rgba(255,240,200,0)");
+  ctx.fillStyle = hl; ctx.fillRect(mx - mr * 5, my - mr * 5, mr * 10, mr * 10);
+  ctx.fillStyle = "rgba(255,238,196,.92)"; ctx.beginPath();
+  ctx.arc(mx, my, mr, -Math.PI / 2, Math.PI / 2); ctx.ellipse(mx, my, mr * 0.45, mr, 0, Math.PI / 2, -Math.PI / 2, true); ctx.fill();
+  for (const o of GOK){
+    const p = o.yas / o.sure;
+    if (o.tur === "uydu"){
+      let a = 0.85;
+      if (o.cikar !== undefined) a *= Math.max(0, Math.min(1, (p - o.cikar) * o.sure / 2.5));   // yavaşça belirir
+      if (o.soner && p > o.soner) a *= Math.max(0, 1 - (p - o.soner) * o.sure / 3);   // 3 sn'de söner
+      const [x, y] = konum(o, p); if (a > 0.01) isik(x, y, d * 1.2, "235,240,255", a);
+    } else if (o.tur === "ucak"){
+      const [x, y] = konum(o, p), f = (o.yas + o.faz) % 1.2;
+      isik(x, y, d * 1.3, "245,245,235", 0.8);                          // sabit beyaz
+      if (f < 0.18) isik(x + d * 4, y + d * 2, d * 1.6, "255,60,50", 1); // kırmızı yanıp söner
+      if ((o.yas + o.faz * 2) % 1.6 < 0.06) isik(x - d * 3, y, d * 1.8, "255,255,255", 1);   // beyaz çakar
+    } else if (o.tur === "kayan"){
+      const [x, y] = konum(o, p), a = Math.sin(Math.PI * p);
+      const ex = x - Math.cos(o.aci) * o.boy, ey = y - Math.sin(o.aci) * o.boy;
+      const g = ctx.createLinearGradient(x, y, ex, ey);
+      g.addColorStop(0, `rgba(255,255,240,${a})`); g.addColorStop(1, "rgba(255,255,240,0)");
+      ctx.strokeStyle = g; ctx.lineWidth = d * 1.6; ctx.lineCap = "round";
+      ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+    } else if (o.tur === "kuyruklu"){
+      const [x, y] = konum(o, p), a = Math.min(1, Math.sin(Math.PI * p) * 2.5), boy = ch * 9;
+      for (let j = 0; j < 7; j++){                                      // yelpaze kuyruk
+        const ka = o.kuyruk + (j - 3) * 0.035, ex = x + Math.cos(ka) * boy * (1 - Math.abs(j - 3) * 0.12), ey = y + Math.sin(ka) * boy * (1 - Math.abs(j - 3) * 0.12);
+        const g = ctx.createLinearGradient(x, y, ex, ey);
+        g.addColorStop(0, `rgba(200,225,255,${0.22 * a})`); g.addColorStop(1, "rgba(200,225,255,0)");
+        ctx.strokeStyle = g; ctx.lineWidth = d * 2.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(ex, ey); ctx.stroke();
+      }
+      isik(x, y, d * 2.2, "230,245,255", 0.9 * a);
+    } else if (o.tur === "tren"){
+      const yol = o.yas * o.hiz;
+      const ux = Math.cos(o.aci), uy = Math.sin(o.aci);
+      for (let j = 0; j < o.n; j++){
+        const s = yol - j * o.ara; if (s < 0) break;
+        isik(o.x0 + ux * s, o.y0 + uy * s, d * 1, "235,240,255", 0.75 - (j % 3) * 0.08);
+      }
+    }
+  }
+}
+/* UFO: gelir (4 sn, uzaktan büyüyerek), bakınır (8 sn, hafif sallanır, gözleri sağa sola, ışıkları döner),
+   fırlar gider (yaklaşık 2 sn, hızlanıp küçülerek). Dallardan önde, çerçevenin arkasında. */
+function ufoCiz(t){
+  for (const o of GOK) if (o.tur === "ufo"){
+    const y = o.yas; let k, x, yy, a = Math.min(1, y);
+    if (y < 4){ const u = 1 - Math.pow(1 - y / 4, 3); k = 0.2 + 0.8 * u; x = o.gx + (o.x - o.gx) * u; yy = o.gy + (o.y - o.gy) * u; }
+    else if (y < 12.5){ k = 1; x = o.x + Math.sin((y - 4) * 0.8) * ch * 0.7; yy = o.y + Math.sin((y - 4) * 1.7) * ch * 0.3; }
+    else { const u = Math.min(1, (y - 12.5) / 2); k = Math.max(0.05, 1 - 0.9 * u); x = o.x + o.cikis * u * u * W * 0.9; yy = o.y - u * u * H * 0.6; a = 1 - u * 0.3; }
+    const S = k * 2.1, sw = cw * S * 0.86, sh = ch * S;     // sw ≈ bir harf genişliği
+    // altında hafif yeşil ışık
+    const g = ctx.createRadialGradient(x, yy + sh, 0, x, yy + sh, sh * 3);
+    g.addColorStop(0, `rgba(140,255,190,${0.18 * a})`); g.addColorStop(1, "rgba(140,255,190,0)");
+    ctx.fillStyle = g; ctx.fillRect(x - sh * 3, yy - sh * 2, sh * 6, sh * 6);
+    ctx.font = yazi(S);
+    hk(x, yy - sh * 1.1, ".-~~~-.", `rgba(150,230,200,${0.85 * a})`);    // cam kubbe
+    hk(x, yy - sh * 0.55, "(       )", `rgba(150,230,200,${0.85 * a})`);
+    hk(x, yy, "(=============)", `rgba(185,195,205,${a})`);               // gövde
+    hk(x, yy + sh * 0.5, "'-.......-'", `rgba(150,160,170,${0.9 * a})`);
+    // gözler: bakınırken sağa sola
+    const bak = y > 4 && y < 12.5 ? Math.sin((y - 4) * 1.1) * sw * 1.2 : 0;
+    const kirp = y > 7 && y < 7.15;
+    hk(x - sw * 1.2 + bak, yy - sh * 0.55, kirp ? "-" : "o", `rgba(120,255,140,${a})`);
+    hk(x + sw * 1.2 + bak, yy - sh * 0.55, kirp ? "-" : "o", `rgba(120,255,140,${a})`);
+    // gövdedeki dönen ışıklar
+    const renkler = ["255,90,90", "255,220,90", "110,220,255"];
+    for (let j = -3; j <= 3; j++){
+      const r = renkler[(j + 3 + Math.floor(t * 6)) % 3];
+      hk(x + j * sw * 2, yy, "o", `rgba(${r},${a})`);
+    }
+  }
+}
+function bocekCiz(t){
+  for (const o of GOK) if (o.tur === "bocek"){
+    const f = ((t + o.faz) % o.periyot) / o.periyot, a = f < 0.3 ? Math.sin(f / 0.3 * Math.PI) : 0;
+    if (a > 0.02) isik(o.x, o.y, d * 1.8, "210,255,120", 0.85 * a);
+  }
+}
+
 /* ── DAMLA BENZETİMİ ──
    m: kütle. m < 1 durur; m ≥ 1 kayar (hız kütleyle artar), yolundaki damlaları yutar,
    arkasında küçük iz damlaları bırakır (kütle kaybeder), m < 0.85 olunca yine durur. */
@@ -119,7 +318,8 @@ function damlaEkle(x, y, m){ damlalar.push({ x, y, m, kay: false, faz: R() * 6.2
 function adim(dt, t){
   // yağmur cama vurur (karda daha seyrek: eriyen taneler)
   const alanOran = (W * H) / (1366 * 640 * d * d);
-  let yeni = dt * (KAR ? 9 : 26) * alanOran;
+  let yeni = YAZ ? 0 : dt * (KAR ? 9 : 26) * alanOran;
+  if (YAZ) gokAdim(dt, t);
   while (yeni > 0){
     if (R() < yeni){
       const x = R() * W, y = R() * H;
@@ -185,12 +385,12 @@ function adim(dt, t){
     damlalar = damlalar.filter(a => !a.sil);
   }
   // şimşek zamanlaması
-  if (!KAR && t > simsekSonraki){
+  if (!KAR && !YAZ && t > simsekSonraki){
     simsekBas = t; simsekSonraki = t + 55 + R() * 70;
     if (DONUK === null && window.magnusGokSesi) window.magnusGokSesi();
   }
 }
-const simsekMi = t => !KAR && ((t - simsekBas >= 0 && t - simsekBas < 0.12) || (t - simsekBas >= 0.3 && t - simsekBas < 0.42));
+const simsekMi = t => !KAR && !YAZ && ((t - simsekBas >= 0 && t - simsekBas < 0.12) || (t - simsekBas >= 0.3 && t - simsekBas < 0.42));
 
 /* ── ÇİZİM ── */
 function hk(x, y, k, renk){ ctx.fillStyle = renk; ctx.fillText(k, x, y); }
@@ -199,9 +399,11 @@ function ciz(t){
   // gece göğü (çakarken açık mavi)
   const g = ctx.createLinearGradient(0, 0, 0, H);
   if (sm){ g.addColorStop(0, "rgb(120,136,190)"); g.addColorStop(1, "rgb(70,84,128)"); }
+  else if (YAZ){ g.addColorStop(0, "rgb(5,9,26)"); g.addColorStop(1, "rgb(20,26,46)"); }
   else { g.addColorStop(0, "rgb(8,11,22)"); g.addColorStop(1, "rgb(16,20,34)"); }
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
   ctx.textBaseline = "middle"; ctx.textAlign = "center";
+  if (YAZ) gokCiz(t);
   // bokeh
   if (!sm) for (const L of ISIKLAR){
     const a = L.a * (0.8 + 0.2 * Math.sin(t * L.hiz + L.faz)), x = L.x + Math.sin(t * 0.05 + L.faz) * 8 * d;
@@ -235,7 +437,8 @@ function ciz(t){
   // dışarıdaki yağmur ya da kar (camın arkasında, bulanık)
   const R2 = rastgele(9);
   ctx.font = yazi(1.1);
-  if (KAR){
+  if (YAZ){ bocekCiz(t); ufoCiz(t); }
+  else if (KAR){
     for (let i = 0; i < 140; i++){
       const hiz = 0.4 + R2() * 0.8, x0 = R2() * W, faz = R2() * 100;
       const y = ((t * hiz * ch + faz * ch) % (H + ch * 2)) - ch, x = x0 + Math.sin(t * 0.6 + faz) * cw * 2;
@@ -349,6 +552,6 @@ setTimeout(() => {
 }, 2500);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=39"></script>
+<script src="ortak.js?s=40"></script>
 </body>
 </html>

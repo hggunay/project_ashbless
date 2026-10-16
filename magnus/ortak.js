@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "39";
+const SURUM_YAZI = "40";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -64,8 +64,10 @@ const HAZIR_KARISIM = {
   herbert:   [{ ad: "Dune 7", sesler: { daktilo: 0.45, saat: 0.5 } },
               { ad: "Yağmurlu gece mesaisi", sesler: { daktilo: 0.4, yagmur2: 0.4 } }],
   // 15 Ekim (Gökşin): + sayfa (Magnus'un sayfasıyla eş) + çay dökme (hayalet demlikle eş)
-  pencere:   [{ ad: "Yağmurlu pencere", sesler: { yagmur: 0.5, yagmur2: 0.3, gok: 0.4 } },
-              { ad: "Yağmur + mırlama", sesler: { "yagmur-kedi": 0.5 } }],
+  // yaz gecesi penceresinde (pencere.html YAZ) ilk karışım gece sesleri; yağmurlusu yine seçilebilir
+  pencere:   (typeof YAZ !== "undefined" && YAZ ? [{ ad: "Yaz gecesi", sesler: { "gece-ormani": 0.7, ruzgar: 0.25 } }] : []).concat(
+             [{ ad: "Yağmurlu pencere", sesler: { yagmur: 0.5, yagmur2: 0.3, gok: 0.4 } },
+              { ad: "Yağmur + mırlama", sesler: { "yagmur-kedi": 0.5 } }]),
   oda:       [{ ad: "Şömine başı", sesler: { somine: 0.35, yagmur: 0.45, saat: 0.5, kedi: 0.4, sayfa: 0.8, caydanlik: 0.6, gok: 0.4 } }],
 };
 const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
