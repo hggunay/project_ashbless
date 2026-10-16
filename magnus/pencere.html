@@ -183,23 +183,27 @@ function gokEkle(tur, ilk = 0){
     o.hiz = Math.hypot(o.dx, o.dy) / o.sure; o.sure += o.n * o.ara / o.hiz;   // son nokta da geçsin
   } else if (tur === "ufo"){
     const sag = R() < 0.5;
-    o = { sure: 15, x: W * (sag ? 0.62 + R() * 0.2 : 0.18 + R() * 0.2), y: H * (0.22 + R() * 0.2),
+    o = { sure: 17.5, x: W * (sag ? 0.62 + R() * 0.2 : 0.18 + R() * 0.2), y: H * (0.22 + R() * 0.2),
           gx: W * (sag ? 0.95 : 0.05), gy: H * 0.04, cikis: sag ? 1 : -1 };
   } else if (tur === "bocek"){
     o = { x: W * R(), y: H * (0.6 + R() * 0.32), vx: 0, vy: 0, faz: R() * 10, periyot: 2.5 + R() * 3, sure: 1e9, yas: 0 };
   }
   o.tur = tur; o.yas = o.sure * ilk; GOK.push(o);
+  if (tur === "ufo" && !ilk && DONUK === null && window.magnusUfoSesi) window.magnusUfoSesi();
 }
 const ARALIK = { kayan: [25, 90], uydu: [40, 110], ucak: [50, 130], tren: [360, 720], kuyruklu: [420, 900], ufo: [1500, 3000] };
 function gokAdim(dt, t){
   if (gokSonraki === null){
     gokSonraki = { kayan: t + 8, uydu: t + 3, ucak: t + 20, tren: t + 150, kuyruklu: t + 240, ufo: t + 600 + R() * 900 };
+    if (P.has("ufo") && DONUK === null) gokSonraki.ufo = 50;           // ?ufo: açılıştan 20 sn sonra (ses açılabilsin)
     for (let i = 0; i < 10; i++) gokEkle("bocek");
   }
-  if (P.has("hepsi") && !gokSonraki.hepsi && (DONUK === null || t >= DONUK - 0.05)){   // resim için hepsi birden
+  // resim / deneme için hepsi birden — açılıştaki 30 sn'lik ön benzetim BİTTİKTEN sonra (Gökşin: "10 dk izledim
+  // UFO gelmedi, kuyruklu yıldızla başlıyor": ön benzetimde eklenenler ekranı görmeden geçip gidiyordu)
+  if (P.has("hepsi") && !gokSonraki.hepsi && (DONUK === null ? t >= 30 : t >= DONUK - 0.05)){
     gokSonraki.hepsi = true;
     ["uydu", "kuyruklu", "tren"].forEach(k => gokEkle(k, 0.45)); gokEkle("ucak", 0.4); gokEkle("kayan", 0.5);
-    if (P.has("ufo") || DONUK !== null) gokEkle("ufo", DONUK !== null ? 0.45 : 0);
+    if (DONUK !== null) gokEkle("ufo", 0.45);
   }
   for (const k in ARALIK) if (t > gokSonraki[k]){
     gokEkle(k); const [a, b] = ARALIK[k]; gokSonraki[k] = t + a + R() * (b - a);
@@ -273,14 +277,14 @@ function gokCiz(t){
     }
   }
 }
-/* UFO: gelir (4 sn, uzaktan büyüyerek), bakınır (8 sn, hafif sallanır, gözleri sağa sola, ışıkları döner),
+/* UFO (ses dosyasıyla eş: uğultu 14,5. sn'de tepe yapıp kesilir): gelir (4 sn, uzaktan büyüyerek), bakınır (10,5 sn, hafif sallanır, gözleri sağa sola, ışıkları döner),
    fırlar gider (yaklaşık 2 sn, hızlanıp küçülerek). Dallardan önde, çerçevenin arkasında. */
 function ufoCiz(t){
   for (const o of GOK) if (o.tur === "ufo"){
     const y = o.yas; let k, x, yy, a = Math.min(1, y);
     if (y < 4){ const u = 1 - Math.pow(1 - y / 4, 3); k = 0.2 + 0.8 * u; x = o.gx + (o.x - o.gx) * u; yy = o.gy + (o.y - o.gy) * u; }
-    else if (y < 12.5){ k = 1; x = o.x + Math.sin((y - 4) * 0.8) * ch * 0.7; yy = o.y + Math.sin((y - 4) * 1.7) * ch * 0.3; }
-    else { const u = Math.min(1, (y - 12.5) / 2); k = Math.max(0.05, 1 - 0.9 * u); x = o.x + o.cikis * u * u * W * 0.9; yy = o.y - u * u * H * 0.6; a = 1 - u * 0.3; }
+    else if (y < 14.5){ k = 1; x = o.x + Math.sin((y - 4) * 0.8) * ch * 0.7; yy = o.y + Math.sin((y - 4) * 1.7) * ch * 0.3; }
+    else { const u = Math.min(1, (y - 14.5) / 2); k = Math.max(0.05, 1 - 0.9 * u); x = o.x + o.cikis * u * u * W * 0.9; yy = o.y - u * u * H * 0.6; a = 1 - u * 0.3; }
     const S = k * 2.1, sw = cw * S * 0.86, sh = ch * S;     // sw ≈ bir harf genişliği
     // altında hafif yeşil ışık
     const g = ctx.createRadialGradient(x, yy + sh, 0, x, yy + sh, sh * 3);
@@ -292,8 +296,8 @@ function ufoCiz(t){
     hk(x, yy, "(=============)", `rgba(185,195,205,${a})`);               // gövde
     hk(x, yy + sh * 0.5, "'-.......-'", `rgba(150,160,170,${0.9 * a})`);
     // gözler: bakınırken sağa sola
-    const bak = y > 4 && y < 12.5 ? Math.sin((y - 4) * 1.1) * sw * 1.2 : 0;
-    const kirp = y > 7 && y < 7.15;
+    const bak = y > 4 && y < 14.5 ? Math.sin((y - 4) * 1.1) * sw * 1.2 : 0;
+    const kirp = (y > 7 && y < 7.15) || (y > 11.5 && y < 11.65);
     hk(x - sw * 1.2 + bak, yy - sh * 0.55, kirp ? "-" : "o", `rgba(120,255,140,${a})`);
     hk(x + sw * 1.2 + bak, yy - sh * 0.55, kirp ? "-" : "o", `rgba(120,255,140,${a})`);
     // gövdedeki dönen ışıklar
@@ -552,6 +556,6 @@ setTimeout(() => {
 }, 2500);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=40"></script>
+<script src="ortak.js?s=41"></script>
 </body>
 </html>
