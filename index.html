@@ -628,8 +628,11 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .raf-secim > div > div:first-child > div:last-child{justify-content:flex-start !important;margin-top:.35rem;}
 @keyframes rafSecimAc{from{opacity:0;filter:blur(6px)}60%{filter:blur(2px)}to{opacity:1;filter:none}}   /* yükseklik shelf.js'te (gerçek boya kayar) */
 @keyframes rafSecimDegis{from{opacity:.25;filter:blur(3px)}to{opacity:1;filter:none}}
-.raf-secim.acilis{animation:rafSecimAc .7s ease-out backwards;}
-.raf-secim.degis{animation:rafSecimDegis .45s ease-out backwards;}
+.raf-secim.acilis{animation:rafSecimAc .45s ease-out backwards;}   /* 16 Ekim: hızlandı */
+.raf-secim.degis{animation:rafSecimDegis .3s ease-out backwards;}
+/* ✏️ Düzenle düğmeleri kayarak açılır (16 Ekim) */
+@keyframes rafDuzenAc{from{opacity:0;max-height:0;transform:translateY(-6px)}to{opacity:1;max-height:200px;transform:none}}
+.raf-secim.duzen-acilis > div > div:first-child > div:last-child{overflow:hidden;animation:rafDuzenAc .35s ease-out backwards}
 /* TEMA · DAYANAK · SÜRÜKLE (15 Ekim) */
 .raf-arac{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap;margin:.1rem 0 .45rem;font-size:.8rem}
 .raf-arac select,.raf-arac button{font-family:'Space Mono',monospace;font-size:.62rem;padding:.2rem .45rem;border-radius:3px;border:1px solid rgba(201,162,39,.4);background:rgba(201,162,39,.1);color:var(--rust);cursor:pointer}
@@ -2234,7 +2237,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261015c"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261015d"></script>
+<script src="shelf.js?s=20261016a"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->

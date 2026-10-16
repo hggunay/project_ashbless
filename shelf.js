@@ -371,13 +371,14 @@ function rafSec(id){
     _rafKapaniyor=true;
     document.querySelector('.raf-sirt.secili')?.classList.remove('secili');
     el.classList.remove('acilis','degis'); el.getBoundingClientRect();   // önce mevcut durum otursun, yoksa solma atlanıyor
-    el.style.transition='opacity 1.6s ease, filter 1.6s ease'; el.style.opacity='0'; el.style.filter='blur(6px)';
+    // 16 Ekim (Gökşin): biraz hızlandı — 1,6 sn sönme → 1,0 · kapanış 0,8 → 0,5 sn
+    el.style.transition='opacity 1s ease, filter 1s ease'; el.style.opacity='0'; el.style.filter='blur(6px)';
     setTimeout(()=>{
       el.style.overflow='hidden'; el.style.maxHeight=el.scrollHeight+'px'; el.getBoundingClientRect();
-      el.style.transition='max-height .8s ease, padding .8s ease, margin .8s ease, border-width .8s ease';
+      el.style.transition='max-height .5s ease, padding .5s ease, margin .5s ease, border-width .5s ease';
       el.style.maxHeight='0'; el.style.paddingTop=el.style.paddingBottom='0'; el.style.marginTop='0'; el.style.borderWidth='0';
-    },1200);
-    setTimeout(()=>{ _rafKapaniyor=false; _rafSecili=null; renderShelf(); },2100);
+    },700);
+    setTimeout(()=>{ _rafKapaniyor=false; _rafSecili=null; renderShelf(); },1250);
     return;
   }
   const ilk=!_rafSecili;
@@ -386,14 +387,24 @@ function rafSec(id){
   if(ilk){   // kayarak açılış: kutunun GERÇEK yüksekliğine (CSS'te sabit sınır olunca kayma görünmüyordu)
     const el=document.querySelector('.raf-secim'); if(!el) return;
     const h=el.scrollHeight; el.style.overflow='hidden'; el.style.maxHeight='0'; el.getBoundingClientRect();
-    el.style.transition='max-height .6s ease'; el.style.maxHeight=h+'px';
-    setTimeout(()=>{ el.style.maxHeight=el.style.overflow=el.style.transition=''; },650);
+    el.style.transition='max-height .4s ease'; el.style.maxHeight=h+'px';
+    setTimeout(()=>{ el.style.maxHeight=el.style.overflow=el.style.transition=''; },450);
   }
 }
 // seçili kitabın satırında işlem düğmeleri gizli; tek "✏️ Düzenle" açar (Gökşin, 15 Ekim — telefonda
 // düğmeler adı sıkıştırıyordu, "Karısını / Şapka / Sanan / Adam")
 let _rafSecimDuzen=false;
-function rafSecimDuzenle(){ _rafSecimDuzen=!_rafSecimDuzen; renderShelf(); }
+// 16 Ekim (Gökşin): ✏️ Düzenle düğmeleri de kayarak açılsın, kapanırken solsun
+let _rafDuzenAnim=false;
+function rafSecimDuzenle(){
+  if(_rafSecimDuzen){
+    const d=document.querySelector('.raf-secim > div > div:first-child > div:last-child');
+    _rafSecimDuzen=false;
+    if(d&&d.querySelector('button')){ d.style.transition='opacity .22s ease, transform .22s ease'; d.style.opacity='0'; d.style.transform='translateY(-4px)'; setTimeout(renderShelf,220); return; }
+    renderShelf(); return;
+  }
+  _rafSecimDuzen=true; _rafDuzenAnim=true; renderShelf(); _rafDuzenAnim=false;
+}
 // dokunmatikte :hover yok → parmak kitapların üstünden kayarken her biri sırayla zıplar
 function rafDokun(e){
   const el=document.elementFromPoint(e.clientX,e.clientY)?.closest('.raf-sirt');
@@ -514,6 +525,7 @@ function rafDayanakMenu(shId){
   return `<div class="raf-secim raf-dmenu"><div class="rd-baslik">Kitap dayanağı</div>
     <label class="rd-etk">Etiket <input maxlength="10" value="${escapeHtml(o.e||'')}" placeholder="ör. WWW" oninput="rafDayanakEtiket(this.value)" onchange="rafDayanakEtiket(this.value,true)"></label>
     <div class="rd-cesitler">${RAF_DAYANAK_TURLER.map(t=>`<button type="button" class="rd-cesit${o.d===t?' sec':''}${o.d===t&&o.ters?' ters':''}" onclick="rafDayanakTur('${t}')" title="${RAF_DAYANAK_AD[t]}"><span class="rd-mini">${RAF_DAYANAK_SVG[t]}</span><span>${RAF_DAYANAK_AD[t]}</span></button>`).join('')}</div>
+    <button type="button" class="btn btn-sm raf-secim-btn" style="margin:.35rem 0 .15rem" onclick="rafDayanakEkle('${shId}')">+ Yeni dayanak</button>
     <div class="rd-ipucu">Bir resme dokun: o dayanak olur · aynı resme tekrar: yönü döner${o.ters?' · <b>bir daha: kaldırılır</b>':' · bir daha: kaldırılır'}</div></div>`;
 }
 /* ── BASILI TUT + SÜRÜKLE ── */
@@ -566,6 +578,7 @@ function rafBirak(){
 }
 function shelfDuzenleModu(){
   _rafDuzenle=!_rafDuzenle;
+  if(!_rafDuzenle){ _rafDSecili=null; _rafDSilOnay=false; }   // 16 Ekim: Düzenle kapanınca dayanak menüsü de kapansın
   const b=document.getElementById('shelfEditModeBtn');
   if(b){ b.textContent=_rafDuzenle?'✓ Bitti':'✏️ Düzenle'; b.style.background=_rafDuzenle?'rgba(201,162,39,.3)':'rgba(201,162,39,.1)'; }
   renderShelf();
@@ -772,8 +785,9 @@ function deleteShelfBook(bookId){
   const btn=document.querySelector(`[onclick="deleteShelfBook('${bookId}')"]`);
   if(btn&&btn.dataset.confirming!=='1'){
     btn.dataset.confirming='1';
+    const eski=btn.textContent;   // "🗑" ya da "🗑 Sil" (raf görünümü) — onay bitince aynısı geri gelsin
     btn.textContent='Evet?';
-    setTimeout(()=>{if(btn){btn.dataset.confirming='';btn.textContent='🗑';}},2500);
+    setTimeout(()=>{if(btn){btn.dataset.confirming='';btn.textContent=eski;}},2500);
     return;
   }
   const s=myShelf();
@@ -1127,14 +1141,14 @@ function renderShelf(){
           <div style="display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.2rem">${lentBadge}</div>
         </div>
         ${isMe&&(_rafDuzenle||eylem)?`<div style="display:flex;gap:.25rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;align-items:center">
-          ${moveSelect}
+          ${eylem&&moveSelect?`<span style="font-family:'Space Mono',monospace;font-size:.58rem;color:var(--rust)">Raf:</span>`:''}${moveSelect}
           ${b.lent
-            ?`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" onclick="returnShelfBook('${b.id}')">✓</button>`
-            :`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="lendShelfBook('${b.id}')">📤</button>`}
-          <button class="btn btn-sm" title="Ad rengi" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="rafRenkAc('${b.id}')">🎨</button>
-          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="editShelfBook('${b.id}')">✏️</button>
-          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" title="Kitaplarım'a ekle" onclick="addShelfBookToLibrary('${b.id}')">📖</button>
-          ${(_rafDuzenle||eylem)?`<button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" onclick="deleteShelfBook('${b.id}')">🗑</button>`:''}
+            ?`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.15);color:var(--moss);border:1px solid rgba(74,103,65,.3)" title="Geri geldi olarak işaretle" onclick="returnShelfBook('${b.id}')">✓${eylem?' Geri geldi':''}</button>`
+            :`<button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" title="Ödünç ver" onclick="lendShelfBook('${b.id}')">📤${eylem?' Ödünç ver':''}</button>`}
+          <button class="btn btn-sm" title="Ad rengi" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" onclick="rafRenkAc('${b.id}')">🎨${eylem?' Ad rengi':''}</button>
+          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(201,162,39,.1);color:var(--rust);border:1px solid rgba(201,162,39,.2)" title="Bilgileri düzenle" onclick="editShelfBook('${b.id}')">✏️${eylem?' Bilgiler':''}</button>
+          <button class="btn btn-sm" style="font-size:.58rem;padding:.2rem .4rem;background:rgba(74,103,65,.1);color:var(--moss);border:1px solid rgba(74,103,65,.2)" title="Kitaplarım'a ekle" onclick="addShelfBookToLibrary('${b.id}')">📖${eylem?" Kitaplarım'a ekle":''}</button>
+          ${(_rafDuzenle||eylem)?`<button class="btn btn-sm btn-danger" style="font-size:.58rem;padding:.2rem .4rem" title="Raftan sil" onclick="deleteShelfBook('${b.id}')">🗑${eylem?' Sil':''}</button>`:''}
         </div>`:''}
       </div>
       ${isMe?`<div id="kitaplik-row-${b.id}" style="display:none;gap:.3rem;flex-wrap:wrap;align-items:center;margin-top:.4rem">
@@ -1195,7 +1209,7 @@ function renderShelf(){
       <span class="raf-arac-ipucu">${kendi?'Taşımak için basılı tut':'Basılı tutunca "Kendi düzenim"e geçer'}</span></div>`:'';
     return `${arac}<div class="raf-kitaplik"><div class="raf-satirlar"${sh?` data-raf="${sh.id}"`:''} onpointermove="rafDokun(event)" oncontextmenu="return false">${ogeler.map(o=>o.k?rafSirtHtml(o.k,okundu(o.k),rafYeni.has(o.k.id),tema,sahip?sh.id:null):rafDayanakHtml(o.d,o.o,sh.id,sahip)).join('')}</div></div>
       ${sh?rafDayanakMenu(sh.id):''}
-      ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}${_rafSecimAnim?' '+_rafSecimAnim:''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
+      ${sec?`<div class="raf-secim${_rafSecimDuzen?' acik':''}${_rafSecimAnim?' '+_rafSecimAnim:''}${_rafDuzenAnim?' duzen-acilis':''}">${bookCard(sec,!viewing,_rafSecimDuzen)}
         ${!viewing?`<button type="button" class="btn btn-sm raf-secim-btn" onclick="rafSecimDuzenle()">${_rafSecimDuzen?'✓ Bitti':'✏️ Düzenle'}</button>`:''}</div>`:''}`;
   }
 
