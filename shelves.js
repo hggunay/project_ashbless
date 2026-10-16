@@ -205,8 +205,10 @@ function renderSpecialShelfHtml(type,onizlemeMi){
         </div>
         <!-- kitaplar raf görselinin ORTASINDAKİ boş alanda: Başucu lamba ile masal kitapları arası (%31–63),
              Yasaklı kitap yığını ile mum arası (%33–69); fazlası yatay kaydırılır (Gökşin, 15 Ekim) -->
+        <!-- 16 Ekim düzeltmesi (Gökşin'in ekran görüntüsü): genişlik yüzdesi soldaki boşluk ÇIKTIKTAN sonra kalan alana göre
+             hesaplanıyordu (%36 → görselin ~%24'ü). Şimdi: Başucu %31→%63 = kalan %69'un %46'sı; Yasaklı %33→%70 = kalan %67'nin %55'i -->
         <div style="display:flex;justify-content:flex-start;padding:.3rem 0 .5rem ${isBedside?31:33}%;min-height:110px;">
-          <div class="special-shelf-scroll" style="display:flex;gap:4px;align-items:flex-end;width:${isBedside?32:36}%;padding:30px .2rem 0;flex-shrink:0;">            ${spinesHtml}${addBtn}
+          <div class="special-shelf-scroll" style="display:flex;gap:4px;align-items:flex-end;width:${isBedside?46:55}%;padding:30px .2rem 0;flex-shrink:0;">            ${spinesHtml}${addBtn}
           </div>
         </div>
       </div>
