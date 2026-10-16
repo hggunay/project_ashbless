@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "38";
+const SURUM_YAZI = "39";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -647,6 +647,18 @@ panel.querySelectorAll(".hazir button").forEach(b => b.onclick = () => {
 });
 $("mPom").onclick = () => { sesPanel.classList.remove("acik"); panel.classList.toggle("acik"); panelDoldur(); uyan(); };
 $("mPomKapat").onclick = () => panel.classList.remove("acik");
+/* Ses / pomodoro paneli açıkken DIŞINA dokununca kapanır (16 Ekim, Gökşin: "kapatmak için hep dışına
+   basıyorum"). Şerit hariç (düğmeleri kendi işini yapar). O dokunuş sahneye geçmez: pencereye
+   yakınlaşma, kedi vb. tetiklenmesin; ardından gelen click de yutulur. */
+let _disYut = false;
+addEventListener("pointerdown", e => {
+  _disYut = false;
+  const acik = [panel, sesPanel].filter(p => p.classList.contains("acik"));
+  if (!acik.length || acik.some(p => p.contains(e.target)) || serit.contains(e.target)) return;
+  acik.forEach(p => p.classList.remove("acik"));
+  _disYut = true; e.stopImmediatePropagation(); e.preventDefault();
+}, true);
+addEventListener("click", e => { if (_disYut){ _disYut = false; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 $("mPomBasla").onclick = () => {
   if (D.pom){ pomBitir(); mesaj("Pomodoro durdu"); }
   else { sureleriAl(); evreBasla("odak", 1, D.sure.tur || 0); mesaj(`Okuma vakti\n${turYazi()}`); }

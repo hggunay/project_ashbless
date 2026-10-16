@@ -75,7 +75,8 @@ function yerlesim(){
     // 16 Ekim (Gökşin): yatay ekranda 0.645–0.775 → 0.58–0.71: alt köşesi Magnus'un başının arkasında
     // kalıp karışıyordu. DİK ekranda (Gökşin'in telefon görüntüsü) dar çerçeveden taşan çizim saatle
     // vazonun üstüne biniyordu → saatin ÜSTÜNDEKİ boş duvara, çizime göre genişlikte (25 × 16).
-    harita: W > H ? { x0: X(0.58), x1: X(0.71), ust: Y(0.13), alt: Y(0.47) }
+    // tablet (4:3) gibi daha az sütunlu ekranda çerçeve çizimden dardı, sağ kenar kedinin içinden geçiyordu → en az 25 sütun
+    harita: W > H ? { x0: X(0.58), x1: Math.max(X(0.71), X(0.58) + 24), ust: Y(0.13), alt: Y(0.47) }
                   : (() => { const cx = Math.min(X(0.76), SUTUN - 13), ust = Math.max(1, Y(0.42) - 10 - 17);
                              return { x0: cx - 12, x1: cx + 12, ust, alt: ust + 15 }; })(),
     magnus: { x: mx, y: Y(0.93) },                         // sallanma merkezi: kızak ortası
@@ -1017,6 +1018,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=38"></script>
+<script src="ortak.js?s=39"></script>
 </body>
 </html>

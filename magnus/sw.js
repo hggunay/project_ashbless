@@ -44,7 +44,8 @@
 // 36: pencere — camın ardında rüzgârda sallanan bulanık ağaç dalları (karda üstleri karlı); yeni ses GÖK GÜRÜLTÜSÜ (gok.mp3): pencere ve odada şimşekten 1,5-4 sn sonra, başka sahnede rastgele
 // 37: oda — dik telefonda portre saatin üstündeki boş duvara, çizime göre genişlikte (saat ve vazoya biniyordu); oda yatay açılır (uygulama ya da tam ekranda ekran yana döner)
 // 38: Yağmurlu Pencere sahne düğmesi sırasından çıktı (yalnız odadaki pencereye dokunarak); pencere de oda gibi yatay kilitlenir
-const SURUM = "magnus-38";
+// 39: tablette portre çerçevesi çizimden dardı (en az 25 sütun); ses/pomodoro paneli dışına dokununca kapanır (dokunuş sahneye geçmez)
+const SURUM = "magnus-39";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";
