@@ -11176,6 +11176,8 @@ function showWeatherMessage(msg, type) {
 
 function tryShowNightMessage() {
   if (!isNightTime()) return;
+  // 16 Ekim (Gökşin): oyun oynarken çıkmasın. Günün hakkı harcanmaz, oyun kapanınca sonraki dakikalarda çıkabilir.
+  if (document.getElementById('oyunPencere')) return;
   if(localStorage.getItem('weatherMessageDate') === new Date().toDateString()) return;
 
   const today = new Date().toDateString();
