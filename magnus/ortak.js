@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "37";
+const SURUM_YAZI = "38";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -72,9 +72,11 @@ const GENEL_KARISIM = [{ ad: "Kafe", sesler: { kafe: 0.5, yagmur2: 0.25 } }];
 const SAHNE = document.body.dataset.sahne || "orman";
 // Dört sahne (25 Eylül gecesi Oda, 29 Eylül Herbert = kütüphanenin başka bir günü):
 // düğme sıradakine geçer, simgesi SIRADAKİNİ gösterir
+// Yağmurlu Pencere düğme sırasında YOK (16 Ekim, Gökşin): yalnız odadaki pencereye dokunarak gelinir.
+// Pencereden düğmeye basınca odadan sonraki sahneye (orman) geçer.
 const SAHNELER = [{ id: "kutuphane", ad: "Kütüphane" }, { id: "herbert", ad: "Herbert" },
-                  { id: "oda", ad: "Oda" }, { id: "pencere", ad: "Yağmurlu Pencere" }, { id: "orman", ad: "Orman" }];
-const _si = Math.max(0, SAHNELER.findIndex(s => s.id === SAHNE));
+                  { id: "oda", ad: "Oda" }, { id: "orman", ad: "Orman" }];
+const _si = Math.max(0, SAHNELER.findIndex(s => s.id === (SAHNE === "pencere" ? "oda" : SAHNE)));
 const _sn = SAHNELER[(_si + 1) % SAHNELER.length];
 const DIGER = { href: _sn.id + ".html", ad: _sn.ad, id: _sn.id };
 try { localStorage.setItem("magnus-son-sahne", SAHNE); } catch (e) {}   // simgeden açılınca buraya
@@ -754,12 +756,12 @@ $("mTam").onclick = async () => {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch (e) {}
   yatayKilitle();
 };
-/* ODA YATAY AÇILSIN (16 Ekim, Gökşin). Tarayıcı sekmesindeki sayfa ekranı döndüremez; döndürme
+/* ODA (ve ondan girilen PENCERE) YATAY AÇILSIN (16 Ekim, Gökşin). Tarayıcı sekmesindeki sayfa ekranı döndüremez; döndürme
    yalnız ana ekrana eklenmiş uygulamada (manifest "fullscreen") ya da ⛶ tam ekrandayken izinli
    (Android). Olmazsa sessizce vazgeçer, "yan çevir" notu kalır. Başka sahnede kilit açılır. */
 function yatayKilitle(){
   const o = screen.orientation; if (!o || !o.lock) return;
-  if (SAHNE !== "oda"){ try { o.unlock(); } catch (e) {} return; }
+  if (SAHNE !== "oda" && SAHNE !== "pencere"){ try { o.unlock(); } catch (e) {} return; }
   try { o.lock("landscape").then(yanCevirKapat).catch(() => {}); } catch (e) {}
 }
 yatayKilitle();
