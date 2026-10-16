@@ -39,7 +39,8 @@
 // 31: oda — opak + kayıt, damlalar her bölmede ikişer ve kayıtta kaybolur; çay sesi ~2 sn önce (önceden yüklenir); hava karlıysa (veya ?kar=1) karlı pencere: kar, yığın, sol altta * dolu kardan adam, kırağı, şimşek yok
 // 32: karlı pencerede kardan adam: kar biriktirir, silkelenir (kar saçılır), iki kez göz kırpar
 // 33: oda — şimşek yeniden görünür (yağmurun ÜSTÜNDE, iki kat kalın; yağmur çakarken beyaza dönmez); sehpadaki kitap ile şömine rafındaki kitap kanat çırparak yer değiştirir (38. ve 104. sn)
-const SURUM = "magnus-33";
+// 34: oda — kanat çırpma geri alındı (sakinliği bozdu): raftaki dik kitap ile sehpadaki yatık kitap 8 sn süzülüp havada dönerek duruş değiştirir
+const SURUM = "magnus-34";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

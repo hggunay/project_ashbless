@@ -125,15 +125,23 @@ function arkaKur(){
   for (let x = S.x0 - 3; x <= S.x1 + 3; x++){ koy(x, rafY, "=", 0.8); koy(x, rafY + 1, "-", 0.5); }
   // raftaki kitaplar (sol)
   let bx = S.x0 - 1;
-  for (const [gen, boy] of [[2, 5], [3, 6], [2, 4], [3, 5]]){
-    for (let y = 0; y < boy; y++) for (let i = 0; i < gen; i++){
-      const k = y === 0 ? (i === 0 || i === gen - 1 ? "." : "_") : (i === 0 || i === gen - 1 ? "|" : (y === 1 || y === boy - 2 ? "=" : " "));
-      koy(bx + i, rafY - 1 - (boy - 1) + y, k, 0.75);
+  // 16 Ekim (Gökşin): EN SAĞDAKİ dik kitap uçan kitap — ARKA'ya çizilmez, şekli L.rafKitap'ta
+  [[2, 5], [3, 6], [2, 4], [3, 5]].forEach(([gen, boy], n, hepsi) => {
+    const sekil = [];
+    for (let y = 0; y < boy; y++){
+      let satir = "";
+      for (let i = 0; i < gen; i++){
+        const k = y === 0 ? (i === 0 || i === gen - 1 ? "." : "_") : (i === 0 || i === gen - 1 ? "|" : (y === 1 || y === boy - 2 ? "=" : " "));
+        satir += k;
+        if (n < hepsi.length - 1) koy(bx + i, rafY - 1 - (boy - 1) + y, k, 0.75);
+      }
+      sekil.push(satir);
     }
+    if (n === hepsi.length - 1)
+      L.rafKitap = { x: (bx + (gen - 1) / 2) * cw + cw / 2, y: (rafY - 1 - (boy - 1) / 2) * ch + ch / 2, k: 1, v: 0.75, sekil };
     bx += gen;
-  }
-  // yatık kitap: ARKA'ya çizilmez, UÇAN KİTAP olarak her karede (aşağıda kitapDurur/kitapUcar)
-  L.rafKitap = { x: (bx + 4) * cw + cw / 2, y: (rafY - 1) * ch + ch / 2, k: 1, v: 0.7 };
+  });
+  yazS(bx + 1, rafY - 1, "[=====]", 0.7);                               // yatık kitap
   // saksı + YUKARI açılan uzun yapraklı bitki (Gökşin: sarkan dallar hiç dikkat çekmiyordu)
   const px = S.x1 - 5;
   [ "\\   |   /",
@@ -225,7 +233,7 @@ function arkaKur(){
     else for (let j = ilk; j <= son; j++) if (s[j] !== " ") sil(sehpaX(j) - cw * K / 2, sehpaX(j) + cw * K / 2, y - yy, y + yy);
   });
   // sehpadaki en üst kitap (satır 2, sütun 1-7) da uçan kitap: tabloda boş bırakılır
-  L.sehpaKitap = { x: sehpaX(4), y: sehpaY(2), k: K, v: 0.8 };
+  L.sehpaKitap = { x: sehpaX(4), y: sehpaY(2), k: K, v: 0.8, sekil: ["[=====]"] };
   // çiz
   ARKA = document.createElement("canvas"); ARKA.width = W; ARKA.height = H;
   const x = ARKA.getContext("2d");
@@ -858,11 +866,10 @@ function isik(t){
 }
 
 /* ── UÇAN KİTAPLAR (16 Ekim, Gökşin'in fikri): sehpadaki üst kitap ile şömine rafındaki yatık kitap
-   AYNI ANDA havalanır, kanat çırparak (açık kitap: kapaklar kanat) birbirinin yanından geçip yer
+   AYNI ANDA havalanır, sakince süzülerek (kanat çırpma denendi, sakinliği bozdu) birbirinin yanından geçip yer
    değiştirir; sonraki uçuşta geri dönerler. Biri yüksekten, öbürü alçaktan kavis çizer (çarpışmasın).
    Dururken ateşle boyanır (ışıktan önce çizilir); uçarken en üstte, ateşe yaklaşınca turuncu parlar. ── */
-const KITAP_UCUS = [[38, 41.5], [104, 107.5]];                          // T içinde (sn): gidiş, dönüş
-const KANAT = [["\\     /", " \\_=_/ "], ["--=v=--"], [" /=^=\\ ", "/     \\"], ["--=v=--"]];
+const KITAP_UCUS = [[38, 46], [104, 112]];                              // T içinde (sn): gidiş, dönüş (8 sn, sakin)
 function kitapHali(t){                                                  // [rafdaki, sehpadaki] nerede + uçuş ilerlemesi
   const [g, d] = KITAP_UCUS;
   if (t >= g[0] && t < g[1]) return { ucus: (t - g[0]) / (g[1] - g[0]), yer: 0 };
@@ -879,10 +886,10 @@ function kitapDurur(t){
   if (!L.rafKitap || !L.sehpaKitap) return;
   const h = kitapHali(t); if (h.ucus >= 0) return;
   const A = L.rafKitap, B = L.sehpaKitap;
-  // yer değiştirince kitap yeni yerinin boyunda ve parlaklığında durur
-  for (const [yer, kaynak] of h.yer ? [[A, B], [B, A]] : [[A, A], [B, B]]){
+  // her yer kendi duruşunda: rafta dik, sehpada yatık (yer değiştirince de öyle)
+  for (const yer of [A, B]){
     const v = Math.min(255, Math.round(330 * yer.v));
-    kitapYaz(yer.x, yer.y, ["[=====]"], yer.k, `rgb(${v},${v},${v})`);
+    kitapYaz(yer.x, yer.y, yer.sekil, yer.k, `rgb(${v},${v},${v})`);
   }
 }
 function kitapUcar(t){
@@ -900,11 +907,19 @@ function kitapUcar(t){
     const x = (1 - e) * (1 - e) * bas.x + 2 * (1 - e) * e * kx + e * e * son.x;
     const y = (1 - e) * (1 - e) * bas.y + 2 * (1 - e) * e * ky + e * e * son.y;
     const k = bas.k + (son.k - bas.k) * e;
-    const kapali = p < 0.1 || p > 0.9;                                  // kalkarken/konarken kapalı
-    const sekil = kapali ? ["[=====]"] : KANAT[(Math.floor(t * 7) + n * 2) % 4]   // biri kanadı kaldırırken öbürü indirir;
+    /* DÖNEREK DURUŞ DEĞİŞTİRME (16 Ekim, Gökşin: "biri dik çıkar sehpaya yan yatar, diğeri yan havalanır
+       dik konar"): kalkış şekli θ kadar döner, varış şekli θ−90°'den 0'a gelir; ortada biri öbürüne
+       yavaşça karışır. Raftan çıkan saat yönünde yatar, sehpadan çıkan ters yönde dikilir. */
+    const yon = bas === A ? 1 : -1, th = e * Math.PI / 2 * yon;
+    const m = Math.min(1, Math.max(0, (p - 0.3) / 0.4)), mm = m * m * (3 - 2 * m);
     const yak = Math.max(0, 1 - Math.hypot(x - fx, y - fy) / (H * 0.35));   // ateşe yakınlık
-    const r = 240, gg = Math.round(222 - 70 * yak), b = Math.round(185 - 120 * yak);
-    kitapYaz(x, y, sekil, k, `rgb(${r},${gg},${b})`);
+    const renk = `rgb(240,${Math.round(222 - 70 * yak)},${Math.round(185 - 120 * yak)})`;
+    for (const [sekil, aci, al] of [[bas.sekil, th, 1 - mm], [son.sekil, th - Math.PI / 2 * yon, mm]]){
+      if (al <= 0.01) continue;
+      ctx.save(); ctx.globalAlpha = al; ctx.translate(x, y); ctx.rotate(aci);
+      kitapYaz(0, 0, sekil, k, renk);
+      ctx.restore();
+    }
   });
   ctx.restore();
 }
@@ -960,6 +975,6 @@ addEventListener("resize", () => { boyutlandir(); if (DONUK !== null) ciz(DONUK)
 if (DONUK !== null) ciz(DONUK); else requestAnimationFrame(dongu);
 </script>
 <script src="nosleep.min.js"></script>
-<script src="ortak.js?s=33"></script>
+<script src="ortak.js?s=34"></script>
 </body>
 </html>
