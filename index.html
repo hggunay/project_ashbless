@@ -4634,6 +4634,9 @@ const SPECIAL_DAYS = [
   {month:7,  day:31, icon:'⚡', title:'Harry Potter\'ın Doğum Günü', sub:'Hogwarts\'ın en ünlü büyücüsü bugün doğdu. Butterbeer!', url:'https://tr.wikipedia.org/wiki/Harry_Potter'},
   {month:8,  day:12, icon:'❤️', title:'Kitapseverler Günü',          sub:'Book Lovers Day — Sevdiğin kitabı bugün bir arkadaşına öner!', url:'https://en.wikipedia.org/wiki/Book_Lovers_Day'},
   {month:9,  day:21, icon:'🔬', title:'H.G. Wells Günü',             sub:'"Zaman Makinesi", "Dünyaların Savaşı"... Bilimkurgunun babası.', url:'https://tr.wikipedia.org/wiki/H._G._Wells'},
+  // Ashbless'in KENDİ günü (16 Ekim, Gökşin): Buluntu Metinler 23 Eylül 2026'da yayına girdi. Gerçek bir dünya günü
+  // değil, bilerek gizemli. url 'oyun:<id>' → dışarı değil, uygulamada o oyunu açar (specialDayClick).
+  {month:9,  day:23, icon:'📜', title:'Buluntu Metinler Günü',       sub:'Bu gece fener biraz daha parlak yanıyor. Rafların arasında sahipsiz sayfalar dolaşıyor.', url:'oyun:buluntu-metinler', link:'Fenerin peşinden git'},
   {month:9,  day:22, icon:'🍂', title:'Hobbit Günü',                 sub:'Bilbo ve Frodo Baggins\'in doğum günü. İkinci kahvaltı şart!', url:'https://en.wikipedia.org/wiki/Hobbit_Day'},
   {month:10, day:6,  icon:'🌿', title:'Yaşar Kemal Günü',            sub:'"İnce Memed"in yazarı bugün doğdu. Torosların sesi...', url:'https://tr.wikipedia.org/wiki/Ya%C5%9Far_Kemal'},
   {month:10, day:16, icon:'🌹', title:'Oscar Wilde Günü',            sub:'"Kendim olmaktan başka seçeneğim yok." Bugün doğum günü.', url:'https://tr.wikipedia.org/wiki/Oscar_Wilde'},
@@ -4808,7 +4811,7 @@ function showSpecialDayBanner(){
       <div class="special-day-text">
         <div class="special-day-title">${periodLabel} — ${day.title}</div>
         <div class="special-day-sub">${day.sub}</div>
-        ${day.url?`<div class="special-day-link">↗ Daha fazla bilgi</div>`:''}
+        ${day.url?`<div class="special-day-link">↗ ${day.link||'Daha fazla bilgi'}</div>`:''}
       </div>
       <button class="special-day-close" onclick="closeSpecialDayBanner(event,${origIdx})" title="Kapat">✕</button>
     </div>`;
@@ -4816,7 +4819,14 @@ function showSpecialDayBanner(){
 }
 
 function specialDayClick(url){
-  if(url) window.open(url,'_blank','noopener');
+  if(!url) return;
+  if(url.startsWith('oyun:')){   // uygulama içindeki bir oyun (Buluntu Metinler Günü)
+    const btn=document.querySelector('.nav-tab[onclick*="eglence"]');
+    showPanel('eglence',btn);
+    setTimeout(()=>{ if(typeof oyunAc==='function') oyunAc(url.slice(5)); },300);
+    return;
+  }
+  window.open(url,'_blank','noopener');
 }
 
 function closeSpecialDayBanner(e,idx){
