@@ -42,7 +42,8 @@
 // 34: oda — kanat çırpma geri alındı (sakinliği bozdu): raftaki dik kitap ile sehpadaki yatık kitap 8 sn süzülüp havada dönerek duruş değiştirir
 // 35: YAĞMURLU PENCERE sahnesi (pencere.html): yarışan, birleşen, iz bırakan damlalar; odadaki pencereye dokununca yakınlaşarak gelinir, cama iki kez dokununca odaya dönülür
 // 36: pencere — camın ardında rüzgârda sallanan bulanık ağaç dalları (karda üstleri karlı); yeni ses GÖK GÜRÜLTÜSÜ (gok.mp3): pencere ve odada şimşekten 1,5-4 sn sonra, başka sahnede rastgele
-const SURUM = "magnus-36";
+// 37: oda — dik telefonda portre saatin üstündeki boş duvara, çizime göre genişlikte (saat ve vazoya biniyordu); oda yatay açılır (uygulama ya da tam ekranda ekran yana döner)
+const SURUM = "magnus-37";
 // "magnus-" ile BAŞLAMAZ → activate'teki eski sürüm temizliği buna dokunmaz. Ses dosyası
 // değiştirilirse adını değiştir (ya da bu adı artır), yoksa eski kopya çalmaya devam eder.
 const SES_KAYIT = "magnusses-1";

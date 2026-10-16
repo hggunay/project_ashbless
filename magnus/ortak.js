@@ -12,7 +12,7 @@
 (function(){
 // Görünür sürüm (pomodoro panelinin altında): "cihaz hangi kodu çalıştırıyor?" tahmin edilmesin.
 // sw.js SURUM'u ve sayfalardaki ortak.js?s= ile BİRLİKTE artır.
-const SURUM_YAZI = "36";
+const SURUM_YAZI = "37";
 const PARCALAR = [
   "Ink_and_Candlelight", "Afternoon_Porch_Light", "Paperback_Afternoon",
   "Rain_Against_Glass", "Sunlight_Through_Leaves", "Tea_and_Grey_Skies",
@@ -752,7 +752,18 @@ window.magnusSahneGit = (href) => {
 };
 $("mTam").onclick = async () => {
   try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen(); else await document.exitFullscreen(); } catch (e) {}
+  yatayKilitle();
 };
+/* ODA YATAY AÇILSIN (16 Ekim, Gökşin). Tarayıcı sekmesindeki sayfa ekranı döndüremez; döndürme
+   yalnız ana ekrana eklenmiş uygulamada (manifest "fullscreen") ya da ⛶ tam ekrandayken izinli
+   (Android). Olmazsa sessizce vazgeçer, "yan çevir" notu kalır. Başka sahnede kilit açılır. */
+function yatayKilitle(){
+  const o = screen.orientation; if (!o || !o.lock) return;
+  if (SAHNE !== "oda"){ try { o.unlock(); } catch (e) {} return; }
+  try { o.lock("landscape").then(yanCevirKapat).catch(() => {}); } catch (e) {}
+}
+yatayKilitle();
+document.addEventListener("fullscreenchange", yatayKilitle);
 /* EKRAN KARARMASIN (Gökşin: "tablette sürekli açık kalmıyor"). Eskiden yalnız Wake Lock
    API'si vardı ve yalnız ilk dokunuşta isteniyordu; Huawei tarayıcısı gibi desteklemeyenlerde
    hiç çalışmıyordu. NoSleep.js (MIT, magnus/nosleep.min.js — internetsiz de olsun diye kopya):
