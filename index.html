@@ -621,6 +621,10 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .raf-sirt.secili{transform:translateY(-12px);box-shadow:0 0 0 2px var(--gold),2px 6px 10px rgba(0,0,0,.5);}
 @keyframes rafBelir{from{opacity:0;transform:scale(.6) translateY(-10px)}60%{opacity:1;transform:scale(1.06)}to{opacity:1;transform:none}}
 .raf-sirt.yeni{animation:rafBelir .7s .3s ease-out backwards;}
+/* KİTAPLARIM rafı (19 Ekim): puan = sırtın altındaki altın çizgi sayısı (½ = kısa çizgi) */
+.rs-puan{position:absolute;left:3px;right:3px;bottom:5px;display:flex;flex-direction:column-reverse;gap:2px;pointer-events:none}
+.rs-puan i{display:block;height:1px;background:var(--b);opacity:.9}
+.rs-puan i.yarim{margin:0 30%;opacity:.7}
 .raf-secim{margin-top:.5rem;padding:.1rem .7rem;border:1px solid rgba(201,162,39,.35);border-radius:4px;background:rgba(201,162,39,.06);}
 .raf-secim > div{border-bottom:none !important;}
 /* seçili kitap: ad/yazar tam genişlikte, düğmeler (açılınca) ALTINDA sıralanır — telefonda ad sıkışmasın */
@@ -1290,6 +1294,7 @@ try{
             <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Tsundoku <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-coreading" onclick="switchBookTab('coreading')">👥 Birlikte <span id="bst-coreading-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
+          <div style="display:flex;justify-content:flex-end;margin:0 0 .45rem"><button class="filter-tab" id="kitapGorunumBtn" onclick="kitapGorunumCevir()" title="Liste / raf görünümü">📚 Raf</button></div>
 
           <!-- Bitti -->
           <div class="book-subpanel active" id="bsp-bitti">
@@ -10004,6 +10009,59 @@ function renderStats(){
   const _bc=document.getElementById('bookCount');if(_bc)_bc.textContent=`${books.length} kitap`;
 }
 
+// KİTAPLARIM — RAF GÖRÜNÜMÜ (19 Ekim, Gökşin onayladı — scratchpad denemesinde B seçildi)
+// Raflarım'daki sırtların aynısı (shelf.js: RAF_KLASIK, _rafAcikMi, rafDokun), farkları:
+// · kalınlık SAYFA SAYISINDAN ("tek görüntü kitap hakkında daha fazla bilgi taşıyor"); sayfa yoksa addan
+// · ince kitap + uzun ad: yazı küçülür (en küçük 7px), yine sığmazsa "…" ile kesilir — tam ad kitap penceresinde
+// · puan = sırtın altındaki altın çizgi sayısı (yıldız sığmıyordu); puansızda süs çizgisi
+// · dokununca kitap penceresi (openBook) · bütün alt sekmeler · seçim aa-kitapgorunum'da
+let _kitapGorunum='liste';
+try{ if(localStorage.getItem('aa-kitapgorunum')==='raf') _kitapGorunum='raf'; }catch(e){}
+function kitapGorunumCevir(){
+  _kitapGorunum=_kitapGorunum==='raf'?'liste':'raf';
+  try{localStorage.setItem('aa-kitapgorunum',_kitapGorunum);}catch(e){}
+  booksPage=1; renderBookList();
+}
+function _ksSayfaEni(p){ return Math.round(Math.max(16,Math.min(54,12+Math.sqrt(p)*1.5))); }   // 36 s → 21px, 200 s → 33px, 800 s → 54px
+function _ksYaziSigdir(ad,en,boy){
+  const sutunBoy=boy-26, kelime=Math.max(...ad.split(/\s+/).map(x=>x.length));
+  const sigar=fs=>{ const sutun=Math.max(1,Math.floor((en-4)/(fs*1.08))), harf=Math.floor(sutunBoy/(fs*.52)); return {sutun,harf}; };
+  for(let fs=12;fs>=7;fs-=.5){
+    if(kelime*fs*.56>sutunBoy) continue;   // en uzun kelime tek sütuna sığmalı
+    const {sutun,harf}=sigar(fs);
+    if(ad.length<=sutun*harf) return {fs,metin:ad};
+  }
+  const {sutun,harf}=sigar(7);
+  return {fs:7,metin:ad.slice(0,Math.max(1,sutun*harf-1)).trimEnd()+'…'};
+}
+function kitapSirtHtml(b){
+  const ad=(!b.title||b.title.startsWith('ISBN:'))?'Başlıksız':b.title;
+  const h=typeof _spOzet==='function'?_spOzet(ad):0, boy=70+h%26, p=parseInt(b.pages)||0;
+  let en,fs,metin=ad;
+  if(p){ en=_ksSayfaEni(p); ({fs,metin}=_ksYaziSigdir(ad,en,boy)); }
+  else{
+    en=Math.max(20+(h>>>5)%12, ad.length>22?44:ad.length>15?36:0);
+    const kelime=Math.max(...ad.split(/\s+/).map(x=>x.length)); fs=Math.max(7,Math.min(12,en*.4,(boy-24)/(kelime*.56)));
+  }
+  // serinin bütün kitapları aynı renk (renk serinin adından) — Gökşin: "nerede başlayıp bittiğini bulmak zor"
+  const hr=b.series&&typeof _spOzet==='function'?_spOzet(normalizeSeries(b.series)):h;
+  const renkler=typeof RAF_KLASIK!=='undefined'?RAF_KLASIK:['#6b2a24','#2a3d5c','#2f4a2c','#7a5a1e'];
+  const zemin=renkler[(hr>>>9)%renkler.length], acik=typeof _rafAcikMi==='function'&&_rafAcikMi(zemin);
+  const yazi=acik?'#3a2a18':'#f5ead2', bant=acik?'#7a5a1e':'#d8b24a';
+  const r=+b.rating||0, tam=Math.floor(r), yarim=r%1>=.5;
+  const alt=r?`<div class="rs-puan">${'<i></i>'.repeat(tam)}${yarim?'<i class="yarim"></i>':''}</div>`:'<div class="rs-bant a"></div>';
+  const ipucu=escapeHtml(ad+(b.author?' — '+b.author:'')+(p?` · ${p} s`:'')+(r?` · ${r}⭐`:''));
+  return `<div class="raf-yuva"><div class="raf-sirt" onclick="openBook(${b.id})" title="${ipucu}" style="width:${en}px;height:${boy}px;background:${zemin};--b:${bant}">
+    <div class="rs-bant u"></div>${alt}
+    <span class="rs-ad" style="font-size:${fs}px;color:${yazi};text-shadow:${acik?'none':'0 1px 2px rgba(0,0,0,.8)'}${r?`;bottom:${8+Math.ceil(r)*3}px`:''}">${escapeHtml(metin)}</span></div></div>`;
+}
+// öğe: kitap ya da {dayanak:'seri adı', ters:true|false} (seriye göre sıralamada serinin başı/sonu)
+function kitapRafHtml(liste){
+  const dayanak=o=>{ const svg=(typeof RAF_DAYANAK_SVG!=='undefined'&&RAF_DAYANAK_SVG.ahsap)||'';
+    return `<div class="raf-yuva"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${o.ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
+  return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="if(typeof rafDokun==='function')rafDokun(event)" oncontextmenu="return false">${liste.map(o=>o.dayanak?dayanak(o):kitapSirtHtml(o)).join('')}</div></div>`;
+}
+
 function renderBookList(){
   // Kayıtlı sıralama tercihini geri yükle — HER çizimde, tek seferlik değil.
   // Eskiden `_prefLoaded` bayrağıyla yalnızca sayfa açılışında okunuyordu:
@@ -10216,7 +10274,21 @@ function renderBookList(){
     </div>`;
   }
 
-  if(!filteredBooks.length){
+  if(_kitapGorunum==='raf'&&filteredBooks.length){
+    // rafta sayfalama yok (10'ar kitap rafa yakışmıyor) — filtre/arama/sıralama aynen geçerli
+    let sira=filteredBooks;
+    if(sortMode==='series'){
+      const seriler=new Map(), tekiller=[];
+      sira.forEach(b=>{ if(b.series){ const k=normalizeSeries(b.series); if(!seriler.has(k)) seriler.set(k,[]); seriler.get(k).push(b); } else tekiller.push(b); });
+      // her serinin başına ve sonuna ahşap dayanak (sonraki ters döner)
+      sira=[...[...seriler.values()].flatMap(g=>{ g.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
+        return [{dayanak:g[0].series},...g,{dayanak:g[0].series,ters:true}]; }),...tekiller];
+    }
+    if(sortMode==='date_desc'||sortMode==='date_asc'){
+      const yeni=sira.filter(b=>!b.retroactive), eski=sira.filter(b=>b.retroactive);
+      list.innerHTML=(yeni.length?kitapRafHtml(yeni):'')+(eski.length?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .25rem .3rem">📦 Geçmiş Okumalar</div>`+kitapRafHtml(eski):'');
+    } else list.innerHTML=kitapRafHtml(sira);
+  } else if(!filteredBooks.length){
     list.innerHTML=readBooks.length
       ?'<div class="empty-state">Filtreye uyan kitap bulunamadı.</div>'
       :'<div class="empty-state">Henüz kitap eklenmemiş. ☝️ Yukarıdan ilk kitabını ekle!</div>';
@@ -10345,6 +10417,17 @@ function renderBookList(){
       wlList.innerHTML='';
       if(wlEmpty) wlEmpty.style.display='';
     }
+  }
+
+  // raf görünümü: öteki sekmeler de aynı rafla (liste HTML'i yukarıda kuruldu, üstüne yazılır;
+  // Devam et / Okumaya başla / sil düğmeleri kitap penceresinde de var)
+  const kgb=document.getElementById('kitapGorunumBtn');
+  if(kgb) kgb.textContent=_kitapGorunum==='raf'?'☰ Liste':'📚 Raf';
+  if(_kitapGorunum==='raf'){
+    if(crList&&reading.length) crList.innerHTML=kitapRafHtml(reading);
+    if(prList&&paused.length) prList.innerHTML=kitapRafHtml(paused);
+    if(wlList&&wishlist.length) wlList.innerHTML=kitapRafHtml(wishlist);
+    if(crBookList&&coreadingBooks.length) crBookList.innerHTML=kitapRafHtml(coreadingBooks);
   }
 
   const _bc=document.getElementById('bookCount');if(_bc)_bc.textContent=`${readBooks.filter(b=>b.title&&!b.title.startsWith('ISBN:')).length} kitap`;
