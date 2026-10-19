@@ -1294,7 +1294,10 @@ try{
             <button class="book-subtab" id="bst-liste" onclick="switchBookTab('liste')">🔖 Tsundoku <span id="bst-liste-count" style="opacity:.6;font-size:.6rem"></span></button>
             <button class="book-subtab" id="bst-coreading" onclick="switchBookTab('coreading')">👥 Birlikte <span id="bst-coreading-count" style="opacity:.6;font-size:.6rem"></span></button>
           </div>
-          <div style="display:flex;justify-content:flex-end;margin:0 0 .45rem"><button class="filter-tab" id="kitapGorunumBtn" onclick="kitapGorunumCevir()" title="Liste / raf görünümü">📚 Raf</button></div>
+          <div style="display:flex;justify-content:flex-end;align-items:center;gap:.35rem;flex-wrap:wrap;margin:0 0 .45rem">
+            <span id="kitapRafAyar" class="raf-arac" style="display:none;margin:0"></span>
+            <button class="filter-tab" id="kitapGorunumBtn" onclick="kitapGorunumCevir()" title="Liste / raf görünümü">📚 Raf</button>
+          </div>
 
           <!-- Bitti -->
           <div class="book-subpanel active" id="bsp-bitti">
@@ -10017,6 +10020,20 @@ function renderStats(){
 // · dokununca kitap penceresi (openBook) · bütün alt sekmeler · seçim aa-kitapgorunum'da
 let _kitapGorunum='liste';
 try{ if(localStorage.getItem('aa-kitapgorunum')==='raf') _kitapGorunum='raf'; }catch(e){}
+// tema + seri dayanağı çeşidi (Raflarım'ın RAF_TEMALAR / RAF_DAYANAK_SVG'si) — bu cihazda hatırlanır, veriye yazılmaz
+let _kitapTema='klasik', _kitapDayanak='ahsap';
+try{ _kitapTema=localStorage.getItem('aa-kitaptema')||'klasik'; _kitapDayanak=localStorage.getItem('aa-kitapdayanak')||'ahsap'; }catch(e){}
+function kitapRafAyarSec(ne,deger){
+  if(ne==='tema') _kitapTema=deger; else _kitapDayanak=deger;
+  try{ localStorage.setItem(ne==='tema'?'aa-kitaptema':'aa-kitapdayanak',deger); }catch(e){}
+  renderBookList();
+}
+function kitapRafAyarHtml(){
+  if(typeof RAF_TEMALAR==='undefined') return '';
+  const tema=`🎨 <select onchange="kitapRafAyarSec('tema',this.value)" title="Raf teması">${Object.entries(RAF_TEMALAR).map(([k,v])=>`<option value="${k}"${k===_kitapTema?' selected':''}>${v.ad}</option>`).join('')}</select>`;
+  const day=typeof RAF_DAYANAK_AD==='undefined'?'':` <select onchange="kitapRafAyarSec('dayanak',this.value)" title="Seri dayanağı">${Object.entries(RAF_DAYANAK_AD).map(([k,v])=>`<option value="${k}"${k===_kitapDayanak?' selected':''}>${v}</option>`).join('')}</select>`;
+  return tema+day;
+}
 function kitapGorunumCevir(){
   _kitapGorunum=_kitapGorunum==='raf'?'liste':'raf';
   try{localStorage.setItem('aa-kitapgorunum',_kitapGorunum);}catch(e){}
@@ -10045,9 +10062,9 @@ function kitapSirtHtml(b){
   }
   // serinin bütün kitapları aynı renk (renk serinin adından) — Gökşin: "nerede başlayıp bittiğini bulmak zor"
   const hr=b.series&&typeof _spOzet==='function'?_spOzet(normalizeSeries(b.series)):h;
-  const renkler=typeof RAF_KLASIK!=='undefined'?RAF_KLASIK:['#6b2a24','#2a3d5c','#2f4a2c','#7a5a1e'];
-  const zemin=renkler[(hr>>>9)%renkler.length], acik=typeof _rafAcikMi==='function'&&_rafAcikMi(zemin);
-  const yazi=acik?'#3a2a18':'#f5ead2', bant=acik?'#7a5a1e':'#d8b24a';
+  const T=(typeof RAF_TEMALAR!=='undefined'&&(RAF_TEMALAR[_kitapTema]||RAF_TEMALAR.klasik))||{r:['#6b2a24','#2a3d5c','#2f4a2c','#7a5a1e']};
+  const zemin=T.r[(hr>>>9)%T.r.length], acik=typeof _rafAcikMi==='function'&&_rafAcikMi(zemin);
+  const yazi=acik?'#3a2a18':(T.yazi||'#f5ead2'), bant=acik?'#7a5a1e':(T.bant||'#d8b24a');
   const r=+b.rating||0, tam=Math.floor(r), yarim=r%1>=.5;
   const alt=r?`<div class="rs-puan">${'<i></i>'.repeat(tam)}${yarim?'<i class="yarim"></i>':''}</div>`:'<div class="rs-bant a"></div>';
   const ipucu=escapeHtml(ad+(b.author?' — '+b.author:'')+(p?` · ${p} s`:'')+(r?` · ${r}⭐`:''));
@@ -10057,9 +10074,35 @@ function kitapSirtHtml(b){
 }
 // öğe: kitap ya da {dayanak:'seri adı', ters:true|false} (seriye göre sıralamada serinin başı/sonu)
 function kitapRafHtml(liste){
-  const dayanak=o=>{ const svg=(typeof RAF_DAYANAK_SVG!=='undefined'&&RAF_DAYANAK_SVG.ahsap)||'';
-    return `<div class="raf-yuva"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${o.ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
-  return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="if(typeof rafDokun==='function')rafDokun(event)" oncontextmenu="return false">${liste.map(o=>o.dayanak?dayanak(o):kitapSirtHtml(o)).join('')}</div></div>`;
+  const dayanak=o=>{ const svg=(typeof RAF_DAYANAK_SVG!=='undefined'&&(RAF_DAYANAK_SVG[_kitapDayanak]||RAF_DAYANAK_SVG.ahsap))||'';
+    // Metal L çizimde ters yöne bakıyor: sırtı kitaba dayansın (Gökşin)
+    const ters=_kitapDayanak==='metal'?!o.ters:o.ters;
+    return `<div class="raf-yuva"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
+  return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="kitapRafDokun(event)" oncontextmenu="return false">${liste.map(o=>o.dayanak?dayanak(o):kitapSirtHtml(o)).join('')}</div></div>`;
+}
+// parmak/fare kayarken zıplama — kare başına en çok bir kez (yüzlerce kitapta her harekette aramak kasıyordu)
+let _kitapRafKare=0;
+function kitapRafDokun(e){
+  if(_kitapRafKare||typeof rafDokun!=='function') return;
+  const x=e.clientX, y=e.clientY;
+  _kitapRafKare=requestAnimationFrame(()=>{ _kitapRafKare=0; rafDokun({clientX:x,clientY:y}); });
+}
+// akordeon bölüm: açık/kapalı aa-acc'de ('kraf-' önekiyle); kapalıysa raf HİÇ çizilmez
+function kitapRafBolum(anahtar,baslik,ogeler,sayi){
+  if(!sayi) return '';
+  const k='kraf-'+anahtar; let acik=true;
+  try{ acik=JSON.parse(localStorage.getItem('aa-acc')||'{}')[k]!==false; }catch(e){}
+  return `<div class="series-accordion" style="margin-bottom:.5rem">
+    <div class="series-accordion-header" onclick="kitapRafAcKapa('${k}')">
+      <span class="series-accordion-title">${baslik}</span>
+      <span style="display:flex;align-items:center;gap:.4rem"><span class="series-accordion-count">${sayi} kitap</span><span class="acc-arrow ${acik?'open':''}">▶</span></span>
+    </div>
+    ${acik?`<div style="padding:.35rem">${kitapRafHtml(ogeler)}</div>`:''}
+  </div>`;
+}
+function kitapRafAcKapa(k){
+  try{ const p=JSON.parse(localStorage.getItem('aa-acc')||'{}'); p[k]=p[k]===false; localStorage.setItem('aa-acc',JSON.stringify(p)); }catch(e){}
+  renderBookList();
 }
 
 function renderBookList(){
@@ -10276,18 +10319,18 @@ function renderBookList(){
 
   if(_kitapGorunum==='raf'&&filteredBooks.length){
     // rafta sayfalama yok (10'ar kitap rafa yakışmıyor) — filtre/arama/sıralama aynen geçerli
-    let sira=filteredBooks;
+    // İki bölüm olan sıralamalarda her bölüm akordeon (Gökşin: kapalı bölüm hiç çizilmez → kasma azalır)
     if(sortMode==='series'){
       const seriler=new Map(), tekiller=[];
-      sira.forEach(b=>{ if(b.series){ const k=normalizeSeries(b.series); if(!seriler.has(k)) seriler.set(k,[]); seriler.get(k).push(b); } else tekiller.push(b); });
+      filteredBooks.forEach(b=>{ if(b.series){ const k=normalizeSeries(b.series); if(!seriler.has(k)) seriler.set(k,[]); seriler.get(k).push(b); } else tekiller.push(b); });
       // her serinin başına ve sonuna ahşap dayanak (sonraki ters döner)
-      sira=[...[...seriler.values()].flatMap(g=>{ g.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
-        return [{dayanak:g[0].series},...g,{dayanak:g[0].series,ters:true}]; }),...tekiller];
-    }
-    if(sortMode==='date_desc'||sortMode==='date_asc'){
-      const yeni=sira.filter(b=>!b.retroactive), eski=sira.filter(b=>b.retroactive);
-      list.innerHTML=(yeni.length?kitapRafHtml(yeni):'')+(eski.length?`<div style="font-family:'Space Mono',monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:#555;padding:.6rem .25rem .3rem">📦 Geçmiş Okumalar</div>`+kitapRafHtml(eski):'');
-    } else list.innerHTML=kitapRafHtml(sira);
+      const seriOgeleri=[...seriler.values()].flatMap(g=>{ g.sort((a,b)=>(a.seriesNum||0)-(b.seriesNum||0));
+        return [{dayanak:g[0].series},...g,{dayanak:g[0].series,ters:true}]; });
+      list.innerHTML=kitapRafBolum('seri','📚 Seriler',seriOgeleri,filteredBooks.length-tekiller.length)+kitapRafBolum('tekil','Tekil Kitaplar',tekiller,tekiller.length);
+    } else if(sortMode==='date_desc'||sortMode==='date_asc'){
+      const yeni=filteredBooks.filter(b=>!b.retroactive), eski=filteredBooks.filter(b=>b.retroactive);
+      list.innerHTML=kitapRafBolum('okudum','✅ Okuduklarım',yeni,yeni.length)+kitapRafBolum('gecmis','📦 Geçmiş Okumalar',eski,eski.length);
+    } else list.innerHTML=kitapRafHtml(filteredBooks);
   } else if(!filteredBooks.length){
     list.innerHTML=readBooks.length
       ?'<div class="empty-state">Filtreye uyan kitap bulunamadı.</div>'
@@ -10423,6 +10466,8 @@ function renderBookList(){
   // Devam et / Okumaya başla / sil düğmeleri kitap penceresinde de var)
   const kgb=document.getElementById('kitapGorunumBtn');
   if(kgb) kgb.textContent=_kitapGorunum==='raf'?'☰ Liste':'📚 Raf';
+  const kra=document.getElementById('kitapRafAyar');
+  if(kra){ kra.style.display=_kitapGorunum==='raf'?'':'none'; if(_kitapGorunum==='raf') kra.innerHTML=kitapRafAyarHtml(); }
   if(_kitapGorunum==='raf'){
     if(crList&&reading.length) crList.innerHTML=kitapRafHtml(reading);
     if(prList&&paused.length) prList.innerHTML=kitapRafHtml(paused);
