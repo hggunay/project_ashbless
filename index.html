@@ -10078,7 +10078,23 @@ function kitapRafHtml(liste){
     // Metal L çizimde ters yöne bakıyor: sırtı kitaba dayansın (Gökşin)
     const ters=_kitapDayanak==='metal'?!o.ters:o.ters;
     return `<div class="raf-yuva"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
-  return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="kitapRafDokun(event)" oncontextmenu="return false">${liste.map(o=>o.dayanak?dayanak(o):kitapSirtHtml(o)).join('')}</div></div>`;
+  // Seri (açılış dayanağından kapanışa) TEK BLOK: satıra sığarsa bölünmez, sığmazsa yeni satırdan başlar;
+  // satırdan uzunsa (Red Kit) yeni satırdan başlayıp alt satırlara akar — blok içi aralıklar rafın 116px
+  // döngüsüyle aynı, tahtalar hizalı kalır. Kapanış dayanağı son kitaba yapışık (yalnız kalmasın). — Gökşin, 19 Ekim
+  const yapis=h=>`<div style="display:flex;align-items:flex-end;column-gap:3px">${h}</div>`;
+  const cikti=[]; let seri=null;
+  liste.forEach(o=>{
+    if(o.dayanak&&!o.ters){ seri=[dayanak(o)]; return; }
+    if(o.dayanak&&o.ters){
+      if(seri){ const son=seri.pop()||''; seri.push(yapis(son+dayanak(o)));
+        cikti.push(`<div style="display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;row-gap:16px;max-width:100%">${seri.join('')}</div>`); seri=null; }
+      return;
+    }
+    const h=kitapSirtHtml(o);
+    if(seri){ if(seri.length===1) seri[0]=yapis(seri[0]+h); else seri.push(h); } else cikti.push(h);   // açılış dayanağı ilk kitaba yapışık
+  });
+  if(seri) cikti.push(...seri);
+  return `<div class="raf-kitaplik"><div class="raf-satirlar" onpointermove="kitapRafDokun(event)" oncontextmenu="return false">${cikti.join('')}</div></div>`;
 }
 // parmak/fare kayarken zıplama — kare başına en çok bir kez (yüzlerce kitapta her harekette aramak kasıyordu)
 let _kitapRafKare=0;
