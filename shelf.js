@@ -452,10 +452,13 @@ function rafSirtHtml(b,okunduMu,yeniMi,tema,shId){
     <span class="rs-ad" style="font-size:${fs}px;color:${yazi};text-shadow:${acik?'none':'0 1px 2px rgba(0,0,0,.8)'}">${ad}</span>
     ${okunduMu?'<span class="rs-ok" title="Okudum">✓</span>':''}${b.lent?'<span class="rs-odunc" title="Ödünçte">↗</span>':''}</div></div>`;
 }
-function rafDayanakSekil(o){ const svg=RAF_DAYANAK_SVG[o.d]||RAF_DAYANAK_SVG.ahsap; return o.ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg; }
+// dayanak eni SVG'nin kendi width'inden — yuvaya sabit en yazılır: Android tarayıcıları (Brave + Chrome)
+// ters çevrilmiş dayanağı satır hesabında saymıyordu, serinin sonu raftan taşıyordu (21 Ekim, Gökşin)
+function rafDayanakEn(svg){ const m=/width="(\d+)"/.exec(svg||''); return m?+m[1]:22; }
+function rafDayanakSekil(o){ const svg=RAF_DAYANAK_SVG[o.d]||RAF_DAYANAK_SVG.ahsap; return o.ters?`<div style="width:${rafDayanakEn(svg)}px;transform:scaleX(-1)">${svg}</div>`:svg; }
 function rafDayanakHtml(id,o,shId,sahip){
   const sec=_rafDSecili&&_rafDSecili.sh===shId&&_rafDSecili.id===id;
-  return `<div class="raf-yuva" data-anahtar="d:${id}"${sahip?` onpointerdown="rafBas(event,'${shId}','d:${id}')"`:''}>
+  return `<div class="raf-yuva" style="width:${rafDayanakEn(RAF_DAYANAK_SVG[o.d]||RAF_DAYANAK_SVG.ahsap)}px" data-anahtar="d:${id}"${sahip?` onpointerdown="rafBas(event,'${shId}','d:${id}')"`:''}>
     <div class="raf-dayanak${sec?' secili':''}" onclick="rafDayanakSec('${shId}','${id}')" title="Kitap dayanağı${o.e?': '+escapeHtml(o.e):''}">${rafDayanakSekil(o)}${o.e?`<div class="rd-etiket">${escapeHtml(o.e)}</div>`:''}</div></div>`;
 }
 // "Kendi düzenim": rafın öğeleri sırasıyla — [{k:kitap}|{d:id,o:dayanak}]

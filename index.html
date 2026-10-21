@@ -607,7 +607,7 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .raf-kitaplik{position:relative;border-radius:4px;padding:10px 12px 0;background:linear-gradient(180deg,#3a2414,#2b1a0e);box-shadow:inset 0 0 18px rgba(0,0,0,.55);margin:.2rem 0 .3rem;}
 .raf-satirlar{display:flex;flex-wrap:wrap;align-items:flex-end;column-gap:3px;row-gap:16px;padding-bottom:16px;touch-action:pan-y;   /* pan-y: dikey kaydırma sayfanın, yatay parmak hareketi rafın → kitaplar sırayla zıplar (yoksa tarayıcı ilk kitaptan sonra hareketi kaydırmaya çeviriyordu) */
   background-image:repeating-linear-gradient(180deg,transparent 0 100px,#7a4f2c 100px,#a06c3e 102px,#6b4423 106px,#4a2e16 116px);background-size:100% 116px;}
-.raf-yuva{height:100px;display:flex;align-items:flex-end;}
+.raf-yuva{height:100px;display:flex;align-items:flex-end;flex-shrink:0;}
 .raf-sirt{position:relative;border-radius:2px 4px 4px 2px;cursor:pointer;box-shadow:2px 0 4px rgba(0,0,0,.45);transition:transform .18s cubic-bezier(.3,1.6,.5,1);}
 .raf-sirt::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
   background:linear-gradient(90deg,rgba(255,255,255,.2) 0%,rgba(255,255,255,.05) 22%,rgba(0,0,0,0) 50%,rgba(0,0,0,.22) 80%,rgba(0,0,0,.4) 100%),
@@ -2245,7 +2245,7 @@ try{
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261016a"></script>
 <script src="avatar.js?s=20260919b"></script>
-<script src="shelf.js?s=20261016a"></script>
+<script src="shelf.js?s=20261021a"></script>
 <script src="raf-toplu.js?s=20261008a"></script>
 <!-- Hayali Diyarlar Haritası (2026-08-12). 2026-08-22'de HERKESE AÇILDI —
      bkz. diyarTestModu(). -->
@@ -10077,7 +10077,9 @@ function kitapRafHtml(liste){
   const dayanak=o=>{ const svg=(typeof RAF_DAYANAK_SVG!=='undefined'&&(RAF_DAYANAK_SVG[_kitapDayanak]||RAF_DAYANAK_SVG.ahsap))||'';
     // Metal L çizimde ters yöne bakıyor: sırtı kitaba dayansın (Gökşin)
     const ters=_kitapDayanak==='metal'?!o.ters:o.ters;
-    return `<div class="raf-yuva"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${ters?`<div style="transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
+    // sabit en: Android'de ters dayanak satır hesabına girmiyordu, seri sonu taşıyordu (21 Ekim)
+    const en=typeof rafDayanakEn==='function'?rafDayanakEn(svg):22;
+    return `<div class="raf-yuva" style="width:${en}px"><div class="raf-dayanak" title="📚 ${escapeHtml(o.dayanak)}">${ters?`<div style="width:${en}px;transform:scaleX(-1)">${svg}</div>`:svg}</div></div>`; };
   // Seri (açılış dayanağından kapanışa) TEK BLOK: satıra sığarsa bölünmez, sığmazsa yeni satırdan başlar;
   // satırdan uzunsa (Red Kit) yeni satırdan başlayıp alt satırlara akar — blok içi aralıklar rafın 116px
   // döngüsüyle aynı, tahtalar hizalı kalır. Kapanış dayanağı son kitaba yapışık (yalnız kalmasın). — Gökşin, 19 Ekim
