@@ -19,7 +19,7 @@ const GENRE_BADGE_MAP = {
   'teknoloji':'bilim',
   'ekonomi':'ekonomi','is_dunyasi':'ekonomi',
   'otobiyografi':'biyografi','ani':'biyografi',
-  'liderlik':'kisisel_gelisim','saglik':'kisisel_gelisim',
+  'liderlik':'kisisel_gelisim', // saglik 2026-10-26'da çıkarıldı (Gökşin): sağlık kitabı kişisel gelişim sayılmaz
   'muzik':'sanat','mimari':'sanat',
   'grafik_roman':'cizgi_roman',
   'kutsal_meta':'kutsal_meta',

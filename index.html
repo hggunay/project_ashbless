@@ -2240,7 +2240,7 @@ try{
 <script src="coreading.js?s=20260919b"></script>
 <script src="series.js?s=20261006a"></script>
 <script src="feed.js?s=20260930k"></script>
-<script src="badges.js?s=20260930n"></script>
+<script src="badges.js?s=20261026a"></script>
 <!-- Sezonluk rozetler — badges.js'den SONRA yüklenmeli, BADGE_CATS'e ekliyor. -->
 <script src="sezonluk.js?s=20260919b"></script>
 <script src="shelves.js?s=20261016a"></script>
@@ -2341,10 +2341,12 @@ const GENRE_TREE = [
       ]},
       {id:'kisisel_gelisim', label:'Kişisel Gelişim', children:[
         {id:'liderlik',   label:'Liderlik'},
-        {id:'saglik',     label:'Sağlık & Wellness'},
-        {id:'spor',       label:'Spor'},
-        {id:'yemek',      label:'Yemek'},
       ]},
+      // Sağlık/Spor/Yemek 2026-10-26'da Kişisel Gelişim altından çıkarıldı (Gökşin).
+      // Artık Kişisel Gelişim rozetine de sayılmıyorlar (badges.js).
+      {id:'saglik',     label:'Sağlık & Wellness'},
+      {id:'spor',       label:'Spor'},
+      {id:'yemek',      label:'Yemek'},
       {id:'mitoloji',   label:'Mitoloji'},
     ]},
   ]},
