@@ -1035,6 +1035,9 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
 .ser-editing{background:rgba(44,80,107,.2) !important;border-bottom:1px solid rgba(100,160,200,.3) !important;}
 .ser-editing span:first-child{color:rgba(130,190,230,.9) !important;}
 .ser-editing::before{content:'✏️ ';font-size:.7rem;}
+/* 🎧 Sesli kitapta süre kutusu — Sesli seçilince kısa altın parıltı (2026-10-27) */
+@keyframes sureParilti{0%{box-shadow:0 0 0 0 rgba(201,162,39,0)}25%{box-shadow:0 0 0 5px rgba(201,162,39,.55)}100%{box-shadow:0 0 0 0 rgba(201,162,39,0)}}
+.sure-parilti{animation:sureParilti 2.4s ease-out;border-radius:4px}
 </style>
 </head>
 <body>
@@ -6708,11 +6711,13 @@ function renderViewMode(book, fromShelf){
     <div class="vm-section">
       <div class="vm-label">Okuma ilerlemesi</div>
       <div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem">
-        <span style="font-size:.8rem;color:var(--ink-light)">Mevcut Sayfa</span>
+        ${sesliSureli(book)?`<span style="font-size:.8rem;color:var(--ink-light)">🎧 Kaldığın yer</span>
+        <span style="display:flex;align-items:center;gap:.3rem;font-size:.8rem;color:var(--ink-light)">${sureKutulari(book.id,'kalinanDk',book.kalinanDk,'',"background:#fff;border:1px solid rgba(201,162,39,.5);border-radius:4px;padding:.28rem .45rem;width:58px;font-size:.85rem;color:var(--ink);font-family:'Crimson Pro',serif;text-align:center")}</span>
+        <span style="font-size:.8rem;color:var(--ink-light)">/ ${dkYaz(book.sureDk)}</span>`:`<span style="font-size:.8rem;color:var(--ink-light)">Mevcut Sayfa</span>
         <input type="number" value="${book.currentPage||''}" placeholder="—"
           style="background:#fff;border:1px solid rgba(201,162,39,.5);border-radius:4px;padding:.28rem .45rem;width:72px;font-size:.85rem;color:var(--ink);font-family:'Crimson Pro',serif;text-align:center"
           onchange="saveFieldTyped(${book.id},'currentPage','number',this.value)"/>
-        ${book.pages?`<span style="font-size:.8rem;color:var(--ink-light)">/ ${book.pages} sayfa</span>`:''}
+        ${book.pages?`<span style="font-size:.8rem;color:var(--ink-light)">/ ${book.pages} sayfa</span>`:''}`}
       </div>
       <div style="margin-top:.6rem">
         <div style="font-size:.8rem;color:var(--ink-light)">📜 Yolculuk Notu</div>
@@ -6925,6 +6930,10 @@ function renderEditMode(bookId, fromShelf){
           ${dField('📅 Başlama Tarihi','startDate',book.startDate,'date',isMe,'gg.aa.yyyy')}
           ${dField('✅ Bitiş Tarihi / Yıl','endDate',book.rereadStarted?'':(book.endDate||(book.yearOnly?String(book.yearOnly):'')),'text',isMe,'gg.aa.yyyy veya sadece yyyy')}
           ${dField('Sayfa Sayısı','pages',book.pages,'number',isMe)}
+          <div class="detail-field" id="sureAlan-${book.id}" style="${(book.formats||[]).includes('sesli')?'':'display:none'}">
+            <span class="detail-field-label">🎧 Toplam Süre</span>
+            <span style="display:flex;align-items:center;gap:.3rem;font-size:.8rem">${isMe?sureKutulari(book.id,'sureDk',book.sureDk,'detail-input','width:58px'):(book.sureDk?dkYaz(book.sureDk):'—')}</span>
+          </div>
           ${dField('Yayın Yılı','pubYear',book.pubYear,'number',isMe)}
           ${dField('Yazar Doğum Yılı','authorBirthYear',book.authorBirthYear,'number',isMe)}
           ${dField('Ülke','country',book.country,'text',isMe)}
@@ -7115,12 +7124,16 @@ function renderEditMode(bookId, fromShelf){
     <div class="detail-section" style="border:1px solid rgba(74,103,65,.3);border-radius:4px;padding:.75rem;background:rgba(74,103,65,.05)">
       <div class="detail-section-title" style="color:var(--moss)">📖 Okuma İlerlemesi</div>
       <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
-        <div class="detail-field" style="flex:0 0 auto">
+        ${sesliSureli(book)?`<div class="detail-field" style="flex:0 0 auto">
+          <span class="detail-field-label">🎧 Kaldığın yer</span>
+          <span style="display:flex;align-items:center;gap:.3rem;font-size:.8rem">${sureKutulari(book.id,'kalinanDk',book.kalinanDk,'detail-input','width:58px')}</span>
+        </div>
+        <div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--moss);padding-top:1.2rem">/ ${dkYaz(book.sureDk)}</div>`:`<div class="detail-field" style="flex:0 0 auto">
           <label class="detail-field-label">Mevcut Sayfa</label>
           <input class="detail-input" type="number" style="width:90px" value="${book.currentPage||''}" placeholder="—"
             onchange="saveFieldTyped(${book.id},'currentPage','number',this.value)"/>
         </div>
-        ${book.pages?`<div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--moss);padding-top:1.2rem">/ ${book.pages} sayfa</div>`:''}
+        ${book.pages?`<div style="font-family:'Space Mono',monospace;font-size:.75rem;color:var(--moss);padding-top:1.2rem">/ ${book.pages} sayfa</div>`:''}`}
       </div>
     </div>`:''}
   `;
@@ -7263,6 +7276,7 @@ function toggleFmt(bookId,fmt,el){
   book.formats=fmts;
   saveDb();renderSafe();
   checkAndAwardBadges(prevValid);
+  if(fmt==='sesli') sureAlaniniGoster(bookId,fmts.includes('sesli'));
 }
 
 function toggleFlag(bookId,field,el){
@@ -7513,6 +7527,7 @@ async function finishReading(bookId){
     delete book._fromFinish;
   }
   book.currentPage=null;
+  book.kalinanDk=null; // sesli kitap: kalınan yer de sıfırlanır, toplam süre (sureDk) kalır
   // Daha önce okunmuşsa yeniden okuma say
   if(book.previousStatus==='new'||book.rereadStarted) book.reread=true;
   book.readingStatus='new';
@@ -9749,6 +9764,50 @@ function dahaFazlaGoster(id, adim){
    ⚠️ `renderSafe()` çağrılMIYOR: yalnızca bir yazı değişiyor, tüm listeyi
    yeniden çizmek gereksiz kırpışma yaratır. Rozet kontrolü de yok — bu bir
    görünüm tercihi, veriye dair bir şey değil. */
+/* 🎧 Sesli kitapta süre (2026-10-27, Nimet istedi). Toplam süre `sureDk`,
+   kalınan yer `kalinanDk` — ikisi de DAKİKA. Yalnız OKUMA SÜRECİNDE gösterim
+   içindir: rozet/istatistik/Hesap Vakti hep `pages` okur, kitap bitince dakika
+   hiçbir hesaba girmez. Kural: Sesli işaretli VE toplam süre girilmişse ilerleme
+   dakikayla, değilse eskisi gibi sayfayla (kitap+sesli birlikte işaretliyse de).
+   Bilinen sınır: dakikayla ilerleyen kitapta birlikte okuma ara kutlamaları ve
+   seri ilerlemesi çıkmaz — sayfa girilmemiş kitaptaki gibi (Gökşin onayladı). */
+function sesliSureli(b){ return !!b && (b.formats||[]).includes('sesli') && b.sureDk>0; }
+function dkYaz(dk){
+  dk=Math.max(0,Math.round(Number(dk)||0));
+  const sa=Math.floor(dk/60), d=dk%60;
+  return sa?(d?`${sa} sa ${d} dk`:`${sa} sa`):`${d} dk`;
+}
+// İki kutu (saat + dakika) AYNI kaba konur: saveSure ikisini kardeş olarak bulur.
+function sureKutulari(bookId,alan,dk,sinif,stil){
+  const sa=dk>0?Math.floor(dk/60):'', d=dk>0?dk%60:'';
+  const k=(ad,deger,ph)=>`<input ${sinif?`class="${sinif}"`:''} type="number" min="0" ${ad==='dk'?'max="59"':''} style="${stil}" value="${deger}" placeholder="${ph}" aria-label="${ad==='sa'?'saat':'dakika'}" data-sure="${ad}" onchange="saveSure(${bookId},'${alan}',this)"/>`;
+  return `${k('sa',sa,'sa')}<span>sa</span>${k('dk',d,'dk')}<span>dk</span>`;
+}
+function saveSure(bookId,alan,kutu){
+  const book=(db.books[me]||[]).find(b=>b.id===bookId);if(!book)return;
+  const kap=kutu.parentNode;
+  const sa=Number(kap.querySelector('[data-sure="sa"]').value)||0;
+  const dk=Number(kap.querySelector('[data-sure="dk"]').value)||0;
+  const top=Math.round(sa*60+dk);
+  book[alan]=top>0?top:null;
+  saveDb();renderSafe();
+}
+/* Format'ta 🎧 Sesli seçilince: Kitap Bilgileri bölümü açılır, sayfa Toplam
+   Süre kutusuna kayar, kutu kısa bir süre parlar ve imleç saat kutusuna girer
+   (Gökşin'in fikri). Kaldırılınca kutu gizlenir; girilen süre SİLİNMEZ. */
+function sureAlaniniGoster(bookId,acik){
+  const alan=document.getElementById('sureAlan-'+bookId);
+  if(!alan) return;
+  alan.style.display=acik?'':'none';
+  if(!acik) return;
+  const govde=document.getElementById('mSec-info-'+bookId);
+  if(govde&&!govde.classList.contains('open')) toggleModalSec('mSec-info-'+bookId);
+  alan.scrollIntoView({behavior:'smooth',block:'center'});
+  alan.classList.remove('sure-parilti'); void alan.offsetWidth; alan.classList.add('sure-parilti');
+  const ilk=alan.querySelector('input');
+  if(ilk) setTimeout(()=>ilk.focus({preventScroll:true}),500);
+}
+
 function kalanSayfaCevir(bookId, kutu, ev){
   if(ev) ev.stopPropagation();
   const kitap=(db.books[me]||[]).find(b=>b.id===bookId);
@@ -10201,7 +10260,9 @@ function renderBookList(){
       if(crEmpty) crEmpty.style.display='none';
       crList.innerHTML=reading.map(b=>{
         const noTitle=!b.title||b.title.startsWith('ISBN:');
-        const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+        const sesli=sesliSureli(b);
+        const pct=sesli?(b.kalinanDk?Math.min(100,Math.round(b.kalinanDk/b.sureDk*100)):null)
+                       :(b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null);
         return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':escapeHtml(b.title)}</span>
@@ -10210,8 +10271,8 @@ function renderBookList(){
             ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
 			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>escapeHtml((db.users[u]||{}).displayName||u)).join(', ')}</span>`:''}
             ${pct!==null?(()=>{
-              const _normal=`${b.currentPage}/${b.pages} sayfa · %${pct}`;
-              const _kalan=`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
+              const _normal=sesli?`🎧 ${dkYaz(b.kalinanDk)} / ${dkYaz(b.sureDk)} · %${pct}`:`${b.currentPage}/${b.pages} sayfa · %${pct}`;
+              const _kalan=sesli?`🎧 ${dkYaz(b.sureDk-b.kalinanDk)} kaldı`:`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
               /* Tercih KALICI ve KİTAP BAŞINA (2026-09-16).
                  Gökşin: "bir kitaba ilk başladığımda ne kadar ilerlediğimi,
                  son yarıya geçtiğimde kalan sayfa sayısını görmeyi seviyorum."
@@ -10234,12 +10295,14 @@ function renderBookList(){
     if(paused.length){
       if(prEmpty) prEmpty.style.display='none';
       prList.innerHTML=paused.map(b=>{
-        const pct=b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null;
+        const sesli=sesliSureli(b);
+        const pct=sesli?(b.kalinanDk?Math.min(100,Math.round(b.kalinanDk/b.sureDk*100)):null)
+                       :(b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null);
         return`<div class="book-item book-item-paused" onclick="openBook(${b.id})">
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${escapeHtml(b.title)||'İsimsiz'}</span>
             ${b.author?`<span class="book-meta">— ${escapeHtml(b.author)}</span>`:''}
-            ${b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:''}
+            ${sesli?(b.kalinanDk?`<span class="book-meta">🎧 ${dkYaz(b.kalinanDk)}'da bıraktım / ${dkYaz(b.sureDk)}</span>`:''):(b.currentPage?`<span class="book-meta">📄 ${b.currentPage}. sayfada bıraktım${b.pages?' / '+b.pages:''}</span>`:'')}
             ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
             ${pct!==null?`<div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--rust),var(--gold))"></div></div><div class="reading-progress-text">%${pct} tamamlandı</div>`:''}
           </div>
