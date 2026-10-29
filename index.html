@@ -11252,7 +11252,12 @@ async function tryShowWeatherMessage() {
   if(!navigator.geolocation) return;
   if(getWeatherAnimDisabled()) return;
   const today = new Date().toDateString();
-  if(localStorage.getItem('weatherMessageDate') === today) return;
+  // 29 Ekim (Gökşin): günde en fazla 3 kez, iki gösterim arası en az 3 saat
+  let times = [];
+  try { times = JSON.parse(localStorage.getItem('weatherMessageTimes') || '[]'); } catch(e) {}
+  times = times.filter(t => new Date(t).toDateString() === today);
+  if(times.length >= 3) return;
+  if(times.length && Date.now() - times[times.length-1] < 3*60*60*1000) return;
   navigator.geolocation.getCurrentPosition(async pos=>{
     try{
       const {latitude:lat, longitude:lon} = pos.coords;
@@ -11266,7 +11271,9 @@ async function tryShowWeatherMessage() {
       if(!type) return;
       const messages = weatherMessages[type];
       const msg = messages[Math.floor(Math.random()*messages.length)];
-      localStorage.setItem('weatherMessageDate', today);
+      localStorage.setItem('weatherMessageDate', today); // gece mesajı bunu okuyor
+      times.push(Date.now());
+      localStorage.setItem('weatherMessageTimes', JSON.stringify(times));
       showWeatherMessage(msg, type);
     }catch(e){}
   }, ()=>{}, {timeout:5000});
