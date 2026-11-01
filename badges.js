@@ -415,7 +415,8 @@ function maxComicSeries(books){
   return Math.max(0,...Object.values(c));
 }
 function totalPages(books){return books.reduce((s,b)=>s+(b.pages||0),0);}
-function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.country.trim()).map(b=>b.country.trim().toLowerCase())).size;}
+// 1.11: ISO koduyla say ('İngiltere'/'ingiltere', 'Italya'/'İtalya' eski kayıtları tek ülke). Kod bulunamazsa küçük harfli ad.
+function uniqueCountries(books){return new Set(books.filter(b=>b.country&&b.country.trim()).map(b=>countryToISO(b.country)||b.country.trim().toLowerCase())).size;}
 function uniqueISOs(books){return new Set(books.filter(b=>b.country).map(b=>countryToISO(b.country)).filter(Boolean));}
 
 function allContinents(books){const isos=uniqueISOs(books);const conts=new Set([...isos].map(iso=>ISO_CONTINENT[iso]).filter(Boolean));return conts.size>=6?1:0;}
@@ -616,6 +617,16 @@ function badgeCtxFor(user){
 }
 
 // Bir rozetin hangi kitaplarla kazanıldığını veya ilerlediğini döner
+// Her ülkeden ilk okunan kitap, okunma sırasıyla; en fazla `esik` ülke. (geo + bölge rozetleri)
+function ilkKitapUlkeBasina(books,anahtar,esik){
+  const tarih=b=>{const t=b.endDate||b.month||b.startDate||b.addedAt;if(!t) return '9999';const n=typeof normalizeDate==='function'?normalizeDate(t):null;return String(n||t);};  // '16 Temmuz 2026' gibi yazımlar da sıraya girsin
+  const goruldu=new Set(), out=[];
+  books.filter(b=>b.country&&b.country.trim()).slice().sort((x,y)=>tarih(x).localeCompare(tarih(y))).forEach(b=>{
+    const k=anahtar(b); if(!k||goruldu.has(k)||out.length>=esik) return;
+    goruldu.add(k); out.push(b);
+  });
+  return out;
+}
 function booksForBadge(badge,books){
   const filtered=retroaktifSayilirMi(badge.id)?books:books.filter(b=>!isRetroactive(b));
   const id=badge.id;
@@ -661,13 +672,17 @@ function booksForBadge(badge,books){
   if(['dis1','dis2','dis3','dis4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>['distopya','cyberpunk','steampunk'].includes(normalizeGenre(g))));
   if(['gen1','gen2','gen3','gen4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>['genclik','cocuk'].includes(normalizeGenre(g))));
   // Coğrafya
-  if(['geo1','geo2','geo3','geo4','geo5'].includes(id)) return filtered.filter(b=>b.country&&b.country.trim());
+  /* Ülke sayan rozetler (1.11, Gökşin): aynı ülke iki kez sayılmadığı için listede her ülkeden
+     YALNIZ rozete katkı veren kitap görünsün = o ülkeden okunan İLK kitap (bitiş tarihine göre),
+     ve rozetin eşiği kadar ülke (Pasaport 3, Dünya Okuru 5...). Anahtar ISO kodu ("İngiltere"/"ingiltere" tek ülke), bulunamazsa küçük harfli ad. */
+  if(['geo1','geo2','geo3','geo4'].includes(id)) return ilkKitapUlkeBasina(filtered,b=>countryToISO(b.country)||b.country.trim().toLowerCase(),{geo1:3,geo2:5,geo3:10,geo4:20}[id]);
+  if(id==='geo5') return filtered.filter(b=>b.country&&b.country.trim());
   // Bölge rozetleri: listede yalnız O BÖLGEDEN kitaplar (1.11 hata: tüm ülkeli kitapları gösteriyordu;
   // sayım doğruydu, liste süzülmüyordu). Anahtarlar rozet tanımlarındaki REGIONS ile aynı.
   if(id.startsWith('reg_')){
     const bolge=REGIONS[{reg_med:'mediterranean',reg_nor:'nordic',reg_lat:'latin',reg_eas:'eastasia',reg_sas:'southasia',reg_afr:'africa',reg_mid:'middleeast'}[id]];
     if(!bolge) return [];
-    return filtered.filter(b=>{if(!b.country||!b.country.trim()) return false;const iso=countryToISO(b.country);return !!iso&&bolge.has(iso);});
+    return ilkKitapUlkeBasina(filtered.filter(b=>{const iso=countryToISO(b.country);return !!iso&&bolge.has(iso);}),b=>countryToISO(b.country),3);
   }
   // Okuma Alışkanlığı
   if(['night1','night2','night3'].includes(id)) return filtered.filter(b=>b.nightReading);
