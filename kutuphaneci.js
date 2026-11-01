@@ -208,7 +208,7 @@ function kutuphaneciNotuCiz() {
     <div class="kut-imza">— Kütüphaneci (Ali)</div>
     <div class="kut-alt"><button class="kut-yaz" onclick="kutMektupAc()">✉️ Kütüphaneciye yaz</button><span id="kutMektupBilgi" class="kut-bilgi"></span></div>
     <div id="kutMektupForm" style="display:none">
-      <textarea id="kutMektupMetin" maxlength="500" rows="3" placeholder="Masaya bir not bırak... (herkes görmez, yalnız kütüphaneci okur)"></textarea>
+      <textarea id="kutMektupMetin" maxlength="500" rows="3" placeholder="Masaya bir not bırak... Kütüphaneci okuyacak."></textarea>
       <button class="kut-yaz kut-birak" onclick="kutMektupBirak()">Masaya bırak</button>
     </div>`;
 }
