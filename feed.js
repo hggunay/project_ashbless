@@ -299,6 +299,7 @@ function markFeedVisited(){
 function renderFeed(append=false){
   const container=document.getElementById('feedContainer');
   if(!container) return;
+  if(typeof kutuphaneciNotuCiz==='function') kutuphaneciNotuCiz();  // 🕯️ kutuphaneci.js
   // NOT: feedPage burada sıfırlanmıyor — filtre değişince filterFeed() kendi
   // feedPage=1 yapıyor. Böylece reaksiyon vermek/alıntı silmek gibi "içerik değişti,
   // görünümü tazele" çağrıları kullanıcıyı akışın başına fırlatmıyor.
