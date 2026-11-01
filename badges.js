@@ -662,7 +662,13 @@ function booksForBadge(badge,books){
   if(['gen1','gen2','gen3','gen4'].includes(id)) return filtered.filter(b=>(b.genres||[]).some(g=>['genclik','cocuk'].includes(normalizeGenre(g))));
   // Coğrafya
   if(['geo1','geo2','geo3','geo4','geo5'].includes(id)) return filtered.filter(b=>b.country&&b.country.trim());
-  if(id.startsWith('reg_')) return filtered.filter(b=>b.country&&b.country.trim());
+  // Bölge rozetleri: listede yalnız O BÖLGEDEN kitaplar (1.11 hata: tüm ülkeli kitapları gösteriyordu;
+  // sayım doğruydu, liste süzülmüyordu). Anahtarlar rozet tanımlarındaki REGIONS ile aynı.
+  if(id.startsWith('reg_')){
+    const bolge=REGIONS[{reg_med:'mediterranean',reg_nor:'nordic',reg_lat:'latin',reg_eas:'eastasia',reg_sas:'southasia',reg_afr:'africa',reg_mid:'middleeast'}[id]];
+    if(!bolge) return [];
+    return filtered.filter(b=>{if(!b.country||!b.country.trim()) return false;const iso=countryToISO(b.country);return !!iso&&bolge.has(iso);});
+  }
   // Okuma Alışkanlığı
   if(['night1','night2','night3'].includes(id)) return filtered.filter(b=>b.nightReading);
   if(['hard1','hard2','hard3'].includes(id)) return filtered.filter(b=>b.challenging);
