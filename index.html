@@ -629,6 +629,11 @@ input:checked+.raf-renk-nokta{border-color:#fff;box-shadow:0 0 0 2px var(--ink)}
              repeating-linear-gradient(0deg,rgba(255,255,255,.03) 0 1px,transparent 1px 3px);}
 .rs-bant{position:absolute;left:3px;right:3px;height:3px;border-top:1px solid var(--b);border-bottom:1px solid var(--b);opacity:.75;pointer-events:none;}
 .rs-bant.u{top:8px}.rs-bant.a{bottom:8px}
+/* okunan kitabın sırtının üstünden çıkan kâğıt ayraç + rafın altındaki ilerleme şeridi (2 Kasım) */
+.rs-ayrac{position:absolute;top:-11px;right:22%;width:6px;height:16px;background:#b3262e;border-radius:1px 1px 0 0;
+  clip-path:polygon(0 0,100% 0,100% 100%,50% 82%,0 100%);box-shadow:0 0 1px rgba(0,0,0,.6);pointer-events:none;}
+.raf-serit{margin:.1rem 0 .6rem;}
+.raf-serit-ad{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .rs-ad{position:absolute;inset:13px 2px;writing-mode:vertical-rl;transform:rotate(180deg);display:flex;align-items:center;justify-content:center;font-family:'Crimson Pro',serif;font-weight:600;text-align:center;overflow:hidden;line-height:1.05;word-break:normal;overflow-wrap:normal;}
 .rs-ok{position:absolute;left:50%;bottom:-1px;transform:translateX(-50%);font-size:8px;color:#9fd18f;text-shadow:0 0 3px #000;pointer-events:none;}
 .rs-odunc{position:absolute;left:50%;top:-1px;transform:translateX(-50%);font-size:8px;color:#f0c27a;text-shadow:0 0 3px #000;pointer-events:none;}
@@ -9825,6 +9830,29 @@ function sureAlaniniGoster(bookId,acik){
   if(ilk) setTimeout(()=>ilk.focus({preventScroll:true}),500);
 }
 
+// İlerleme kutusu: çubuk + "120/400 sayfa · %30" (dokununca kalan sayfa). Okuyorum listesi ve
+// raf görünümündeki şerit (2 Kasım, Gökşin: "rafta kaçıncı sayfada olduğumu göremiyorum") ortak kullanır.
+function okumaIlerlemeKutusu(b){
+  const sesli=sesliSureli(b);
+  const pct=sesli?(b.kalinanDk?Math.min(100,Math.round(b.kalinanDk/b.sureDk*100)):null)
+                 :(b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null);
+  if(pct===null) return '';
+  const _normal=sesli?`🎧 ${dkYaz(b.kalinanDk)} / ${dkYaz(b.sureDk)} · %${pct}`:`${b.currentPage}/${b.pages} sayfa · %${pct}`;
+  const _kalan=sesli?`🎧 ${dkYaz(b.sureDk-b.kalinanDk)} kaldı`:`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
+  /* Tercih KALICI ve KİTAP BAŞINA (2026-09-16).
+     Gökşin: "bir kitaba ilk başladığımda ne kadar ilerlediğimi,
+     son yarıya geçtiğimde kalan sayfa sayısını görmeyi seviyorum."
+     Yani bu kitaptan kitaba değişen bir tercih, genel bir ayar değil. */
+  return `<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(${b.id},this,event)" title="Yüzde / kalan sayfa"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${_normal}" data-kalan="${_kalan}">${b.sayfaModu==='kalan'?_kalan:_normal}</div></div>`;
+}
+// raf görünümünde rafın altına: her kitap için ad + ilerleme (sırtlara sayı sığmıyor)
+function kitapRafSerit(liste){
+  const satirlar=liste.map(b=>{ const k=okumaIlerlemeKutusu(b); if(!k) return '';
+    // listedeki kutunun aynısı (renkler ondan gelir — çıplak yazı koyu zeminde kayboluyordu)
+    return `<div class="book-item ${b.readingStatus==='paused'?'book-item-paused':'book-item-reading'}" onclick="openBook(${b.id})"><div class="book-info" style="flex:1"><span class="book-title-text raf-serit-ad">${escapeHtml(b.title||'İsimsiz')}</span>${k}</div></div>`; }).join('');
+  return satirlar?`<div class="raf-serit">${satirlar}</div>`:'';
+}
+
 function kalanSayfaCevir(bookId, kutu, ev){
   if(ev) ev.stopPropagation();
   const kitap=(db.books[me]||[]).find(b=>b.id===bookId);
@@ -10147,7 +10175,7 @@ function kitapSirtHtml(b){
   const alt=r?`<div class="rs-puan">${'<i></i>'.repeat(tam)}${yarim?'<i class="yarim"></i>':''}</div>`:'<div class="rs-bant a"></div>';
   const ipucu=escapeHtml(ad+(b.author?' — '+b.author:'')+(p?` · ${p} s`:'')+(r?` · ${r}⭐`:''));
   return `<div class="raf-yuva"><div class="raf-sirt" onclick="openBook(${b.id})" title="${ipucu}" style="width:${en}px;height:${boy}px;background:${zemin};--b:${bant}">
-    <div class="rs-bant u"></div>${alt}
+    <div class="rs-bant u"></div>${alt}${b.readingStatus==='reading'?'<div class="rs-ayrac" title="Okuyorum"></div>':''}
     <span class="rs-ad" style="font-size:${fs}px;color:${yazi};text-shadow:${acik?'none':'0 1px 2px rgba(0,0,0,.8)'}${r?`;bottom:${8+Math.ceil(r)*3}px`:''}">${escapeHtml(metin)}</span></div></div>`;
 }
 // öğe: kitap ya da {dayanak:'seri adı', ters:true|false} (seriye göre sıralamada serinin başı/sonu)
@@ -10277,9 +10305,6 @@ function renderBookList(){
       if(crEmpty) crEmpty.style.display='none';
       crList.innerHTML=reading.map(b=>{
         const noTitle=!b.title||b.title.startsWith('ISBN:');
-        const sesli=sesliSureli(b);
-        const pct=sesli?(b.kalinanDk?Math.min(100,Math.round(b.kalinanDk/b.sureDk*100)):null)
-                       :(b.currentPage&&b.pages?Math.min(100,Math.round(b.currentPage/b.pages*100)):null);
         return`<div class="book-item book-item-reading" onclick="openBook(${b.id})">
           <div class="book-info" style="flex:1">
             <span class="book-title-text">${noTitle?'⚠️ Başlıksız kayıt':escapeHtml(b.title)}</span>
@@ -10287,15 +10312,7 @@ function renderBookList(){
             ${b.startDate?`<span class="book-meta">📅 ${b.startDate} · okumaya devam ediyor</span>`:''}
             ${b.series?`<span class="book-series-text">📚 ${escapeHtml(b.series)}${b.seriesNum?` #${b.seriesNum}`:''}</span>`:''}
 			${b.coreadingSession&&db.readingSessions&&db.readingSessions[b.coreadingSession]&&db.readingSessions[b.coreadingSession].status==='active'?`<span class="book-meta" style="cursor:pointer" onclick="event.stopPropagation();scrollToCoreadingCard('${b.coreadingSession}')">👥 ${Object.keys(db.readingSessions[b.coreadingSession].participants||{}).filter(u=>db.readingSessions[b.coreadingSession].participants[u].status==='accepted').map(u=>escapeHtml((db.users[u]||{}).displayName||u)).join(', ')}</span>`:''}
-            ${pct!==null?(()=>{
-              const _normal=sesli?`🎧 ${dkYaz(b.kalinanDk)} / ${dkYaz(b.sureDk)} · %${pct}`:`${b.currentPage}/${b.pages} sayfa · %${pct}`;
-              const _kalan=sesli?`🎧 ${dkYaz(b.sureDk-b.kalinanDk)} kaldı`:`${Math.max(0,b.pages-b.currentPage)} sayfa kaldı`;
-              /* Tercih KALICI ve KİTAP BAŞINA (2026-09-16).
-                 Gökşin: "bir kitaba ilk başladığımda ne kadar ilerlediğimi,
-                 son yarıya geçtiğimde kalan sayfa sayısını görmeyi seviyorum."
-                 Yani bu kitaptan kitaba değişen bir tercih, genel bir ayar değil. */
-              return `<div class="reading-progress-box" style="cursor:pointer" onclick="kalanSayfaCevir(${b.id},this,event)" title="Yüzde / kalan sayfa"><div class="reading-progress-wrap"><div class="reading-progress-fill" style="width:${pct}%"></div></div><div class="reading-progress-text" data-normal="${_normal}" data-kalan="${_kalan}">${b.sayfaModu==='kalan'?_kalan:_normal}</div></div>`;
-            })():''}
+            ${okumaIlerlemeKutusu(b)}
           </div>
         </div>`;
       }).join('');
@@ -10571,8 +10588,8 @@ function renderBookList(){
   const kra=document.getElementById('kitapRafAyar');
   if(kra){ kra.style.display=_kitapGorunum==='raf'?'':'none'; if(_kitapGorunum==='raf') kra.innerHTML=kitapRafAyarHtml(); }
   if(_kitapGorunum==='raf'){
-    if(crList&&reading.length) crList.innerHTML=kitapRafHtml(reading);
-    if(prList&&paused.length) prList.innerHTML=kitapRafHtml(paused);
+    if(crList&&reading.length) crList.innerHTML=kitapRafHtml(reading)+kitapRafSerit(reading);
+    if(prList&&paused.length) prList.innerHTML=kitapRafHtml(paused)+kitapRafSerit(paused);
     if(wlList&&wishlist.length) wlList.innerHTML=kitapRafHtml(wishlist);
     if(crBookList&&coreadingBooks.length) crBookList.innerHTML=kitapRafHtml(coreadingBooks);
   }
