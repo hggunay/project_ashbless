@@ -7599,6 +7599,9 @@ function confirmMarkAsUnread(bookId, status){
   // Önceki konuma dön — previousStatus varsa oraya, yoksa wishlist
   // 'new'(okundu) listesinden geri alınıyorsa reading'e dön
   const targetStatus = book.readingStatus==='new' ? 'reading' : (book.previousStatus && book.previousStatus!=='reading' ? book.previousStatus : status);
+  // Aşağıdaki ülke geri alması ESKİ duruma bakmalı: readingStatus birazdan
+  // targetStatus'a dönüyor, ona bakınca koşul hiç tutmuyordu (R2, 2026-11-04).
+  const eskiDurum = book.readingStatus;
   /* Yeniden okumadan vazgeçildi (okunuyor → okundu'ya geri): bugünün başlangıç
      tarihi kalırsa başlangıç bitişten sonra olur — aynı hata. Saklanan eski okuma
      geri yüklenir. */
@@ -7626,7 +7629,7 @@ function confirmMarkAsUnread(bookId, status){
     if(!allRead) allSeriesBooks.forEach(b=>{b.seriesComplete=false;});
   }
   // Ülke eventini geri al
-  if(book.country&&book.readingStatus==='new'&&db.countryEvents&&db.countryEvents[me]){
+  if(book.country&&eskiDurum==='new'&&!book.retroactive&&db.countryEvents&&db.countryEvents[me]){
     const otherBooks=(db.books[me]||[]).filter(
       b=>b.id!==book.id&&b.country&&b.country.toLowerCase()===book.country.toLowerCase()&&b.readingStatus==='new'&&!b.retroactive
     );
@@ -8267,7 +8270,14 @@ function removeStory(storyId){
   const btn=document.querySelector(`[onclick="removeStory(${storyId})"]`);
   if(!btn) return;
   if(btn.dataset.confirming==='1'){
+    const silinen=(db.stories[me]||[]).find(s=>s.id===storyId);
     db.stories[me]=(db.stories[me]||[]).filter(s=>s.id!==storyId);
+    // Açtığı diyar da geri alınsın — akıştan silmedeki davranışın aynısı (R1,
+    // 2026-11-04). Listeden ÇIKARILDIKTAN sonra: kontrol güncel listeye bakıyor.
+    if(silinen && typeof diyarKaydiniGeriAl==='function'){
+      diyarKaydiniGeriAl({title:silinen.title,author:silinen.author,series:null})
+        .catch(e=>console.warn('diyar geri alma (öykü silme):',e));
+    }
     // Serilerdeki ara öykü bağlantısını da temizle — kitap silmedeki Ö34 kuralı.
     if(typeof oykuSeriBaglariniTemizle==='function') oykuSeriBaglariniTemizle(storyId);
     saveDb();closeModal();renderStories();renderJournal();
