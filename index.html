@@ -10935,21 +10935,28 @@ function readingEventIcon(eventType){
 
 function readingEventText(card){
   const book=escapeHtml(card.bookTitle)||'';
+  /* Yalnız 🎧 Sesli işaretli kitapta "dinlemek" (2026-11-04, Gökşin). Karışık
+     biçimde (ör. fiziksel + sesli) "okumak" kalır. Biçim kitaptan o an okunuyor,
+     yani kitap sonradan değişirse eski kart da değişir; kitap silindiyse "okumak". */
+  const bk=card.u&&db.books&&(db.books[card.u]||[]).find(b=>b.id===card.bookId);
+  const fm=(bk&&bk.formats)||[];
+  const sesli=fm.length===1&&fm[0]==='sesli';
+  const okumaya=sesli?'dinlemeye':'okumaya';
   const RESUME=[
     `${book} kitabıyla kaldığı yerden devam ediyor.`,
     `${book} kitabına ikinci bir şans verdi.`,
-    `${book} kitabına geri döndü. Bu sefer son sayfaya ulaşabilecek mi?`
+    `${book} kitabına geri döndü. Bu sefer ${sesli?'sona':'son sayfaya'} ulaşabilecek mi?`
   ];
   const REREAD=[
-    `${book} kitabını yeniden okumaya başladı. Sevilen hikâyeler bazen ikinci kez daha güzeldir.`,
-    `${book} kitabını yeniden okumaya başladı. Belli ki bu hikâyenin raf ömrü uzun.`,
-    `${book} kitabını yeniden okumaya başladı. Kitabı sevmişe benziyor.`
+    `${book} kitabını yeniden ${okumaya} başladı. Sevilen hikâyeler bazen ikinci kez daha güzeldir.`,
+    `${book} kitabını yeniden ${okumaya} başladı. Belli ki bu hikâyenin raf ömrü uzun.`,
+    `${book} kitabını yeniden ${okumaya} başladı. Kitabı sevmişe benziyor.`
   ];
   const idx=(typeof card.variant==='number'&&card.variant>=0&&card.variant<3)?card.variant:0;
   switch(card.eventType){
-    case 'started': return `${book} kitabını okumaya başladı.`;
+    case 'started': return `${book} kitabını ${okumaya} başladı.`;
     case 'finished': return `${book} kitabını bitirdi! 🎉`;
-    case 'finished_direct': return `${book} kitabını okudu.`;
+    case 'finished_direct': return `${book} kitabını ${sesli?'dinledi':'okudu'}.`;
     case 'paused': return `${book} kitabını yarım bıraktı.`;
     case 'resumed': return RESUME[idx];
     case 'reread': return REREAD[idx];
