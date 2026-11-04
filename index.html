@@ -6567,7 +6567,9 @@ async function confirmRemoveBookFinal(id, deleteNote){
     db.countryEvents[me]=db.countryEvents[me].filter(
       e=>e.country.toLowerCase()!==book.country.toLowerCase()
     );
-    if(!db.countryEvents[me].length) delete db.countryEvents[me];
+    // delete DEĞİL, boş dizi: saveDb tanımsız dalı atlıyor, sunucudaki eski kayıt kalıyordu
+    // (2026-11-04 deneme hesabında ölçüldü). Boş dizi yazılınca Firebase düğümü siler.
+    if(!db.countryEvents[me].length) db.countryEvents[me]=[];
   }
 }
   /* Diyar keşfini de geri al (2026-09-11) — ülke kaydıyla aynı mantık.
@@ -9927,7 +9929,7 @@ function confirmDeleteBooks(){
        ⚠️ Ülke kayıtları YALNIZCA kitaplardan gelir, o yüzden tümü düşer.
        Diyarları okunmuş HİKÂYELER de açabildiği için orada körlemesine silme
        yok: diyarKayitlariniDenkle her diyara "hâlâ desteği var mı" diye bakıyor. */
-    if(db.countryEvents) delete db.countryEvents[me];
+    if(db.countryEvents) db.countryEvents[me]=[];   // delete değil: bkz. confirmRemoveBookFinal
     saveDb();renderSafe();
     if(typeof diyarKayitlariniDenkle==='function'){
       diyarKayitlariniDenkle(true).then(n=>{
