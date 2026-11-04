@@ -147,6 +147,10 @@ function kutAmbiyans(uyeler) {
     'Dün gece biri okuma salonunda ayraç unutmuş. Sahibi çıkmazsa ben kullanacağım. Hayaletlerin de okuyacak kitabı var.',
     'Kütüphane kuralı 1: Fısıltıyla konuşulur. Kütüphane kuralı 2: Fısıldayan ben olsam bile.',
     'Pencereden ay ışığı vuruyor. Bu ışıkta okunan kitaplar daha iyi hatırlanır derler. Ben uydurdum, ama doğru olabilir.',
+    'Bu gece raflardan biri gıcırdadı. Ağır bir kitap mı kondu, yoksa biri mi yaslandı, bilmiyorum.',
+    'Mumu yeniledim. Eskisi bir romanın son bölümünde söndü. Bazı kitaplar insanı nefessiz bırakır, mumları da.',
+    'Kayıp eşya kutusunda üç ayraç, bir gözlük ve sahibi belli olmayan bir iç çekiş var.',
+    'Okuma salonunda pencereler buğulandı. Biri camın üstüne bir kitap adı yazmış, sonra silmiş.',
   ];
   if (r) {
     L.push(`Bu gece raflar arasında dolaştım ve ${kutKitap(r)} kitabının yerini değiştirdim. Fark eden olursa ödül yok. Sadece ben bilirim 👻`);
