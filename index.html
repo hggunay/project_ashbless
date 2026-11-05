@@ -6579,6 +6579,12 @@ async function confirmRemoveBookFinal(id, deleteNote){
     diyarKaydiniGeriAl({title:book.title,author:book.author,series:book.series})
       .catch(e=>console.warn('diyar geri alma:',e));
   }
+  /* Kitabın akıştaki "başladı / bitirdi / yarım bıraktı" kartları da gider (R3,
+     2026-11-05, Gökşin onayladı). Eskiden kalıyordu: kitap gidince not görünmez
+     oluyor, yalnız başlık kalıyordu. Rozet kartları BİLEREK kalır. */
+  if(db.readingEvents&&db.readingEvents[me]){
+    db.readingEvents[me]=db.readingEvents[me].filter(e=>e.bookId!==id);   // boş dizi kalabilir, delete değil
+  }
   // Seri referanslarını temizle — silinen kitaba işaret eden öksüz bookId bırakma (Ö34)
   if(db.seriesData&&db.seriesData[me]&&db.seriesData[me].series){
     Object.values(db.seriesData[me].series).forEach(ser=>{
@@ -7652,6 +7658,18 @@ function confirmMarkAsUnread(bookId, status){
   if(typeof diyarKaydiniGeriAl==='function'){
     diyarKaydiniGeriAl({title:book.title,author:book.author,series:book.series})
       .catch(e=>console.warn('diyar geri alma:',e));
+  }
+  /* "Okundu"dan geri alınınca akıştaki SON "bitirdi" kartı gider, "başladı"
+     kalır: başlamıştı, bitirmemişti (R3, 2026-11-05, Gökşin onayladı). Yalnız
+     sonuncusu: kitap daha önce de okunduysa eski okumanın kartı yerinde kalsın. */
+  if(eskiDurum==='new'&&db.readingEvents&&db.readingEvents[me]){
+    const evs=db.readingEvents[me];
+    for(let i=evs.length-1;i>=0;i--){
+      if(evs[i].bookId===book.id&&(evs[i].type==='finished'||evs[i].type==='finished_direct')){
+        evs.splice(i,1);
+        break;
+      }
+    }
   }
   saveDb();
   // Birlikte okuma oturumundaki "bitirdi" kaydı da geri alınsın (2026-08-30).
@@ -9930,6 +9948,7 @@ function confirmDeleteBooks(){
        Diyarları okunmuş HİKÂYELER de açabildiği için orada körlemesine silme
        yok: diyarKayitlariniDenkle her diyara "hâlâ desteği var mı" diye bakıyor. */
     if(db.countryEvents) db.countryEvents[me]=[];   // delete değil: bkz. confirmRemoveBookFinal
+    if(db.readingEvents) db.readingEvents[me]=[];   // okuma kartları da (R3); delete değil
     saveDb();renderSafe();
     if(typeof diyarKayitlariniDenkle==='function'){
       diyarKayitlariniDenkle(true).then(n=>{
