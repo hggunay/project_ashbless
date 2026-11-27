@@ -151,6 +151,19 @@ function kutAmbiyans(uyeler) {
     'Mumu yeniledim. Eskisi bir romanın son bölümünde söndü. Bazı kitaplar insanı nefessiz bırakır, mumları da.',
     'Kayıp eşya kutusunda üç ayraç, bir gözlük ve sahibi belli olmayan bir iç çekiş var.',
     'Okuma salonunda pencereler buğulandı. Biri camın üstüne bir kitap adı yazmış, sonra silmiş.',
+    // 27.11 — sohbetlerden çıkan malzeme
+    'Arşivde 3800 yıllık bir dava dosyası var: Nippur, bir cinayet, kil tablet. Tanık yok, kamera yok, ama karar yazılmış. Bizim kütüphanede de hiçbir şey kaybolmaz, yalnız biraz tozlanır 📜',
+    'Song Ci adında bir yargıç, köydeki bütün orakları güneşe dizmiş. Sinekler birinin üstüne üşüşmüş. Ben de raflara aynısını yapsam, sinekler en çok hangi kitaba konar acaba? Bence en tatlı sonu olana 🪰',
+    'Eskiden şüpheliye kuru pirinç çiğnetirlermiş: ağzı kuruyorsa suçlu. Kütüphanede böyle bir sınav yok. Yalnız kitabı bitirmeden "bitirdim" yazanın kulakları kızarır, ben görürüm 👀',
+    'Sümer tanrıları kanal kazmayı başkasına yaptırmış. Ben de rafların tozunu almayı birine yaptırmak isterdim, ama hayaletlerin alt ajanı olmuyor 🕯️',
+    'Dün gece elektrikler gitti. Herkes karanlıkta kaldı, ben hariç. Mum ışığında okunan sayfa iki kat yavaş biter, iki kat iyi hatırlanır.',
+    'Bir okur kitabını yarıda bırakıp bir şey yemeye gitti. Kitap açık kaldı, sayfa bekledi. Kitaplar aç kalmaz, okurlar kalır 🍲',
+    'Raflar arasında bir kedi dolaştı, bir kitabın üstüne yattı, gitmedi. Kütüphane kuralına göre o kitap artık onun. İtiraz eden kediyle konuşsun 🐈',
+    'Biri kenara bir not düşmüş: "Anlamadım." Bence kitap kenarına yazılmış en dürüst cümle bu. Ben de bazı kitapları yüz yıldır anlamaya çalışıyorum.',
+    'Teleskoplar geliştikçe gökyüzü büyüyor, cennet de biraz daha uzağa kayıyor. Kütüphane öyle değil: her rafın sonu belli, her kitabın son sayfası var. Yine de bazı geceler raflar uzuyor gibi geliyor 🔭',
+    'Bir okur yüz yıllık bir hayaletin zincirlerini görüp iyi biri olmaya karar vermiş. Benim zincirim yok, ama kitap iadesini geciktirenler için bir tane düşünüyorum ⛓️',
+    'Kil tabletler binlerce yıl bekledi, kâğıt kitaplar yüzlerce, e-kitaplar şarj bitene kadar. Ben hepsini bekliyorum, bende pil bitmez 🔋',
+    'Bugün bir kitap kendi kendine kapandı. Rüzgârdan mı, yoksa okuru uyuyakaldı da kitap mı utandı, bilemedim 😴',
   ];
   if (r) {
     L.push(`Bu gece raflar arasında dolaştım ve ${kutKitap(r)} kitabının yerini değiştirdim. Fark eden olursa ödül yok. Sadece ben bilirim 👻`);
