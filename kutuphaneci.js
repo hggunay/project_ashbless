@@ -164,6 +164,9 @@ function kutAmbiyans(uyeler) {
     'Bir okur yüz yıllık bir hayaletin zincirlerini görüp iyi biri olmaya karar vermiş. Benim zincirim yok, ama kitap iadesini geciktirenler için bir tane düşünüyorum ⛓️',
     'Kil tabletler binlerce yıl bekledi, kâğıt kitaplar yüzlerce, e-kitaplar şarj bitene kadar. Ben hepsini bekliyorum, bende pil bitmez 🔋',
     'Bugün bir kitap kendi kendine kapandı. Rüzgârdan mı, yoksa okuru uyuyakaldı da kitap mı utandı, bilemedim 😴',
+    // 27.11 — okunuş bulmacaları (cevap yazılmaz, okur sesli okuyup çözer)
+    'Masama İngilizce bir not bırakılmış: «I but are can, I run each teen me?» Sözlüğe bakan anlamadı, sesli okuyan anladı. Burası kütüphane, cevabı fısıldayın 🌙🤫',
+    'Raflar arasında bir okur ayağını tutup sızlanıyordu. Yanından geçen bir İngiliz sordu: «Thee can me but the?» Okur hemen anladı. Siz de sesli okuyun 🌵',
   ];
   if (r) {
     L.push(`Bu gece raflar arasında dolaştım ve ${kutKitap(r)} kitabının yerini değiştirdim. Fark eden olursa ödül yok. Sadece ben bilirim 👻`);
