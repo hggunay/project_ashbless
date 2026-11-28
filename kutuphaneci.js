@@ -120,6 +120,26 @@ const KUT_KALIPLAR = [
     if (!b) return null;
     return `${kutAd(u)}, ${kutKitap(b.title)} hâlâ yarım bıraktığın sayfada açık duruyor. Gece bekçisi olarak söylüyorum: o sayfa seni bekliyor.`;
   },
+  // 28.11 — Haritada yeni ülke (son 3 günde biten kitap, o ülkeden ilk kitap). Ülke adı
+  // yazılmaz, yalnız bayrak: telefonda bayrak, Windows'ta iki harf görünür → bulmaca.
+  // Haritanın saydığı kitaplar: readingStatus 'new', retroaktif değil (map.js ile aynı).
+  u => {
+    if (typeof countryToISO !== 'function') return null;
+    const say = (db.books[u] || []).filter(b => b && b.country && b.readingStatus === 'new' && !b.retroactive);
+    const yeni = say.filter(b => { const g = kutGunFarki(b.endDate); return g !== null && g >= 0 && g <= 3; })
+      .sort((a, b) => String(b.endDate).localeCompare(String(a.endDate)));
+    for (const b of yeni) {
+      const iso = countryToISO(b.country);
+      if (!iso || !/^[A-Z]{2}$/.test(iso) || iso === 'XC') continue;   // XC (K. Kıbrıs) için bayrak emojisi yok
+      const bt = String(b.endDate), bi = say.indexOf(b);
+      const once = say.some((x, i) => x !== b && countryToISO(x.country) === iso &&
+        (String(x.endDate || '') < bt || (String(x.endDate || '') === bt && i < bi)));   // tarihsiz eski kayıt da "önce" sayılır
+      if (once) continue;
+      const bayrak = String.fromCodePoint(...[...iso].map(h => 0x1F1E6 + h.charCodeAt(0) - 65));
+      return `${kutAd(u)} haritada yeni bir ülkeye ayak bastı: ${bayrak} Onu oraya ${kutKitap(b.title)} götürdü. Telefondan bakan bayrağı görür. Bilgisayardan bakan yalnız iki harf görür, bulmacayı çözmek ona kalır 🗺️🕯️`;
+    }
+    return null;
+  },
 ];
 
 // İki üye arasında: biri bir yazarı okurken öbürünün rafında aynı yazar (ya da
